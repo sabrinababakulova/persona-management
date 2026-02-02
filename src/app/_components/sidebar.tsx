@@ -104,7 +104,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="flex h-screen w-80 flex-col bg-sidebar-bg px-4 py-8">
+    <aside className="sticky top-0 flex h-screen w-80 flex-col bg-sidebar-bg px-4 py-8">
       {/* Logo */}
       <div className="mb-10 flex items-center gap-3 px-2">
         <div className="relative h-10 w-10">

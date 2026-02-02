@@ -66,7 +66,7 @@ export default function VacanciesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-bg-light">
+    <div className="relative flex min-h-screen bg-bg-light">
       <Sidebar />
 
       {/* Main Content */}

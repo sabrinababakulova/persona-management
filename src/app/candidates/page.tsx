@@ -94,7 +94,7 @@ export default function CandidatesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-bg-light">
+    <div className="relative flex min-h-screen bg-bg-light">
       <Sidebar />
 
       {/* Main Content */}
