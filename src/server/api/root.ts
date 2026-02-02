@@ -1,3 +1,4 @@
+import { candidatesRouter } from "~/server/api/routers/candidates";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { postRouter } from "~/server/api/routers/post";
 import { vacanciesRouter } from "~/server/api/routers/vacancies";
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   post: postRouter,
   dashboard: dashboardRouter,
   vacancies: vacanciesRouter,
+  candidates: candidatesRouter,
 });
 
 // export type definition of API
