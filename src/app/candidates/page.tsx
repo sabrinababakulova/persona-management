@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Checkbox } from "../_components/checkbox";
@@ -240,9 +241,12 @@ export default function CandidatesPage() {
                     onChange={() => toggleSelection(candidate.id)}
                   />
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <Link
+                      className="font-medium text-gray-900 hover:text-primary-blue hover:underline"
+                      href={`/candidates/${candidate.id}`}
+                    >
                       {candidate.name}
-                    </div>
+                    </Link>
                     <div className="text-sm text-text-muted">
                       {candidate.patronymic}
                     </div>
@@ -263,11 +267,16 @@ export default function CandidatesPage() {
                 <div className="hidden text-gray-700 lg:col-span-2 lg:block">
                   {candidate.otherResponses.length > 0 ? (
                     <div className="flex flex-col gap-0.5">
-                      {candidate.otherResponses.map((response: string, idx: number) => (
-                        <span key={`${candidate.id}-${idx}`} className="text-primary-blue">
-                          {response}
-                        </span>
-                      ))}
+                      {candidate.otherResponses.map(
+                        (response: string, idx: number) => (
+                          <span
+                            className="text-primary-blue"
+                            key={`${candidate.id}-${idx}`}
+                          >
+                            {response}
+                          </span>
+                        ),
+                      )}
                     </div>
                   ) : (
                     <span>-</span>

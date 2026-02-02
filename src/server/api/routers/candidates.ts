@@ -62,10 +62,12 @@ const _candidateDetailSchema = z.object({
     position: z.string(),
   }),
   skills: z.array(z.string()),
-  languages: z.array(z.object({
-    name: z.string(),
-    level: z.string(),
-  })),
+  languages: z.array(
+    z.object({
+      name: z.string(),
+      level: z.string(),
+    }),
+  ),
   contacts: z.object({
     phone: z.string(),
     telegram: z.string(),
@@ -148,9 +150,7 @@ export const candidatesRouter = createTRPCRouter({
           company: "ООО Interstellar group",
           position: "Junior",
         },
-        languages: [
-          { name: "Русский", level: "A1" },
-        ],
+        languages: [{ name: "Русский", level: "A1" }],
         skills: ["React"],
         contacts: {
           phone: "+99899 123 45 67",
@@ -184,7 +184,7 @@ export const candidatesRouter = createTRPCRouter({
           {
             institution: "Inha University in Tashkent",
             gpa: "GPA 4.5",
-            period: "ЯНВАРЬ 2024 - СЕЙЧАС",
+            period: "ЯНВАРЬ 2025 - СЕЙЧАС",
             isCurrent: true,
           },
           {
@@ -208,7 +208,8 @@ export const candidatesRouter = createTRPCRouter({
           },
           {
             id: "2",
-            content: "Этот кандидат не имеет международных сертификатов, но знает испанский и французский языки",
+            content:
+              "Этот кандидат не имеет международных сертификатов, но знает испанский и французский языки",
             author: "Эльвира Ахметова",
             createdAt: "2024-01-14",
           },
@@ -217,8 +218,9 @@ export const candidatesRouter = createTRPCRouter({
           {
             id: "1",
             userName: "Эльвира Ахметова",
-            userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Elvira",
-            action: 'Изменил(а) статус кандидата',
+            userAvatar:
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=Elvira",
+            action: "Изменил(а) статус кандидата",
             targetName: "Ахмедова А. А",
             targetStatus: "Нанят",
             timeAgo: "Только что",
