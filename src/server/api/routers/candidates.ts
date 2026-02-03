@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { candidates } from "~/server/db/schema";
 
 // Types for candidate data
 const _candidateSchema = z.object({
@@ -238,5 +239,58 @@ export const candidatesRouter = createTRPCRouter({
       };
 
       return candidateDetails;
+    }),
+
+  createCandidate: publicProcedure
+    .input(
+      z.object({
+        fullName: z.string().min(1, "Ф.И.О обязательно"),
+        city: z.string().min(1, "Город обязателен"),
+        contacts: z
+          .array(
+            z.object({
+              type: z.enum(["telegram", "phone", "email", "whatsapp"]),
+              value: z.string(),
+            })
+          )
+          .default([]),
+        source: z.string().optional(),
+        salaryExpectation: z.number().min(0).optional(),
+        salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
+        currentPosition: z.string().optional(),
+        skills: z.array(z.string()).default([]),
+        languages: z
+          .array(
+            z.object({
+              name: z.string(),
+              level: z.string(),
+            })
+          )
+          .default([]),
+        status: z.string().default("new"),
+        resumeUrl: z.string().optional(),
+        resumeFileName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const newCandidate = await ctx.db
+        .insert(candidates)
+        .values({
+          fullName: input.fullName,
+          city: input.city,
+          contacts: input.contacts,
+          source: input.source ?? null,
+          salaryExpectation: input.salaryExpectation ?? null,
+          salaryCurrency: input.salaryCurrency,
+          currentPosition: input.currentPosition ?? null,
+          skills: input.skills,
+          languages: input.languages,
+          status: input.status,
+          resumeUrl: input.resumeUrl ?? null,
+          resumeFileName: input.resumeFileName ?? null,
+        })
+        .returning();
+
+      return newCandidate[0];
     }),
 });

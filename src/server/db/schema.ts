@@ -108,3 +108,38 @@ export const verificationTokens = createTable(
   }),
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
+
+// Candidates table
+export const candidates = createTable(
+  "candidate",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    fullName: d.varchar({ length: 255 }).notNull(),
+    city: d.varchar({ length: 255 }),
+    salaryExpectation: d.integer(),
+    salaryCurrency: d.varchar({ length: 10 }).default("UZS"),
+    currentPosition: d.varchar({ length: 255 }),
+    source: d.varchar({ length: 255 }),
+    status: d.varchar({ length: 50 }).default("new"),
+    resumeUrl: d.varchar({ length: 500 }),
+    resumeFileName: d.varchar({ length: 255 }),
+    // JSON fields for arrays
+    contacts: d.json().$type<{ type: string; value: string }[]>().default([]),
+    skills: d.json().$type<string[]>().default([]),
+    languages: d.json().$type<{ name: string; level: string }[]>().default([]),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("candidate_name_idx").on(t.fullName),
+    index("candidate_city_idx").on(t.city),
+    index("candidate_created_at_idx").on(t.createdAt),
+  ],
+);
