@@ -14,7 +14,6 @@ import {
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
-import { Sidebar } from "../_components/sidebar";
 
 interface Candidate {
   id: string;
@@ -94,9 +93,7 @@ export default function CandidatesPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
-      <Sidebar />
-
+    <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -329,6 +326,6 @@ export default function CandidatesPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }

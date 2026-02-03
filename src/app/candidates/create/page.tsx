@@ -11,7 +11,6 @@ import {
   GlobeIcon,
   SearchIcon,
 } from "../../_components/icons";
-import { Sidebar } from "../../_components/sidebar";
 
 // Zod validation schema
 const contactSchema = z.object({
@@ -336,9 +335,9 @@ export default function CreateCandidatePage() {
       contacts: contacts.map((c) =>
         c.id === id
           ? {
-              type: field === "type" ? (value as ContactItem["type"]) : c.type,
-              value: field === "value" ? value : c.value,
-            }
+            type: field === "type" ? (value as ContactItem["type"]) : c.type,
+            value: field === "value" ? value : c.value,
+          }
           : { type: c.type, value: c.value },
       ),
     }));
@@ -433,9 +432,7 @@ export default function CreateCandidatePage() {
   };
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
-      <Sidebar />
-
+    <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -586,9 +583,8 @@ export default function CreateCandidatePage() {
                 Основная информация
               </h2>
               <ChevronUpIcon
-                className={`h-5 w-5 text-gray-400 transition-transform ${
-                  basicInfoOpen ? "" : "rotate-180"
-                }`}
+                className={`h-5 w-5 text-gray-400 transition-transform ${basicInfoOpen ? "" : "rotate-180"
+                  }`}
               />
             </button>
 
@@ -603,9 +599,8 @@ export default function CreateCandidatePage() {
                     Ф.И.О
                   </label>
                   <input
-                    className={`w-full rounded-lg border ${
-                      errors.fullName ? "border-red-500" : "border-border-light"
-                    } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                    className={`w-full rounded-lg border ${errors.fullName ? "border-red-500" : "border-border-light"
+                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                     id="fullName"
                     onChange={(e) =>
                       handleInputChange("fullName", e.target.value)
@@ -630,9 +625,8 @@ export default function CreateCandidatePage() {
                     Город
                   </label>
                   <input
-                    className={`w-full rounded-lg border ${
-                      errors.city ? "border-red-500" : "border-border-light"
-                    } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                    className={`w-full rounded-lg border ${errors.city ? "border-red-500" : "border-border-light"
+                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                     id="city"
                     onChange={(e) => handleInputChange("city", e.target.value)}
                     placeholder="Введите название города"
@@ -751,9 +745,8 @@ export default function CreateCandidatePage() {
                 Требования и Навыки
               </h2>
               <ChevronUpIcon
-                className={`h-5 w-5 text-gray-400 transition-transform ${
-                  requirementsOpen ? "" : "rotate-180"
-                }`}
+                className={`h-5 w-5 text-gray-400 transition-transform ${requirementsOpen ? "" : "rotate-180"
+                  }`}
               />
             </button>
 
@@ -769,11 +762,10 @@ export default function CreateCandidatePage() {
                   </label>
                   <div className="flex items-center gap-2">
                     <input
-                      className={`flex-1 rounded-lg border ${
-                        errors.salaryExpectation
-                          ? "border-red-500"
-                          : "border-border-light"
-                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                      className={`flex-1 rounded-lg border ${errors.salaryExpectation
+                        ? "border-red-500"
+                        : "border-border-light"
+                        } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                       id="salaryExpectation"
                       onChange={(e) =>
                         handleInputChange(
@@ -787,11 +779,10 @@ export default function CreateCandidatePage() {
                     />
                     <div className="flex overflow-hidden rounded-lg border border-border-light">
                       <button
-                        className={`px-3 py-3 text-sm ${
-                          formData.salaryCurrency === "UZS"
-                            ? "bg-primary-blue text-white"
-                            : "bg-white text-gray-600"
-                        }`}
+                        className={`px-3 py-3 text-sm ${formData.salaryCurrency === "UZS"
+                          ? "bg-primary-blue text-white"
+                          : "bg-white text-gray-600"
+                          }`}
                         onClick={() =>
                           handleInputChange("salaryCurrency", "UZS")
                         }
@@ -800,11 +791,10 @@ export default function CreateCandidatePage() {
                         UZS
                       </button>
                       <button
-                        className={`px-3 py-3 text-sm ${
-                          formData.salaryCurrency === "USD"
-                            ? "bg-primary-blue text-white"
-                            : "bg-white text-gray-600"
-                        }`}
+                        className={`px-3 py-3 text-sm ${formData.salaryCurrency === "USD"
+                          ? "bg-primary-blue text-white"
+                          : "bg-white text-gray-600"
+                          }`}
                         onClick={() =>
                           handleInputChange("salaryCurrency", "USD")
                         }
@@ -867,11 +857,10 @@ export default function CreateCandidatePage() {
                       <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border-light bg-white shadow-lg">
                         {SKILLS.map((skill) => (
                           <button
-                            className={`w-full px-4 py-2 text-left text-sm hover:bg-bg-light ${
-                              formData.skills.includes(skill)
-                                ? "bg-primary-blue/10 text-primary-blue"
-                                : "text-gray-700"
-                            }`}
+                            className={`w-full px-4 py-2 text-left text-sm hover:bg-bg-light ${formData.skills.includes(skill)
+                              ? "bg-primary-blue/10 text-primary-blue"
+                              : "text-gray-700"
+                              }`}
                             key={skill}
                             onClick={() => toggleSkill(skill)}
                             type="button"
@@ -994,6 +983,6 @@ export default function CreateCandidatePage() {
           </button>
         </div>
       </main>
-    </div>
+    </>
   );
 }

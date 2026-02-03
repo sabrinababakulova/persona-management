@@ -14,7 +14,6 @@ import {
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
-import { Sidebar } from "../_components/sidebar";
 import { StatusBadge } from "../_components/status-badge";
 
 interface Vacancy {
@@ -66,9 +65,7 @@ export default function VacanciesPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
-      <Sidebar />
-
+    <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -275,6 +272,6 @@ export default function VacanciesPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }

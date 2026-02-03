@@ -5,7 +5,6 @@ import { api } from "~/trpc/react";
 import { ActivityItem } from "../_components/activity-item";
 import { DonutChart } from "../_components/donut-chart";
 import { ProgressBar } from "../_components/progress-bar";
-import { Sidebar } from "../_components/sidebar";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyRow } from "../_components/vacancy-row";
 
@@ -29,9 +28,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
-      <Sidebar />
-
+    <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -417,6 +414,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }

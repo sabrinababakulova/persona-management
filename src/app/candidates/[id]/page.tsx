@@ -10,7 +10,6 @@ import {
   GlobeIcon,
   SearchIcon,
 } from "../../_components/icons";
-import { Sidebar } from "../../_components/sidebar";
 
 // Additional icons
 function BriefcaseIcon({ className }: { className?: string }) {
@@ -273,9 +272,7 @@ export default function CandidateDetailPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
-      <Sidebar />
-
+    <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -504,7 +501,7 @@ export default function CandidateDetailPage() {
                         className="flex gap-4"
                         key={`${exp.company}-${exp.period}`}
                       >
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-yellow-100">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-100">
                           <GraduationCapIcon className="h-5 w-5 text-yellow-600" />
                         </div>
                         <div className="flex-1">
@@ -556,7 +553,7 @@ export default function CandidateDetailPage() {
                         className="flex gap-4"
                         key={`${edu.institution}-${edu.period}-${edu.isCurrent}`}
                       >
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100">
                           <GraduationCapIcon className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="flex-1">
@@ -577,7 +574,7 @@ export default function CandidateDetailPage() {
                 {/* Resume */}
                 <div className="rounded-2xl border border-border-light bg-white p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
                       <FileIcon className="h-5 w-5 text-gray-600" />
                     </div>
                     <div className="flex-1">
@@ -658,7 +655,7 @@ export default function CandidateDetailPage() {
                   <div className="space-y-4">
                     {candidate.activities.map((activity) => (
                       <div className="flex gap-3" key={activity.id}>
-                        <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
+                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gray-200">
                           <Image
                             alt={activity.userName}
                             className="h-full w-full object-cover"
@@ -706,6 +703,6 @@ export default function CandidateDetailPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }
