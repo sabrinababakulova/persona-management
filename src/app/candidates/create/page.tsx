@@ -14,7 +14,7 @@ import {
 
 // Zod validation schema
 const contactSchema = z.object({
-  type: z.enum(["telegram", "phone", "email", "whatsapp"]),
+  type: z.string().min(1, "Выберите тип контакта"),
   value: z.string().min(1, "Контакт обязателен"),
 });
 
@@ -42,7 +42,7 @@ type CandidateFormData = z.infer<typeof candidateFormSchema>;
 
 interface ContactItem {
   id: string;
-  type: "telegram" | "phone" | "email" | "whatsapp";
+  type: string;
   value: string;
 }
 
@@ -153,76 +153,18 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-// Constants
-const CONTACT_TYPES = [
-  { value: "telegram", label: "Telegram" },
-  { value: "phone", label: "Телефон" },
-  { value: "email", label: "Email" },
-  { value: "whatsapp", label: "WhatsApp" },
-];
+type SelectOption = { value: string; label: string };
 
-const SOURCES = [
-  { value: "hh.uz", label: "hh.uz" },
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "telegram", label: "Telegram" },
-  { value: "referral", label: "Реферал" },
-  { value: "other", label: "Другое" },
-];
-
-const POSITIONS = [
-  { value: "frontend_developer", label: "Frontend Developer" },
-  { value: "backend_developer", label: "Backend Developer" },
-  { value: "fullstack_developer", label: "Fullstack Developer" },
-  { value: "product_designer", label: "Product Designer" },
-  { value: "graphic_designer", label: "Graphic Designer" },
-  { value: "project_manager", label: "Project Manager" },
-  { value: "hr_manager", label: "HR Manager" },
-  { value: "marketing_manager", label: "Marketing Manager" },
-];
-
-const SKILLS = [
-  "React",
-  "TypeScript",
-  "JavaScript",
-  "Node.js",
-  "Python",
-  "Figma",
-  "Adobe Photoshop",
-  "Adobe Illustrator",
-  "Коммуникабельность",
-  "Креативность",
-  "Управление проектами",
-  "Аналитика",
-];
-
-const LANGUAGES = [
-  { value: "russian", label: "Русский" },
-  { value: "uzbek", label: "Узбекский" },
-  { value: "english", label: "Английский" },
-  { value: "german", label: "Немецкий" },
-  { value: "french", label: "Французский" },
-  { value: "spanish", label: "Испанский" },
-  { value: "korean", label: "Корейский" },
-  { value: "chinese", label: "Китайский" },
-];
-
-const LANGUAGE_LEVELS = [
-  { value: "A1", label: "A1 - Начальный" },
-  { value: "A2", label: "A2 - Элементарный" },
-  { value: "B1", label: "B1 - Средний" },
-  { value: "B2", label: "B2 - Выше среднего" },
-  { value: "C1", label: "C1 - Продвинутый" },
-  { value: "C2", label: "C2 - Владение в совершенстве" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "new", label: "Новый" },
-  { value: "screening", label: "Скрининг" },
-  { value: "interview", label: "Интервью" },
-  { value: "offer", label: "Оффер" },
-  { value: "hired", label: "Нанят" },
-  { value: "rejected", label: "Отклонен" },
-];
+const uniqueOptions = (options: SelectOption[]) => {
+  const seen = new Set<string>();
+  const result: SelectOption[] = [];
+  for (const o of options) {
+    if (seen.has(o.value)) continue;
+    seen.add(o.value);
+    result.push(o);
+  }
+  return result;
+};
 
 // Required fields for progress tracking
 const REQUIRED_FIELDS = [
@@ -239,6 +181,8 @@ export default function CreateCandidatePage() {
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [requirementsOpen, setRequirementsOpen] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const lookups = api.lookups.getCandidateCreateOptions.useQuery();
 
   // Form state
   const [formData, setFormData] = useState<CandidateFormData>({
@@ -267,6 +211,18 @@ export default function CreateCandidatePage() {
 
   // Skills dropdown state
   const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
+
+  const CONTACT_TYPES: SelectOption[] =
+    lookups.data?.contactTypes ??
+    uniqueOptions(contacts.map((c) => ({ value: c.type, label: c.type })));
+  const SOURCES: SelectOption[] = lookups.data?.sources ?? [];
+  const POSITIONS: SelectOption[] = lookups.data?.positions ?? [];
+  const SKILLS: string[] = (lookups.data?.skills ?? []).map((s) => s.label);
+  const LANGUAGES: SelectOption[] = lookups.data?.languages ?? [];
+  const LANGUAGE_LEVELS: SelectOption[] = lookups.data?.languageLevels ?? [];
+  const STATUS_OPTIONS: SelectOption[] = lookups.data?.statusOptions ?? [
+    { value: formData.status, label: formData.status },
+  ];
 
   // Calculate progress
   const calculateProgress = useCallback(() => {
@@ -329,18 +285,6 @@ export default function CreateCandidatePage() {
         contact.id === id ? { ...contact, [field]: value } : contact,
       ),
     );
-    // Sync with formData
-    setFormData((prev) => ({
-      ...prev,
-      contacts: contacts.map((c) =>
-        c.id === id
-          ? {
-            type: field === "type" ? (value as ContactItem["type"]) : c.type,
-            value: field === "value" ? value : c.value,
-          }
-          : { type: c.type, value: c.value },
-      ),
-    }));
   };
 
   const addContact = () => {
@@ -494,14 +438,19 @@ export default function CreateCandidatePage() {
               <div className="relative">
                 <select
                   className="appearance-none rounded-lg border border-border-light bg-white px-4 py-2 pr-8 text-gray-700 text-sm focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                  disabled={lookups.isLoading || lookups.isError}
                   onChange={(e) => handleInputChange("status", e.target.value)}
                   value={formData.status}
                 >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {lookups.isLoading ? (
+                    <option value={formData.status}>Загрузка...</option>
+                  ) : (
+                    STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               </div>
@@ -583,8 +532,9 @@ export default function CreateCandidatePage() {
                 Основная информация
               </h2>
               <ChevronUpIcon
-                className={`h-5 w-5 text-gray-400 transition-transform ${basicInfoOpen ? "" : "rotate-180"
-                  }`}
+                className={`h-5 w-5 text-gray-400 transition-transform ${
+                  basicInfoOpen ? "" : "rotate-180"
+                }`}
               />
             </button>
 
@@ -599,8 +549,9 @@ export default function CreateCandidatePage() {
                     Ф.И.О
                   </label>
                   <input
-                    className={`w-full rounded-lg border ${errors.fullName ? "border-red-500" : "border-border-light"
-                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                    className={`w-full rounded-lg border ${
+                      errors.fullName ? "border-red-500" : "border-border-light"
+                    } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                     id="fullName"
                     onChange={(e) =>
                       handleInputChange("fullName", e.target.value)
@@ -625,8 +576,9 @@ export default function CreateCandidatePage() {
                     Город
                   </label>
                   <input
-                    className={`w-full rounded-lg border ${errors.city ? "border-red-500" : "border-border-light"
-                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                    className={`w-full rounded-lg border ${
+                      errors.city ? "border-red-500" : "border-border-light"
+                    } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                     id="city"
                     onChange={(e) => handleInputChange("city", e.target.value)}
                     placeholder="Введите название города"
@@ -673,6 +625,7 @@ export default function CreateCandidatePage() {
                       <div className="relative">
                         <select
                           className="appearance-none rounded-lg border border-border-light bg-white px-4 py-3 pr-8 text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                          disabled={lookups.isLoading || lookups.isError}
                           onChange={(e) =>
                             handleContactChange(
                               contact.id,
@@ -682,11 +635,15 @@ export default function CreateCandidatePage() {
                           }
                           value={contact.type}
                         >
-                          {CONTACT_TYPES.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
+                          {lookups.isLoading ? (
+                            <option value={contact.type}>Загрузка...</option>
+                          ) : (
+                            CONTACT_TYPES.map((type) => (
+                              <option key={type.value} value={type.value}>
+                                {type.label}
+                              </option>
+                            ))
+                          )}
                         </select>
                         <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                       </div>
@@ -714,13 +671,18 @@ export default function CreateCandidatePage() {
                   <div className="relative">
                     <select
                       className="w-full appearance-none rounded-lg border border-border-light bg-white px-4 py-3 pr-8 text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                      disabled={lookups.isLoading || lookups.isError}
                       id="source"
                       onChange={(e) =>
                         handleInputChange("source", e.target.value)
                       }
                       value={formData.source}
                     >
-                      <option value="">Выберите источник</option>
+                      <option value="">
+                        {lookups.isLoading
+                          ? "Загрузка..."
+                          : "Выберите источник"}
+                      </option>
                       {SOURCES.map((source) => (
                         <option key={source.value} value={source.value}>
                           {source.label}
@@ -745,8 +707,9 @@ export default function CreateCandidatePage() {
                 Требования и Навыки
               </h2>
               <ChevronUpIcon
-                className={`h-5 w-5 text-gray-400 transition-transform ${requirementsOpen ? "" : "rotate-180"
-                  }`}
+                className={`h-5 w-5 text-gray-400 transition-transform ${
+                  requirementsOpen ? "" : "rotate-180"
+                }`}
               />
             </button>
 
@@ -762,10 +725,11 @@ export default function CreateCandidatePage() {
                   </label>
                   <div className="flex items-center gap-2">
                     <input
-                      className={`flex-1 rounded-lg border ${errors.salaryExpectation
-                        ? "border-red-500"
-                        : "border-border-light"
-                        } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
+                      className={`flex-1 rounded-lg border ${
+                        errors.salaryExpectation
+                          ? "border-red-500"
+                          : "border-border-light"
+                      } px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20`}
                       id="salaryExpectation"
                       onChange={(e) =>
                         handleInputChange(
@@ -779,10 +743,11 @@ export default function CreateCandidatePage() {
                     />
                     <div className="flex overflow-hidden rounded-lg border border-border-light">
                       <button
-                        className={`px-3 py-3 text-sm ${formData.salaryCurrency === "UZS"
-                          ? "bg-primary-blue text-white"
-                          : "bg-white text-gray-600"
-                          }`}
+                        className={`px-3 py-3 text-sm ${
+                          formData.salaryCurrency === "UZS"
+                            ? "bg-primary-blue text-white"
+                            : "bg-white text-gray-600"
+                        }`}
                         onClick={() =>
                           handleInputChange("salaryCurrency", "UZS")
                         }
@@ -791,10 +756,11 @@ export default function CreateCandidatePage() {
                         UZS
                       </button>
                       <button
-                        className={`px-3 py-3 text-sm ${formData.salaryCurrency === "USD"
-                          ? "bg-primary-blue text-white"
-                          : "bg-white text-gray-600"
-                          }`}
+                        className={`px-3 py-3 text-sm ${
+                          formData.salaryCurrency === "USD"
+                            ? "bg-primary-blue text-white"
+                            : "bg-white text-gray-600"
+                        }`}
                         onClick={() =>
                           handleInputChange("salaryCurrency", "USD")
                         }
@@ -817,6 +783,7 @@ export default function CreateCandidatePage() {
                   <div className="relative">
                     <select
                       className="w-full appearance-none rounded-lg border border-border-light bg-white px-4 py-3 pr-8 text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                      disabled={lookups.isLoading || lookups.isError}
                       id="currentPosition"
                       onChange={(e) =>
                         handleInputChange("currentPosition", e.target.value)
@@ -824,7 +791,9 @@ export default function CreateCandidatePage() {
                       value={formData.currentPosition}
                     >
                       <option value="">
-                        Введите название или выберите из списка
+                        {lookups.isLoading
+                          ? "Загрузка..."
+                          : "Введите название или выберите из списка"}
                       </option>
                       {POSITIONS.map((position) => (
                         <option key={position.value} value={position.value}>
@@ -844,30 +813,40 @@ export default function CreateCandidatePage() {
                   <div className="relative">
                     <button
                       className="w-full rounded-lg border border-border-light bg-white px-4 py-3 text-left text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                      disabled={lookups.isLoading || lookups.isError}
                       onClick={() => setSkillsDropdownOpen(!skillsDropdownOpen)}
                       type="button"
                     >
                       {formData.skills.length > 0
                         ? `${formData.skills.length} навыков выбрано`
-                        : "Введите название или выберите из списка"}
+                        : lookups.isLoading
+                          ? "Загрузка..."
+                          : "Введите название или выберите из списка"}
                       <ChevronDownIcon className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     </button>
 
                     {skillsDropdownOpen && (
                       <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border-light bg-white shadow-lg">
-                        {SKILLS.map((skill) => (
-                          <button
-                            className={`w-full px-4 py-2 text-left text-sm hover:bg-bg-light ${formData.skills.includes(skill)
-                              ? "bg-primary-blue/10 text-primary-blue"
-                              : "text-gray-700"
+                        {lookups.isLoading ? (
+                          <div className="px-4 py-2 text-gray-500 text-sm">
+                            Загрузка...
+                          </div>
+                        ) : (
+                          SKILLS.map((skill) => (
+                            <button
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-bg-light ${
+                                formData.skills.includes(skill)
+                                  ? "bg-primary-blue/10 text-primary-blue"
+                                  : "text-gray-700"
                               }`}
-                            key={skill}
-                            onClick={() => toggleSkill(skill)}
-                            type="button"
-                          >
-                            {skill}
-                          </button>
-                        ))}
+                              key={skill}
+                              onClick={() => toggleSkill(skill)}
+                              type="button"
+                            >
+                              {skill}
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -915,6 +894,7 @@ export default function CreateCandidatePage() {
                       <div className="relative flex-1">
                         <select
                           className="w-full appearance-none rounded-lg border border-border-light bg-white px-4 py-3 pr-8 text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                          disabled={lookups.isLoading || lookups.isError}
                           onChange={(e) =>
                             handleLanguageChange(
                               language.id,
@@ -924,7 +904,11 @@ export default function CreateCandidatePage() {
                           }
                           value={language.name}
                         >
-                          <option value="">Выберите язык</option>
+                          <option value="">
+                            {lookups.isLoading
+                              ? "Загрузка..."
+                              : "Выберите язык"}
+                          </option>
                           {LANGUAGES.map((lang) => (
                             <option key={lang.value} value={lang.label}>
                               {lang.label}
@@ -936,6 +920,7 @@ export default function CreateCandidatePage() {
                       <div className="relative w-40">
                         <select
                           className="w-full appearance-none rounded-lg border border-border-light bg-white px-4 py-3 pr-8 text-gray-700 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                          disabled={lookups.isLoading || lookups.isError}
                           onChange={(e) =>
                             handleLanguageChange(
                               language.id,
@@ -945,7 +930,9 @@ export default function CreateCandidatePage() {
                           }
                           value={language.level}
                         >
-                          <option value="">Уровень</option>
+                          <option value="">
+                            {lookups.isLoading ? "Загрузка..." : "Уровень"}
+                          </option>
                           {LANGUAGE_LEVELS.map((level) => (
                             <option key={level.value} value={level.value}>
                               {level.label}
@@ -973,13 +960,19 @@ export default function CreateCandidatePage() {
           {/* Submit Button */}
           <button
             className="w-full rounded-xl bg-primary-blue py-4 font-semibold text-white hover:bg-primary-blue/90 disabled:opacity-50"
-            disabled={createCandidate.isPending}
+            disabled={
+              createCandidate.isPending || lookups.isLoading || lookups.isError
+            }
             onClick={handleSubmit}
             type="button"
           >
             {createCandidate.isPending
               ? "Сохранение..."
-              : "Сохранить кандидата"}
+              : lookups.isLoading
+                ? "Загрузка справочников..."
+                : lookups.isError
+                  ? "Не удалось загрузить справочники"
+                  : "Сохранить кандидата"}
           </button>
         </div>
       </main>

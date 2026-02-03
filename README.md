@@ -27,3 +27,17 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 ## How do I deploy this?
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+
+## Candidate Lookup Constants
+
+The candidate create form select options (contact types, sources, positions, skills, languages, language levels, statuses) are stored in Postgres lookup tables and served from the backend via tRPC.
+
+- Migration + seed data: `drizzle/0001_aromatic_red_skull.sql`
+- API: `lookups.getCandidateCreateOptions`
+
+To apply locally:
+
+```sh
+./start-database.sh
+bun run db:migrate
+```

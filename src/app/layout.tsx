@@ -25,10 +25,11 @@ export default function RootLayout({
       <body>
         <TRPCReactProvider>
           <div className="relative flex min-h-screen bg-bg-light">
-            <Sidebar />{children}
+            <Sidebar />
+            {children}
           </div>
         </TRPCReactProvider>
       </body>
-    </html >
+    </html>
   );
 }

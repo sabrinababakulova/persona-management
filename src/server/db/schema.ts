@@ -143,3 +143,63 @@ export const candidates = createTable(
     index("candidate_created_at_idx").on(t.createdAt),
   ],
 );
+
+// Lookup tables for candidate create form select options.
+// NOTE: These are intended to be managed from the backend (seeded via migrations).
+export const candidateContactTypes = createTable(
+  "candidate_contact_type",
+  (d) => ({
+    value: d.varchar({ length: 50 }).notNull().primaryKey(),
+    label: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    isActive: d.boolean().notNull().default(true),
+  }),
+);
+
+export const candidateSources = createTable("candidate_source", (d) => ({
+  value: d.varchar({ length: 100 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
+export const candidatePositions = createTable("candidate_position", (d) => ({
+  value: d.varchar({ length: 100 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
+export const candidateSkills = createTable("candidate_skill", (d) => ({
+  value: d.varchar({ length: 255 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
+export const candidateLanguages = createTable("candidate_language", (d) => ({
+  value: d.varchar({ length: 50 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
+export const candidateLanguageLevels = createTable(
+  "candidate_language_level",
+  (d) => ({
+    value: d.varchar({ length: 10 }).notNull().primaryKey(),
+    label: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    isActive: d.boolean().notNull().default(true),
+  }),
+);
+
+export const candidateStatusOptions = createTable(
+  "candidate_status_option",
+  (d) => ({
+    value: d.varchar({ length: 50 }).notNull().primaryKey(),
+    label: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    isActive: d.boolean().notNull().default(true),
+  }),
+);

@@ -1,7 +1,18 @@
+import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { candidates } from "~/server/db/schema";
+import {
+  candidateContactTypes,
+  candidateLanguageLevels,
+  candidateLanguages,
+  candidatePositions,
+  candidateSkills,
+  candidateSources,
+  candidateStatusOptions,
+  candidates,
+} from "~/server/db/schema";
 
 // Types for candidate data
 const _candidateSchema = z.object({
@@ -249,9 +260,9 @@ export const candidatesRouter = createTRPCRouter({
         contacts: z
           .array(
             z.object({
-              type: z.enum(["telegram", "phone", "email", "whatsapp"]),
+              type: z.string().min(1),
               value: z.string(),
-            })
+            }),
           )
           .default([]),
         source: z.string().optional(),
@@ -264,15 +275,121 @@ export const candidatesRouter = createTRPCRouter({
             z.object({
               name: z.string(),
               level: z.string(),
-            })
+            }),
           )
           .default([]),
         status: z.string().default("new"),
         resumeUrl: z.string().optional(),
         resumeFileName: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Validate incoming values against lookup tables so the frontend can be fully backend-driven.
+      const [
+        allowedContactTypes,
+        allowedSources,
+        allowedPositions,
+        allowedSkills,
+        allowedLanguageLabels,
+        allowedLanguageLevels,
+        allowedStatuses,
+      ] = await Promise.all([
+        ctx.db
+          .select({ value: candidateContactTypes.value })
+          .from(candidateContactTypes)
+          .where(eq(candidateContactTypes.isActive, true)),
+        ctx.db
+          .select({ value: candidateSources.value })
+          .from(candidateSources)
+          .where(eq(candidateSources.isActive, true)),
+        ctx.db
+          .select({ value: candidatePositions.value })
+          .from(candidatePositions)
+          .where(eq(candidatePositions.isActive, true)),
+        ctx.db
+          .select({ value: candidateSkills.value })
+          .from(candidateSkills)
+          .where(eq(candidateSkills.isActive, true)),
+        ctx.db
+          .select({ label: candidateLanguages.label })
+          .from(candidateLanguages)
+          .where(eq(candidateLanguages.isActive, true)),
+        ctx.db
+          .select({ value: candidateLanguageLevels.value })
+          .from(candidateLanguageLevels)
+          .where(eq(candidateLanguageLevels.isActive, true)),
+        ctx.db
+          .select({ value: candidateStatusOptions.value })
+          .from(candidateStatusOptions)
+          .where(eq(candidateStatusOptions.isActive, true)),
+      ]);
+
+      const contactTypeSet = new Set(allowedContactTypes.map((r) => r.value));
+      const sourceSet = new Set(allowedSources.map((r) => r.value));
+      const positionSet = new Set(allowedPositions.map((r) => r.value));
+      const skillSet = new Set(allowedSkills.map((r) => r.value));
+      const languageLabelSet = new Set(
+        allowedLanguageLabels.map((r) => r.label),
+      );
+      const languageLevelSet = new Set(
+        allowedLanguageLevels.map((r) => r.value),
+      );
+      const statusSet = new Set(allowedStatuses.map((r) => r.value));
+
+      for (const c of input.contacts) {
+        if (!contactTypeSet.has(c.type)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown contact type: ${c.type}`,
+          });
+        }
+      }
+
+      if (input.source && !sourceSet.has(input.source)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unknown source: ${input.source}`,
+        });
+      }
+
+      if (input.currentPosition && !positionSet.has(input.currentPosition)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unknown position: ${input.currentPosition}`,
+        });
+      }
+
+      for (const s of input.skills) {
+        if (!skillSet.has(s)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown skill: ${s}`,
+          });
+        }
+      }
+
+      for (const l of input.languages) {
+        if (!languageLabelSet.has(l.name)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown language: ${l.name}`,
+          });
+        }
+        if (!languageLevelSet.has(l.level)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown language level: ${l.level}`,
+          });
+        }
+      }
+
+      if (!statusSet.has(input.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unknown status: ${input.status}`,
+        });
+      }
+
       const newCandidate = await ctx.db
         .insert(candidates)
         .values({

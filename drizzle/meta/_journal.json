@@ -8,6 +8,13 @@
       "when": 1770106324368,
       "tag": "0000_fast_trauma",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770115512631,
+      "tag": "0001_aromatic_red_skull",
+      "breakpoints": true
     }
   ]
 }
