@@ -127,10 +127,62 @@ export const candidates = createTable(
     status: d.varchar({ length: 50 }).default("new"),
     resumeUrl: d.varchar({ length: 500 }),
     resumeFileName: d.varchar({ length: 255 }),
+    resumeFileSize: d.varchar({ length: 50 }),
+    experience: d.varchar({ length: 255 }),
+    matchScore: d.integer(),
     // JSON fields for arrays
     contacts: d.json().$type<{ type: string; value: string }[]>().default([]),
     skills: d.json().$type<string[]>().default([]),
     languages: d.json().$type<{ name: string; level: string }[]>().default([]),
+    tags: d.json().$type<string[]>().default([]),
+    workExperience: d
+      .json()
+      .$type<
+        {
+          company: string;
+          position: string;
+          period: string;
+          isCurrent?: boolean;
+          description: string[];
+        }[]
+      >()
+      .default([]),
+    education: d
+      .json()
+      .$type<
+        {
+          institution: string;
+          gpa: string;
+          period: string;
+          isCurrent?: boolean;
+        }[]
+      >()
+      .default([]),
+    notes: d
+      .json()
+      .$type<
+        {
+          id: string;
+          content: string;
+          author: string;
+          createdAt: string;
+        }[]
+      >()
+      .default([]),
+    activities: d
+      .json()
+      .$type<
+        {
+          id: string;
+          userName: string;
+          userAvatar: string;
+          action: string;
+          targetName: string;
+          targetStatus: string;
+          timeAgo: string;
+        }[]
+      >()
+      .default([]),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
@@ -141,6 +193,33 @@ export const candidates = createTable(
     index("candidate_name_idx").on(t.fullName),
     index("candidate_city_idx").on(t.city),
     index("candidate_created_at_idx").on(t.createdAt),
+  ],
+);
+
+// Vacancies table
+export const vacancies = createTable(
+  "vacancy",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    title: d.varchar({ length: 255 }).notNull(),
+    level: d.varchar({ length: 100 }),
+    status: d.varchar({ length: 50 }).default("active"),
+    city: d.varchar({ length: 255 }),
+    responses: d.integer().default(0),
+    workType: d.varchar({ length: 100 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("vacancy_title_idx").on(t.title),
+    index("vacancy_status_idx").on(t.status),
   ],
 );
 

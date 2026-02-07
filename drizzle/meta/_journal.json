@@ -15,6 +15,20 @@
       "when": 1770115512631,
       "tag": "0001_aromatic_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770462912888,
+      "tag": "0002_freezing_malice",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770462913000,
+      "tag": "0003_seed_mock_data",
+      "breakpoints": true
     }
   ]
 }

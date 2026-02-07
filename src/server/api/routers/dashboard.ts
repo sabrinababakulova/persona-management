@@ -1,155 +1,192 @@
-import { z } from "zod";
+import { count, eq, sql } from "drizzle-orm";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-
-// Types for dashboard data
-const _statsCardSchema = z.object({
-  title: z.string(),
-  value: z.string(),
-  change: z.string(),
-  changeType: z.enum(["positive", "negative", "neutral"]),
-  period: z.string(),
-});
-
-const _recentVacancySchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  subtitle: z.string(),
-  status: z.string(),
-  city: z.string(),
-  responses: z.number(),
-  workType: z.string(),
-});
-
-const _activityItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  action: z.string(),
-  candidateName: z.string(),
-  candidateInitials: z.string(),
-  newStatus: z.string(),
-  time: z.string(),
-  isRecent: z.boolean().optional(),
-});
-
-const _channelStatSchema = z.object({
-  name: z.string(),
-  percentage: z.number(),
-  color: z.string(),
-});
-
-const _statusStatSchema = z.object({
-  label: z.string(),
-  value: z.number(),
-  max: z.number(),
-});
+import { candidates, vacancies } from "~/server/db/schema";
 
 export const dashboardRouter = createTRPCRouter({
-  getDashboardData: publicProcedure.query(async () => {
-    // Mock data for stats cards
+  getDashboardData: publicProcedure.query(async ({ ctx }) => {
+    // Fetch real counts from the database
+    const [
+      totalCandidates,
+      hiredCount,
+      activeVacancies,
+      newCandidates,
+      statusCounts,
+      sourceCounts,
+      recentVacancyRows,
+      recentCandidateRows,
+    ] = await Promise.all([
+      ctx.db.select({ count: count() }).from(candidates),
+      ctx.db
+        .select({ count: count() })
+        .from(candidates)
+        .where(eq(candidates.status, "hired")),
+      ctx.db
+        .select({ count: count() })
+        .from(vacancies)
+        .where(eq(vacancies.status, "active")),
+      ctx.db
+        .select({ count: count() })
+        .from(candidates)
+        .where(eq(candidates.status, "new")),
+      // Count by status
+      ctx.db
+        .select({
+          status: candidates.status,
+          count: count(),
+        })
+        .from(candidates)
+        .groupBy(candidates.status),
+      // Count by source
+      ctx.db
+        .select({
+          source: candidates.source,
+          count: count(),
+        })
+        .from(candidates)
+        .groupBy(candidates.source),
+      // Recent vacancies
+      ctx.db
+        .select()
+        .from(vacancies)
+        .where(eq(vacancies.status, "active"))
+        .limit(3),
+      // Recent candidates with activities
+      ctx.db
+        .select()
+        .from(candidates)
+        .orderBy(sql`${candidates.createdAt} DESC`)
+        .limit(5),
+    ]);
+
+    const total = totalCandidates[0]?.count ?? 0;
+    const hired = hiredCount[0]?.count ?? 0;
+    const activeVac = activeVacancies[0]?.count ?? 0;
+    const newCand = newCandidates[0]?.count ?? 0;
+
     const statsCards = [
       {
         title: "Новые отклики",
-        value: "22",
+        value: String(newCand),
         change: "15%",
         changeType: "positive" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Активные вакансии",
-        value: "8",
+        value: String(activeVac),
         change: "9%",
         changeType: "neutral" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Активные кандидаты",
-        value: "154",
+        value: String(total),
         change: "65%",
         changeType: "negative" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Нанято",
-        value: "65",
+        value: String(hired),
         change: "2%",
         changeType: "positive" as const,
         period: "за последние 7 дней",
       },
     ];
 
-    // Mock data for recent vacancies
-    const recentVacancies = [
-      {
-        id: "1",
-        title: "Senior Java Engineer",
-        subtitle: "Название",
-        status: "ACTIVE",
-        city: "Ташкент",
-        responses: 24,
-        workType: "Гибрид",
-      },
-      {
-        id: "2",
-        title: "Product Manager",
-        subtitle: "Название",
-        status: "ACTIVE",
-        city: "Ташкент",
-        responses: 24,
-        workType: "Гибрид",
-      },
-      {
-        id: "3",
-        title: "Data Scientist",
-        subtitle: "Название",
-        status: "ACTIVE",
-        city: "Ташкент",
-        responses: 24,
-        workType: "Гибрид",
-      },
-    ];
+    const recentVacancies = recentVacancyRows.map((v) => ({
+      id: v.id,
+      title: v.title,
+      subtitle: "Название",
+      status: (v.status ?? "active").toUpperCase(),
+      city: v.city ?? "",
+      responses: v.responses ?? 0,
+      workType: v.workType ?? "",
+    }));
 
-    // Mock data for recent activities
-    const recentActivities = [
-      {
-        id: "1",
-        name: "Эльвира Ахметова",
-        action: "Изменил(а) статус кандидата",
-        candidateName: "Ахмедова А. А",
-        candidateInitials: "АА",
-        newStatus: "Нанят",
-        time: "Только что",
-        isRecent: true,
-      },
-      {
-        id: "2",
-        name: "Анна Иванова",
-        action: "Изменил(а) статус кандидата",
-        candidateName: "Мамасаидов М. М",
-        candidateInitials: "ММ",
-        newStatus: "Архивирован",
-        time: "1 день назад",
-        isRecent: false,
-      },
-    ];
+    // Build recent activities from candidate activity logs
+    const recentActivities: {
+      id: string;
+      name: string;
+      action: string;
+      candidateName: string;
+      candidateInitials: string;
+      newStatus: string;
+      time: string;
+      isRecent?: boolean;
+    }[] = [];
 
-    // Mock data for channel statistics
-    const channelStats = [
-      { name: "hh.uz", percentage: 45, color: "bg-chart-pink" },
-      { name: "telegram", percentage: 45, color: "bg-chart-purple" },
-      { name: "rabota.uz", percentage: 45, color: "bg-chart-orange" },
-      { name: "Другие", percentage: 45, color: "bg-chart-blue" },
-    ];
+    for (const c of recentCandidateRows) {
+      const acts = (c.activities ?? []) as {
+        id: string;
+        userName: string;
+        action: string;
+        targetName: string;
+        targetStatus: string;
+        timeAgo: string;
+      }[];
+      for (const a of acts) {
+        const nameParts = a.targetName.split(" ");
+        const initials = nameParts
+          .map((p) => p[0])
+          .join("")
+          .toUpperCase();
+        recentActivities.push({
+          id: a.id,
+          name: a.userName,
+          action: a.action,
+          candidateName: a.targetName,
+          candidateInitials: initials,
+          newStatus: a.targetStatus,
+          time: a.timeAgo,
+          isRecent: a.timeAgo === "Только что",
+        });
+      }
+    }
 
-    // Mock data for status statistics
-    const statusStats = [
-      { label: "Новый", value: 34, max: 154 },
-      { label: "Отобран", value: 55, max: 154 },
-      { label: "Интервью", value: 154, max: 154 },
-      { label: "Оффер", value: 40, max: 154 },
-      { label: "Нанят", value: 54, max: 154 },
-      { label: "Отказ", value: 12, max: 154 },
+    // Compute channel stats from source counts
+    const sourceTotal = sourceCounts.reduce((s, r) => s + r.count, 0) || 1;
+    const colorMap: Record<string, string> = {
+      "hh.uz": "bg-chart-pink",
+      telegram: "bg-chart-purple",
+      linkedin: "bg-chart-orange",
+      referral: "bg-chart-blue",
+      other: "bg-chart-blue",
+    };
+    const channelStats = sourceCounts
+      .filter((r) => r.source)
+      .map((r) => ({
+        name: r.source!,
+        percentage: Math.round((r.count / sourceTotal) * 100),
+        color: colorMap[r.source!] ?? "bg-chart-blue",
+      }));
+
+    // Compute status stats from status counts
+    const statusLabelMap: Record<string, string> = {
+      new: "Новый",
+      screening: "Отобран",
+      interview: "Интервью",
+      offer: "Оффер",
+      hired: "Нанят",
+      rejected: "Отказ",
+    };
+    const statusOrder = [
+      "new",
+      "screening",
+      "interview",
+      "offer",
+      "hired",
+      "rejected",
     ];
+    const statusCountMap = new Map(
+      statusCounts.map((r) => [r.status, r.count]),
+    );
+    const statusStats = statusOrder.map((s) => ({
+      label: statusLabelMap[s] ?? s,
+      value: statusCountMap.get(s) ?? 0,
+      max: total || 1,
+    }));
 
     return {
       statsCards,
