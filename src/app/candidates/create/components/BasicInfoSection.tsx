@@ -144,7 +144,7 @@ export function BasicInfoSection({
                 Контакты
               </span>
               <button
-                className="text-[#237af8] hover:text-[#237af8]/80"
+                className="text-primary-blue hover:text-primary-blue/80"
                 onClick={onAddContact}
                 type="button"
               >
@@ -154,7 +154,7 @@ export function BasicInfoSection({
             {contacts.map((contact) => (
               <div className="flex items-center gap-2" key={contact.id}>
                 <input
-                  className="h-11 flex-1 rounded-md border border-[#e5e9f2] bg-white px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder-[#707a8d] focus:border-[#237af8] focus:outline-none"
+                  className="h-11 flex-1 rounded-md border border-[#e5e9f2] bg-white px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder-[#707a8d] focus:border-primary-blue focus:outline-none"
                   onChange={(e) =>
                     onContactChange(contact.id, "value", e.target.value)
                   }
@@ -164,7 +164,7 @@ export function BasicInfoSection({
                 />
                 <div className="relative">
                   <select
-                    className="h-11 appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-8 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-[#237af8] focus:outline-none"
+                    className="h-11 appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-8 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
                     onChange={(e) =>
                       onContactChange(contact.id, "type", e.target.value)
                     }
@@ -200,7 +200,7 @@ export function BasicInfoSection({
             </label>
             <div className="relative">
               <select
-                className="h-11 w-full appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-10 text-[#707a8d] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-[#237af8] focus:outline-none"
+                className="h-11 w-full appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-10 text-[#707a8d] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
                 id="source"
                 onChange={(e) => onInputChange("source", e.target.value)}
                 value={source}
