@@ -5,29 +5,52 @@
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* Custom Colors */
+  /* Brand / Primary */
+  --color-primary-blue: #237af8;
+  --color-primary-blue-dark: #3b82f6;
+  --color-primary-blue-hover: #1a6ae0;
+  --color-primary-blue-light: rgba(68, 145, 255, 0.16);
+  --color-primary-blue-light-hover: rgba(68, 145, 255, 0.24);
+
+  /* Text */
+  --color-text-heading: #1c1c1e;
+  --color-text-label: #21272a;
+  --color-text-secondary: #616c81;
+  --color-text-placeholder: #707a8d;
+  --color-text-placeholder-hover: #8a94a8;
+  --color-text-disabled: #c1c8d4;
+  --color-text-muted: #6b7280;
+
+  /* Borders */
+  --color-border-input: #e5e9f2;
+  --color-border-light: #e5e7eb;
+  --color-header-border: #e5e7eb;
+
+  /* Backgrounds */
+  --color-bg-input: #fafbfc;
+  --color-bg-hover: #f1f4f8;
+  --color-bg-light: #f9fafb;
+  --color-bg-active-menu: #e6efff;
+  --color-table-header-bg: #f9fafb;
+
+  /* Sidebar */
   --color-sidebar-bg: #1a1a1a;
   --color-sidebar-hover: #2a2a2a;
   --color-sidebar-active-bg: #2d4a6b;
-  --color-primary-blue: #237af8;
-  --color-primary-blue-dark: #3b82f6;
+
+  /* Accents */
+  --color-accent-red: #e01d5e;
   --color-badge-red: #ef4444;
+  --color-icon-blue: #3b82f6;
+  --color-checkbox-blue: #3b82f6;
+
+  /* Status */
   --color-success-green: #22c55e;
   --color-success-green-bg: #dcfce7;
   --color-warning-yellow: #f59e0b;
   --color-warning-yellow-bg: #fef3c7;
   --color-danger-red: #ef4444;
   --color-danger-red-bg: #fee2e2;
-  --color-chart-pink: #f472b6;
-  --color-chart-purple: #a78bfa;
-  --color-chart-orange: #fb923c;
-  --color-chart-blue: #60a5fa;
-  --color-progress-orange: #fb923c;
-  --color-text-muted: #6b7280;
-  --color-border-light: #e5e7eb;
-  --color-bg-light: #f9fafb;
-
-  /* Vacancies Page Colors */
   --color-status-active: #22c55e;
   --color-status-active-bg: #dcfce7;
   --color-status-draft: #6b7280;
@@ -38,8 +61,16 @@
   --color-status-closed-bg: #fee2e2;
   --color-status-archive: #374151;
   --color-status-archive-bg: #f3f4f6;
-  --color-icon-blue: #3b82f6;
-  --color-header-border: #e5e7eb;
-  --color-table-header-bg: #f9fafb;
-  --color-checkbox-blue: #3b82f6;
+
+  /* Charts */
+  --color-chart-pink: #f472b6;
+  --color-chart-purple: #a78bfa;
+  --color-chart-orange: #fb923c;
+  --color-chart-blue: #60a5fa;
+  --color-progress-orange: #fb923c;
+
+  /* T3 Template (landing page) */
+  --color-t3-gradient-start: #2e026d;
+  --color-t3-gradient-end: #15162c;
+  --color-t3-accent: hsl(280, 100%, 70%);
 }

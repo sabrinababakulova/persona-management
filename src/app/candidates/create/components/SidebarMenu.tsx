@@ -16,8 +16,8 @@ export function SidebarMenu({ items, activeId, onSelect }: SidebarMenuProps) {
           <button
             className={`rounded-lg px-4 py-3 text-left font-semibold text-[14px] tracking-[-0.28px] transition-colors ${
               activeId === item.id
-                ? "bg-[#e6efff] text-primary-blue"
-                : "text-[#c1c8d4] hover:text-[#707a8d]"
+                ? "bg-bg-active-menu text-primary-blue"
+                : "text-text-disabled hover:text-text-placeholder"
             }`}
             key={item.id}
             onClick={() => onSelect(item.id)}

@@ -9,42 +9,42 @@ export function DonutChart() {
         <title>Channel Statistics Chart</title>
         {/* Background circle */}
         <circle
+          className="stroke-border-light"
           cx="50"
           cy="50"
           fill="none"
           r="40"
-          stroke="#E5E7EB"
           strokeWidth="20"
         />
         {/* Pink segment - hh.uz */}
         <circle
+          className="stroke-chart-pink"
           cx="50"
           cy="50"
           fill="none"
           r="40"
-          stroke="#F472B6"
           strokeDasharray="62.8 188.4"
           strokeDashoffset="0"
           strokeWidth="20"
         />
         {/* Purple segment - telegram */}
         <circle
+          className="stroke-chart-purple"
           cx="50"
           cy="50"
           fill="none"
           r="40"
-          stroke="#A78BFA"
           strokeDasharray="62.8 188.4"
           strokeDashoffset="-62.8"
           strokeWidth="20"
         />
         {/* Orange segment - rabota.uz */}
         <circle
+          className="stroke-chart-orange"
           cx="50"
           cy="50"
           fill="none"
           r="40"
-          stroke="#FB923C"
           strokeDasharray="62.8 188.4"
           strokeDashoffset="-125.6"
           strokeWidth="20"

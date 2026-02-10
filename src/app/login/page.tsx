@@ -31,7 +31,7 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center px-6 lg:px-[120px]">
         <div className="w-full max-w-[505px]">
           {/* Title */}
-          <h1 className="mb-8 font-bold text-[#1c1c1e] text-[32px] leading-none tracking-[-0.64px]">
+          <h1 className="mb-8 font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
             Войти
           </h1>
 
@@ -40,13 +40,13 @@ export default function LoginPage() {
             {/* Email Field */}
             <div className="flex flex-col gap-1">
               <label
-                className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
+                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
                 htmlFor="login-email"
               >
                 Почта
               </label>
               <input
-                className="h-12 w-full rounded-[6px] border border-[#e5e9f2] bg-[#fafbfc] px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder:text-[#707a8d] focus:border-primary-blue focus:outline-none"
+                className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
                 id="login-email"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Адрес электронной почты"
@@ -57,12 +57,14 @@ export default function LoginPage() {
 
             {/* Password Field */}
             <div className="flex flex-col gap-1">
-              <label className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
-                htmlFor="login-password">
+              <label
+                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                htmlFor="login-password"
+              >
                 Пароль
               </label>
               <input
-                className="h-12 w-full rounded-[6px] border border-[#e5e9f2] bg-[#fafbfc] px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder:text-[#707a8d] focus:border-primary-blue focus:outline-none"
+                className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Введите ваш пароль"
                 type="password"
@@ -79,13 +81,13 @@ export default function LoginPage() {
             {/* Buttons */}
             <div className="mt-6 flex items-center justify-between">
               <Link
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-[rgba(68,145,255,0.16)] font-semibold text-[16px] text-primary-blue tracking-[-0.32px] transition-colors hover:bg-[rgba(68,145,255,0.24)]"
+                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue-light font-semibold text-[16px] text-primary-blue tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
                 href="/register"
               >
                 Создать аккаунт
               </Link>
               <button
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-[#1a6ae0]"
+                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
                 type="submit"
               >
                 Войти

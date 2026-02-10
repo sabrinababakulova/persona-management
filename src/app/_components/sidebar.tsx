@@ -115,7 +115,7 @@ export function Sidebar() {
             viewBox="0 0 48 48"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <circle cx="24" cy="24" fill="#3B82F6" r="24" />
+            <circle className="fill-icon-blue" cx="24" cy="24" r="24" />
             <path
               d="M14 20 L34 20 L24 32 L34 20"
               stroke="white"
@@ -140,7 +140,7 @@ export function Sidebar() {
               className={`group relative flex items-center gap-4 rounded-xl px-4 py-3 font-medium text-base transition-all duration-200 ease-in-out ${
                 isActive
                   ? "bg-sidebar-active-bg text-primary-blue"
-                  : "text-[#707A8D] hover:bg-sidebar-hover hover:text-[#8A94A8]"
+                  : "text-text-placeholder hover:bg-sidebar-hover hover:text-text-placeholder-hover"
               }`}
               href={item.href}
               key={item.href}
@@ -150,7 +150,7 @@ export function Sidebar() {
                 className={`transition-all duration-200 ease-in-out ${
                   isActive
                     ? "text-primary-blue"
-                    : "text-[#707A8D] group-hover:text-[#8A94A8]"
+                    : "text-text-placeholder group-hover:text-text-placeholder-hover"
                 }`}
               >
                 {item.icon}

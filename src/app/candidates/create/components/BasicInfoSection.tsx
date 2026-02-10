@@ -53,11 +53,11 @@ export function BasicInfoSection({
         onClick={onToggle}
         type="button"
       >
-        <h2 className="font-semibold text-[#1c1c1e] text-[22px] leading-[1.1] tracking-[-0.44px]">
+        <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
           Основная информация
         </h2>
         <ChevronUpIcon
-          className={`h-4 w-4 text-[#707a8d] transition-transform ${
+          className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
           }`}
         />
@@ -67,15 +67,15 @@ export function BasicInfoSection({
         <div className="flex flex-col gap-6 pt-2">
           <div className="flex flex-col gap-2">
             <label
-              className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
+              className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
               htmlFor="fullName"
             >
               Ф.И.О
             </label>
             <input
               className={`h-11 w-full rounded-md border ${
-                errors.fullName ? "border-red-500" : "border-[#e5e9f2]"
-              } bg-white px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder-[#707a8d] focus:border-primary-blue focus:outline-none`}
+                errors.fullName ? "border-red-500" : "border-border-input"
+              } bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none`}
               id="fullName"
               onChange={(e) => onInputChange("fullName", e.target.value)}
               placeholder="Введите полное имя"
@@ -90,15 +90,15 @@ export function BasicInfoSection({
           <div className="flex gap-6">
             <div className="flex flex-1 flex-col gap-2">
               <label
-                className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
+                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
                 htmlFor="city"
               >
                 Город
               </label>
               <input
                 className={`h-11 w-full rounded-md border ${
-                  errors.city ? "border-red-500" : "border-[#e5e9f2]"
-                } bg-white px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder-[#707a8d] focus:border-primary-blue focus:outline-none`}
+                  errors.city ? "border-red-500" : "border-border-input"
+                } bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none`}
                 id="city"
                 onChange={(e) => onInputChange("city", e.target.value)}
                 placeholder="Введите город"
@@ -112,14 +112,14 @@ export function BasicInfoSection({
 
             <div className="flex flex-1 flex-col gap-2">
               <label
-                className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
+                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
                 htmlFor="currentPosition"
               >
                 Должность
               </label>
               <div className="relative">
                 <select
-                  className="h-11 w-full appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-10 text-[#707a8d] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
+                  className="h-11 w-full appearance-none rounded-md border border-border-input bg-white px-3 pr-10 text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
                   id="currentPosition"
                   onChange={(e) =>
                     onInputChange("currentPosition", e.target.value)
@@ -133,14 +133,14 @@ export function BasicInfoSection({
                     </option>
                   ))}
                 </select>
-                <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-[#707a8d]" />
+                <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
               </div>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]">
+              <span className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
                 Контакты
               </span>
               <button
@@ -154,7 +154,7 @@ export function BasicInfoSection({
             {contacts.map((contact) => (
               <div className="flex items-center gap-2" key={contact.id}>
                 <input
-                  className="h-11 flex-1 rounded-md border border-[#e5e9f2] bg-white px-3 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] placeholder-[#707a8d] focus:border-primary-blue focus:outline-none"
+                  className="h-11 flex-1 rounded-md border border-border-input bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none"
                   onChange={(e) =>
                     onContactChange(contact.id, "value", e.target.value)
                   }
@@ -164,7 +164,7 @@ export function BasicInfoSection({
                 />
                 <div className="relative">
                   <select
-                    className="h-11 appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-8 text-[#1c1c1e] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
+                    className="h-11 appearance-none rounded-md border border-border-input bg-white px-3 pr-8 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
                     onChange={(e) =>
                       onContactChange(contact.id, "type", e.target.value)
                     }
@@ -176,11 +176,11 @@ export function BasicInfoSection({
                       </option>
                     ))}
                   </select>
-                  <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-[#707a8d]" />
+                  <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
                 </div>
                 {contacts.length > 1 && (
                   <button
-                    className="text-[#c1c8d4] hover:text-[#e01d5e]"
+                    className="text-text-disabled hover:text-accent-red"
                     onClick={() => onRemoveContact(contact.id)}
                     type="button"
                   >
@@ -193,14 +193,14 @@ export function BasicInfoSection({
 
           <div className="flex flex-col gap-2">
             <label
-              className="font-medium text-[#21272a] text-[16px] leading-[1.4] tracking-[-0.32px]"
+              className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
               htmlFor="source"
             >
               Источник
             </label>
             <div className="relative">
               <select
-                className="h-11 w-full appearance-none rounded-md border border-[#e5e9f2] bg-white px-3 pr-10 text-[#707a8d] text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
+                className="h-11 w-full appearance-none rounded-md border border-border-input bg-white px-3 pr-10 text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
                 id="source"
                 onChange={(e) => onInputChange("source", e.target.value)}
                 value={source}
@@ -212,7 +212,7 @@ export function BasicInfoSection({
                   </option>
                 ))}
               </select>
-              <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-[#707a8d]" />
+              <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
             </div>
           </div>
         </div>

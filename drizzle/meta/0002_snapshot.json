@@ -97,12 +97,8 @@
           "name": "persona-management_account_userId_persona-management_user_id_fk",
           "tableFrom": "persona-management_account",
           "tableTo": "persona-management_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -110,10 +106,7 @@
       "compositePrimaryKeys": {
         "persona-management_account_provider_providerAccountId_pk": {
           "name": "persona-management_account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -684,12 +677,8 @@
           "name": "persona-management_post_createdById_persona-management_user_id_fk",
           "tableFrom": "persona-management_post",
           "tableTo": "persona-management_user",
-          "columnsFrom": [
-            "createdById"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["createdById"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -745,12 +734,8 @@
           "name": "persona-management_session_userId_persona-management_user_id_fk",
           "tableFrom": "persona-management_session",
           "tableTo": "persona-management_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -932,10 +917,7 @@
       "compositePrimaryKeys": {
         "persona-management_verification_token_identifier_token_pk": {
           "name": "persona-management_verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},

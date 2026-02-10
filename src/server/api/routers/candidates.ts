@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
@@ -71,12 +71,10 @@ export const candidatesRouter = createTRPCRouter({
         type: string;
         value: string;
       }[];
-      const phone =
-        contactsArr.find((ct) => ct.type === "phone")?.value ?? "";
+      const phone = contactsArr.find((ct) => ct.type === "phone")?.value ?? "";
       const telegram =
         contactsArr.find((ct) => ct.type === "telegram")?.value ?? "";
-      const email =
-        contactsArr.find((ct) => ct.type === "email")?.value ?? "";
+      const email = contactsArr.find((ct) => ct.type === "email")?.value ?? "";
 
       return {
         id: c.id,
