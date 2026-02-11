@@ -5,6 +5,7 @@ import type { DefaultSession, NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { env } from "~/env";
+import { registerSchema } from "~/schemas/register";
 import { db } from "~/server/db";
 import {
   accounts,
@@ -56,21 +57,20 @@ export const authConfig = {
       },
       async authorize(credentials) {
         const mode = credentials?.mode?.toString().trim().toLowerCase();
-        const firstName = credentials?.firstName?.toString().trim();
-        const lastName = credentials?.lastName?.toString().trim();
-        const email = credentials?.email?.toString().trim().toLowerCase();
-        const password = credentials?.password?.toString();
 
         if (mode === "register") {
-          if (
-            !email ||
-            !password ||
-            !firstName ||
-            !lastName ||
-            password.length < 8
-          ) {
+          const parsed = registerSchema.safeParse({
+            firstName: credentials?.firstName,
+            lastName: credentials?.lastName,
+            email: credentials?.email,
+            password: credentials?.password,
+          });
+
+          if (!parsed.success) {
             return null;
           }
+
+          const { firstName, lastName, email, password } = parsed.data;
 
           const [existingUser] = await db
             .select({ id: users.id })
@@ -125,6 +125,9 @@ export const authConfig = {
             throw error;
           }
         }
+
+        const email = credentials?.email?.toString().trim().toLowerCase();
+        const password = credentials?.password?.toString();
 
         if (!email || !password) {
           return null;

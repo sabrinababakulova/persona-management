@@ -97,6 +97,7 @@ export default function LoginPage() {
               </label>
               <input
                 className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                id="login-password"
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Введите ваш пароль"
                 type="password"

@@ -1,10 +1,6 @@
 import { count, eq, sql } from "drizzle-orm";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { candidates, users, vacancies } from "~/server/db/schema";
 
 export const dashboardRouter = createTRPCRouter({
@@ -29,7 +25,7 @@ export const dashboardRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  getDashboardData: publicProcedure.query(async ({ ctx }) => {
+  getDashboardData: protectedProcedure.query(async ({ ctx }) => {
     // Fetch real counts from the database
     const [
       totalCandidates,
@@ -180,11 +176,11 @@ export const dashboardRouter = createTRPCRouter({
       other: "bg-chart-blue",
     };
     const channelStats = sourceCounts
-      .filter((r) => r.source)
+      .filter((r): r is typeof r & { source: string } => Boolean(r.source))
       .map((r) => ({
-        name: r.source!,
+        name: r.source,
         percentage: Math.round((r.count / sourceTotal) * 100),
-        color: colorMap[r.source!] ?? "bg-chart-blue",
+        color: colorMap[r.source] ?? "bg-chart-blue",
       }));
 
     // Compute status stats from status counts

@@ -4,22 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { z } from "zod";
-
-const registerFormSchema = z
-  .object({
-    firstName: z.string().trim().min(1, "Имя обязательно"),
-    lastName: z.string().trim().min(1, "Фамилия обязательна"),
-    email: z.string().trim().email("Неверный формат почты"),
-    password: z.string().min(8, "Пароль должен быть не менее 8 символов"),
-    confirmPassword: z
-      .string()
-      .min(8, "Пароль должен быть не менее 8 символов"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Пароли не совпадают",
-    path: ["confirmPassword"],
-  });
+import { registerFormSchema } from "~/schemas/register";
 
 export default function RegisterPage() {
   const router = useRouter();
