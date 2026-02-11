@@ -1,6 +1,8 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { eq } from "drizzle-orm";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
-
+import Credentials from "next-auth/providers/credentials";
+import { env } from "~/env";
 import { db } from "~/server/db";
 import {
   accounts,
@@ -37,6 +39,50 @@ declare module "next-auth" {
  */
 export const authConfig = {
   providers: [
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = credentials?.email?.toString().trim().toLowerCase();
+        const password = credentials?.password?.toString();
+
+        if (!email || !password) {
+          return null;
+        }
+
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1);
+
+        const user =
+          existingUser[0] ??
+          (
+            await db
+              .insert(users)
+              .values({
+                email,
+                name: email.split("@")[0],
+              })
+              .returning()
+          )[0];
+
+        if (!user) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+        };
+      },
+    }),
     /**
      * ...add more providers here.
      *
@@ -53,6 +99,7 @@ export const authConfig = {
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
+  secret: env.AUTH_SECRET,
   callbacks: {
     session: ({ session, user }) => ({
       ...session,

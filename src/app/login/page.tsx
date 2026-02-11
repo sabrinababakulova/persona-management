@@ -2,16 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [router, status]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login submitted:", { email, password });
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setErrorMessage("Неверная почта или пароль.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.replace("/dashboard");
   };
 
   return (
@@ -79,6 +105,12 @@ export default function LoginPage() {
             </div>
 
             {/* Buttons */}
+            {errorMessage && (
+              <div className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="mt-6 flex items-center justify-between">
               <Link
                 className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue-light font-semibold text-[16px] text-primary-blue tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
@@ -88,9 +120,10 @@ export default function LoginPage() {
               </Link>
               <button
                 className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                disabled={isSubmitting}
                 type="submit"
               >
-                Войти
+                {isSubmitting ? "Вход..." : "Войти"}
               </button>
             </div>
           </form>
