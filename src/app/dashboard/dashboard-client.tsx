@@ -1,16 +1,42 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ActivityItem } from "../_components/activity-item";
 import { DonutChart } from "../_components/donut-chart";
 import { ProgressBar } from "../_components/progress-bar";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyRow } from "../_components/vacancy-row";
+import { WelcomeModal } from "../_components/welcome-modal";
 
 export default function DashboardClient() {
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const hasHandledWelcomeModal = useRef(false);
+
+  const utils = api.useUtils();
   const { data: dashboardData, isLoading } =
     api.dashboard.getDashboardData.useQuery();
+  const { data: welcomeModalState } =
+    api.dashboard.getWelcomeModalState.useQuery();
+  const markWelcomeModalSeen = api.dashboard.markWelcomeModalSeen.useMutation({
+    onSuccess: async () => {
+      await utils.dashboard.getWelcomeModalState.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    if (
+      !welcomeModalState?.shouldShowWelcomeModal ||
+      hasHandledWelcomeModal.current
+    ) {
+      return;
+    }
+
+    hasHandledWelcomeModal.current = true;
+    setIsWelcomeModalOpen(true);
+    markWelcomeModalSeen.mutate();
+  }, [markWelcomeModalSeen, welcomeModalState?.shouldShowWelcomeModal]);
 
   const currentDate = new Date().toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -29,6 +55,10 @@ export default function DashboardClient() {
 
   return (
     <>
+      <WelcomeModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => setIsWelcomeModalOpen(false)}
+      />
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}

@@ -25,19 +25,25 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        mode: "login",
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setErrorMessage("Неверная почта или пароль.");
+      if (result?.error) {
+        setErrorMessage("Неверная почта или пароль.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.replace("/dashboard");
+    } catch {
+      setErrorMessage("Что-то пошло не так!");
       setIsSubmitting(false);
-      return;
     }
-
-    router.replace("/dashboard");
   };
 
   return (

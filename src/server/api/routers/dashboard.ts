@@ -1,9 +1,34 @@
 import { count, eq, sql } from "drizzle-orm";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { candidates, vacancies } from "~/server/db/schema";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { candidates, users, vacancies } from "~/server/db/schema";
 
 export const dashboardRouter = createTRPCRouter({
+  getWelcomeModalState: protectedProcedure.query(async ({ ctx }) => {
+    const [currentUser] = await ctx.db
+      .select({ hasSeenWelcomeModal: users.hasSeenWelcomeModal })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    return {
+      shouldShowWelcomeModal: currentUser?.hasSeenWelcomeModal === false,
+    };
+  }),
+
+  markWelcomeModalSeen: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(users)
+      .set({ hasSeenWelcomeModal: true })
+      .where(eq(users.id, ctx.session.user.id));
+
+    return { success: true };
+  }),
+
   getDashboardData: publicProcedure.query(async ({ ctx }) => {
     // Fetch real counts from the database
     const [

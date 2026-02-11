@@ -40,13 +40,13 @@ export const users = createTable("user", (d) => ({
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: d.varchar({ length: 255 }),
-  email: d.varchar({ length: 255 }).notNull(),
-  emailVerified: d
-    .timestamp({
-      mode: "date",
-      withTimezone: true,
-    })
-    .$defaultFn(() => /* @__PURE__ */ new Date()),
+  email: d.varchar({ length: 255 }).notNull().unique(),
+  password: d.varchar({ length: 255 }),
+  hasSeenWelcomeModal: d.boolean().notNull().default(true),
+  emailVerified: d.timestamp({
+    mode: "date",
+    withTimezone: true,
+  }),
   image: d.varchar({ length: 255 }),
 }));
 
