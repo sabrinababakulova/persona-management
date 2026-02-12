@@ -12,6 +12,7 @@ import {
   candidateStatusOptions,
   candidates,
 } from "~/server/db/schema";
+import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
 export const candidatesRouter = createTRPCRouter({
   getAllCandidates: publicProcedure.query(async ({ ctx }) => {
@@ -175,44 +176,75 @@ export const candidatesRouter = createTRPCRouter({
         ctx.db
           .select({ value: candidateContactTypes.value })
           .from(candidateContactTypes)
-          .where(eq(candidateContactTypes.isActive, true)),
+          .where(eq(candidateContactTypes.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ value: candidateSources.value })
           .from(candidateSources)
-          .where(eq(candidateSources.isActive, true)),
+          .where(eq(candidateSources.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ value: candidatePositions.value })
           .from(candidatePositions)
-          .where(eq(candidatePositions.isActive, true)),
+          .where(eq(candidatePositions.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ value: candidateSkills.value })
           .from(candidateSkills)
-          .where(eq(candidateSkills.isActive, true)),
+          .where(eq(candidateSkills.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ label: candidateLanguages.label })
           .from(candidateLanguages)
-          .where(eq(candidateLanguages.isActive, true)),
+          .where(eq(candidateLanguages.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ value: candidateLanguageLevels.value })
           .from(candidateLanguageLevels)
-          .where(eq(candidateLanguageLevels.isActive, true)),
+          .where(eq(candidateLanguageLevels.isActive, true))
+          .catch(() => []),
         ctx.db
           .select({ value: candidateStatusOptions.value })
           .from(candidateStatusOptions)
-          .where(eq(candidateStatusOptions.isActive, true)),
+          .where(eq(candidateStatusOptions.isActive, true))
+          .catch(() => []),
       ]);
 
-      const contactTypeSet = new Set(allowedContactTypes.map((r) => r.value));
-      const sourceSet = new Set(allowedSources.map((r) => r.value));
-      const positionSet = new Set(allowedPositions.map((r) => r.value));
-      const skillSet = new Set(allowedSkills.map((r) => r.value));
+      const contactTypeSet = new Set(
+        (allowedContactTypes.length > 0
+          ? allowedContactTypes.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.contactTypes.map((r) => r.value)),
+      );
+      const sourceSet = new Set(
+        (allowedSources.length > 0
+          ? allowedSources.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.sources.map((r) => r.value)),
+      );
+      const positionSet = new Set(
+        (allowedPositions.length > 0
+          ? allowedPositions.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.positions.map((r) => r.value)),
+      );
+      const skillSet = new Set(
+        (allowedSkills.length > 0
+          ? allowedSkills.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.skills.map((r) => r.value)),
+      );
       const languageLabelSet = new Set(
-        allowedLanguageLabels.map((r) => r.label),
+        allowedLanguageLabels.length > 0
+          ? allowedLanguageLabels.map((r) => r.label)
+          : DEFAULT_CANDIDATE_LOOKUPS.languages.map((r) => r.label),
       );
       const languageLevelSet = new Set(
-        allowedLanguageLevels.map((r) => r.value),
+        (allowedLanguageLevels.length > 0
+          ? allowedLanguageLevels.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.languageLevels.map((r) => r.value)),
       );
-      const statusSet = new Set(allowedStatuses.map((r) => r.value));
+      const statusSet = new Set(
+        (allowedStatuses.length > 0
+          ? allowedStatuses.map((r) => r.value)
+          : DEFAULT_CANDIDATE_LOOKUPS.statusOptions.map((r) => r.value)),
+      );
 
       for (const c of input.contacts) {
         if (!contactTypeSet.has(c.type)) {

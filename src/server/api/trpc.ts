@@ -8,6 +8,7 @@
  */
 
 import { initTRPC, TRPCError } from "@trpc/server";
+import type { Session } from "next-auth";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
@@ -27,7 +28,12 @@ import { db } from "~/server/db";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  let session: Session | null = null;
+  try {
+    session = (await auth()) as Session | null;
+  } catch (error) {
+    console.error("Failed to resolve auth session for tRPC context", error);
+  }
 
   return {
     db,

@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { z } from "zod";
+import { AIGenerationIcon, FileUploadIcon } from "~/app/_components/icons";
+import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import { BasicInfoSection } from "./components/BasicInfoSection";
-import { Breadcrumbs } from "./components/Breadcrumbs";
 import { ConditionsSection } from "./components/ConditionsSection";
-import { HeaderSummary } from "./components/HeaderSummary";
-import { SidebarMenu } from "./components/SidebarMenu";
+import { Dropdown } from "./components/dropdown";
 import type { ContactItem, Errors, LanguageItem } from "./components/types";
 
 // Zod validation schema
@@ -49,15 +49,8 @@ const REQUIRED_FIELDS = [
 // Helper to generate unique IDs
 const generateId = () => crypto.randomUUID();
 
-// Menu items for left sidebar
-const MENU_ITEMS = [
-  { id: "basic", label: "Основная информация" },
-  { id: "requirements", label: "Требования и Навыки" },
-];
-
 export function CreateCandidateForm() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState("basic");
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [requirementsOpen, setRequirementsOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
@@ -70,6 +63,7 @@ export function CreateCandidateForm() {
       staleTime: 5 * 60 * 1000,
     },
   );
+  const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
 
   // Form state
   const [formData, setFormData] = useState<CandidateFormData>({
@@ -95,9 +89,6 @@ export function CreateCandidateForm() {
   const [languages, setLanguages] = useState<LanguageItem[]>([
     { id: generateId(), name: "", level: "" },
   ]);
-
-  // Skills dropdown state
-  const [skillsDropdownOpen, setSkillsDropdownOpen] = useState(false);
 
   // Calculate progress
   const calculateProgress = useCallback(() => {
@@ -245,93 +236,132 @@ export function CreateCandidateForm() {
     createCandidate.mutate(cleanedData);
   };
 
-  if (!lookups) {
-    return null;
-  }
-
   return (
-    <main className="relative flex flex-1 overflow-auto bg-white">
-      <div className="flex w-full gap-10 px-10">
-        <SidebarMenu
-          activeId={activeSection}
-          items={MENU_ITEMS}
-          onSelect={setActiveSection}
+    <div className="relative flex w-full min-w-0 justify-center">
+      <div className="w-full max-w-[758px] px-6 pt-[104px] pb-12">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+            Добавление кандидата
+          </h1>
+          <Dropdown
+            fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
+            hideLabel
+            iconClassName="right-2 text-text-placeholder"
+            label="Статус"
+            onChange={(value) => handleInputChange("status", value)}
+            options={candidateLookups.statusOptions}
+            value={formData.status}
+          />
+        </div>
+
+        <div className="mb-9 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[14px] text-primary-blue tracking-[-0.28px]">
+              {progress.percentage}% заполнено
+            </span>
+            <span className="text-[12px] text-text-placeholder tracking-[-0.24px]">
+              {progress.filled} из {progress.total} полей
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-[10px] bg-border-input">
+            <div
+              className="h-full rounded-[10px] bg-primary-blue transition-all duration-300"
+              style={{ width: `${progress.percentage}%` }}
+            />
+          </div>
+          {progress.missing.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-[14px] tracking-[-0.28px]">
+              <span className="text-text-placeholder">Осталось заполнить:</span>
+              {progress.missing.map((field) => (
+                <span className="font-medium text-accent-red" key={field}>
+                  {field}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <section className="mb-6 flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
+              Резюме
+            </h2>
+            <button
+              className="h-8 rounded-[6px] bg-[#9747ff]/30 px-4 font-semibold text-[14px] text-white tracking-[-0.28px]"
+              type="button"
+            >
+              Заполнить поля
+            </button>
+          </div>
+          <div className="flex h-24 w-full flex-col items-center justify-center rounded-[6px] border border-border-input border-dashed bg-bg-input px-3 py-[14px]">
+            <div className="flex items-center gap-2">
+              <FileUploadIcon className="h-5 w-5 text-text-placeholder" />
+              <span className="font-medium text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px]">
+                Upload pdf file
+              </span>
+            </div>
+            <p className="font-normal text-[12px] text-text-disabled leading-[1.4] tracking-[-0.24px]">
+              File should be less than 120MB
+            </p>
+          </div>
+          <p className="flex items-center gap-1 font-medium text-[#9747FF] text-[14px] tracking-[-0.28px]">
+            <AIGenerationIcon className="h-4 w-4" />
+            AI Мы проанализируем резюме и автозаполним поля
+          </p>
+        </section>
+
+        <BasicInfoSection
+          city={formData.city}
+          contacts={contacts}
+          contactSources={candidateLookups.contactTypes}
+          currentPosition={formData.currentPosition ?? ""}
+          errors={errors}
+          fullName={formData.fullName}
+          isOpen={basicInfoOpen}
+          onAddContact={addContact}
+          onContactChange={handleContactChange}
+          onInputChange={(field, value) => handleInputChange(field, value)}
+          onRemoveContact={removeContact}
+          onToggle={() => setBasicInfoOpen(!basicInfoOpen)}
+          positions={candidateLookups.positions}
+          source={formData.source ?? ""}
+          sources={candidateLookups.sources}
         />
 
-        <div className="flex-1 pt-4 pb-12">
-          <Breadcrumbs label="Новый кандидат" />
+        <ConditionsSection
+          isOpen={requirementsOpen}
+          languageLevelOptions={candidateLookups.languageLevels}
+          languageOptions={candidateLookups.languages}
+          languages={languages}
+          onAddLanguage={addLanguage}
+          onCurrencyChange={(value) =>
+            handleInputChange("salaryCurrency", value)
+          }
+          onLanguageChange={handleLanguageChange}
+          onRemoveLanguage={removeLanguage}
+          onRemoveSkill={removeSkill}
+          onSalaryChange={(value) =>
+            handleInputChange("salaryExpectation", value)
+          }
+          onToggle={() => setRequirementsOpen(!requirementsOpen)}
+          onToggleSkill={toggleSkill}
+          salaryCurrency={formData.salaryCurrency}
+          salaryExpectation={formData.salaryExpectation}
+          skills={formData.skills}
+          skillsOptions={candidateLookups.skills.map((s) => s.label)}
+        />
 
-          <HeaderSummary
-            onStatusChange={(value) => handleInputChange("status", value)}
-            progress={progress}
-            status={formData.status}
-            statusOptions={lookups.statusOptions}
-            subtitle={{
-              position: formData.currentPosition || "Должность",
-              city: formData.city || "Город",
-            }}
-            title={formData.fullName || "Новый кандидат"}
-          />
-
-          <div className="max-w-[640px]">
-            <BasicInfoSection
-              city={formData.city}
-              contacts={contacts}
-              contactTypes={lookups.contactTypes}
-              currentPosition={formData.currentPosition ?? ""}
-              errors={errors}
-              fullName={formData.fullName}
-              isOpen={basicInfoOpen}
-              onAddContact={addContact}
-              onContactChange={handleContactChange}
-              onInputChange={(field, value) => handleInputChange(field, value)}
-              onRemoveContact={removeContact}
-              onToggle={() => setBasicInfoOpen(!basicInfoOpen)}
-              positions={lookups.positions}
-              source={formData.source ?? ""}
-              sources={lookups.sources}
-            />
-
-            <ConditionsSection
-              isOpen={requirementsOpen}
-              languageLevelOptions={lookups.languageLevels}
-              languageOptions={lookups.languages}
-              languages={languages}
-              onAddLanguage={addLanguage}
-              onCurrencyChange={(value) =>
-                handleInputChange("salaryCurrency", value)
-              }
-              onLanguageChange={handleLanguageChange}
-              onRemoveLanguage={removeLanguage}
-              onRemoveSkill={removeSkill}
-              onSalaryChange={(value) =>
-                handleInputChange("salaryExpectation", value)
-              }
-              onToggle={() => setRequirementsOpen(!requirementsOpen)}
-              onToggleSkill={toggleSkill}
-              onToggleSkillsDropdown={() =>
-                setSkillsDropdownOpen(!skillsDropdownOpen)
-              }
-              salaryCurrency={formData.salaryCurrency}
-              salaryExpectation={formData.salaryExpectation}
-              skills={formData.skills}
-              skillsDropdownOpen={skillsDropdownOpen}
-              skillsOptions={lookups.skills.map((s) => s.label)}
-            />
-
-            <div className="flex justify-end pt-6">
-              <button
-                className="rounded-md bg-primary-blue px-6 py-3 font-medium text-[16px] text-white tracking-[-0.32px] hover:bg-primary-blue/90 disabled:opacity-50"
-                disabled={createCandidate.isPending}
-                onClick={handleSubmit}
-                type="button"
-              >
-                {createCandidate.isPending ? "Сохранение..." : "Следующий этап"}
-              </button>
-            </div>
-          </div>
+        <div className="mt-8">
+          <button
+            className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-white tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
+            disabled={createCandidate.isPending}
+            onClick={handleSubmit}
+            type="button"
+          >
+            {createCandidate.isPending ? "Сохранение..." : "Сохранить кандидата"}
+          </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

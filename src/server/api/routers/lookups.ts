@@ -10,6 +10,10 @@ import {
   candidateSources,
   candidateStatusOptions,
 } from "~/server/db/schema";
+import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
+
+const withFallback = <T,>(values: T[], fallback: readonly T[]): T[] =>
+  values.length > 0 ? values : [...fallback];
 
 export const lookupsRouter = createTRPCRouter({
   getCandidateCreateOptions: publicProcedure.query(async ({ ctx }) => {
@@ -100,24 +104,33 @@ export const lookupsRouter = createTRPCRouter({
       ]);
 
       return {
-        contactTypes,
-        sources,
-        positions,
-        skills,
-        languages,
-        languageLevels,
-        statusOptions,
+        contactTypes: withFallback(
+          contactTypes,
+          DEFAULT_CANDIDATE_LOOKUPS.contactTypes,
+        ),
+        sources: withFallback(sources, DEFAULT_CANDIDATE_LOOKUPS.sources),
+        positions: withFallback(positions, DEFAULT_CANDIDATE_LOOKUPS.positions),
+        skills: withFallback(skills, DEFAULT_CANDIDATE_LOOKUPS.skills),
+        languages: withFallback(languages, DEFAULT_CANDIDATE_LOOKUPS.languages),
+        languageLevels: withFallback(
+          languageLevels,
+          DEFAULT_CANDIDATE_LOOKUPS.languageLevels,
+        ),
+        statusOptions: withFallback(
+          statusOptions,
+          DEFAULT_CANDIDATE_LOOKUPS.statusOptions,
+        ),
       };
     } catch (error) {
       console.error("lookups.getCandidateCreateOptions failed", error);
       return {
-        contactTypes: [],
-        sources: [],
-        positions: [],
-        skills: [],
-        languages: [],
-        languageLevels: [],
-        statusOptions: [],
+        contactTypes: [...DEFAULT_CANDIDATE_LOOKUPS.contactTypes],
+        sources: [...DEFAULT_CANDIDATE_LOOKUPS.sources],
+        positions: [...DEFAULT_CANDIDATE_LOOKUPS.positions],
+        skills: [...DEFAULT_CANDIDATE_LOOKUPS.skills],
+        languages: [...DEFAULT_CANDIDATE_LOOKUPS.languages],
+        languageLevels: [...DEFAULT_CANDIDATE_LOOKUPS.languageLevels],
+        statusOptions: [...DEFAULT_CANDIDATE_LOOKUPS.statusOptions],
       };
     }
   }),

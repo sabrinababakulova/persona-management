@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDownIcon } from "../../../_components/icons";
+import { Dropdown } from "./dropdown";
 import type { ProgressInfo, SelectOption } from "./types";
 
 interface HeaderSummaryProps {
@@ -39,20 +39,15 @@ export function HeaderSummary({
             </div>
           </div>
 
-          <div className="relative">
-            <select
-              className="appearance-none rounded-md border border-border-input bg-bg-input px-2 py-2 pr-7 font-medium text-[14px] text-text-placeholder tracking-[-0.28px] focus:border-primary-blue focus:outline-none"
-              onChange={(e) => onStatusChange(e.target.value)}
-              value={status}
-            >
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-2.5 w-2.5 -translate-y-1/2 text-text-placeholder" />
-          </div>
+          <Dropdown
+            fieldClassName="h-8 px-2 py-2 pr-7 text-[14px] leading-none tracking-[-0.28px]"
+            hideLabel
+            iconClassName="h-2.5 w-2.5 right-2 text-text-placeholder"
+            label="Статус"
+            onChange={onStatusChange}
+            options={statusOptions}
+            value={status}
+          />
         </div>
 
         <div className="mt-6 flex flex-col gap-2">

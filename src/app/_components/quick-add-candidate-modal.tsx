@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Dropdown } from "~/app/candidates/create/components/dropdown";
+import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import {
   AIGenerationIcon,
-  ChevronDownIcon,
   FileUploadIcon,
   SmallChevronDownIcon,
 } from "./icons";
@@ -24,6 +25,12 @@ export function QuickAddCandidateModal({
 }: QuickAddCandidateModalProps) {
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const [contactType, setContactType] = useState(
+    DEFAULT_CANDIDATE_LOOKUPS.contactTypes[0]?.value ?? "",
+  );
+  const [source, setSource] = useState(
+    DEFAULT_CANDIDATE_LOOKUPS.sources[0]?.value ?? "",
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -163,32 +170,28 @@ export function QuickAddCandidateModal({
                 placeholder="@username или номер телефона"
                 type="text"
               />
-              <button
-                className="flex h-12 min-w-[150px] items-center justify-between rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px]"
-                type="button"
-              >
-                Telegram
-                <ChevronDownIcon className="h-6 w-6 text-text-placeholder" />
-              </button>
+              <Dropdown
+                className="min-w-[150px]"
+                fieldClassName="h-12 bg-bg-input"
+                hideLabel
+                iconClassName="h-5 w-5 right-2 text-text-placeholder"
+                id="quick-add-contact-type"
+                label="Тип контакта"
+                onChange={setContactType}
+                options={DEFAULT_CANDIDATE_LOOKUPS.contactTypes}
+                value={contactType}
+              />
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label
-              className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
-              htmlFor="quick-add-source"
-            >
-              Источник
-            </label>
-            <button
-              className="flex h-12 w-full items-center justify-between rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px]"
-              id="quick-add-source"
-              type="button"
-            >
-              hh.uz
-              <ChevronDownIcon className="h-6 w-6 text-text-placeholder" />
-            </button>
-          </div>
+          <Dropdown
+            fieldClassName="bg-bg-input"
+            id="quick-add-source"
+            label="Источник"
+            onChange={setSource}
+            options={DEFAULT_CANDIDATE_LOOKUPS.sources}
+            value={source}
+          />
 
           <div className="flex flex-col gap-1">
             <p className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">

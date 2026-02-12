@@ -23,12 +23,12 @@ export function AIGenerationIcon({ className, ...props }: IconProps) {
       <path
         d="M7.41196 1.2002L8.32709 3.6733L10.8002 4.58843L8.32709 5.50356L7.41196 7.97667L6.49683 5.50356L4.02372 4.58843L6.49683 3.6733L7.41196 1.2002Z"
         stroke="#9747FF"
-        stroke-linejoin="round"
+        strokeLinejoin="round"
       />
       <path
         d="M3.17667 6.84725L3.97608 8.02431L5.15314 8.82373L3.97608 9.62314L3.17667 10.8002L2.37725 9.62314L1.2002 8.82373L2.37725 8.02431L3.17667 6.84725Z"
         stroke="#9747FF"
-        stroke-linejoin="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CloseIcon,
-  PlusIcon,
-} from "../../../_components/icons";
+import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../../_components/icons";
+import { Dropdown } from "./dropdown";
+import { Input } from "./input";
 import type { ContactItem, Errors, SelectOption } from "./types";
 
 interface BasicInfoSectionProps {
@@ -17,7 +14,7 @@ interface BasicInfoSectionProps {
   currentPosition: string;
   source: string;
   contacts: ContactItem[];
-  contactTypes: SelectOption[];
+  contactSources: SelectOption[];
   positions: SelectOption[];
   sources: SelectOption[];
   onInputChange: (
@@ -38,7 +35,7 @@ export function BasicInfoSection({
   currentPosition,
   source,
   contacts,
-  contactTypes,
+  contactSources,
   positions,
   sources,
   onInputChange,
@@ -66,17 +63,10 @@ export function BasicInfoSection({
       {isOpen && (
         <div className="flex flex-col gap-6 pt-2">
           <div className="flex flex-col gap-2">
-            <label
-              className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
-              htmlFor="fullName"
-            >
-              Ф.И.О
-            </label>
-            <input
-              className={`h-11 w-full rounded-md border ${
-                errors.fullName ? "border-red-500" : "border-border-input"
-              } bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none`}
+            <Input
+              className={errors.fullName ? "border-red-500" : undefined}
               id="fullName"
+              label="Ф.И.О"
               onChange={(e) => onInputChange("fullName", e.target.value)}
               placeholder="Введите полное имя"
               type="text"
@@ -89,17 +79,10 @@ export function BasicInfoSection({
 
           <div className="flex gap-6">
             <div className="flex flex-1 flex-col gap-2">
-              <label
-                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
-                htmlFor="city"
-              >
-                Город
-              </label>
-              <input
-                className={`h-11 w-full rounded-md border ${
-                  errors.city ? "border-red-500" : "border-border-input"
-                } bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none`}
+              <Input
+                className={errors.city ? "border-red-500" : undefined}
                 id="city"
+                label="Город"
                 onChange={(e) => onInputChange("city", e.target.value)}
                 placeholder="Введите город"
                 type="text"
@@ -111,30 +94,14 @@ export function BasicInfoSection({
             </div>
 
             <div className="flex flex-1 flex-col gap-2">
-              <label
-                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
-                htmlFor="currentPosition"
-              >
-                Должность
-              </label>
-              <div className="relative">
-                <select
-                  className="h-11 w-full appearance-none rounded-md border border-border-input bg-white px-3 pr-10 text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
-                  id="currentPosition"
-                  onChange={(e) =>
-                    onInputChange("currentPosition", e.target.value)
-                  }
-                  value={currentPosition}
-                >
-                  <option value="">Выберите должность</option>
-                  {positions.map((position) => (
-                    <option key={position.value} value={position.value}>
-                      {position.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
-              </div>
+              <Dropdown
+                id="currentPosition"
+                label="Должность"
+                onChange={(value) => onInputChange("currentPosition", value)}
+                options={positions}
+                placeholder="Выберите должность"
+                value={currentPosition}
+              />
             </div>
           </div>
 
@@ -152,32 +119,30 @@ export function BasicInfoSection({
               </button>
             </div>
             {contacts.map((contact) => (
-              <div className="flex items-center gap-2" key={contact.id}>
-                <input
-                  className="h-11 flex-1 rounded-md border border-border-input bg-white px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder-text-placeholder focus:border-primary-blue focus:outline-none"
-                  onChange={(e) =>
-                    onContactChange(contact.id, "value", e.target.value)
-                  }
-                  placeholder="@username или номер телефона"
-                  type="text"
-                  value={contact.value}
-                />
-                <div className="relative">
-                  <select
-                    className="h-11 appearance-none rounded-md border border-border-input bg-white px-3 pr-8 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
+              <div className="flex w-full items-center gap-2" key={contact.id}>
+                <div className="min-w-0 flex-1">
+                  <Input
+                    hideLabel
+                    label="Контакт"
                     onChange={(e) =>
-                      onContactChange(contact.id, "type", e.target.value)
+                      onContactChange(contact.id, "value", e.target.value)
                     }
-                    value={contact.type}
-                  >
-                    {contactTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
+                    placeholder="@username или номер телефона"
+                    type="text"
+                    value={contact.value}
+                  />
                 </div>
+                <Dropdown
+                  className="min-w-[220px] flex-1"
+                  hideLabel
+                  iconClassName="h-4 w-4 right-2 text-text-placeholder"
+                  label="Тип контакта"
+                  onChange={(value) =>
+                    onContactChange(contact.id, "type", value)
+                  }
+                  options={contactSources}
+                  value={contact.type}
+                />
                 {contacts.length > 1 && (
                   <button
                     className="text-text-disabled hover:text-accent-red"
@@ -192,28 +157,14 @@ export function BasicInfoSection({
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
-              htmlFor="source"
-            >
-              Источник
-            </label>
-            <div className="relative">
-              <select
-                className="h-11 w-full appearance-none rounded-md border border-border-input bg-white px-3 pr-10 text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none"
-                id="source"
-                onChange={(e) => onInputChange("source", e.target.value)}
-                value={source}
-              >
-                <option value="">Выберите источник</option>
-                {sources.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
-            </div>
+            <Dropdown
+              id="source"
+              label="Источник"
+              onChange={(value) => onInputChange("source", value)}
+              options={sources}
+              placeholder="Выберите источник"
+              value={source}
+            />
           </div>
         </div>
       )}

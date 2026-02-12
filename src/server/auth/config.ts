@@ -2,7 +2,6 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
-import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { env } from "~/env";
 import { registerSchema } from "~/schemas/register";
@@ -33,10 +32,6 @@ declare module "next-auth" {
   //   // ...other properties
   //   // role: UserRole;
   // }
-}
-
-class EmailAlreadyExistsError extends CredentialsSignin {
-  code = "email_exists";
 }
 
 /**
@@ -79,7 +74,7 @@ export const authConfig = {
             .limit(1);
 
           if (existingUser) {
-            throw new EmailAlreadyExistsError();
+            return null;
           }
 
           const hashedPassword = await bcrypt.hash(password, 10);
@@ -120,7 +115,7 @@ export const authConfig = {
                 : undefined;
 
             if (pgCode === "23505") {
-              throw new EmailAlreadyExistsError();
+              return null;
             }
             throw error;
           }
