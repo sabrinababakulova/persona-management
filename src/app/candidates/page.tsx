@@ -9,11 +9,13 @@ import {
   BellIcon,
   ChevronDownIcon,
   FilterIcon,
+  FloatingAddIcon,
   GlobeIcon,
   MoreIcon,
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
+import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 
 interface Candidate {
   id: string;
@@ -60,6 +62,7 @@ export default function CandidatesPage() {
     api.candidates.getAllCandidates.useQuery();
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
 
   // Merge server data with local selection state
   const candidates =
@@ -94,6 +97,11 @@ export default function CandidatesPage() {
 
   return (
     <>
+      <QuickAddCandidateModal
+        isOpen={isQuickAddModalOpen}
+        onClose={() => setIsQuickAddModalOpen(false)}
+      />
+
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Header */}
@@ -326,6 +334,15 @@ export default function CandidatesPage() {
           </div>
         </div>
       </main>
+
+      <button
+        aria-label="Быстро добавить кандидата"
+        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-white shadow-lg transition-colors hover:bg-primary-blue-hover"
+        onClick={() => setIsQuickAddModalOpen(true)}
+        type="button"
+      >
+        <FloatingAddIcon className="h-10 w-10" />
+      </button>
     </>
   );
 }

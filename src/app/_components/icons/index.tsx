@@ -1,13 +1,17 @@
+export { AIGenerationIcon } from "./AIGenerationIcon";
 export { BellIcon } from "./BellIcon";
 export { ChevronDownIcon } from "./ChevronDownIcon";
 export { ChevronRightIcon } from "./ChevronRightIcon";
 export { ChevronUpIcon } from "./ChevronUpIcon";
 export { CloseIcon } from "./CloseIcon";
+export { FileUploadIcon } from "./FileUploadIcon";
 export { FilterIcon } from "./FilterIcon";
+export { FloatingAddIcon } from "./FloatingAddIcon";
 export { FunnelIcon } from "./FunnelIcon";
 export { GlobeIcon } from "./GlobeIcon";
 export { MoreIcon } from "./MoreIcon";
 export { PlusIcon } from "./PlusIcon";
 export { SearchIcon } from "./SearchIcon";
+export { SmallChevronDownIcon } from "./SmallChevronDownIcon";
 export { SortIcon } from "./SortIcon";
 export type { IconProps } from "./types";
