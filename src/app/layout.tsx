@@ -2,6 +2,7 @@ import "~/styles/globals.css";
 
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Header } from "./_components/header";
 import { Providers } from "./_components/providers";
 import { Sidebar } from "./_components/sidebar";
 
@@ -25,7 +26,10 @@ export default function RootLayout({
         <Providers>
           <div className="relative flex min-h-screen bg-bg-light">
             <Sidebar />
-            {children}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <Header />
+              <div className="min-h-0 flex-1">{children}</div>
+            </div>
           </div>
         </Providers>
       </body>

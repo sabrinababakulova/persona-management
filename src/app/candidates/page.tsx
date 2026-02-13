@@ -1,17 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import { Checkbox } from "../_components/checkbox";
 import {
-  BellIcon,
   ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
-  GlobeIcon,
   MoreIcon,
   SearchIcon,
   SortIcon,
@@ -203,7 +200,7 @@ export default function CandidatesPage() {
       {toastMessage && (
         <output
           aria-live="polite"
-          className="fixed top-6 right-6 z-[70] rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-white shadow-[0_8px_24px_rgba(43,48,66,0.2)]"
+          className="fixed top-6 right-6 z-70 rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-white shadow-[0_8px_24px_rgba(43,48,66,0.2)]"
         >
           {toastMessage}
         </output>
@@ -211,53 +208,6 @@ export default function CandidatesPage() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="sticky top-0 z-10 flex items-center justify-between border-header-border border-b bg-white px-4 py-4 lg:px-8">
-          {/* Search */}
-          <div className="relative w-full max-w-md">
-            <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <input
-              className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Что вы хотите найти?"
-              type="text"
-              value={searchQuery}
-            />
-          </div>
-
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-2 lg:gap-4">
-            {/* Language Selector */}
-            <button
-              className="hidden items-center gap-2 rounded-lg px-3 py-2 text-gray-600 hover:bg-bg-light sm:flex"
-              type="button"
-            >
-              <GlobeIcon className="h-5 w-5" />
-              <span>Ру</span>
-              <ChevronDownIcon className="h-4 w-4" />
-            </button>
-
-            {/* Notifications */}
-            <button
-              className="relative rounded-lg p-2 text-gray-600 hover:bg-bg-light"
-              type="button"
-            >
-              <BellIcon className="h-6 w-6" />
-            </button>
-
-            {/* Profile */}
-            <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
-              <Image
-                alt="Profile"
-                className="h-full w-full object-cover"
-                height={40}
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim"
-                width={40}
-              />
-            </div>
-          </div>
-        </header>
-
         {/* Page Content */}
         <div className="p-4 lg:p-8">
           {/* Page Header */}
@@ -280,8 +230,10 @@ export default function CandidatesPage() {
               <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <input
                 className="w-full rounded-xl border border-border-light bg-white py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Поиск вакансий"
                 type="text"
+                value={searchQuery}
               />
             </div>
             <button
