@@ -11,6 +11,8 @@ import { ConditionsSection } from "./components/ConditionsSection";
 import { Dropdown } from "./components/dropdown";
 import type { ContactItem, Errors, LanguageItem } from "./components/types";
 
+const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
+
 // Zod validation schema
 const contactSchema = z.object({
   type: z.string().min(1, "Выберите тип контакта"),
@@ -51,6 +53,7 @@ const generateId = () => crypto.randomUUID();
 
 export function CreateCandidateForm() {
   const router = useRouter();
+  const utils = api.useUtils();
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [requirementsOpen, setRequirementsOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
@@ -117,7 +120,46 @@ export function CreateCandidateForm() {
 
   // Create candidate mutation
   const createCandidate = api.candidates.createCandidate.useMutation({
-    onSuccess: () => {
+    onSuccess: (createdCandidate) => {
+      if (!createdCandidate) {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(
+            CREATE_CANDIDATE_SUCCESS_KEY,
+            "Кандидат сохранен",
+          );
+        }
+        router.push("/candidates");
+        return;
+      }
+
+      const parts = createdCandidate.fullName.split(" ");
+      utils.candidates.getAllCandidates.setData(undefined, (existing = []) => [
+        {
+          id: createdCandidate.id,
+          name: parts.slice(0, 2).join(" "),
+          patronymic: parts.slice(2).join(" "),
+          city: createdCandidate.city ?? "",
+          stage: "offer",
+          otherResponses: [],
+          createdAt: createdCandidate.createdAt
+            ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "",
+          source: createdCandidate.source ?? "",
+        },
+        ...existing,
+      ]);
+      void utils.candidates.getAllCandidates.invalidate();
+
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          CREATE_CANDIDATE_SUCCESS_KEY,
+          "Кандидат успешно добавлен",
+        );
+      }
       router.push("/candidates");
     },
     onError: (error) => {
@@ -312,8 +354,8 @@ export function CreateCandidateForm() {
 
         <BasicInfoSection
           city={formData.city}
-          contacts={contacts}
           contactSources={candidateLookups.contactTypes}
+          contacts={contacts}
           currentPosition={formData.currentPosition ?? ""}
           errors={errors}
           fullName={formData.fullName}
@@ -358,7 +400,9 @@ export function CreateCandidateForm() {
             onClick={handleSubmit}
             type="button"
           >
-            {createCandidate.isPending ? "Сохранение..." : "Сохранить кандидата"}
+            {createCandidate.isPending
+              ? "Сохранение..."
+              : "Сохранить кандидата"}
           </button>
         </div>
       </div>

@@ -10,11 +10,24 @@ import {
   SmallChevronDownIcon,
 } from "./icons";
 
+type SelectOption = { value: string; label: string };
+
+export type QuickAddCandidatePayload = {
+  fullName: string;
+  contactType: string;
+  contactValue: string;
+  source: string;
+};
+
 type QuickAddCandidateModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAddMoreData?: () => void;
-  onSaveCandidate?: () => void;
+  onSaveCandidate?: (payload: QuickAddCandidatePayload) => void;
+  isSaving?: boolean;
+  errorMessage?: string | null;
+  contactTypeOptions?: SelectOption[];
+  sourceOptions?: SelectOption[];
 };
 
 export function QuickAddCandidateModal({
@@ -22,15 +35,38 @@ export function QuickAddCandidateModal({
   onClose,
   onAddMoreData,
   onSaveCandidate,
+  isSaving = false,
+  errorMessage,
+  contactTypeOptions = DEFAULT_CANDIDATE_LOOKUPS.contactTypes,
+  sourceOptions = DEFAULT_CANDIDATE_LOOKUPS.sources,
 }: QuickAddCandidateModalProps) {
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [contactValue, setContactValue] = useState("");
   const [contactType, setContactType] = useState(
-    DEFAULT_CANDIDATE_LOOKUPS.contactTypes[0]?.value ?? "",
+    contactTypeOptions[0]?.value ?? "",
   );
-  const [source, setSource] = useState(
-    DEFAULT_CANDIDATE_LOOKUPS.sources[0]?.value ?? "",
-  );
+  const [source, setSource] = useState(sourceOptions[0]?.value ?? "");
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setContactType(contactTypeOptions[0]?.value ?? "");
+  }, [contactTypeOptions]);
+
+  useEffect(() => {
+    setSource(sourceOptions[0]?.value ?? "");
+  }, [sourceOptions]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setFullName("");
+      setContactValue("");
+      setContactType(contactTypeOptions[0]?.value ?? "");
+      setSource(sourceOptions[0]?.value ?? "");
+      setLocalError(null);
+    }
+  }, [contactTypeOptions, isOpen, sourceOptions]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,6 +137,21 @@ export function QuickAddCandidateModal({
     return null;
   }
 
+  const handleSave = () => {
+    if (!fullName.trim()) {
+      setLocalError("Введите Ф.И.О");
+      return;
+    }
+
+    setLocalError(null);
+    onSaveCandidate?.({
+      fullName: fullName.trim(),
+      contactType,
+      contactValue: contactValue.trim(),
+      source,
+    });
+  };
+
   return (
     <div
       aria-labelledby="quick-add-candidate-modal-title"
@@ -147,8 +198,10 @@ export function QuickAddCandidateModal({
             <input
               className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
               id="quick-add-fullname"
+              onChange={(event) => setFullName(event.target.value)}
               placeholder="Введите полное имя"
               type="text"
+              value={fullName}
             />
           </div>
 
@@ -167,8 +220,10 @@ export function QuickAddCandidateModal({
             <div className="flex items-end gap-4">
               <input
                 className="h-12 w-full max-w-[294px] rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                onChange={(event) => setContactValue(event.target.value)}
                 placeholder="@username или номер телефона"
                 type="text"
+                value={contactValue}
               />
               <Dropdown
                 className="min-w-[150px]"
@@ -178,7 +233,7 @@ export function QuickAddCandidateModal({
                 id="quick-add-contact-type"
                 label="Тип контакта"
                 onChange={setContactType}
-                options={DEFAULT_CANDIDATE_LOOKUPS.contactTypes}
+                options={contactTypeOptions}
                 value={contactType}
               />
             </div>
@@ -189,7 +244,7 @@ export function QuickAddCandidateModal({
             id="quick-add-source"
             label="Источник"
             onChange={setSource}
-            options={DEFAULT_CANDIDATE_LOOKUPS.sources}
+            options={sourceOptions}
             value={source}
           />
 
@@ -209,13 +264,19 @@ export function QuickAddCandidateModal({
               </p>
             </div>
             <p className="flex gap-1 font-medium text-[#9747FF] text-[12px] leading-[1.4] tracking-[-0.24px]">
-              <p className="flex font-bold">
+              <span className="flex font-bold">
                 <AIGenerationIcon />
                 AI
-              </p>
+              </span>
               Мы проанализируем резюме и сохраним информацию о кандидате
             </p>
           </div>
+
+          {(localError ?? errorMessage) && (
+            <p className="text-[14px] text-accent-red tracking-[-0.28px]">
+              {localError ?? errorMessage}
+            </p>
+          )}
 
           <div className="flex h-10 items-start justify-between">
             <Link
@@ -226,11 +287,12 @@ export function QuickAddCandidateModal({
               Добавить больше данных
             </Link>
             <button
-              className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-white leading-none tracking-[-0.32px]"
-              onClick={onSaveCandidate}
+              className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-white leading-none tracking-[-0.32px] disabled:opacity-60"
+              disabled={isSaving}
+              onClick={handleSave}
               type="button"
             >
-              Сохранить кандидата
+              {isSaving ? "Сохранение..." : "Сохранить кандидата"}
             </button>
           </div>
         </div>

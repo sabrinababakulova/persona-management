@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import { Checkbox } from "../_components/checkbox";
 import {
@@ -15,7 +16,10 @@ import {
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
-import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
+import {
+  QuickAddCandidateModal,
+  type QuickAddCandidatePayload,
+} from "../_components/quick-add-candidate-modal";
 
 interface Candidate {
   id: string;
@@ -28,6 +32,8 @@ interface Candidate {
   source: string;
   selected?: boolean;
 }
+
+const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 
 const stageConfig = {
   offer: {
@@ -58,11 +64,83 @@ function StageBadge({ stage }: { stage: keyof typeof stageConfig }) {
 }
 
 export default function CandidatesPage() {
+  const utils = api.useUtils();
   const { data: candidatesData, isLoading } =
     api.candidates.getAllCandidates.useQuery();
+  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery(
+    undefined,
+    {
+      retry: false,
+      staleTime: 5 * 60 * 1000,
+    },
+  );
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const message = window.sessionStorage.getItem(CREATE_CANDIDATE_SUCCESS_KEY);
+    if (message) {
+      setToastMessage(message);
+      window.sessionStorage.removeItem(CREATE_CANDIDATE_SUCCESS_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setToastMessage(null), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [toastMessage]);
+
+  const createQuickCandidate = api.candidates.createCandidate.useMutation({
+    onSuccess: (createdCandidate) => {
+      if (!createdCandidate) {
+        setToastMessage("Кандидат сохранен");
+        setIsQuickAddModalOpen(false);
+        return;
+      }
+
+      const parts = createdCandidate.fullName.split(" ");
+      const mappedCandidate: Candidate = {
+        id: createdCandidate.id,
+        name: parts.slice(0, 2).join(" "),
+        patronymic: parts.slice(2).join(" "),
+        city: createdCandidate.city ?? "",
+        stage: "offer",
+        otherResponses: [],
+        createdAt: createdCandidate.createdAt
+          ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+          : "",
+        source: createdCandidate.source ?? "",
+      };
+
+      utils.candidates.getAllCandidates.setData(undefined, (existing = []) => [
+        mappedCandidate,
+        ...existing,
+      ]);
+      void utils.candidates.getAllCandidates.invalidate();
+
+      setToastMessage("Кандидат успешно добавлен");
+      setIsQuickAddModalOpen(false);
+    },
+    onError: () => {
+      setToastMessage("Не удалось сохранить кандидата");
+    },
+  });
 
   // Merge server data with local selection state
   const candidates =
@@ -87,6 +165,18 @@ export default function CandidatesPage() {
     c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
+    createQuickCandidate.mutate({
+      fullName: payload.fullName,
+      city: "Не указан",
+      contacts: payload.contactValue
+        ? [{ type: payload.contactType, value: payload.contactValue }]
+        : [],
+      source: payload.source || undefined,
+      status: "new",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
@@ -98,9 +188,26 @@ export default function CandidatesPage() {
   return (
     <>
       <QuickAddCandidateModal
+        contactTypeOptions={candidateLookups.contactTypes}
+        errorMessage={createQuickCandidate.error?.message}
         isOpen={isQuickAddModalOpen}
-        onClose={() => setIsQuickAddModalOpen(false)}
+        isSaving={createQuickCandidate.isPending}
+        onClose={() => {
+          setIsQuickAddModalOpen(false);
+          createQuickCandidate.reset();
+        }}
+        onSaveCandidate={handleQuickSaveCandidate}
+        sourceOptions={candidateLookups.sources}
       />
+
+      {toastMessage && (
+        <output
+          aria-live="polite"
+          className="fixed top-6 right-6 z-[70] rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-white shadow-[0_8px_24px_rgba(43,48,66,0.2)]"
+        >
+          {toastMessage}
+        </output>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
