@@ -1,5 +1,5 @@
 import { ChevronDownIcon } from "~/app/_components/icons";
-import type { SelectOption } from "./types";
+import type { SelectOption } from "../candidates/components/types";
 
 type DropdownProps = {
   label: string;

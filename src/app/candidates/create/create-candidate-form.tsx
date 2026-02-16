@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { z } from "zod";
+import { Dropdown } from "~/app/_components/dropdown";
 import { AIGenerationIcon, FileUploadIcon } from "~/app/_components/icons";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
-import { BasicInfoSection } from "./components/BasicInfoSection";
-import { ConditionsSection } from "./components/ConditionsSection";
-import { Dropdown } from "./components/dropdown";
-import type { ContactItem, Errors, LanguageItem } from "./components/types";
+import { BasicInfoSection } from "../components/BasicInfoSection";
+import { ConditionsSection } from "../components/ConditionsSection";
+import type { ContactItem, Errors, LanguageItem } from "../components/types";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 

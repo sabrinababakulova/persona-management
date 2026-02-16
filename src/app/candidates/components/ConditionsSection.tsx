@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../../_components/icons";
-import { Dropdown } from "./dropdown";
-import { Input } from "./input";
+import { Dropdown } from "../../_components/dropdown";
+import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../_components/icons";
+import { Input } from "../../_components/input";
 import type { LanguageItem, SelectOption } from "./types";
 
 interface ConditionsSectionProps {

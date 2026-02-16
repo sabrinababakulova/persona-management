@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SideMenu } from "./components/sideMenu";
+import { SideMenu } from "../components/sideMenu";
 
 const SIDE_MENU_ITEMS = [
   { id: "description", label: "Описание вакансии" },

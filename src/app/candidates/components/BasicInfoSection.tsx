@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../../_components/icons";
-import { Dropdown } from "./dropdown";
-import { Input } from "./input";
+import { ChevronUpIcon, CloseIcon, PlusIcon } from "~/app/_components/icons";
+import { Dropdown } from "../../_components/dropdown";
+import { Input } from "../../_components/input";
 import type { ContactItem, Errors, SelectOption } from "./types";
 
 interface BasicInfoSectionProps {

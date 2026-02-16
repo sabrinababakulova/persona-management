@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRightIcon } from "../../../_components/icons";
+import { ChevronRightIcon } from "./icons";
 
 interface BreadcrumbsProps {
   label: string;

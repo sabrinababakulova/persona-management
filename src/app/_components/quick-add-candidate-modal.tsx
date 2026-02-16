@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Dropdown } from "~/app/candidates/create/components/dropdown";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
+import { Dropdown } from "./dropdown";
 import {
   AIGenerationIcon,
   FileUploadIcon,

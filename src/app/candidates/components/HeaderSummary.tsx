@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown } from "./dropdown";
+import { Dropdown } from "../../_components/dropdown";
 import type { ProgressInfo, SelectOption } from "./types";
 
 interface HeaderSummaryProps {

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
@@ -17,6 +16,7 @@ import {
   QuickAddCandidateModal,
   type QuickAddCandidatePayload,
 } from "../_components/quick-add-candidate-modal";
+import { QuickOverview } from "./components/quickOverview";
 
 interface Candidate {
   id: string;
@@ -74,6 +74,10 @@ export default function CandidatesPage() {
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [isQuickOverviewOpen, setIsQuickOverviewOpen] = useState(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
+    null,
+  );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
@@ -174,6 +178,11 @@ export default function CandidatesPage() {
     });
   };
 
+  const openQuickOverview = (candidateId: string) => {
+    setSelectedCandidateId(candidateId);
+    setIsQuickOverviewOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
@@ -195,6 +204,12 @@ export default function CandidatesPage() {
         }}
         onSaveCandidate={handleQuickSaveCandidate}
         sourceOptions={candidateLookups.sources}
+      />
+
+      <QuickOverview
+        candidateId={selectedCandidateId}
+        isOpen={isQuickOverviewOpen}
+        onClose={() => setIsQuickOverviewOpen(false)}
       />
 
       {toastMessage && (
@@ -295,22 +310,34 @@ export default function CandidatesPage() {
             {/* Table Rows */}
             {filteredCandidates.map((candidate: Candidate) => (
               <div
-                className="grid grid-cols-12 gap-4 border-border-light border-b px-4 py-4 last:border-b-0 hover:bg-gray-50 lg:items-center"
+                className="grid cursor-pointer grid-cols-12 gap-4 border-border-light border-b px-4 py-4 last:border-b-0 hover:bg-gray-50 lg:items-center"
                 key={candidate.id}
+                // onClick={() => openQuickOverview(candidate.id)}
+                // onKeyDown={(event) => {
+                //   if (event.key === "Enter" || event.key === " ") {
+                //     event.preventDefault();
+                //     openQuickOverview(candidate.id);
+                //   }
+                // }}
+                // role="button"
+                // tabIndex={0}
               >
                 {/* Desktop View */}
                 <div className="col-span-12 flex items-start gap-3 lg:col-span-2">
-                  <Checkbox
-                    checked={candidate.selected || false}
-                    onChange={() => toggleSelection(candidate.id)}
-                  />
                   <div>
-                    <Link
+                    <Checkbox
+                      checked={candidate.selected || false}
+                      onChange={() => toggleSelection(candidate.id)}
+                    />
+                  </div>
+                  <div>
+                    <button
                       className="font-medium text-gray-900 hover:text-primary-blue hover:underline"
-                      href={`/candidates/${candidate.id}`}
+                      onClick={() => openQuickOverview(candidate.id)}
+                      type="button"
                     >
                       {candidate.name}
-                    </Link>
+                    </button>
                     <div className="text-sm text-text-muted">
                       {candidate.patronymic}
                     </div>
@@ -366,12 +393,17 @@ export default function CandidatesPage() {
                 <div className="col-span-6 flex items-center justify-end gap-2 lg:col-span-1">
                   <button
                     className="text-primary-blue text-sm hover:underline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openQuickOverview(candidate.id);
+                    }}
                     type="button"
                   >
                     Детали
                   </button>
                   <button
                     className="p-1.5 text-gray-400 hover:text-gray-600"
+                    onClick={(event) => event.stopPropagation()}
                     type="button"
                   >
                     <MoreIcon className="h-5 w-5" />

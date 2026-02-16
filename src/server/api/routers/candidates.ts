@@ -89,6 +89,9 @@ export const candidatesRouter = createTRPCRouter({
         experience: c.experience ?? "",
         matchScore: c.matchScore ?? 0,
         salaryExpectation: c.salaryExpectation ?? 0,
+        salaryCurrency: c.salaryCurrency ?? "UZS",
+        status: c.status ?? "new",
+        source: c.source ?? "",
         tags: (c.tags ?? []) as string[],
         currentPosition: {
           company: c.currentPosition ?? "",
