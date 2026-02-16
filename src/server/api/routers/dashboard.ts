@@ -1,4 +1,4 @@
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, gte } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -83,13 +83,15 @@ export const dashboardRouter = createTRPCRouter({
   }),
 
   getDashboardData: protectedProcedure.query(async ({ ctx }) => {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
     // Fetch real counts from the database
     const [
       totalCandidates,
       hiredCount,
       activeVacancies,
       newCandidates,
-      statusCounts,
+      weeklyCandidates,
       sourceCounts,
       recentVacancyRows,
       recentActivityRows,
@@ -107,14 +109,14 @@ export const dashboardRouter = createTRPCRouter({
         .select({ count: count() })
         .from(candidates)
         .where(eq(candidates.status, "new")),
-      // Count by status
+      // Latest candidates for the past week (used for status statistics)
       ctx.db
         .select({
           status: candidates.status,
-          count: count(),
         })
         .from(candidates)
-        .groupBy(candidates.status),
+        .where(gte(candidates.createdAt, oneWeekAgo))
+        .orderBy(desc(candidates.createdAt)),
       // Count by source
       ctx.db
         .select({
@@ -231,7 +233,7 @@ export const dashboardRouter = createTRPCRouter({
         color: colorMap[r.source] ?? "bg-chart-blue",
       }));
 
-    // Compute status stats from status counts
+    // Compute status stats from real candidates created in the last 7 days
     const statusLabelMap: Record<string, string> = {
       new: "Новый",
       screening: "Отобран",
@@ -240,21 +242,25 @@ export const dashboardRouter = createTRPCRouter({
       hired: "Нанят",
       rejected: "Отказ",
     };
-    const statusOrder = [
-      "new",
-      "screening",
-      "interview",
-      "offer",
-      "hired",
-      "rejected",
-    ];
-    const statusCountMap = new Map(
-      statusCounts.map((r) => [r.status, r.count]),
-    );
-    const statusStats = statusOrder.map((s) => ({
-      label: statusLabelMap[s] ?? s,
-      value: statusCountMap.get(s) ?? 0,
-      max: total || 1,
+    const statusCountMap = new Map<string, number>();
+
+    for (const candidate of weeklyCandidates) {
+      const statusKey = candidate.status ?? "unknown";
+      statusCountMap.set(statusKey, (statusCountMap.get(statusKey) ?? 0) + 1);
+    }
+
+    const sortedStatusStats = Array.from(statusCountMap.entries())
+      .map(([status, value]) => ({
+        label: statusLabelMap[status] ?? status,
+        value,
+      }))
+      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+
+    const maxStatusValue = sortedStatusStats[0]?.value ?? 1;
+    const statusStats = sortedStatusStats.map((stat) => ({
+      label: stat.label,
+      value: stat.value,
+      max: maxStatusValue,
     }));
 
     return {

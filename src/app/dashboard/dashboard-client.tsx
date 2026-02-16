@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
-import { DonutChart } from "../_components/donut-chart";
-import { ProgressBar } from "../_components/progress-bar";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyRow } from "../_components/vacancy-row";
 import { WelcomeModal } from "../_components/welcome-modal";
+import { ChannelStatistics } from "./components/channelStatistics";
 import { RecentActions } from "./components/recentActions";
+import { StatusStatistics } from "./components/statusStatistics";
 
 export default function DashboardClient() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -273,56 +273,13 @@ export default function DashboardClient() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Channel Statistics */}
-              <div className="rounded-2xl border border-border-light bg-white p-6">
-                <h3 className="mb-6 font-medium text-gray-900">
-                  Статистика по каналам
-                </h3>
-                <div className="flex items-center gap-6">
-                  <DonutChart />
-                  <div className="flex-1 space-y-3">
-                    {dashboardData?.channelStats.map((channel) => (
-                      <div
-                        className="flex items-center justify-between"
-                        key={channel.name}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`h-3 w-3 rounded ${channel.color}`}
-                          />
-                          <span className="text-gray-700 text-sm">
-                            {channel.name}
-                          </span>
-                        </div>
-                        <span className="font-medium text-gray-900 text-sm">
-                          {channel.percentage}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <ChannelStatistics channelStats={dashboardData?.channelStats} />
 
               <RecentActions
                 recentActivities={dashboardData?.recentActivities}
               />
 
-              {/* Status Statistics */}
-              <div className="rounded-2xl border border-border-light bg-white p-6">
-                <h3 className="mb-6 font-medium text-gray-900">
-                  Статистика по статусу
-                </h3>
-                <div className="space-y-4">
-                  {dashboardData?.statusStats.map((stat) => (
-                    <ProgressBar
-                      key={stat.label}
-                      label={stat.label}
-                      max={stat.max}
-                      value={stat.value}
-                    />
-                  ))}
-                </div>
-              </div>
+              <StatusStatistics statusStats={dashboardData?.statusStats} />
             </div>
           </div>
         </div>

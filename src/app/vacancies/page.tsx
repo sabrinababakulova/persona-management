@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Checkbox } from "../_components/checkbox";
 import {
   ChevronDownIcon,
   FilterIcon,
+  FloatingAddIcon,
   FunnelIcon,
   MoreIcon,
   SearchIcon,
@@ -224,6 +226,15 @@ export default function VacanciesPage() {
           </div>
         </div>
       </main>
+      <Link
+        aria-label="Создать вакансию"
+        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-white shadow-lg transition-colors hover:bg-primary-blue-hover"
+        // onClick={() => setIsQuickAddModalOpen(true)}
+        // type="button"
+        href="/vacancies/create"
+      >
+        <FloatingAddIcon className="h-10 w-10" />
+      </Link>
     </>
   );
 }
