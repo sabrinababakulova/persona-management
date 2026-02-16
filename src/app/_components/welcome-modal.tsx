@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { PeopleIcon } from "./icons/PeopleIcon";
 
 type WelcomeModalProps = {
   isOpen: boolean;
@@ -82,9 +83,10 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
 
   return (
     <div
+      aria-describedby="welcome-modal-description"
       aria-labelledby="welcome-modal-title"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center px-6 pt-5"
+      className="fixed inset-0 z-50 flex items-center justify-center p-5"
       role="dialog"
     >
       <button
@@ -94,21 +96,34 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
         type="button"
       />
       <div
-        className="relative w-full max-w-[500px] rounded-[8px] border border-border-input bg-white p-5 shadow-[6px_6px_26.2px_0px_rgba(43,48,66,0.10)]"
+        className="relative flex w-full max-w-[384px] flex-col items-center gap-8 rounded-[8px] border border-border-input bg-white p-5 shadow-[6px_6px_26.2px_0px_rgba(43,48,66,0.10)]"
         ref={dialogPanelRef}
         tabIndex={-1}
       >
-        <div className="flex flex-col gap-4 text-text-heading">
+        <PeopleIcon className="h-[209px] w-[240px] shrink-0" />
+
+        <div className="flex w-full flex-col gap-4 text-center text-text-heading">
           <h2
-            className="font-bold text-[24px] leading-none tracking-[-0.48px]"
+            className="font-bold text-[22px] leading-none tracking-[-0.44px]"
             id="welcome-modal-title"
           >
             Добро пожаловать в YesHunt!
           </h2>
-          <p className="font-normal text-[16px] leading-[1.2] tracking-[-0.32px]">
+          <p
+            className="font-normal text-[16px] leading-[1.2] tracking-[-0.32px]"
+            id="welcome-modal-description"
+          >
             Вы присоединились как рекрутер компании ООО Инкорпорейтед.
           </p>
         </div>
+
+        <button
+          className="h-10 w-full rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:ring-offset-2"
+          onClick={onClose}
+          type="button"
+        >
+          Начать работу
+        </button>
       </div>
     </div>
   );

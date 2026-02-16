@@ -1,7 +1,64 @@
-import { count, eq, sql } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { candidates, users, vacancies } from "~/server/db/schema";
+import {
+  candidates,
+  recentActivityLogs,
+  users,
+  vacancies,
+} from "~/server/db/schema";
+
+function pluralize(value: number, forms: [string, string, string]) {
+  const abs = Math.abs(value) % 100;
+  const last = abs % 10;
+
+  if (abs > 10 && abs < 20) {
+    return forms[2];
+  }
+  if (last > 1 && last < 5) {
+    return forms[1];
+  }
+  if (last === 1) {
+    return forms[0];
+  }
+  return forms[2];
+}
+
+function formatTimeAgo(date: Date) {
+  const diffMs = Date.now() - date.getTime();
+  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+
+  if (diffSeconds < 60) {
+    return "Только что";
+  }
+
+  const minutes = Math.floor(diffSeconds / 60);
+  if (minutes < 60) {
+    return `${minutes} ${pluralize(minutes, ["минута", "минуты", "минут"])} назад`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} ${pluralize(hours, ["час", "часа", "часов"])} назад`;
+  }
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) {
+    return `${days} ${pluralize(days, ["день", "дня", "дней"])} назад`;
+  }
+
+  return date.toLocaleDateString("ru-RU");
+}
+
+function getInitials(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export const dashboardRouter = createTRPCRouter({
   getWelcomeModalState: protectedProcedure.query(async ({ ctx }) => {
@@ -35,7 +92,7 @@ export const dashboardRouter = createTRPCRouter({
       statusCounts,
       sourceCounts,
       recentVacancyRows,
-      recentCandidateRows,
+      recentActivityRows,
     ] = await Promise.all([
       ctx.db.select({ count: count() }).from(candidates),
       ctx.db
@@ -72,12 +129,13 @@ export const dashboardRouter = createTRPCRouter({
         .from(vacancies)
         .where(eq(vacancies.status, "active"))
         .limit(3),
-      // Recent candidates with activities
+      // Recent activity events from candidate/vacancy updates
       ctx.db
         .select()
-        .from(candidates)
-        .orderBy(sql`${candidates.createdAt} DESC`)
-        .limit(5),
+        .from(recentActivityLogs)
+        .orderBy(desc(recentActivityLogs.createdAt))
+        .limit(20)
+        .catch(() => []),
     ]);
 
     const total = totalCandidates[0]?.count ?? 0;
@@ -126,7 +184,7 @@ export const dashboardRouter = createTRPCRouter({
       workType: v.workType ?? "",
     }));
 
-    // Build recent activities from candidate activity logs
+    // Build recent activities for dashboard "Последние действия"
     const recentActivities: {
       id: string;
       name: string;
@@ -138,32 +196,22 @@ export const dashboardRouter = createTRPCRouter({
       isRecent?: boolean;
     }[] = [];
 
-    for (const c of recentCandidateRows) {
-      const acts = (c.activities ?? []) as {
-        id: string;
-        userName: string;
-        action: string;
-        targetName: string;
-        targetStatus: string;
-        timeAgo: string;
-      }[];
-      for (const a of acts) {
-        const nameParts = a.targetName.split(" ");
-        const initials = nameParts
-          .map((p) => p[0])
-          .join("")
-          .toUpperCase();
-        recentActivities.push({
-          id: a.id,
-          name: a.userName,
-          action: a.action,
-          candidateName: a.targetName,
-          candidateInitials: initials,
-          newStatus: a.targetStatus,
-          time: a.timeAgo,
-          isRecent: a.timeAgo === "Только что",
-        });
-      }
+    for (const activity of recentActivityRows.slice(0, 10)) {
+      const createdAt = activity.createdAt
+        ? new Date(activity.createdAt)
+        : new Date();
+      const timeAgo = formatTimeAgo(createdAt);
+
+      recentActivities.push({
+        id: activity.id,
+        name: activity.actorName,
+        action: activity.action,
+        candidateName: activity.targetName,
+        candidateInitials: getInitials(activity.targetName),
+        newStatus: activity.targetStatus,
+        time: timeAgo,
+        isRecent: timeAgo === "Только что",
+      });
     }
 
     // Compute channel stats from source counts

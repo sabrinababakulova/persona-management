@@ -223,6 +223,33 @@ export const vacancies = createTable(
   ],
 );
 
+// Activity log table for dashboard "Recent actions" feed
+export const recentActivityLogs = createTable(
+  "recent_activity_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    entityType: d.varchar({ length: 50 }).notNull(), // candidate | vacancy
+    entityId: d.varchar({ length: 255 }).notNull(),
+    actorUserId: d.varchar({ length: 255 }).references(() => users.id),
+    actorName: d.varchar({ length: 255 }).notNull(),
+    action: d.varchar({ length: 255 }).notNull(),
+    targetName: d.varchar({ length: 255 }).notNull(),
+    targetStatus: d.varchar({ length: 255 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    index("recent_activity_created_at_idx").on(t.createdAt),
+    index("recent_activity_entity_idx").on(t.entityType, t.entityId),
+  ],
+);
+
 // Lookup tables for candidate create form select options.
 // NOTE: These are intended to be managed from the backend (seeded via migrations).
 export const candidateContactTypes = createTable(

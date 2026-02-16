@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  ChevronUpIcon,
-  CloseIcon,
-  PlusIcon,
-} from "../../../_components/icons";
+import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../../_components/icons";
 import { Dropdown } from "./dropdown";
 import { Input } from "./input";
 import type { LanguageItem, SelectOption } from "./types";
@@ -102,7 +98,9 @@ export function ConditionsSection({
             inputClassName="placeholder:text-text-placeholder"
             label="Зарплата"
             onChange={(e) =>
-              onSalaryChange(e.target.value ? Number(e.target.value) : undefined)
+              onSalaryChange(
+                e.target.value ? Number(e.target.value) : undefined,
+              )
             }
             placeholder="Введите сумму"
             type="number"

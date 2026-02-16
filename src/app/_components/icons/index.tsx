@@ -10,6 +10,7 @@ export { FloatingAddIcon } from "./FloatingAddIcon";
 export { FunnelIcon } from "./FunnelIcon";
 export { GlobeIcon } from "./GlobeIcon";
 export { MoreIcon } from "./MoreIcon";
+export { PeopleIcon } from "./PeopleIcon";
 export { PlusIcon } from "./PlusIcon";
 export { SearchIcon } from "./SearchIcon";
 export { SmallChevronDownIcon } from "./SmallChevronDownIcon";

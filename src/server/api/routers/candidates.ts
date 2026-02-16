@@ -1,7 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import {
   candidateContactTypes,
   candidateLanguageLevels,
@@ -11,6 +15,7 @@ import {
   candidateSources,
   candidateStatusOptions,
   candidates,
+  recentActivityLogs,
 } from "~/server/db/schema";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
@@ -211,24 +216,24 @@ export const candidatesRouter = createTRPCRouter({
       ]);
 
       const contactTypeSet = new Set(
-        (allowedContactTypes.length > 0
+        allowedContactTypes.length > 0
           ? allowedContactTypes.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.contactTypes.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.contactTypes.map((r) => r.value),
       );
       const sourceSet = new Set(
-        (allowedSources.length > 0
+        allowedSources.length > 0
           ? allowedSources.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.sources.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.sources.map((r) => r.value),
       );
       const positionSet = new Set(
-        (allowedPositions.length > 0
+        allowedPositions.length > 0
           ? allowedPositions.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.positions.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.positions.map((r) => r.value),
       );
       const skillSet = new Set(
-        (allowedSkills.length > 0
+        allowedSkills.length > 0
           ? allowedSkills.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.skills.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.skills.map((r) => r.value),
       );
       const languageLabelSet = new Set(
         allowedLanguageLabels.length > 0
@@ -236,14 +241,14 @@ export const candidatesRouter = createTRPCRouter({
           : DEFAULT_CANDIDATE_LOOKUPS.languages.map((r) => r.label),
       );
       const languageLevelSet = new Set(
-        (allowedLanguageLevels.length > 0
+        allowedLanguageLevels.length > 0
           ? allowedLanguageLevels.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.languageLevels.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.languageLevels.map((r) => r.value),
       );
       const statusSet = new Set(
-        (allowedStatuses.length > 0
+        allowedStatuses.length > 0
           ? allowedStatuses.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.statusOptions.map((r) => r.value)),
+          : DEFAULT_CANDIDATE_LOOKUPS.statusOptions.map((r) => r.value),
       );
 
       for (const c of input.contacts) {
@@ -318,6 +323,137 @@ export const candidatesRouter = createTRPCRouter({
         })
         .returning();
 
-      return newCandidate[0];
+      const created = newCandidate[0];
+      if (!created) {
+        return null;
+      }
+
+      const actorName =
+        ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+
+      try {
+        await ctx.db.insert(recentActivityLogs).values({
+          entityType: "candidate",
+          entityId: created.id,
+          actorUserId: ctx.session?.user?.id ?? null,
+          actorName,
+          action: "Создал(а) кандидата",
+          targetName: created.fullName,
+          targetStatus: "Создан",
+        });
+      } catch (error) {
+        console.error(
+          "Failed to write recent activity log for candidate creation",
+          error,
+        );
+      }
+
+      return created;
+    }),
+
+  updateCandidate: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        fullName: z.string().min(1).optional(),
+        city: z.string().min(1).optional(),
+        source: z.string().optional(),
+        status: z.string().optional(),
+        currentPosition: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      const rows = await ctx.db
+        .select()
+        .from(candidates)
+        .where(eq(candidates.id, input.id))
+        .limit(1);
+
+      const existing = rows[0];
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Candidate not found",
+        });
+      }
+
+      const valuesToUpdate: Partial<{
+        fullName: string;
+        city: string | null;
+        source: string | null;
+        status: string;
+        currentPosition: string | null;
+      }> = {};
+
+      if (input.fullName && input.fullName !== existing.fullName) {
+        valuesToUpdate.fullName = input.fullName;
+      }
+
+      if (input.city && input.city !== (existing.city ?? "")) {
+        valuesToUpdate.city = input.city;
+      }
+
+      if (
+        input.source !== undefined &&
+        input.source !== (existing.source ?? "")
+      ) {
+        valuesToUpdate.source = input.source || null;
+      }
+
+      if (input.status && input.status !== (existing.status ?? "")) {
+        valuesToUpdate.status = input.status;
+      }
+
+      if (
+        input.currentPosition !== undefined &&
+        input.currentPosition !== (existing.currentPosition ?? "")
+      ) {
+        valuesToUpdate.currentPosition = input.currentPosition || null;
+      }
+
+      if (Object.keys(valuesToUpdate).length === 0) {
+        return existing;
+      }
+
+      const updatedRows = await ctx.db
+        .update(candidates)
+        .set(valuesToUpdate)
+        .where(eq(candidates.id, input.id))
+        .returning();
+
+      const updated = updatedRows[0];
+      if (!updated) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update candidate",
+        });
+      }
+
+      const actorName =
+        ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+      const changedStatus = valuesToUpdate.status ?? null;
+
+      try {
+        await ctx.db.insert(recentActivityLogs).values({
+          entityType: "candidate",
+          entityId: updated.id,
+          actorUserId: ctx.session?.user?.id ?? null,
+          actorName,
+          action: changedStatus
+            ? "Изменил(а) статус кандидата"
+            : "Обновил(а) профиль кандидата",
+          targetName: updated.fullName,
+          targetStatus: changedStatus ?? "Профиль обновлен",
+        });
+      } catch (error) {
+        console.error(
+          "Failed to write recent activity log for candidate",
+          error,
+        );
+      }
+
+      return updated;
     }),
 });

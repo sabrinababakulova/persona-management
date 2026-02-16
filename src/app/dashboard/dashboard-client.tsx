@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
-import { ActivityItem } from "../_components/activity-item";
 import { DonutChart } from "../_components/donut-chart";
 import { ProgressBar } from "../_components/progress-bar";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyRow } from "../_components/vacancy-row";
 import { WelcomeModal } from "../_components/welcome-modal";
+import { RecentActions } from "./components/recentActions";
 
 export default function DashboardClient() {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
@@ -303,24 +303,9 @@ export default function DashboardClient() {
                 </div>
               </div>
 
-              {/* Recent Actions */}
-              <div className="rounded-2xl border border-border-light bg-white p-6">
-                <h3 className="mb-4 font-medium text-gray-900">
-                  Последние действия
-                </h3>
-                {dashboardData?.recentActivities.map((activity) => (
-                  <ActivityItem
-                    action={activity.action}
-                    candidateInitials={activity.candidateInitials}
-                    candidateName={activity.candidateName}
-                    isRecent={activity.isRecent}
-                    key={activity.id}
-                    name={activity.name}
-                    newStatus={activity.newStatus}
-                    time={activity.time}
-                  />
-                ))}
-              </div>
+              <RecentActions
+                recentActivities={dashboardData?.recentActivities}
+              />
 
               {/* Status Statistics */}
               <div className="rounded-2xl border border-border-light bg-white p-6">

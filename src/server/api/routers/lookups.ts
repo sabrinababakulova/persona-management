@@ -12,7 +12,7 @@ import {
 } from "~/server/db/schema";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
-const withFallback = <T,>(values: T[], fallback: readonly T[]): T[] =>
+const withFallback = <T>(values: T[], fallback: readonly T[]): T[] =>
   values.length > 0 ? values : [...fallback];
 
 export const lookupsRouter = createTRPCRouter({
