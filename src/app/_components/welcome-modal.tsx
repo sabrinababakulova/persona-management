@@ -1,12 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { WelcomeModalProps } from "~/types/components/welcome-modal-props";
 import { PeopleIcon } from "./icons/PeopleIcon";
-
-type WelcomeModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
 
 export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
   const dialogPanelRef = useRef<HTMLDivElement>(null);

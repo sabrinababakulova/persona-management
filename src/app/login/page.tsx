@@ -109,12 +109,9 @@ export default function LoginPage() {
                 type="password"
                 value={password}
               />
-              <Link
-                className="mt-1 text-right text-[12px] text-primary-blue leading-[1.4] tracking-[-0.24px] hover:underline"
-                href="/forgot-password"
-              >
+              <span className="mt-1 text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px]">
                 Забыли пароль?
-              </Link>
+              </span>
             </div>
 
             {/* Buttons */}

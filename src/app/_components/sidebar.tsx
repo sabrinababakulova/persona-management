@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  badge?: number;
-}
+import type { NavItem } from "~/types/components/sidebar-nav-item";
 
 export function Sidebar() {
   const pathname = usePathname();

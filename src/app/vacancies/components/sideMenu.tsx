@@ -1,13 +1,4 @@
-type SideMenuItem = {
-  id: string;
-  label: string;
-};
-
-type SideMenuProps = {
-  items: SideMenuItem[];
-  activeId: string;
-  onSelect: (id: string) => void;
-};
+import type { SideMenuProps } from "~/types/components/vacancies-side-menu";
 
 export function SideMenu({ items, activeId, onSelect }: SideMenuProps) {
   return (

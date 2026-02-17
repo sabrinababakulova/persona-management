@@ -7,9 +7,15 @@ import { Dropdown } from "~/app/_components/dropdown";
 import { AIGenerationIcon, FileUploadIcon } from "~/app/_components/icons";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
+import type { CandidateFormData } from "~/types/candidates/candidate-form-data";
+import type {
+  ContactItem,
+  Errors,
+  LanguageItem,
+} from "~/types/candidates/components";
+import type { CandidateStatus } from "~/types/server/candidates";
 import { BasicInfoSection } from "../components/BasicInfoSection";
 import { ConditionsSection } from "../components/ConditionsSection";
-import type { ContactItem, Errors, LanguageItem } from "../components/types";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 
@@ -38,8 +44,6 @@ const candidateFormSchema = z.object({
   resumeUrl: z.string().optional(),
   resumeFileName: z.string().optional(),
 });
-
-type CandidateFormData = z.infer<typeof candidateFormSchema>;
 
 // Required fields for progress tracking
 const REQUIRED_FIELDS = [
@@ -139,8 +143,7 @@ export function CreateCandidateForm() {
           name: parts.slice(0, 2).join(" "),
           patronymic: parts.slice(2).join(" "),
           city: createdCandidate.city ?? "",
-          stage: "offer",
-          otherResponses: [],
+          status: (createdCandidate.status ?? "new") as CandidateStatus,
           createdAt: createdCandidate.createdAt
             ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
                 day: "2-digit",
@@ -164,6 +167,10 @@ export function CreateCandidateForm() {
     },
     onError: (error) => {
       console.error("Failed to create candidate:", error);
+      setErrors((prev) => ({
+        ...prev,
+        _form: error.message || "Не удалось сохранить кандидата",
+      }));
     },
   });
 
@@ -339,11 +346,11 @@ export function CreateCandidateForm() {
             <div className="flex items-center gap-2">
               <FileUploadIcon className="h-5 w-5 text-text-placeholder" />
               <span className="font-medium text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px]">
-                Upload pdf file
+                Загрузите PDF файл
               </span>
             </div>
             <p className="font-normal text-[12px] text-text-disabled leading-[1.4] tracking-[-0.24px]">
-              File should be less than 120MB
+              Файл должен быть менее 10МБ
             </p>
           </div>
           <p className="flex items-center gap-1 font-medium text-[#9747FF] text-[14px] tracking-[-0.28px]">
@@ -394,6 +401,11 @@ export function CreateCandidateForm() {
         />
 
         <div className="mt-8">
+          {errors._form && (
+            <div className="mb-4 rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+              {errors._form}
+            </div>
+          )}
           <button
             className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-white tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
             disabled={createCandidate.isPending}

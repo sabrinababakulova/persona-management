@@ -1,11 +1,7 @@
-type ChannelStat = {
-  name: string;
-  percentage: number;
-};
-
-type ChannelStatisticsProps = {
-  channelStats?: ChannelStat[];
-};
+import type {
+  ChannelStat,
+  ChannelStatisticsProps,
+} from "~/types/components/channel-statistics";
 
 const CHANNEL_ORDER = ["hh.uz", "telegram", "rabota.uz", "Другие"] as const;
 

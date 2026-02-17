@@ -1,11 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import type { BreadcrumbsProps } from "~/types/components/breadcrumbs-props";
 import { ChevronRightIcon } from "./icons";
-
-interface BreadcrumbsProps {
-  label: string;
-}
 
 export function Breadcrumbs({ label }: BreadcrumbsProps) {
   return (

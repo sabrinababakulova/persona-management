@@ -1,14 +1,4 @@
-type LookupOption = { value: string; label: string };
-
-type CandidateLookups = {
-  contactTypes: LookupOption[];
-  sources: LookupOption[];
-  positions: LookupOption[];
-  skills: LookupOption[];
-  languages: LookupOption[];
-  languageLevels: LookupOption[];
-  statusOptions: LookupOption[];
-};
+import type { CandidateLookups } from "~/types/shared/candidate-lookups";
 
 export const DEFAULT_CANDIDATE_LOOKUPS: CandidateLookups = {
   contactTypes: [

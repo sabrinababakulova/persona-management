@@ -1,17 +1,4 @@
-type RecentActivity = {
-  id: string;
-  name: string;
-  action: string;
-  candidateName: string;
-  candidateInitials: string;
-  newStatus: string;
-  time: string;
-  isRecent?: boolean;
-};
-
-type RecentActionsProps = {
-  recentActivities?: RecentActivity[];
-};
+import type { RecentActionsProps } from "~/types/components/recent-actions";
 
 export const RecentActions = ({
   recentActivities = [],

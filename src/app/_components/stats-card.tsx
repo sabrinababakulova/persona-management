@@ -1,10 +1,4 @@
-interface StatsCardProps {
-  title: string;
-  value: string;
-  change: string;
-  changeType: "positive" | "negative" | "neutral";
-  period: string;
-}
+import type { StatsCardProps } from "~/types/components/stats-card-props";
 
 export function StatsCard({
   title,
@@ -86,12 +80,14 @@ export function StatsCard({
       </div>
       <div className="flex items-end gap-4">
         <span className="font-bold text-5xl text-gray-900">{value}</span>
-        <span
-          className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-sm ${changeColors[changeType]}`}
-        >
-          {changeIcons[changeType]}
-          {change}
-        </span>
+        {change && changeType && (
+          <span
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-sm ${changeColors[changeType]}`}
+          >
+            {changeIcons[changeType]}
+            {change}
+          </span>
+        )}
       </div>
       <span className="text-sm text-text-muted">{period}</span>
     </div>

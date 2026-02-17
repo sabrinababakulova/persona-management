@@ -1,12 +1,4 @@
-interface ActivityItemProps {
-  name: string;
-  action: string;
-  candidateName: string;
-  candidateInitials: string;
-  newStatus: string;
-  time: string;
-  isRecent?: boolean;
-}
+import type { ActivityItemProps } from "~/types/components/activity-item-props";
 
 export function ActivityItem({
   name,

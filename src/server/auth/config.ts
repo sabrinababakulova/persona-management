@@ -1,7 +1,7 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
-import type { DefaultSession, NextAuthConfig } from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { env } from "~/env";
@@ -66,27 +66,6 @@ function getClientIp(request: Request) {
   }
 
   return "unknown";
-}
-
-/**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
- *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
- */
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      // ...other properties
-      // role: UserRole;
-    } & DefaultSession["user"];
-  }
-
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
 }
 
 /**
@@ -354,7 +333,12 @@ export const authConfig = {
           }
 
           const [user] = await db
-            .select()
+            .select({
+              id: users.id,
+              email: users.email,
+              name: users.name,
+              image: users.image,
+            })
             .from(users)
             .where(eq(users.id, verificationUserId))
             .limit(1);
@@ -449,7 +433,14 @@ export const authConfig = {
         }
 
         const [user] = await db
-          .select()
+          .select({
+            id: users.id,
+            email: users.email,
+            password: users.password,
+            emailVerified: users.emailVerified,
+            name: users.name,
+            image: users.image,
+          })
           .from(users)
           .where(eq(users.email, email))
           .limit(1);

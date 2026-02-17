@@ -1,36 +1,61 @@
-import { eq, ilike } from "drizzle-orm";
+import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { recentActivityLogs, vacancies } from "~/server/db/schema";
 
-export const vacanciesRouter = createTRPCRouter({
-  getAllVacancies: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db.select().from(vacancies);
+function escapeLike(value: string) {
+  return value.replace(/[%_\\]/g, "\\$&");
+}
 
-    return rows.map((v) => ({
-      id: v.id,
-      title: v.title,
-      level: v.level ?? "",
-      status: v.status as "active" | "draft" | "paused" | "closed" | "archive",
-      city: v.city ?? "",
-      responses: v.responses ?? 0,
-      workType: v.workType ?? "",
-    }));
-  }),
+export const vacanciesRouter = createTRPCRouter({
+  getAllVacancies: protectedProcedure
+    .input(
+      z
+        .object({
+          limit: z.number().min(1).max(100).optional(),
+          offset: z.number().min(0).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
+
+      const rows = await ctx.db
+        .select()
+        .from(vacancies)
+        .orderBy(desc(vacancies.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return rows.map((v) => ({
+        id: v.id,
+        title: v.title,
+        level: v.level ?? "",
+        status: v.status as
+          | "active"
+          | "draft"
+          | "paused"
+          | "closed"
+          | "archive",
+        city: v.city ?? "",
+        responses: v.responses ?? 0,
+        workType: v.workType ?? "",
+      }));
+    }),
 
   searchVacancies: protectedProcedure
-    .input(z.object({ query: z.string() }))
+    .input(z.object({ query: z.string().max(255) }))
     .query(async ({ ctx, input }) => {
-      const rows = input.query
+      const search = input.query.trim();
+      const rows = search
         ? await ctx.db
             .select()
             .from(vacancies)
-            .where(ilike(vacancies.title, `%${input.query}%`))
-        : await ctx.db.select().from(vacancies);
+            .where(ilike(vacancies.title, `%${escapeLike(search)}%`))
+            .limit(50)
+        : await ctx.db.select().from(vacancies).limit(50);
 
       return rows.map((v) => ({
         id: v.id,
@@ -51,14 +76,14 @@ export const vacanciesRouter = createTRPCRouter({
   createVacancy: protectedProcedure
     .input(
       z.object({
-        title: z.string().min(1, "Название вакансии обязательно"),
-        level: z.string().optional(),
+        title: z.string().min(1, "Название вакансии обязательно").max(255),
+        level: z.string().max(100).optional(),
         status: z
           .enum(["active", "draft", "paused", "closed", "archive"])
           .default("active"),
-        city: z.string().optional(),
+        city: z.string().max(255).optional(),
         responses: z.number().int().min(0).default(0),
-        workType: z.string().optional(),
+        workType: z.string().max(100).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -122,15 +147,15 @@ export const vacanciesRouter = createTRPCRouter({
   updateVacancy: protectedProcedure
     .input(
       z.object({
-        id: z.string().min(1),
-        title: z.string().min(1).optional(),
-        level: z.string().optional(),
+        id: z.string().min(1).max(255),
+        title: z.string().min(1).max(255).optional(),
+        level: z.string().max(100).optional(),
         status: z
           .enum(["active", "draft", "paused", "closed", "archive"])
           .optional(),
-        city: z.string().optional(),
+        city: z.string().max(255).optional(),
         responses: z.number().int().min(0).optional(),
-        workType: z.string().optional(),
+        workType: z.string().max(100).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

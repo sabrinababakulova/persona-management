@@ -1,10 +1,12 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import type { CandidateStatus } from "~/types/server/candidates";
 
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "~/server/api/trpc";
+function escapeLike(value: string) {
+  return value.replace(/[%_\\]/g, "\\$&");
+}
+
 import {
   candidateContactTypes,
   candidateLanguageLevels,
@@ -19,43 +21,55 @@ import {
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
 export const candidatesRouter = createTRPCRouter({
-  getAllCandidates: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
-      .from(candidates)
-      .orderBy(desc(candidates.createdAt));
+  getAllCandidates: protectedProcedure
+    .input(
+      z
+        .object({
+          search: z.string().max(255).optional(),
+          limit: z.number().min(1).max(100).optional(),
+          offset: z.number().min(0).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input?.search?.trim();
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
 
-    return rows.map((c) => {
-      const parts = c.fullName.split(" ");
-      const name = parts.slice(0, 2).join(" ");
-      const patronymic = parts.slice(2).join(" ");
+      const conditions = search
+        ? [ilike(candidates.fullName, `%${escapeLike(search)}%`)]
+        : [];
 
-      // Map status to stage for UI compatibility
-      const stageMap: Record<string, "offer" | "interview" | "hired"> = {
-        offer: "offer",
-        interview: "interview",
-        hired: "hired",
-      };
-      const stage = stageMap[c.status ?? ""] ?? ("offer" as const);
+      const rows = await ctx.db
+        .select()
+        .from(candidates)
+        .where(conditions.length > 0 ? conditions[0] : undefined)
+        .orderBy(desc(candidates.createdAt))
+        .limit(limit)
+        .offset(offset);
 
-      return {
-        id: c.id,
-        name,
-        patronymic,
-        city: c.city ?? "",
-        stage,
-        otherResponses: [] as string[],
-        createdAt: c.createdAt
-          ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-          : "",
-        source: c.source ?? "",
-      };
-    });
-  }),
+      return rows.map((c) => {
+        const parts = c.fullName.split(" ");
+        const name = parts.slice(0, 2).join(" ");
+        const patronymic = parts.slice(2).join(" ");
+
+        return {
+          id: c.id,
+          name,
+          patronymic,
+          city: c.city ?? "",
+          status: (c.status ?? "new") as CandidateStatus,
+          createdAt: c.createdAt
+            ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "",
+          source: c.source ?? "",
+        };
+      });
+    }),
 
   getCandidateById: protectedProcedure
     .input(z.object({ id: z.string() }))
@@ -92,10 +106,7 @@ export const candidatesRouter = createTRPCRouter({
         status: c.status ?? "new",
         source: c.source ?? "",
         tags: (c.tags ?? []) as string[],
-        currentPosition: {
-          company: c.currentPosition ?? "",
-          position: c.currentPosition ?? "",
-        },
+        currentPosition: c.currentPosition ?? "",
         languages: (c.languages ?? []) as { name: string; level: string }[],
         skills: (c.skills ?? []) as string[],
         contacts: { phone, telegram, email },
@@ -139,32 +150,34 @@ export const candidatesRouter = createTRPCRouter({
   createCandidate: protectedProcedure
     .input(
       z.object({
-        fullName: z.string().min(1, "Ф.И.О обязательно"),
-        city: z.string().min(1, "Город обязателен"),
+        fullName: z.string().min(1, "Ф.И.О обязательно").max(255),
+        city: z.string().min(1, "Город обязателен").max(255),
         contacts: z
           .array(
             z.object({
-              type: z.string().min(1),
-              value: z.string(),
+              type: z.string().min(1).max(50),
+              value: z.string().max(255),
             }),
           )
+          .max(20)
           .default([]),
-        source: z.string().optional(),
-        salaryExpectation: z.number().min(0).optional(),
+        source: z.string().max(255).optional(),
+        salaryExpectation: z.number().min(0).max(1_000_000_000).optional(),
         salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
-        currentPosition: z.string().optional(),
-        skills: z.array(z.string()).default([]),
+        currentPosition: z.string().max(255).optional(),
+        skills: z.array(z.string().max(255)).max(50).default([]),
         languages: z
           .array(
             z.object({
-              name: z.string(),
-              level: z.string(),
+              name: z.string().max(255),
+              level: z.string().max(10),
             }),
           )
+          .max(20)
           .default([]),
-        status: z.string().default("new"),
-        resumeUrl: z.string().optional(),
-        resumeFileName: z.string().optional(),
+        status: z.string().max(50).default("new"),
+        resumeUrl: z.string().url().max(500).optional(),
+        resumeFileName: z.string().max(255).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -356,12 +369,12 @@ export const candidatesRouter = createTRPCRouter({
   updateCandidate: protectedProcedure
     .input(
       z.object({
-        id: z.string().min(1),
-        fullName: z.string().min(1).optional(),
-        city: z.string().min(1).optional(),
-        source: z.string().optional(),
-        status: z.string().optional(),
-        currentPosition: z.string().optional(),
+        id: z.string().min(1).max(255),
+        fullName: z.string().min(1).max(255).optional(),
+        city: z.string().min(1).max(255).optional(),
+        source: z.string().max(255).optional(),
+        status: z.string().max(50).optional(),
+        currentPosition: z.string().max(255).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

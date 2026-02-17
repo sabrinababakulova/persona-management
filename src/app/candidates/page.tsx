@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
+import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
+import type {
+  Candidate,
+  CandidateStatus,
+  StageBadgeProps,
+} from "~/types/pages/candidates-page";
 import { Checkbox } from "../_components/checkbox";
 import {
   ChevronDownIcon,
@@ -12,43 +18,43 @@ import {
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
-import {
-  QuickAddCandidateModal,
-  type QuickAddCandidatePayload,
-} from "../_components/quick-add-candidate-modal";
+import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 import { QuickOverview } from "./components/quickOverview";
-
-interface Candidate {
-  id: string;
-  name: string;
-  patronymic: string;
-  city: string;
-  stage: "offer" | "interview" | "hired";
-  otherResponses: string[];
-  createdAt: string;
-  source: string;
-  selected?: boolean;
-}
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 
-const stageConfig = {
-  offer: {
-    label: "Оффер",
-    className: "bg-gray-100 text-gray-700",
+const stageConfig: Record<
+  CandidateStatus,
+  { label: string; className: string }
+> = {
+  new: {
+    label: "Новый",
+    className: "bg-blue-50 text-blue-700",
+  },
+  screening: {
+    label: "Отобран",
+    className: "bg-yellow-50 text-yellow-700",
   },
   interview: {
     label: "Интервью",
-    className: "bg-gray-100 text-gray-700",
+    className: "bg-purple-50 text-purple-700",
+  },
+  offer: {
+    label: "Оффер",
+    className: "bg-green-50 text-green-700",
   },
   hired: {
     label: "Нанят",
-    className: "bg-gray-100 text-gray-700",
+    className: "bg-emerald-50 text-emerald-700",
+  },
+  rejected: {
+    label: "Отказ",
+    className: "bg-red-50 text-red-700",
   },
 };
 
-function StageBadge({ stage }: { stage: keyof typeof stageConfig }) {
-  const config = stageConfig[stage];
+function StageBadge({ stage }: StageBadgeProps) {
+  const config = stageConfig[stage] ?? stageConfig.new;
   return (
     <button
       className={`inline-flex items-center gap-1 rounded-lg border border-border-light px-3 py-1.5 font-medium text-sm ${config.className}`}
@@ -117,8 +123,7 @@ export default function CandidatesPage() {
         name: parts.slice(0, 2).join(" "),
         patronymic: parts.slice(2).join(" "),
         city: createdCandidate.city ?? "",
-        stage: "offer",
-        otherResponses: [],
+        status: (createdCandidate.status as CandidateStatus) ?? "new",
         createdAt: createdCandidate.createdAt
           ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
               day: "2-digit",
@@ -246,7 +251,7 @@ export default function CandidatesPage() {
               <input
                 className="w-full rounded-xl border border-border-light bg-white py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск вакансий"
+                placeholder="Поиск кандидатов"
                 type="text"
                 value={searchQuery}
               />
@@ -349,29 +354,14 @@ export default function CandidatesPage() {
                   {candidate.city}
                 </div>
 
-                {/* Stage - Desktop */}
+                {/* Status - Desktop */}
                 <div className="hidden lg:col-span-2 lg:block">
-                  <StageBadge stage={candidate.stage} />
+                  <StageBadge stage={candidate.status} />
                 </div>
 
-                {/* Other Responses - Desktop */}
+                {/* Placeholder - Desktop */}
                 <div className="hidden text-gray-700 lg:col-span-2 lg:block">
-                  {candidate.otherResponses.length > 0 ? (
-                    <div className="flex flex-col gap-0.5">
-                      {candidate.otherResponses.map(
-                        (response: string, idx: number) => (
-                          <span
-                            className="text-primary-blue"
-                            key={`${candidate.id}-${idx}`}
-                          >
-                            {response}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  ) : (
-                    <span>-</span>
-                  )}
+                  <span>-</span>
                 </div>
 
                 {/* Created At - Desktop */}
@@ -384,9 +374,9 @@ export default function CandidatesPage() {
                   {candidate.source}
                 </div>
 
-                {/* Stage - Mobile */}
+                {/* Status - Mobile */}
                 <div className="col-span-6 flex items-center justify-end lg:hidden">
-                  <StageBadge stage={candidate.stage} />
+                  <StageBadge stage={candidate.status} />
                 </div>
 
                 {/* Actions */}

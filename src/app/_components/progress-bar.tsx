@@ -1,8 +1,4 @@
-interface ProgressBarProps {
-  label: string;
-  value: number;
-  max: number;
-}
+import type { ProgressBarProps } from "~/types/components/progress-bar-props";
 
 export function ProgressBar({ label, value, max }: ProgressBarProps) {
   const percentage = (value / max) * 100;

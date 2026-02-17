@@ -23,5 +23,4 @@ export async function sendRegistrationCode(
     text: `Your verification code is ${verificationCode}.`,
     html: `<p>Your verification code is <strong>${verificationCode}</strong>.</p>`,
   });
-
 }

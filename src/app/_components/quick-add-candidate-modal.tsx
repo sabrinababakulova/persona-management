@@ -3,32 +3,17 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
+import type {
+  QuickAddCandidateModalProps,
+  QuickAddCandidatePayload,
+} from "~/types/components/quick-add-candidate-modal";
 import { Dropdown } from "./dropdown";
 import {
   AIGenerationIcon,
   FileUploadIcon,
   SmallChevronDownIcon,
 } from "./icons";
-
-type SelectOption = { value: string; label: string };
-
-export type QuickAddCandidatePayload = {
-  fullName: string;
-  contactType: string;
-  contactValue: string;
-  source: string;
-};
-
-type QuickAddCandidateModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddMoreData?: () => void;
-  onSaveCandidate?: (payload: QuickAddCandidatePayload) => void;
-  isSaving?: boolean;
-  errorMessage?: string | null;
-  contactTypeOptions?: SelectOption[];
-  sourceOptions?: SelectOption[];
-};
+export type { QuickAddCandidatePayload };
 
 export function QuickAddCandidateModal({
   isOpen,

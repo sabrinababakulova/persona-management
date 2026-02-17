@@ -149,29 +149,21 @@ export const dashboardRouter = createTRPCRouter({
       {
         title: "Новые отклики",
         value: String(newCand),
-        change: "15%",
-        changeType: "positive" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Активные вакансии",
         value: String(activeVac),
-        change: "9%",
-        changeType: "neutral" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Активные кандидаты",
         value: String(total),
-        change: "65%",
-        changeType: "negative" as const,
         period: "за последние 7 дней",
       },
       {
         title: "Нанято",
         value: String(hired),
-        change: "2%",
-        changeType: "positive" as const,
         period: "за последние 7 дней",
       },
     ];

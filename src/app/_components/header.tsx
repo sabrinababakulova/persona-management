@@ -8,14 +8,7 @@ import {
   GlobeIcon,
   SearchIcon,
 } from "~/app/_components/icons";
-
-type HeaderProps = {
-  searchQuery?: string;
-  onSearchQueryChange?: (value: string) => void;
-  searchPlaceholder?: string;
-  avatarSrc?: string;
-  avatarAlt?: string;
-};
+import type { HeaderProps } from "~/types/components/header-props";
 
 const DEFAULT_AVATAR_SRC =
   "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim";

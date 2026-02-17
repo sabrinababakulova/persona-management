@@ -1,18 +1,5 @@
 import { ChevronDownIcon } from "~/app/_components/icons";
-import type { SelectOption } from "../candidates/components/types";
-
-type DropdownProps = {
-  label: string;
-  options: SelectOption[];
-  placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  id?: string;
-  hideLabel?: boolean;
-  className?: string;
-  fieldClassName?: string;
-  iconClassName?: string;
-};
+import type { DropdownProps } from "~/types/components/dropdown-props";
 
 export function Dropdown({
   label,

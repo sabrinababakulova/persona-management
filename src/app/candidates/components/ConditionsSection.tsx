@@ -1,32 +1,9 @@
 "use client";
 
+import type { ConditionsSectionProps } from "~/types/candidates/conditions-section";
 import { Dropdown } from "../../_components/dropdown";
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../_components/icons";
 import { Input } from "../../_components/input";
-import type { LanguageItem, SelectOption } from "./types";
-
-interface ConditionsSectionProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  salaryExpectation?: number;
-  salaryCurrency: "UZS" | "USD";
-  onSalaryChange: (value?: number) => void;
-  onCurrencyChange: (value: "UZS" | "USD") => void;
-  skills: string[];
-  skillsOptions: string[];
-  onToggleSkill: (skill: string) => void;
-  onRemoveSkill: (skill: string) => void;
-  languages: LanguageItem[];
-  languageOptions: SelectOption[];
-  languageLevelOptions: SelectOption[];
-  onAddLanguage: () => void;
-  onRemoveLanguage: (id: string) => void;
-  onLanguageChange: (
-    id: string,
-    field: "name" | "level",
-    value: string,
-  ) => void;
-}
 
 export function ConditionsSection({
   isOpen,

@@ -1,6 +1,4 @@
-interface StatusBadgeProps {
-  status: "active" | "draft" | "paused" | "closed" | "archive";
-}
+import type { StatusBadgeProps } from "~/types/components/status-badge-props";
 
 const statusConfig = {
   active: {

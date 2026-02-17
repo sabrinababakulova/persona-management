@@ -1,12 +1,4 @@
-import type { InputHTMLAttributes, ReactNode } from "react";
-
-type InputProps = {
-  label: string;
-  hideLabel?: boolean;
-  endAdornment?: ReactNode;
-  inputClassName?: string;
-  endAdornmentClassName?: string;
-} & InputHTMLAttributes<HTMLInputElement>;
+import type { InputProps } from "~/types/components/input-props";
 
 export function Input({
   label,

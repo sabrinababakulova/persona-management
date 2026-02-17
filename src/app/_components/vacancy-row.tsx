@@ -1,11 +1,4 @@
-interface VacancyRowProps {
-  title: string;
-  subtitle: string;
-  status: string;
-  city: string;
-  responses: number;
-  workType: string;
-}
+import type { VacancyRowProps } from "~/types/components/vacancy-row-props";
 
 export function VacancyRow({
   title,

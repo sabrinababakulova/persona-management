@@ -1,12 +1,6 @@
 "use client";
 
-type MenuItem = { id: string; label: string };
-
-interface SidebarMenuProps {
-  items: MenuItem[];
-  activeId: string;
-  onSelect: (id: string) => void;
-}
+import type { SidebarMenuProps } from "~/types/candidates/sidebar-menu";
 
 export function SidebarMenu({ items, activeId, onSelect }: SidebarMenuProps) {
   return (

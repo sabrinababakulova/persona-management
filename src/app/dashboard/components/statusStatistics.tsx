@@ -1,12 +1,4 @@
-type StatusStat = {
-  label: string;
-  value: number;
-  max: number;
-};
-
-type StatusStatisticsProps = {
-  statusStats?: StatusStat[];
-};
+import type { StatusStatisticsProps } from "~/types/components/status-statistics";
 
 export function StatusStatistics({ statusStats = [] }: StatusStatisticsProps) {
   return (

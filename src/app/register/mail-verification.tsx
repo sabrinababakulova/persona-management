@@ -2,17 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { MailVerificationPageProps } from "~/types/register/mail-verification-page-props";
 
 const CODE_LENGTH = 6;
 const CODE_SLOTS = [0, 1, 2, 3, 4, 5] as const;
-
-type MailVerificationPageProps = {
-  email?: string;
-  errorMessage?: string | null;
-  isSubmitting?: boolean;
-  onBack: () => void;
-  onSubmit: (code: string) => Promise<void> | void;
-};
 
 function maskEmail(email?: string) {
   if (!email) {
@@ -47,6 +40,7 @@ export default function MailVerificationPage({
     [code],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: codex seems to think it's necessary
   useEffect(() => {
     setCode(Array(CODE_LENGTH).fill(""));
   }, [email]);

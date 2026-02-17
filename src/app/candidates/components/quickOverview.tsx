@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   AIGenerationIcon,
   BriefcaseIcon,
@@ -9,18 +9,16 @@ import {
   MailIcon,
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
-
-type QuickOverviewProps = {
-  candidateId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
-};
+import type {
+  QuickOverviewProps,
+  SectionTitleProps,
+} from "~/types/candidates/quick-overview";
 
 function DotSeparator() {
   return <span className="text-text-placeholder">|</span>;
 }
 
-function SectionTitle({ icon, title }: { icon: ReactNode; title: string }) {
+function SectionTitle({ icon, title }: SectionTitleProps) {
   return (
     <div className="flex items-center gap-1.5 text-text-placeholder">
       {icon}
@@ -136,8 +134,7 @@ export function QuickOverview({
     }
 
     const tokens = [
-      candidate.currentPosition.company,
-      candidate.currentPosition.position,
+      candidate.currentPosition,
       ...candidate.languages.slice(0, 1).map((l) => `${l.name} ${l.level}`),
       ...candidate.skills.slice(0, 2),
     ]

@@ -9,7 +9,7 @@ import { ChannelStatistics } from "./components/channelStatistics";
 import { RecentActions } from "./components/recentActions";
 import { StatusStatistics } from "./components/statusStatistics";
 
-export default function DashboardClient() {
+export default function DashboardClient({ userName }: { userName: string }) {
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const hasHandledWelcomeModal = useRef(false);
 
@@ -24,6 +24,9 @@ export default function DashboardClient() {
     },
   });
 
+  const markSeenRef = useRef(markWelcomeModalSeen);
+  markSeenRef.current = markWelcomeModalSeen;
+
   useEffect(() => {
     if (
       !welcomeModalState?.shouldShowWelcomeModal ||
@@ -34,8 +37,8 @@ export default function DashboardClient() {
 
     hasHandledWelcomeModal.current = true;
     setIsWelcomeModalOpen(true);
-    markWelcomeModalSeen.mutate();
-  }, [markWelcomeModalSeen, welcomeModalState?.shouldShowWelcomeModal]);
+    markSeenRef.current.mutate();
+  }, [welcomeModalState?.shouldShowWelcomeModal]);
 
   const currentDate = new Date().toLocaleDateString("ru-RU", {
     weekday: "long",
@@ -69,7 +72,7 @@ export default function DashboardClient() {
                 {currentDate}
               </p>
               <h1 className="font-bold text-3xl text-gray-900">
-                Добро пожаловать, Керим!
+                Добро пожаловать, {userName}!
               </h1>
             </div>
             <button
@@ -99,8 +102,6 @@ export default function DashboardClient() {
           <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
             {dashboardData?.statsCards.map((stat) => (
               <StatsCard
-                change={stat.change}
-                changeType={stat.changeType}
                 key={stat.title}
                 period={stat.period}
                 title={stat.title}

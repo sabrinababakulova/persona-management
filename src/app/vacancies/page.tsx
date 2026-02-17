@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { api } from "~/trpc/react";
+import type { Vacancy } from "~/types/pages/vacancies-page";
 import { Checkbox } from "../_components/checkbox";
 import {
   ChevronDownIcon,
@@ -14,17 +15,6 @@ import {
   SortIcon,
 } from "../_components/icons";
 import { StatusBadge } from "../_components/status-badge";
-
-interface Vacancy {
-  id: string;
-  title: string;
-  level: string;
-  status: "active" | "draft" | "paused" | "closed" | "archive";
-  city: string;
-  responses: number;
-  workType: string;
-  selected?: boolean;
-}
 
 export default function VacanciesPage() {
   const { data: vacanciesData, isLoading } =

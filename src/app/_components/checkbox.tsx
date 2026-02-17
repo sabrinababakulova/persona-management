@@ -1,7 +1,4 @@
-interface CheckboxProps {
-  checked: boolean;
-  onChange: () => void;
-}
+import type { CheckboxProps } from "~/types/components/checkbox-props";
 
 export function Checkbox({ checked, onChange }: CheckboxProps) {
   return (

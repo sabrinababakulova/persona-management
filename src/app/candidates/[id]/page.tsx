@@ -245,7 +245,7 @@ function ArrowLeftIcon({ className }: { className?: string }) {
 
 export default function CandidateDetailPage() {
   const params = useParams();
-  const candidateId = params.id as string;
+  const candidateId = typeof params.id === "string" ? params.id : "";
 
   const { data: candidate, isLoading } =
     api.candidates.getCandidateById.useQuery({ id: candidateId });
@@ -315,7 +315,9 @@ export default function CandidateDetailPage() {
                   </div>
                   <div className="rounded-xl bg-bg-light p-4">
                     <div className="font-bold text-3xl text-gray-900">
-                      ${candidate.salaryExpectation}
+                      {candidate.salaryCurrency === "USD" ? "$" : ""}
+                      {candidate.salaryExpectation}
+                      {candidate.salaryCurrency === "UZS" ? " UZS" : ""}
                     </div>
                     <div className="text-sm text-text-muted">
                       Зарплатные ожидания
@@ -342,10 +344,7 @@ export default function CandidateDetailPage() {
                     <span>Текущая должность</span>
                   </div>
                   <div className="font-medium text-gray-900">
-                    {candidate.currentPosition.company}
-                  </div>
-                  <div className="text-sm text-text-muted">
-                    {candidate.currentPosition.position}
+                    {candidate.currentPosition || "Не указано"}
                   </div>
                 </div>
 
@@ -606,13 +605,19 @@ export default function CandidateDetailPage() {
                     {candidate.activities.map((activity) => (
                       <div className="flex gap-3" key={activity.id}>
                         <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gray-200">
-                          <Image
-                            alt={activity.userName}
-                            className="h-full w-full object-cover"
-                            height={32}
-                            src={activity.userAvatar}
-                            width={32}
-                          />
+                          {activity.userAvatar ? (
+                            <Image
+                              alt={activity.userName}
+                              className="h-full w-full object-cover"
+                              height={32}
+                              src={activity.userAvatar}
+                              width={32}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-primary-blue font-medium text-white text-xs">
+                              {activity.userName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="mb-1 flex items-center justify-between">
