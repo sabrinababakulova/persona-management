@@ -4,12 +4,11 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   protectedProcedure,
-  publicProcedure,
 } from "~/server/api/trpc";
 import { recentActivityLogs, vacancies } from "~/server/db/schema";
 
 export const vacanciesRouter = createTRPCRouter({
-  getAllVacancies: publicProcedure.query(async ({ ctx }) => {
+  getAllVacancies: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.select().from(vacancies);
 
     return rows.map((v) => ({
@@ -23,7 +22,7 @@ export const vacanciesRouter = createTRPCRouter({
     }));
   }),
 
-  searchVacancies: publicProcedure
+  searchVacancies: protectedProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
       const rows = input.query

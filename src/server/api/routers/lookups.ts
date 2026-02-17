@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidateContactTypes,
   candidateLanguageLevels,
@@ -16,7 +16,7 @@ const withFallback = <T>(values: T[], fallback: readonly T[]): T[] =>
   values.length > 0 ? values : [...fallback];
 
 export const lookupsRouter = createTRPCRouter({
-  getCandidateCreateOptions: publicProcedure.query(async ({ ctx }) => {
+  getCandidateCreateOptions: protectedProcedure.query(async ({ ctx }) => {
     try {
       const [
         contactTypes,

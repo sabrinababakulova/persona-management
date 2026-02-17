@@ -33,6 +33,12 @@ export default function LoginPage() {
         redirect: false,
       });
 
+      if (result?.code === "rate_limited") {
+        setErrorMessage("Слишком много попыток входа. Попробуйте позже.");
+        setIsSubmitting(false);
+        return;
+      }
+
       if (result?.error) {
         setErrorMessage("Неверная почта или пароль.");
         setIsSubmitting(false);

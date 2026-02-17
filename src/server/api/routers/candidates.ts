@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   protectedProcedure,
-  publicProcedure,
 } from "~/server/api/trpc";
 import {
   candidateContactTypes,
@@ -20,7 +19,7 @@ import {
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
 export const candidatesRouter = createTRPCRouter({
-  getAllCandidates: publicProcedure.query(async ({ ctx }) => {
+  getAllCandidates: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
       .select()
       .from(candidates)
@@ -58,7 +57,7 @@ export const candidatesRouter = createTRPCRouter({
     });
   }),
 
-  getCandidateById: publicProcedure
+  getCandidateById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
@@ -137,7 +136,7 @@ export const candidatesRouter = createTRPCRouter({
       };
     }),
 
-  createCandidate: publicProcedure
+  createCandidate: protectedProcedure
     .input(
       z.object({
         fullName: z.string().min(1, "Ф.И.О обязательно"),
