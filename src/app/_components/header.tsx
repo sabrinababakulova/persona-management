@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
+import { AvatarProfileMenu } from "~/app/_components/avatar-profile-menu";
 import {
   BellIcon,
   ChevronDownIcon,
@@ -64,15 +64,7 @@ export function Header({
             <BellIcon className="h-5 w-5" />
           </button>
 
-          <div className="h-10 w-10 overflow-hidden rounded-[40px] bg-[#CEDBF5]">
-            <Image
-              alt={avatarAlt}
-              className="h-full w-full object-cover"
-              height={40}
-              src={avatarSrc}
-              width={40}
-            />
-          </div>
+          <AvatarProfileMenu avatarAlt={avatarAlt} avatarSrc={avatarSrc} />
         </div>
       </div>
     </header>
