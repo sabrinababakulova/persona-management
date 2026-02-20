@@ -4,7 +4,7 @@ export function SideMenu({ items, activeId, onSelect }: SideMenuProps) {
   return (
     <aside className="w-full max-w-[220px] pt-12">
       <nav
-        aria-label="Навигация по созданию вакансии"
+        aria-label="Навигация по дополнительному меню"
         className="flex flex-col"
       >
         {items.map((item) => (
