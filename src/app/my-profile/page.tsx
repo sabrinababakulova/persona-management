@@ -17,8 +17,8 @@ export default async function MyProfilePage() {
       avatarSrc={session.user.image ?? DEFAULT_AVATAR_SRC}
       companyName="ООО Инкорпорейтед"
       userCity="Ташкент"
-      userEmail={session.user.email ?? "sabsbabakulova@gmail.com"}
-      userFullName={session.user.name ?? "Сабрина Бабакулова"}
+      userEmail={session.user.email ?? ""}
+      userFullName={session.user.name ?? ""}
     />
   );
 }
