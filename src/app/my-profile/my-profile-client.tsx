@@ -127,15 +127,15 @@ export function MyProfileClient({
 
   return (
     <main className="h-full bg-white">
-      <div className="mx-auto flex w-full max-w-[1132px] gap-8 px-6 pt-8 pb-8">
+      <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
         <SideMenu
           activeId={activeSectionId}
           items={PROFILE_MENU_ITEMS.map((item) => ({ ...item }))}
           onSelect={setActiveSectionId}
         />
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <div className="w-full max-w-[558px]">
+        <section className="flex flex-3 flex-col">
+          <div className="w-full max-w-[560px]">
             <Breadcrumbs
               label="Мой профиль"
               rootHref="/dashboard"

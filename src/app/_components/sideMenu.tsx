@@ -2,7 +2,7 @@ import type { SideMenuProps } from "~/types/components/vacancies-side-menu";
 
 export function SideMenu({ items, activeId, onSelect }: SideMenuProps) {
   return (
-    <aside className="w-full max-w-[220px] pt-12">
+    <aside className="w-full flex-1 pt-12">
       <nav
         aria-label="Навигация по дополнительному меню"
         className="flex flex-col"
