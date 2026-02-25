@@ -15,6 +15,8 @@ export { GlobeIcon } from "./GlobeIcon";
 export { LogoutIcon } from "./LogoutIcon";
 export { MailIcon } from "./MailIcon";
 export { MoreIcon } from "./MoreIcon";
+export { NoCandidates } from "./NoCandidates";
+export { NoVacancies } from "./NoVacancies";
 export { PeopleIcon } from "./PeopleIcon";
 export { PlusIcon } from "./PlusIcon";
 export { ProfileOutlineIcon } from "./ProfileOutlineIcon";
