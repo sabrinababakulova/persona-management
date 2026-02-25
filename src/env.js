@@ -14,6 +14,7 @@ export const env = createEnv({
       .default("development"),
     MAIL_LOGIN: z.string(),
     MAIL_LOGIN_PASSWORD: z.string(),
+    GOOGLE_API_KEY: z.string().min(1).optional(),
   },
 
   /**
@@ -35,6 +36,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     MAIL_LOGIN: process.env.MAIL_LOGIN,
     MAIL_LOGIN_PASSWORD: process.env.MAIL_LOGIN_PASSWORD,
+    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
