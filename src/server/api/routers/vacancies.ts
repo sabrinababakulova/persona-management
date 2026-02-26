@@ -45,6 +45,36 @@ export const vacanciesRouter = createTRPCRouter({
       }));
     }),
 
+  getVacancyById: protectedProcedure
+    .input(z.object({ id: z.string().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select()
+        .from(vacancies)
+        .where(eq(vacancies.id, input.id))
+        .limit(1);
+
+      const vacancy = rows[0];
+      if (!vacancy) {
+        return null;
+      }
+
+      return {
+        id: vacancy.id,
+        title: vacancy.title,
+        level: vacancy.level ?? "",
+        status: vacancy.status as
+          | "active"
+          | "draft"
+          | "paused"
+          | "closed"
+          | "archive",
+        city: vacancy.city ?? "",
+        responses: vacancy.responses ?? 0,
+        workType: vacancy.workType ?? "",
+      };
+    }),
+
   searchVacancies: protectedProcedure
     .input(z.object({ query: z.string().max(255) }))
     .query(async ({ ctx, input }) => {

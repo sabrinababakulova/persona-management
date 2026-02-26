@@ -18,8 +18,7 @@ export async function POST(request: Request, context: RouteContext) {
   if (!apiKey) {
     return Response.json(
       {
-        error:
-          "GOOGLE_API_KEY не задан в переменных окружения",
+        error: "GOOGLE_API_KEY не задан в переменных окружения",
       },
       { status: 500 },
     );

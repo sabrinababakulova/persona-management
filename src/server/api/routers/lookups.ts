@@ -9,8 +9,12 @@ import {
   candidateSkills,
   candidateSources,
   candidateStatusOptions,
+  vacancyLevels,
+  vacancyStatusOptions,
+  vacancyWorkTypes,
 } from "~/server/db/schema";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
+import { DEFAULT_VACANCY_LOOKUPS } from "~/shared/vacancy-lookups";
 
 const withFallback = <T>(values: T[], fallback: readonly T[]): T[] =>
   values.length > 0 ? values : [...fallback];
@@ -131,6 +135,59 @@ export const lookupsRouter = createTRPCRouter({
         languages: [...DEFAULT_CANDIDATE_LOOKUPS.languages],
         languageLevels: [...DEFAULT_CANDIDATE_LOOKUPS.languageLevels],
         statusOptions: [...DEFAULT_CANDIDATE_LOOKUPS.statusOptions],
+      };
+    }
+  }),
+
+  getVacancyCreateOptions: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const [levels, workTypes, statusOptions] = await Promise.all([
+        ctx.db
+          .select({
+            value: vacancyLevels.value,
+            label: vacancyLevels.label,
+          })
+          .from(vacancyLevels)
+          .where(eq(vacancyLevels.isActive, true))
+          .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
+        ctx.db
+          .select({
+            value: vacancyWorkTypes.value,
+            label: vacancyWorkTypes.label,
+          })
+          .from(vacancyWorkTypes)
+          .where(eq(vacancyWorkTypes.isActive, true))
+          .orderBy(
+            asc(vacancyWorkTypes.sortOrder),
+            asc(vacancyWorkTypes.label),
+          ),
+        ctx.db
+          .select({
+            value: vacancyStatusOptions.value,
+            label: vacancyStatusOptions.label,
+          })
+          .from(vacancyStatusOptions)
+          .where(eq(vacancyStatusOptions.isActive, true))
+          .orderBy(
+            asc(vacancyStatusOptions.sortOrder),
+            asc(vacancyStatusOptions.label),
+          ),
+      ]);
+
+      return {
+        levels: withFallback(levels, DEFAULT_VACANCY_LOOKUPS.levels),
+        workTypes: withFallback(workTypes, DEFAULT_VACANCY_LOOKUPS.workTypes),
+        statusOptions: withFallback(
+          statusOptions,
+          DEFAULT_VACANCY_LOOKUPS.statusOptions,
+        ),
+      };
+    } catch (error) {
+      console.error("lookups.getVacancyCreateOptions failed", error);
+      return {
+        levels: [...DEFAULT_VACANCY_LOOKUPS.levels],
+        workTypes: [...DEFAULT_VACANCY_LOOKUPS.workTypes],
+        statusOptions: [...DEFAULT_VACANCY_LOOKUPS.statusOptions],
       };
     }
   }),

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { z } from "zod";
 import { Dropdown } from "~/app/_components/dropdown";
+import { FormProgress } from "~/app/_components/form-progress";
 import { AIGenerationIcon, FileUploadIcon } from "~/app/_components/icons";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
@@ -63,13 +64,7 @@ export function CreateCandidateForm() {
   const [errors, setErrors] = useState<Errors>({});
 
   // Use non-suspense query so the page doesn't 500 if lookups fail.
-  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery(
-    undefined,
-    {
-      retry: false,
-      staleTime: 5 * 60 * 1000,
-    },
-  );
+  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
   const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
 
   // Form state
@@ -303,32 +298,12 @@ export function CreateCandidateForm() {
           />
         </div>
 
-        <div className="mb-9 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-[14px] text-primary-blue tracking-[-0.28px]">
-              {progress.percentage}% заполнено
-            </span>
-            <span className="text-[12px] text-text-placeholder tracking-[-0.24px]">
-              {progress.filled} из {progress.total} полей
-            </span>
-          </div>
-          <div className="h-2 w-full rounded-[10px] bg-border-input">
-            <div
-              className="h-full rounded-[10px] bg-primary-blue transition-all duration-300"
-              style={{ width: `${progress.percentage}%` }}
-            />
-          </div>
-          {progress.missing.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-[14px] tracking-[-0.28px]">
-              <span className="text-text-placeholder">Осталось заполнить:</span>
-              {progress.missing.map((field) => (
-                <span className="font-medium text-accent-red" key={field}>
-                  {field}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+        <FormProgress
+          filled={progress.filled}
+          missing={progress.missing}
+          percentage={progress.percentage}
+          total={progress.total}
+        />
 
         <section className="mb-6 flex flex-col gap-6">
           <div className="flex items-center justify-between">

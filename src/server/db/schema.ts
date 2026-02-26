@@ -309,3 +309,30 @@ export const candidateStatusOptions = createTable(
     isActive: d.boolean().notNull().default(true),
   }),
 );
+
+export const vacancyStatusOptions = createTable(
+  "vacancy_status_option",
+  (d) => ({
+    value: d.varchar({ length: 50 }).notNull().primaryKey(),
+    label: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    isActive: d.boolean().notNull().default(true),
+  }),
+);
+
+export const vacancyLevels = createTable("vacancy_level_option", (d) => ({
+  value: d.varchar({ length: 50 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
+export const vacancyWorkTypes = createTable(
+  "vacancy_work_type_option",
+  (d) => ({
+    value: d.varchar({ length: 50 }).notNull().primaryKey(),
+    label: d.varchar({ length: 255 }).notNull(),
+    sortOrder: d.integer().notNull().default(0),
+    isActive: d.boolean().notNull().default(true),
+  }),
+);

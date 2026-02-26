@@ -263,9 +263,12 @@ export default function VacanciesPage() {
                           onChange={() => toggleSelection(vacancy.id)}
                         />
                         <div className="min-w-0">
-                          <div className="truncate font-medium text-[14px] text-text-heading leading-none">
+                          <Link
+                            className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                            href={`/vacancies/${vacancy.id}`}
+                          >
                             {vacancy.title}
-                          </div>
+                          </Link>
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {vacancy.level}
                           </div>

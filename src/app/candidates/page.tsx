@@ -81,13 +81,7 @@ export default function CandidatesPage() {
   const utils = api.useUtils();
   const { data: candidatesData, isLoading } =
     api.candidates.getAllCandidates.useQuery();
-  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery(
-    undefined,
-    {
-      retry: false,
-      staleTime: 5 * 60 * 1000,
-    },
-  );
+  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
