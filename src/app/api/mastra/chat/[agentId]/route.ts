@@ -14,11 +14,11 @@ export async function POST(request: Request, context: RouteContext) {
     return Response.json({ error: "Не авторизован" }, { status: 401 });
   }
 
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
     return Response.json(
       {
-        error: "GOOGLE_API_KEY не задан в переменных окружения",
+        error: "GOOGLE_GENERATIVE_AI_API_KEY не задан в переменных окружения",
       },
       { status: 500 },
     );

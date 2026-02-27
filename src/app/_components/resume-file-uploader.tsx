@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import { api } from "~/trpc/react";
 import { bytesToBase64 } from "~/utils/bytes-to-base64";
 import { FileUploadIcon } from "./icons";
 
-type ResumeUploadMeta = {
+export type ResumeUploadMeta = {
   resumeUrl: string;
   resumeFileName: string;
   resumeFileSize: string;
+  prefillData: CandidateResumePrefillData;
+  prefillStatus: "success" | "no_data" | "failed";
+  prefillErrorMessage?: string;
 };
 
 type ResumeFileUploaderProps = {
@@ -69,6 +73,12 @@ export function ResumeFileUploader({
 
       setResumeFileName(uploadedResume.resumeFileName);
       setResumeFileSize(uploadedResume.resumeFileSize);
+      if (uploadedResume.prefillStatus === "failed") {
+        setUploadError(
+          uploadedResume.prefillErrorMessage ??
+            "Не удалось проанализировать резюме автоматически",
+        );
+      }
       onUploaded?.(uploadedResume);
     } catch (error) {
       setUploadError(

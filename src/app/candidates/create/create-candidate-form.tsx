@@ -5,7 +5,10 @@ import { useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { AIGenerationIcon } from "~/app/_components/icons";
-import { ResumeFileUploader } from "~/app/_components/resume-file-uploader";
+import {
+  ResumeFileUploader,
+  type ResumeUploadMeta,
+} from "~/app/_components/resume-file-uploader";
 import { candidateFormSchema } from "~/schemas/candidate";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
@@ -239,6 +242,59 @@ export function CreateCandidateForm() {
     });
   };
 
+  const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
+    const { prefillData } = uploadedResume;
+    setFormData((prev) => ({
+      ...prev,
+      resumeUrl: uploadedResume.resumeUrl,
+      resumeFileName: uploadedResume.resumeFileName,
+      resumeFileSize: uploadedResume.resumeFileSize,
+      fullName: prefillData.fullName || prev.fullName,
+      city: prefillData.city || prev.city,
+      contacts:
+        prefillData.contacts.length > 0 ? prefillData.contacts : prev.contacts,
+      source: prefillData.source || prev.source,
+      salaryExpectation:
+        prefillData.salaryExpectation ?? prev.salaryExpectation,
+      salaryCurrency: prefillData.salaryCurrency || prev.salaryCurrency,
+      currentPosition: prefillData.currentPosition || prev.currentPosition,
+      skills: prefillData.skills.length > 0 ? prefillData.skills : prev.skills,
+      languages:
+        prefillData.languages.length > 0
+          ? prefillData.languages
+          : prev.languages,
+      status: prefillData.status || prev.status,
+    }));
+
+    if (prefillData.contacts.length > 0) {
+      setContacts(
+        prefillData.contacts.map((contact) => ({
+          id: generateId(),
+          type: contact.type,
+          value: contact.value,
+        })),
+      );
+    }
+
+    if (prefillData.languages.length > 0) {
+      setLanguages(
+        prefillData.languages.map((language) => ({
+          id: generateId(),
+          name: language.name,
+          level: language.level,
+        })),
+      );
+    }
+
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+      delete nextErrors.fullName;
+      delete nextErrors.city;
+      delete nextErrors.salaryExpectation;
+      return nextErrors;
+    });
+  };
+
   return (
     <div className="relative flex w-full min-w-0 justify-center">
       <div className="w-full max-w-[758px] px-6 pt-[104px] pb-12">
@@ -279,14 +335,7 @@ export function CreateCandidateForm() {
           <ResumeFileUploader
             candidateId={candidateDraftId}
             disabled={createCandidate.isPending}
-            onUploaded={(uploadedResume) =>
-              setFormData((prev) => ({
-                ...prev,
-                resumeUrl: uploadedResume.resumeUrl,
-                resumeFileName: uploadedResume.resumeFileName,
-                resumeFileSize: uploadedResume.resumeFileSize,
-              }))
-            }
+            onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
           <p className="flex items-center gap-1 font-medium text-[#9747FF] text-[14px] tracking-[-0.28px]">

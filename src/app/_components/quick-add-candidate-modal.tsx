@@ -8,11 +8,8 @@ import type {
   QuickAddCandidatePayload,
 } from "~/types/components/quick-add-candidate-modal";
 import { Dropdown } from "./dropdown";
+import { AIGenerationIcon, SmallChevronDownIcon } from "./icons";
 import { ResumeFileUploader } from "./resume-file-uploader";
-import {
-  AIGenerationIcon,
-  SmallChevronDownIcon,
-} from "./icons";
 export type { QuickAddCandidatePayload };
 
 export function QuickAddCandidateModal({

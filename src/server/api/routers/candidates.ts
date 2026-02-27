@@ -2,12 +2,6 @@ import { writeFile } from "node:fs/promises";
 import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import type { CandidateStatus } from "~/types/server/candidates";
-
-function escapeLike(value: string) {
-  return value.replace(/[%_\\]/g, "\\$&");
-}
-
 import {
   candidateContactTypes,
   candidateLanguageLevels,
@@ -19,6 +13,7 @@ import {
   candidates,
   recentActivityLogs,
 } from "~/server/db/schema";
+import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import {
   buildCandidateResumeUrl,
   ensureCandidateResumeDirectory,
@@ -32,6 +27,11 @@ import {
   sanitizeResumeFileName,
 } from "~/server/storage/resume-storage";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
+import type { CandidateStatus } from "~/types/server/candidates";
+
+function escapeLike(value: string) {
+  return value.replace(/[%_\\]/g, "\\$&");
+}
 
 export const candidatesRouter = createTRPCRouter({
   uploadResume: protectedProcedure
@@ -111,7 +111,8 @@ export const candidatesRouter = createTRPCRouter({
       if (!isAllowedPdfMimeType(input.mimeType)) {
         throw new TRPCError({
           code: "UNSUPPORTED_MEDIA_TYPE",
-          message: "Недопустимый MIME-тип файла. Разрешен только application/pdf.",
+          message:
+            "Недопустимый MIME-тип файла. Разрешен только application/pdf.",
         });
       }
 
@@ -147,6 +148,11 @@ export const candidatesRouter = createTRPCRouter({
       const resumeFileSize = formatFileSize(fileBuffer.length);
       const resumeUrl = buildCandidateResumeUrl(input.candidateId);
 
+      const prefillExtraction = await extractCandidateResumePrefillData({
+        fileBuffer,
+        fileName: resumeFileName,
+      });
+
       await ctx.db
         .update(candidates)
         .set({
@@ -161,6 +167,9 @@ export const candidatesRouter = createTRPCRouter({
         resumeUrl,
         resumeFileName,
         resumeFileSize,
+        prefillData: prefillExtraction.prefillData,
+        prefillStatus: prefillExtraction.status,
+        prefillErrorMessage: prefillExtraction.errorMessage,
       };
     }),
 
