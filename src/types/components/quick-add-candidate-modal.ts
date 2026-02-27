@@ -1,10 +1,14 @@
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 
 export type QuickAddCandidatePayload = {
+  candidateId: string;
   fullName: string;
   contactType: string;
   contactValue: string;
   source: string;
+  resumeUrl?: string;
+  resumeFileName?: string;
+  resumeFileSize?: string;
 };
 
 export type QuickAddCandidateModalProps = {

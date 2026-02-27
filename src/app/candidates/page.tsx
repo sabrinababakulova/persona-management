@@ -243,6 +243,7 @@ export default function CandidatesPage() {
 
   const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
     createQuickCandidate.mutate({
+      id: payload.candidateId,
       fullName: payload.fullName,
       city: "Не указан",
       contacts: payload.contactValue
@@ -250,6 +251,9 @@ export default function CandidatesPage() {
         : [],
       source: payload.source || undefined,
       status: "new",
+      resumeUrl: payload.resumeUrl || undefined,
+      resumeFileName: payload.resumeFileName || undefined,
+      resumeFileSize: payload.resumeFileSize || undefined,
     });
   };
 

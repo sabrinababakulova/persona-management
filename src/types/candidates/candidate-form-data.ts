@@ -11,4 +11,5 @@ export type CandidateFormData = {
   status: string;
   resumeUrl?: string;
   resumeFileName?: string;
+  resumeFileSize?: string;
 };

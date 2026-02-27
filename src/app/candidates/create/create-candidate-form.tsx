@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { z } from "zod";
+import { useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
-import { AIGenerationIcon, FileUploadIcon } from "~/app/_components/icons";
+import { AIGenerationIcon } from "~/app/_components/icons";
+import { ResumeFileUploader } from "~/app/_components/resume-file-uploader";
+import { candidateFormSchema } from "~/schemas/candidate";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import type { CandidateFormData } from "~/types/candidates/candidate-form-data";
@@ -15,36 +16,11 @@ import type {
   LanguageItem,
 } from "~/types/candidates/components";
 import type { CandidateStatus } from "~/types/server/candidates";
+import { calculateCandidateFormProgress } from "~/utils/candidate-form-progress";
 import { BasicInfoSection } from "../components/BasicInfoSection";
 import { ConditionsSection } from "../components/ConditionsSection";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
-
-// Zod validation schema
-const contactSchema = z.object({
-  type: z.string().min(1, "Выберите тип контакта"),
-  value: z.string().min(1, "Контакт обязателен"),
-});
-
-const languageSchema = z.object({
-  name: z.string().min(1, "Выберите язык"),
-  level: z.string().min(1, "Выберите уровень"),
-});
-
-const candidateFormSchema = z.object({
-  fullName: z.string().min(1, "Ф.И.О обязательно"),
-  city: z.string().min(1, "Город обязателен"),
-  contacts: z.array(contactSchema).default([]),
-  source: z.string().optional(),
-  salaryExpectation: z.number().min(0).optional(),
-  salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
-  currentPosition: z.string().optional(),
-  skills: z.array(z.string()).default([]),
-  languages: z.array(languageSchema).default([]),
-  status: z.string().default("new"),
-  resumeUrl: z.string().optional(),
-  resumeFileName: z.string().optional(),
-});
 
 // Required fields for progress tracking
 const REQUIRED_FIELDS = [
@@ -59,9 +35,11 @@ const generateId = () => crypto.randomUUID();
 export function CreateCandidateForm() {
   const router = useRouter();
   const utils = api.useUtils();
+  const [candidateDraftId] = useState(() => crypto.randomUUID());
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [requirementsOpen, setRequirementsOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
+  const [isResumeUploading, setIsResumeUploading] = useState(false);
 
   // Use non-suspense query so the page doesn't 500 if lookups fail.
   const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
@@ -81,6 +59,7 @@ export function CreateCandidateForm() {
     status: "new",
     resumeUrl: "",
     resumeFileName: "",
+    resumeFileSize: "",
   });
 
   // Contacts and languages with IDs for stable keys
@@ -92,30 +71,7 @@ export function CreateCandidateForm() {
     { id: generateId(), name: "", level: "" },
   ]);
 
-  // Calculate progress
-  const calculateProgress = useCallback(() => {
-    let filled = 0;
-    const total = REQUIRED_FIELDS.length;
-    const missing: string[] = [];
-
-    for (const field of REQUIRED_FIELDS) {
-      const value = formData[field.key as keyof CandidateFormData];
-      if (value && (typeof value !== "string" || value.trim() !== "")) {
-        filled++;
-      } else {
-        missing.push(field.label);
-      }
-    }
-
-    return {
-      percentage: Math.round((filled / total) * 100),
-      filled,
-      total,
-      missing,
-    };
-  }, [formData]);
-
-  const progress = calculateProgress();
+  const progress = calculateCandidateFormProgress(formData, REQUIRED_FIELDS);
 
   // Create candidate mutation
   const createCandidate = api.candidates.createCandidate.useMutation({
@@ -277,7 +233,10 @@ export function CreateCandidateForm() {
       ),
     };
 
-    createCandidate.mutate(cleanedData);
+    createCandidate.mutate({
+      ...cleanedData,
+      id: candidateDraftId,
+    });
   };
 
   return (
@@ -317,17 +276,19 @@ export function CreateCandidateForm() {
               Заполнить поля
             </button>
           </div>
-          <div className="flex h-24 w-full flex-col items-center justify-center rounded-[6px] border border-border-input border-dashed bg-bg-input px-3 py-[14px]">
-            <div className="flex items-center gap-2">
-              <FileUploadIcon className="h-5 w-5 text-text-placeholder" />
-              <span className="font-medium text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px]">
-                Загрузите PDF файл
-              </span>
-            </div>
-            <p className="font-normal text-[12px] text-text-disabled leading-[1.4] tracking-[-0.24px]">
-              Файл должен быть менее 10МБ
-            </p>
-          </div>
+          <ResumeFileUploader
+            candidateId={candidateDraftId}
+            disabled={createCandidate.isPending}
+            onUploaded={(uploadedResume) =>
+              setFormData((prev) => ({
+                ...prev,
+                resumeUrl: uploadedResume.resumeUrl,
+                resumeFileName: uploadedResume.resumeFileName,
+                resumeFileSize: uploadedResume.resumeFileSize,
+              }))
+            }
+            onUploadingChange={setIsResumeUploading}
+          />
           <p className="flex items-center gap-1 font-medium text-[#9747FF] text-[14px] tracking-[-0.28px]">
             <AIGenerationIcon className="h-4 w-4" />
             AI Мы проанализируем резюме и автозаполним поля
@@ -383,7 +344,7 @@ export function CreateCandidateForm() {
           )}
           <button
             className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-white tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
-            disabled={createCandidate.isPending}
+            disabled={createCandidate.isPending || isResumeUploading}
             onClick={handleSubmit}
             type="button"
           >

@@ -8,9 +8,9 @@ import type {
   QuickAddCandidatePayload,
 } from "~/types/components/quick-add-candidate-modal";
 import { Dropdown } from "./dropdown";
+import { ResumeFileUploader } from "./resume-file-uploader";
 import {
   AIGenerationIcon,
-  FileUploadIcon,
   SmallChevronDownIcon,
 } from "./icons";
 export type { QuickAddCandidatePayload };
@@ -32,7 +32,14 @@ export function QuickAddCandidateModal({
   const [contactType, setContactType] = useState(
     contactTypeOptions[0]?.value ?? "",
   );
+  const [candidateDraftId, setCandidateDraftId] = useState(() =>
+    crypto.randomUUID(),
+  );
   const [source, setSource] = useState(sourceOptions[0]?.value ?? "");
+  const [resumeUrl, setResumeUrl] = useState("");
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeFileSize, setResumeFileSize] = useState("");
+  const [isResumeUploading, setIsResumeUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,7 +55,12 @@ export function QuickAddCandidateModal({
       setFullName("");
       setContactValue("");
       setContactType(contactTypeOptions[0]?.value ?? "");
+      setCandidateDraftId(crypto.randomUUID());
       setSource(sourceOptions[0]?.value ?? "");
+      setResumeUrl("");
+      setResumeFileName("");
+      setResumeFileSize("");
+      setIsResumeUploading(false);
       setLocalError(null);
     }
   }, [contactTypeOptions, isOpen, sourceOptions]);
@@ -130,10 +142,14 @@ export function QuickAddCandidateModal({
 
     setLocalError(null);
     onSaveCandidate?.({
+      candidateId: candidateDraftId,
       fullName: fullName.trim(),
       contactType,
       contactValue: contactValue.trim(),
       source,
+      resumeUrl: resumeUrl || undefined,
+      resumeFileName: resumeFileName || undefined,
+      resumeFileSize: resumeFileSize || undefined,
     });
   };
 
@@ -237,17 +253,16 @@ export function QuickAddCandidateModal({
             <p className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
               Резюме
             </p>
-            <div className="flex h-24 w-full flex-col items-center justify-center rounded-[6px] border border-border-input border-dashed bg-bg-input px-3 py-[14px]">
-              <div className="flex items-center gap-2">
-                <FileUploadIcon className="h-5 w-5 text-text-placeholder" />
-                <span className="font-medium text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px]">
-                  Upload pdf file
-                </span>
-              </div>
-              <p className="font-normal text-[12px] text-text-disabled leading-[1.4] tracking-[-0.24px]">
-                File should be less than 120MB
-              </p>
-            </div>
+            <ResumeFileUploader
+              candidateId={candidateDraftId}
+              disabled={isSaving}
+              onUploaded={(uploadedResume) => {
+                setResumeUrl(uploadedResume.resumeUrl);
+                setResumeFileName(uploadedResume.resumeFileName);
+                setResumeFileSize(uploadedResume.resumeFileSize);
+              }}
+              onUploadingChange={setIsResumeUploading}
+            />
             <p className="flex gap-1 font-medium text-[#9747FF] text-[12px] leading-[1.4] tracking-[-0.24px]">
               <span className="flex font-bold">
                 <AIGenerationIcon />
@@ -273,7 +288,7 @@ export function QuickAddCandidateModal({
             </Link>
             <button
               className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-white leading-none tracking-[-0.32px] disabled:opacity-60"
-              disabled={isSaving}
+              disabled={isSaving || isResumeUploading}
               onClick={handleSave}
               type="button"
             >

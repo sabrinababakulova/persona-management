@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -18,9 +19,151 @@ import {
   candidates,
   recentActivityLogs,
 } from "~/server/db/schema";
+import {
+  buildCandidateResumeUrl,
+  ensureCandidateResumeDirectory,
+  formatFileSize,
+  getCandidateResumeFilePath,
+  hasPdfEofMarker,
+  hasPdfExtension,
+  hasPdfMagicHeader,
+  isAllowedPdfMimeType,
+  MAX_RESUME_FILE_SIZE_BYTES,
+  sanitizeResumeFileName,
+} from "~/server/storage/resume-storage";
 import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 
 export const candidatesRouter = createTRPCRouter({
+  uploadResume: protectedProcedure
+    .input(
+      z.object({
+        candidateId: z.string().uuid(),
+        fileName: z.string().min(1).max(255),
+        mimeType: z.string().max(255).optional().default(""),
+        fileBase64: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      const normalizedBase64 = input.fileBase64.replace(/\s+/g, "");
+      const base64Padding = normalizedBase64.endsWith("==")
+        ? 2
+        : normalizedBase64.endsWith("=")
+          ? 1
+          : 0;
+      const estimatedFileSize =
+        Math.floor((normalizedBase64.length * 3) / 4) - base64Padding;
+
+      if (estimatedFileSize <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Файл пустой",
+        });
+      }
+
+      if (estimatedFileSize > MAX_RESUME_FILE_SIZE_BYTES) {
+        throw new TRPCError({
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Файл слишком большой. Максимум 10MB.",
+        });
+      }
+
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = Buffer.from(normalizedBase64, "base64");
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Некорректный формат файла",
+        });
+      }
+
+      if (fileBuffer.length <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Файл пустой",
+        });
+      }
+
+      if (fileBuffer.length > MAX_RESUME_FILE_SIZE_BYTES) {
+        throw new TRPCError({
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Файл слишком большой. Максимум 10MB.",
+        });
+      }
+
+      const recomputedBase64 = fileBuffer.toString("base64").replace(/=+$/, "");
+      if (recomputedBase64 !== normalizedBase64.replace(/=+$/, "")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Некорректный формат файла",
+        });
+      }
+
+      if (!hasPdfExtension(input.fileName)) {
+        throw new TRPCError({
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          message: "Недопустимое расширение файла. Разрешены только PDF.",
+        });
+      }
+
+      if (!isAllowedPdfMimeType(input.mimeType)) {
+        throw new TRPCError({
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          message: "Недопустимый MIME-тип файла. Разрешен только application/pdf.",
+        });
+      }
+
+      if (!hasPdfMagicHeader(fileBuffer) || !hasPdfEofMarker(fileBuffer)) {
+        throw new TRPCError({
+          code: "UNSUPPORTED_MEDIA_TYPE",
+          message: "Файл не является валидным PDF",
+        });
+      }
+
+      let resumePath: string;
+      try {
+        resumePath = getCandidateResumeFilePath(input.candidateId);
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Некорректный идентификатор кандидата",
+        });
+      }
+
+      try {
+        await ensureCandidateResumeDirectory(input.candidateId);
+        await writeFile(resumePath, fileBuffer, { mode: 0o600 });
+      } catch (error) {
+        console.error("Failed to save candidate resume file", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Не удалось сохранить файл",
+        });
+      }
+
+      const resumeFileName = sanitizeResumeFileName(input.fileName);
+      const resumeFileSize = formatFileSize(fileBuffer.length);
+      const resumeUrl = buildCandidateResumeUrl(input.candidateId);
+
+      await ctx.db
+        .update(candidates)
+        .set({
+          resumeUrl,
+          resumeFileName,
+          resumeFileSize,
+        })
+        .where(eq(candidates.id, input.candidateId));
+
+      return {
+        candidateId: input.candidateId,
+        resumeUrl,
+        resumeFileName,
+        resumeFileSize,
+      };
+    }),
+
   getAllCandidates: protectedProcedure
     .input(
       z
@@ -150,6 +293,7 @@ export const candidatesRouter = createTRPCRouter({
   createCandidate: protectedProcedure
     .input(
       z.object({
+        id: z.string().uuid().optional(),
         fullName: z.string().min(1, "Ф.И.О обязательно").max(255),
         city: z.string().min(1, "Город обязателен").max(255),
         contacts: z
@@ -178,6 +322,7 @@ export const candidatesRouter = createTRPCRouter({
         status: z.string().max(50).default("new"),
         resumeUrl: z.string().url().max(500).optional(),
         resumeFileName: z.string().max(255).optional(),
+        resumeFileSize: z.string().max(50).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -323,6 +468,7 @@ export const candidatesRouter = createTRPCRouter({
       const newCandidate = await ctx.db
         .insert(candidates)
         .values({
+          ...(input.id ? { id: input.id } : {}),
           fullName: input.fullName,
           city: input.city,
           contacts: input.contacts,
@@ -335,6 +481,7 @@ export const candidatesRouter = createTRPCRouter({
           status: input.status,
           resumeUrl: input.resumeUrl ?? null,
           resumeFileName: input.resumeFileName ?? null,
+          resumeFileSize: input.resumeFileSize ?? null,
         })
         .returning();
 
