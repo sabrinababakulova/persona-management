@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import type {
   QuickAddCandidateModalProps,
   QuickAddCandidatePayload,
@@ -22,8 +21,8 @@ export function QuickAddCandidateModal({
   onSaveCandidate,
   isSaving = false,
   errorMessage,
-  contactTypeOptions = DEFAULT_CANDIDATE_LOOKUPS.contactTypes,
-  sourceOptions = DEFAULT_CANDIDATE_LOOKUPS.sources,
+  contactTypeOptions = [],
+  sourceOptions = [],
 }: QuickAddCandidateModalProps) {
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
@@ -194,6 +193,10 @@ export function QuickAddCandidateModal({
   const handleSave = () => {
     if (!fullName.trim()) {
       setLocalError("Введите Ф.И.О");
+      return;
+    }
+    if (contactValue.trim() && !contactType) {
+      setLocalError("Выберите тип контакта");
       return;
     }
 

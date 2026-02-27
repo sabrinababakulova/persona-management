@@ -4,7 +4,6 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { SideMenu } from "~/app/_components/sideMenu";
-import { DEFAULT_VACANCY_LOOKUPS } from "~/shared/vacancy-lookups";
 import { api } from "~/trpc/react";
 import { VacancyDescription } from "../components";
 
@@ -20,9 +19,12 @@ export default function VacancyDetailPage() {
     SIDE_MENU_ITEMS[0].id,
   );
 
-  const { data: vacancyLookupsData } =
-    api.lookups.getVacancyCreateOptions.useQuery();
-  const vacancyLookups = vacancyLookupsData ?? DEFAULT_VACANCY_LOOKUPS;
+  const {
+    data: vacancyLookups,
+    isError: isLookupsError,
+    isLoading: isLookupsLoading,
+    refetch: refetchLookups,
+  } = api.lookups.getVacancyCreateOptions.useQuery();
 
   const { data: vacancy, isLoading } = api.vacancies.getVacancyById.useQuery(
     { id: vacancyId },
@@ -33,10 +35,29 @@ export default function VacancyDetailPage() {
     (item) => item.id === activeSectionId,
   );
 
-  if (isLoading) {
+  if (isLoading || isLookupsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
         <div className="text-gray-600">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (isLookupsError || !vacancyLookups) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+          <p className="mb-4 text-[14px]">
+            Не удалось загрузить справочники из базы данных.
+          </p>
+          <button
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            onClick={() => void refetchLookups()}
+            type="button"
+          >
+            Повторить
+          </button>
+        </div>
       </div>
     );
   }

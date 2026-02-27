@@ -1,11 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { SideMenu } from "~/app/_components/sideMenu";
-import { DEFAULT_VACANCY_LOOKUPS } from "~/shared/vacancy-lookups";
 import { api } from "~/trpc/react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 
@@ -55,9 +54,31 @@ export default function CreateVacancyPage() {
     status: "draft",
   });
 
-  const { data: vacancyLookupsData } =
-    api.lookups.getVacancyCreateOptions.useQuery();
-  const vacancyLookups = vacancyLookupsData ?? DEFAULT_VACANCY_LOOKUPS;
+  const {
+    data: vacancyLookupsData,
+    isError: isLookupsError,
+    isLoading: isLookupsLoading,
+    refetch: refetchLookups,
+  } = api.lookups.getVacancyCreateOptions.useQuery();
+  const vacancyLookups = vacancyLookupsData;
+
+  useEffect(() => {
+    if (!vacancyLookupsData) {
+      return;
+    }
+
+    const hasCurrentStatus = vacancyLookupsData.statusOptions.some(
+      (option) => option.value === formData.status,
+    );
+    if (hasCurrentStatus) {
+      return;
+    }
+
+    const firstStatus = vacancyLookupsData.statusOptions[0]?.value;
+    if (firstStatus && isVacancyStatus(firstStatus)) {
+      setFormData((prev) => ({ ...prev, status: firstStatus }));
+    }
+  }, [formData.status, vacancyLookupsData]);
 
   const createVacancy = api.vacancies.createVacancy.useMutation({
     onSuccess: async () => {
@@ -113,6 +134,13 @@ export default function CreateVacancyPage() {
       }));
       return;
     }
+    if (!isVacancyStatus(formData.status)) {
+      setErrors((prev) => ({
+        ...prev,
+        _form: "Выберите корректный статус",
+      }));
+      return;
+    }
 
     setErrors({});
     createVacancy.mutate({
@@ -124,6 +152,33 @@ export default function CreateVacancyPage() {
       status: formData.status,
     });
   };
+
+  if (isLookupsLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-text-secondary">Загрузка справочников...</div>
+      </main>
+    );
+  }
+
+  if (isLookupsError || !vacancyLookups) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white px-4">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+          <p className="mb-4 text-[14px]">
+            Не удалось загрузить справочники из базы данных.
+          </p>
+          <button
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            onClick={() => void refetchLookups()}
+            type="button"
+          >
+            Повторить
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="h-full bg-white">

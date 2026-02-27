@@ -13,182 +13,137 @@ import {
   vacancyStatusOptions,
   vacancyWorkTypes,
 } from "~/server/db/schema";
-import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
-import { DEFAULT_VACANCY_LOOKUPS } from "~/shared/vacancy-lookups";
-
-const withFallback = <T>(values: T[], fallback: readonly T[]): T[] =>
-  values.length > 0 ? values : [...fallback];
 
 export const lookupsRouter = createTRPCRouter({
   getCandidateCreateOptions: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      const [
-        contactTypes,
-        sources,
-        positions,
-        skills,
-        languages,
-        languageLevels,
-        statusOptions,
-      ] = await Promise.all([
-        ctx.db
-          .select({
-            value: candidateContactTypes.value,
-            label: candidateContactTypes.label,
-          })
-          .from(candidateContactTypes)
-          .where(eq(candidateContactTypes.isActive, true))
-          .orderBy(
-            asc(candidateContactTypes.sortOrder),
-            asc(candidateContactTypes.label),
-          ),
-        ctx.db
-          .select({
-            value: candidateSources.value,
-            label: candidateSources.label,
-          })
-          .from(candidateSources)
-          .where(eq(candidateSources.isActive, true))
-          .orderBy(
-            asc(candidateSources.sortOrder),
-            asc(candidateSources.label),
-          ),
-        ctx.db
-          .select({
-            value: candidatePositions.value,
-            label: candidatePositions.label,
-          })
-          .from(candidatePositions)
-          .where(eq(candidatePositions.isActive, true))
-          .orderBy(
-            asc(candidatePositions.sortOrder),
-            asc(candidatePositions.label),
-          ),
-        ctx.db
-          .select({
-            value: candidateSkills.value,
-            label: candidateSkills.label,
-          })
-          .from(candidateSkills)
-          .where(eq(candidateSkills.isActive, true))
-          .orderBy(asc(candidateSkills.sortOrder), asc(candidateSkills.label)),
-        ctx.db
-          .select({
-            value: candidateLanguages.value,
-            label: candidateLanguages.label,
-          })
-          .from(candidateLanguages)
-          .where(eq(candidateLanguages.isActive, true))
-          .orderBy(
-            asc(candidateLanguages.sortOrder),
-            asc(candidateLanguages.label),
-          ),
-        ctx.db
-          .select({
-            value: candidateLanguageLevels.value,
-            label: candidateLanguageLevels.label,
-          })
-          .from(candidateLanguageLevels)
-          .where(eq(candidateLanguageLevels.isActive, true))
-          .orderBy(
-            asc(candidateLanguageLevels.sortOrder),
-            asc(candidateLanguageLevels.label),
-          ),
-        ctx.db
-          .select({
-            value: candidateStatusOptions.value,
-            label: candidateStatusOptions.label,
-          })
-          .from(candidateStatusOptions)
-          .where(eq(candidateStatusOptions.isActive, true))
-          .orderBy(
-            asc(candidateStatusOptions.sortOrder),
-            asc(candidateStatusOptions.label),
-          ),
-      ]);
+    const [
+      contactTypes,
+      sources,
+      positions,
+      skills,
+      languages,
+      languageLevels,
+      statusOptions,
+    ] = await Promise.all([
+      ctx.db
+        .select({
+          value: candidateContactTypes.value,
+          label: candidateContactTypes.label,
+        })
+        .from(candidateContactTypes)
+        .where(eq(candidateContactTypes.isActive, true))
+        .orderBy(
+          asc(candidateContactTypes.sortOrder),
+          asc(candidateContactTypes.label),
+        ),
+      ctx.db
+        .select({
+          value: candidateSources.value,
+          label: candidateSources.label,
+        })
+        .from(candidateSources)
+        .where(eq(candidateSources.isActive, true))
+        .orderBy(asc(candidateSources.sortOrder), asc(candidateSources.label)),
+      ctx.db
+        .select({
+          value: candidatePositions.value,
+          label: candidatePositions.label,
+        })
+        .from(candidatePositions)
+        .where(eq(candidatePositions.isActive, true))
+        .orderBy(
+          asc(candidatePositions.sortOrder),
+          asc(candidatePositions.label),
+        ),
+      ctx.db
+        .select({
+          value: candidateSkills.value,
+          label: candidateSkills.label,
+        })
+        .from(candidateSkills)
+        .where(eq(candidateSkills.isActive, true))
+        .orderBy(asc(candidateSkills.sortOrder), asc(candidateSkills.label)),
+      ctx.db
+        .select({
+          value: candidateLanguages.value,
+          label: candidateLanguages.label,
+        })
+        .from(candidateLanguages)
+        .where(eq(candidateLanguages.isActive, true))
+        .orderBy(
+          asc(candidateLanguages.sortOrder),
+          asc(candidateLanguages.label),
+        ),
+      ctx.db
+        .select({
+          value: candidateLanguageLevels.value,
+          label: candidateLanguageLevels.label,
+        })
+        .from(candidateLanguageLevels)
+        .where(eq(candidateLanguageLevels.isActive, true))
+        .orderBy(
+          asc(candidateLanguageLevels.sortOrder),
+          asc(candidateLanguageLevels.label),
+        ),
+      ctx.db
+        .select({
+          value: candidateStatusOptions.value,
+          label: candidateStatusOptions.label,
+        })
+        .from(candidateStatusOptions)
+        .where(eq(candidateStatusOptions.isActive, true))
+        .orderBy(
+          asc(candidateStatusOptions.sortOrder),
+          asc(candidateStatusOptions.label),
+        ),
+    ]);
 
-      return {
-        contactTypes: withFallback(
-          contactTypes,
-          DEFAULT_CANDIDATE_LOOKUPS.contactTypes,
-        ),
-        sources: withFallback(sources, DEFAULT_CANDIDATE_LOOKUPS.sources),
-        positions: withFallback(positions, DEFAULT_CANDIDATE_LOOKUPS.positions),
-        skills: withFallback(skills, DEFAULT_CANDIDATE_LOOKUPS.skills),
-        languages: withFallback(languages, DEFAULT_CANDIDATE_LOOKUPS.languages),
-        languageLevels: withFallback(
-          languageLevels,
-          DEFAULT_CANDIDATE_LOOKUPS.languageLevels,
-        ),
-        statusOptions: withFallback(
-          statusOptions,
-          DEFAULT_CANDIDATE_LOOKUPS.statusOptions,
-        ),
-      };
-    } catch (error) {
-      console.error("lookups.getCandidateCreateOptions failed", error);
-      return {
-        contactTypes: [...DEFAULT_CANDIDATE_LOOKUPS.contactTypes],
-        sources: [...DEFAULT_CANDIDATE_LOOKUPS.sources],
-        positions: [...DEFAULT_CANDIDATE_LOOKUPS.positions],
-        skills: [...DEFAULT_CANDIDATE_LOOKUPS.skills],
-        languages: [...DEFAULT_CANDIDATE_LOOKUPS.languages],
-        languageLevels: [...DEFAULT_CANDIDATE_LOOKUPS.languageLevels],
-        statusOptions: [...DEFAULT_CANDIDATE_LOOKUPS.statusOptions],
-      };
-    }
+    return {
+      contactTypes,
+      sources,
+      positions,
+      skills,
+      languages,
+      languageLevels,
+      statusOptions,
+    };
   }),
 
   getVacancyCreateOptions: protectedProcedure.query(async ({ ctx }) => {
-    try {
-      const [levels, workTypes, statusOptions] = await Promise.all([
-        ctx.db
-          .select({
-            value: vacancyLevels.value,
-            label: vacancyLevels.label,
-          })
-          .from(vacancyLevels)
-          .where(eq(vacancyLevels.isActive, true))
-          .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
-        ctx.db
-          .select({
-            value: vacancyWorkTypes.value,
-            label: vacancyWorkTypes.label,
-          })
-          .from(vacancyWorkTypes)
-          .where(eq(vacancyWorkTypes.isActive, true))
-          .orderBy(
-            asc(vacancyWorkTypes.sortOrder),
-            asc(vacancyWorkTypes.label),
-          ),
-        ctx.db
-          .select({
-            value: vacancyStatusOptions.value,
-            label: vacancyStatusOptions.label,
-          })
-          .from(vacancyStatusOptions)
-          .where(eq(vacancyStatusOptions.isActive, true))
-          .orderBy(
-            asc(vacancyStatusOptions.sortOrder),
-            asc(vacancyStatusOptions.label),
-          ),
-      ]);
-
-      return {
-        levels: withFallback(levels, DEFAULT_VACANCY_LOOKUPS.levels),
-        workTypes: withFallback(workTypes, DEFAULT_VACANCY_LOOKUPS.workTypes),
-        statusOptions: withFallback(
-          statusOptions,
-          DEFAULT_VACANCY_LOOKUPS.statusOptions,
+    const [levels, workTypes, statusOptions] = await Promise.all([
+      ctx.db
+        .select({
+          value: vacancyLevels.value,
+          label: vacancyLevels.label,
+        })
+        .from(vacancyLevels)
+        .where(eq(vacancyLevels.isActive, true))
+        .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
+      ctx.db
+        .select({
+          value: vacancyWorkTypes.value,
+          label: vacancyWorkTypes.label,
+        })
+        .from(vacancyWorkTypes)
+        .where(eq(vacancyWorkTypes.isActive, true))
+        .orderBy(asc(vacancyWorkTypes.sortOrder), asc(vacancyWorkTypes.label)),
+      ctx.db
+        .select({
+          value: vacancyStatusOptions.value,
+          label: vacancyStatusOptions.label,
+        })
+        .from(vacancyStatusOptions)
+        .where(eq(vacancyStatusOptions.isActive, true))
+        .orderBy(
+          asc(vacancyStatusOptions.sortOrder),
+          asc(vacancyStatusOptions.label),
         ),
-      };
-    } catch (error) {
-      console.error("lookups.getVacancyCreateOptions failed", error);
-      return {
-        levels: [...DEFAULT_VACANCY_LOOKUPS.levels],
-        workTypes: [...DEFAULT_VACANCY_LOOKUPS.workTypes],
-        statusOptions: [...DEFAULT_VACANCY_LOOKUPS.statusOptions],
-      };
-    }
+    ]);
+
+    return {
+      levels,
+      workTypes,
+      statusOptions,
+    };
   }),
 });

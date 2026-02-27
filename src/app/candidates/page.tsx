@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
 import type { Candidate, CandidateStatus } from "~/types/pages/candidates-page";
@@ -69,19 +68,19 @@ function isCandidateStatus(value: string): value is CandidateStatus {
 }
 
 function mapStatusOptions(options: LookupOption[]): LookupOption[] {
-  const filtered = options.filter((option) => isCandidateStatus(option.value));
-  if (filtered.length > 0) {
-    return filtered;
-  }
-
-  return DEFAULT_CANDIDATE_LOOKUPS.statusOptions;
+  return options.filter((option) => isCandidateStatus(option.value));
 }
 
 export default function CandidatesPage() {
   const utils = api.useUtils();
   const { data: candidatesData, isLoading } =
     api.candidates.getAllCandidates.useQuery();
-  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
+  const {
+    data: lookups,
+    isError: isLookupsError,
+    isLoading: isLookupsLoading,
+    refetch: refetchLookups,
+  } = api.lookups.getCandidateCreateOptions.useQuery();
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
@@ -91,11 +90,11 @@ export default function CandidatesPage() {
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
   const statusOptions = useMemo(
-    () => mapStatusOptions(candidateLookups.statusOptions),
-    [candidateLookups.statusOptions],
+    () => mapStatusOptions(lookups?.statusOptions ?? []),
+    [lookups?.statusOptions],
   );
+  const defaultStatus = statusOptions[0]?.value;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -272,7 +271,7 @@ export default function CandidatesPage() {
       currentPosition: prefill?.currentPosition || undefined,
       skills: prefill?.skills ?? [],
       languages: prefill?.languages ?? [],
-      status: prefill?.status || "new",
+      status: prefill?.status || defaultStatus,
       resumeUrl: payload.resumeUrl || undefined,
       resumeFileName: payload.resumeFileName || undefined,
       resumeFileSize: payload.resumeFileSize || undefined,
@@ -284,7 +283,7 @@ export default function CandidatesPage() {
     setIsQuickOverviewOpen(true);
   };
 
-  if (isLoading) {
+  if (isLoading || isLookupsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
         <div className="text-gray-600">Загрузка...</div>
@@ -292,10 +291,29 @@ export default function CandidatesPage() {
     );
   }
 
+  if (isLookupsError || !lookups) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+          <p className="mb-4 text-[14px]">
+            Не удалось загрузить справочники из базы данных.
+          </p>
+          <button
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            onClick={() => void refetchLookups()}
+            type="button"
+          >
+            Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <QuickAddCandidateModal
-        contactTypeOptions={candidateLookups.contactTypes}
+        contactTypeOptions={lookups.contactTypes}
         errorMessage={createQuickCandidate.error?.message}
         isOpen={isQuickAddModalOpen}
         isSaving={createQuickCandidate.isPending}
@@ -304,7 +322,7 @@ export default function CandidatesPage() {
           createQuickCandidate.reset();
         }}
         onSaveCandidate={handleQuickSaveCandidate}
-        sourceOptions={candidateLookups.sources}
+        sourceOptions={lookups.sources}
       />
 
       <QuickOverview

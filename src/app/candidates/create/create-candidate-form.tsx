@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { AIGenerationIcon } from "~/app/_components/icons";
@@ -10,7 +10,6 @@ import {
   type ResumeUploadMeta,
 } from "~/app/_components/resume-file-uploader";
 import { candidateFormSchema } from "~/schemas/candidate";
-import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import { api } from "~/trpc/react";
 import type { CandidateFormData } from "~/types/candidates/candidate-form-data";
 import type {
@@ -45,21 +44,25 @@ export function CreateCandidateForm() {
   const [isResumeUploading, setIsResumeUploading] = useState(false);
 
   // Use non-suspense query so the page doesn't 500 if lookups fail.
-  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
-  const candidateLookups = lookups ?? DEFAULT_CANDIDATE_LOOKUPS;
+  const {
+    data: candidateLookups,
+    isError: isLookupsError,
+    isLoading: isLookupsLoading,
+    refetch: refetchLookups,
+  } = api.lookups.getCandidateCreateOptions.useQuery();
 
   // Form state
   const [formData, setFormData] = useState<CandidateFormData>({
     fullName: "",
     city: "",
-    contacts: [{ type: "telegram", value: "" }],
+    contacts: [{ type: "", value: "" }],
     source: "",
     salaryExpectation: undefined,
     salaryCurrency: "UZS",
     currentPosition: "",
     skills: [],
     languages: [{ name: "", level: "" }],
-    status: "new",
+    status: "",
     resumeUrl: "",
     resumeFileName: "",
     resumeFileSize: "",
@@ -67,7 +70,7 @@ export function CreateCandidateForm() {
 
   // Contacts and languages with IDs for stable keys
   const [contacts, setContacts] = useState<ContactItem[]>([
-    { id: generateId(), type: "telegram", value: "" },
+    { id: generateId(), type: "", value: "" },
   ]);
 
   const [languages, setLanguages] = useState<LanguageItem[]>([
@@ -75,6 +78,25 @@ export function CreateCandidateForm() {
   ]);
 
   const progress = calculateCandidateFormProgress(formData, REQUIRED_FIELDS);
+
+  useEffect(() => {
+    if (!candidateLookups) {
+      return;
+    }
+
+    const firstContactType = candidateLookups.contactTypes[0]?.value ?? "";
+    const firstStatus = candidateLookups.statusOptions[0]?.value ?? "";
+
+    setContacts((prev) =>
+      prev.map((contact) =>
+        contact.type ? contact : { ...contact, type: firstContactType },
+      ),
+    );
+    setFormData((prev) => ({
+      ...prev,
+      status: prev.status || firstStatus,
+    }));
+  }, [candidateLookups]);
 
   // Create candidate mutation
   const createCandidate = api.candidates.createCandidate.useMutation({
@@ -158,7 +180,7 @@ export function CreateCandidateForm() {
   const addContact = () => {
     const newContact: ContactItem = {
       id: generateId(),
-      type: "telegram",
+      type: candidateLookups?.contactTypes[0]?.value ?? "",
       value: "",
     };
     setContacts((prev) => [...prev, newContact]);
@@ -241,6 +263,31 @@ export function CreateCandidateForm() {
       id: candidateDraftId,
     });
   };
+
+  if (isLookupsLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-text-secondary">
+        Загрузка справочников...
+      </div>
+    );
+  }
+
+  if (isLookupsError || !candidateLookups) {
+    return (
+      <div className="mx-auto mt-16 w-full max-w-[758px] rounded-[8px] border border-red-200 bg-red-50 p-6 text-red-700">
+        <p className="mb-4 text-[14px]">
+          Не удалось загрузить справочники из базы данных.
+        </p>
+        <button
+          className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+          onClick={() => void refetchLookups()}
+          type="button"
+        >
+          Повторить
+        </button>
+      </div>
+    );
+  }
 
   const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
     const { prefillData } = uploadedResume;

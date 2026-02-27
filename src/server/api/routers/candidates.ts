@@ -26,7 +26,6 @@ import {
   MAX_RESUME_FILE_SIZE_BYTES,
   sanitizeResumeFileName,
 } from "~/server/storage/resume-storage";
-import { DEFAULT_CANDIDATE_LOOKUPS } from "~/shared/candidate-lookups";
 import type { CandidateStatus } from "~/types/server/candidates";
 
 function escapeLike(value: string) {
@@ -369,75 +368,44 @@ export const candidatesRouter = createTRPCRouter({
         ctx.db
           .select({ value: candidateContactTypes.value })
           .from(candidateContactTypes)
-          .where(eq(candidateContactTypes.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateContactTypes.isActive, true)),
         ctx.db
           .select({ value: candidateSources.value })
           .from(candidateSources)
-          .where(eq(candidateSources.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateSources.isActive, true)),
         ctx.db
           .select({ value: candidatePositions.value })
           .from(candidatePositions)
-          .where(eq(candidatePositions.isActive, true))
-          .catch(() => []),
+          .where(eq(candidatePositions.isActive, true)),
         ctx.db
           .select({ value: candidateSkills.value })
           .from(candidateSkills)
-          .where(eq(candidateSkills.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateSkills.isActive, true)),
         ctx.db
           .select({ label: candidateLanguages.label })
           .from(candidateLanguages)
-          .where(eq(candidateLanguages.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateLanguages.isActive, true)),
         ctx.db
           .select({ value: candidateLanguageLevels.value })
           .from(candidateLanguageLevels)
-          .where(eq(candidateLanguageLevels.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateLanguageLevels.isActive, true)),
         ctx.db
           .select({ value: candidateStatusOptions.value })
           .from(candidateStatusOptions)
-          .where(eq(candidateStatusOptions.isActive, true))
-          .catch(() => []),
+          .where(eq(candidateStatusOptions.isActive, true)),
       ]);
 
-      const contactTypeSet = new Set(
-        allowedContactTypes.length > 0
-          ? allowedContactTypes.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.contactTypes.map((r) => r.value),
-      );
-      const sourceSet = new Set(
-        allowedSources.length > 0
-          ? allowedSources.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.sources.map((r) => r.value),
-      );
-      const positionSet = new Set(
-        allowedPositions.length > 0
-          ? allowedPositions.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.positions.map((r) => r.value),
-      );
-      const skillSet = new Set(
-        allowedSkills.length > 0
-          ? allowedSkills.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.skills.map((r) => r.value),
-      );
+      const contactTypeSet = new Set(allowedContactTypes.map((r) => r.value));
+      const sourceSet = new Set(allowedSources.map((r) => r.value));
+      const positionSet = new Set(allowedPositions.map((r) => r.value));
+      const skillSet = new Set(allowedSkills.map((r) => r.value));
       const languageLabelSet = new Set(
-        allowedLanguageLabels.length > 0
-          ? allowedLanguageLabels.map((r) => r.label)
-          : DEFAULT_CANDIDATE_LOOKUPS.languages.map((r) => r.label),
+        allowedLanguageLabels.map((r) => r.label),
       );
       const languageLevelSet = new Set(
-        allowedLanguageLevels.length > 0
-          ? allowedLanguageLevels.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.languageLevels.map((r) => r.value),
+        allowedLanguageLevels.map((r) => r.value),
       );
-      const statusSet = new Set(
-        allowedStatuses.length > 0
-          ? allowedStatuses.map((r) => r.value)
-          : DEFAULT_CANDIDATE_LOOKUPS.statusOptions.map((r) => r.value),
-      );
+      const statusSet = new Set(allowedStatuses.map((r) => r.value));
 
       for (const c of input.contacts) {
         if (!contactTypeSet.has(c.type)) {
