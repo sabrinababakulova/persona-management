@@ -10,7 +10,7 @@ You must extract only factual information present in the resume.
 If a value is unknown, return an empty string, empty array, or null where appropriate.
 
 Important normalization rules:
-- For "contacts[].type", "source", "currentPosition", "skills[]", "languages[].name", "languages[].level", and "status":
+- For "contacts[].type", "source", "vacancyLevel", "currentPosition", "skills[]", "languages[].name", "languages[].level", and "status":
   use only values from allowed lists provided in the prompt.
 - For salaryCurrency: use only "UZS" or "USD".
 - For salaryExpectation: return a monthly number without separators (e.g. 1200, 15000000). If unknown, return null.

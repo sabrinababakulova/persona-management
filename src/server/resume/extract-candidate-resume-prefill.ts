@@ -4,12 +4,11 @@ import {
   candidateResumePrefillSchema,
 } from "~/schemas/resume-analysis";
 import {
-  parseSalaryCurrency,
-  parseSalaryExpectation,
-  toContacts,
-  toLanguages,
-  toStringArray,
-  toStringValue,
+  EMPTY_LOOKUP_OPTIONS,
+  hasAnyPrefillData,
+  type ResumeLookupOptions,
+  toLookupOptionsHints,
+  toResumePrefillData,
 } from "~/utils/resume-prefill-helpers";
 
 export type ResumePrefillExtractionStatus = "success" | "no_data" | "failed";
@@ -27,52 +26,21 @@ const EMPTY_RESUME_PREFILL: CandidateResumePrefillData = {
   source: "",
   salaryExpectation: undefined,
   salaryCurrency: "UZS",
+  vacancyLevel: "",
   currentPosition: "",
   skills: [],
   languages: [],
   status: "",
 };
 
-function toResumePrefillData(rawPayload: unknown): CandidateResumePrefillData {
-  const payload =
-    rawPayload && typeof rawPayload === "object"
-      ? (rawPayload as Record<string, unknown>)
-      : {};
-
-  return {
-    fullName: toStringValue(payload.fullName),
-    city: toStringValue(payload.city),
-    contacts: toContacts(payload.contacts).slice(0, 20),
-    source: toStringValue(payload.source),
-    salaryExpectation: parseSalaryExpectation(payload.salaryExpectation),
-    salaryCurrency: parseSalaryCurrency(payload.salaryCurrency),
-    currentPosition: toStringValue(payload.currentPosition),
-    skills: toStringArray(payload.skills).slice(0, 50),
-    languages: toLanguages(payload.languages).slice(0, 20),
-    status: toStringValue(payload.status),
-  };
-}
-
-function hasAnyPrefillData(prefillData: CandidateResumePrefillData) {
-  return Boolean(
-    prefillData.fullName ||
-      prefillData.city ||
-      prefillData.contacts.length > 0 ||
-      prefillData.source ||
-      prefillData.salaryExpectation !== undefined ||
-      prefillData.currentPosition ||
-      prefillData.skills.length > 0 ||
-      prefillData.languages.length > 0 ||
-      prefillData.status,
-  );
-}
-
 export async function extractCandidateResumePrefillData({
   fileBuffer,
   fileName,
+  lookupOptions = EMPTY_LOOKUP_OPTIONS,
 }: {
   fileBuffer: Buffer;
   fileName: string;
+  lookupOptions?: ResumeLookupOptions;
 }): Promise<ResumePrefillExtractionResult> {
   if (
     !process.env.GOOGLE_API_KEY &&
@@ -88,10 +56,32 @@ export async function extractCandidateResumePrefillData({
 
   try {
     const resumeAnalyzerAgent = mastra.getAgent("candidateResumeAnalyzer");
+
+    const contactTypeHints = toLookupOptionsHints(lookupOptions.contactTypes);
+    const sourceHints = toLookupOptionsHints(lookupOptions.sources);
+    const positionHints = toLookupOptionsHints(lookupOptions.positions);
+    const skillHints = toLookupOptionsHints(lookupOptions.skills);
+    const languageHints = toLookupOptionsHints(lookupOptions.languages);
+    const languageLevelHints = toLookupOptionsHints(
+      lookupOptions.languageLevels,
+    );
+    const statusHints = toLookupOptionsHints(lookupOptions.statusOptions);
+    const vacancyLevelHints = toLookupOptionsHints(lookupOptions.vacancyLevels);
+
     const prompt = `
 Проанализируй PDF-резюме и верни все найденные данные для автозаполнения формы кандидата.
 Возвращай только факты из резюме, ничего не выдумывай.
 Если можешь извлечь только часть полей — верни только эту часть.
+
+Допустимые значения из базы данных:
+- contacts[].type: ${contactTypeHints}
+- source: ${sourceHints}
+- currentPosition: ${positionHints}
+- skills[]: ${skillHints}
+- languages[].name: ${languageHints}
+- languages[].level: ${languageLevelHints}
+- status: ${statusHints}
+- vacancyLevel: ${vacancyLevelHints}
 
 Формат ответа:
 - fullName: string
@@ -100,6 +90,7 @@ export async function extractCandidateResumePrefillData({
 - source: string
 - salaryExpectation: number | null
 - salaryCurrency: "UZS" | "USD"
+- vacancyLevel: string
 - currentPosition: string
 - skills: string[]
 - languages: [{ name: string, level: string }]
@@ -110,6 +101,7 @@ export async function extractCandidateResumePrefillData({
 - array -> []
 - salaryExpectation -> null
 - salaryCurrency -> "UZS"
+- vacancyLevel -> ""
 - status -> ""
 `;
 
@@ -146,7 +138,7 @@ export async function extractCandidateResumePrefillData({
       };
     }
 
-    const prefillData = toResumePrefillData(result.object);
+    const prefillData = toResumePrefillData(result.object, lookupOptions);
     return {
       prefillData,
       status: hasAnyPrefillData(prefillData) ? "success" : "no_data",

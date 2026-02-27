@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import { desc, eq, ilike } from "drizzle-orm";
+import { asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -12,6 +12,7 @@ import {
   candidateStatusOptions,
   candidates,
   recentActivityLogs,
+  vacancyLevels,
 } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import {
@@ -160,9 +161,113 @@ export const candidatesRouter = createTRPCRouter({
       const resumeFileSize = formatFileSize(fileBuffer.length);
       const resumeUrl = buildCandidateResumeUrl(input.candidateId);
 
+      const [
+        contactTypeOptions,
+        sourceOptions,
+        positionOptions,
+        skillOptions,
+        languageOptions,
+        languageLevelOptions,
+        statusOptions,
+        vacancyLevelOptions,
+      ] = await Promise.all([
+        ctx.db
+          .select({
+            value: candidateContactTypes.value,
+            label: candidateContactTypes.label,
+          })
+          .from(candidateContactTypes)
+          .where(eq(candidateContactTypes.isActive, true))
+          .orderBy(
+            asc(candidateContactTypes.sortOrder),
+            asc(candidateContactTypes.label),
+          ),
+        ctx.db
+          .select({
+            value: candidateSources.value,
+            label: candidateSources.label,
+          })
+          .from(candidateSources)
+          .where(eq(candidateSources.isActive, true))
+          .orderBy(
+            asc(candidateSources.sortOrder),
+            asc(candidateSources.label),
+          ),
+        ctx.db
+          .select({
+            value: candidatePositions.value,
+            label: candidatePositions.label,
+          })
+          .from(candidatePositions)
+          .where(eq(candidatePositions.isActive, true))
+          .orderBy(
+            asc(candidatePositions.sortOrder),
+            asc(candidatePositions.label),
+          ),
+        ctx.db
+          .select({
+            value: candidateSkills.value,
+            label: candidateSkills.label,
+          })
+          .from(candidateSkills)
+          .where(eq(candidateSkills.isActive, true))
+          .orderBy(asc(candidateSkills.sortOrder), asc(candidateSkills.label)),
+        ctx.db
+          .select({
+            value: candidateLanguages.value,
+            label: candidateLanguages.label,
+          })
+          .from(candidateLanguages)
+          .where(eq(candidateLanguages.isActive, true))
+          .orderBy(
+            asc(candidateLanguages.sortOrder),
+            asc(candidateLanguages.label),
+          ),
+        ctx.db
+          .select({
+            value: candidateLanguageLevels.value,
+            label: candidateLanguageLevels.label,
+          })
+          .from(candidateLanguageLevels)
+          .where(eq(candidateLanguageLevels.isActive, true))
+          .orderBy(
+            asc(candidateLanguageLevels.sortOrder),
+            asc(candidateLanguageLevels.label),
+          ),
+        ctx.db
+          .select({
+            value: candidateStatusOptions.value,
+            label: candidateStatusOptions.label,
+          })
+          .from(candidateStatusOptions)
+          .where(eq(candidateStatusOptions.isActive, true))
+          .orderBy(
+            asc(candidateStatusOptions.sortOrder),
+            asc(candidateStatusOptions.label),
+          ),
+        ctx.db
+          .select({
+            value: vacancyLevels.value,
+            label: vacancyLevels.label,
+          })
+          .from(vacancyLevels)
+          .where(eq(vacancyLevels.isActive, true))
+          .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
+      ]);
+
       const prefillExtraction = await extractCandidateResumePrefillData({
         fileBuffer,
         fileName: resumeFileName,
+        lookupOptions: {
+          contactTypes: contactTypeOptions,
+          sources: sourceOptions,
+          positions: positionOptions,
+          skills: skillOptions,
+          languages: languageOptions,
+          languageLevels: languageLevelOptions,
+          statusOptions,
+          vacancyLevels: vacancyLevelOptions,
+        },
       });
 
       await ctx.db

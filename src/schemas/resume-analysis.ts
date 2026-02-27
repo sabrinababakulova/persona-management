@@ -17,6 +17,7 @@ export const candidateResumePrefillSchema = z.object({
   source: z.string(),
   salaryExpectation: z.number().nullable().optional(),
   salaryCurrency: z.enum(["UZS", "USD"]).optional(),
+  vacancyLevel: z.string().optional(),
   currentPosition: z.string(),
   skills: z.array(z.string()),
   languages: z.array(resumeExtractedLanguageSchema),
@@ -39,6 +40,7 @@ export const candidateResumePrefillDataSchema = z.object({
   source: z.string(),
   salaryExpectation: z.number().optional(),
   salaryCurrency: z.enum(["UZS", "USD"]),
+  vacancyLevel: z.string(),
   currentPosition: z.string(),
   skills: z.array(z.string()),
   languages: z.array(
