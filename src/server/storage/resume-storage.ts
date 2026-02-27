@@ -5,6 +5,9 @@ import { env } from "~/env";
 
 const DEFAULT_RESUME_STORAGE_PATH = path.resolve(process.cwd(), "storage");
 const CANDIDATE_ID_PATH_SAFE_PATTERN = /^[A-Za-z0-9-]+$/;
+const PDF_HEADER = Buffer.from("%PDF-", "ascii");
+const PDF_EOF_MARKER = Buffer.from("%%EOF", "ascii");
+const PDF_EOF_SCAN_BYTES = 2048;
 
 export const MAX_RESUME_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const RESUME_FILE_NAME_ON_DISK = "resume.pdf";
@@ -59,11 +62,32 @@ export function sanitizeResumeFileName(fileName: string) {
   return sanitized.length > 255 ? sanitized.slice(0, 255) : sanitized;
 }
 
-export function isSupportedResumeFile(file: File) {
-  const fileName = file.name.toLowerCase();
-  const mimeType = file.type.toLowerCase();
+export function hasPdfExtension(fileName: string) {
+  return fileName.trim().toLowerCase().endsWith(".pdf");
+}
 
-  return fileName.endsWith(".pdf") || mimeType === "application/pdf";
+export function isAllowedPdfMimeType(mimeType: string) {
+  const normalized = mimeType.trim().toLowerCase();
+  return normalized === "" || normalized === "application/pdf";
+}
+
+export function hasPdfMagicHeader(fileBuffer: Buffer) {
+  if (fileBuffer.length < PDF_HEADER.length) {
+    return false;
+  }
+
+  return fileBuffer.subarray(0, PDF_HEADER.length).equals(PDF_HEADER);
+}
+
+export function hasPdfEofMarker(fileBuffer: Buffer) {
+  if (fileBuffer.length < PDF_EOF_MARKER.length) {
+    return false;
+  }
+
+  const scanStart = Math.max(0, fileBuffer.length - PDF_EOF_SCAN_BYTES);
+  const tail = fileBuffer.subarray(scanStart);
+
+  return tail.includes(PDF_EOF_MARKER);
 }
 
 export function formatFileSize(fileSizeBytes: number) {

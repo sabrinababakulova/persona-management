@@ -8,7 +8,10 @@ import {
   ensureCandidateResumeDirectory,
   formatFileSize,
   getCandidateResumeFilePath,
-  isSupportedResumeFile,
+  hasPdfEofMarker,
+  hasPdfExtension,
+  hasPdfMagicHeader,
+  isAllowedPdfMimeType,
   MAX_RESUME_FILE_SIZE_BYTES,
   sanitizeResumeFileName,
 } from "~/server/storage/resume-storage";
@@ -62,10 +65,6 @@ export async function POST(request: Request, context: RouteContext) {
     return buildErrorResponse("Файл слишком большой. Максимум 10MB.", 413);
   }
 
-  if (!isSupportedResumeFile(uploadedFile)) {
-    return buildErrorResponse("Поддерживаются только PDF-файлы", 415);
-  }
-
   const resumePath = (() => {
     try {
       return getCandidateResumeFilePath(candidateId);
@@ -79,10 +78,27 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    await ensureCandidateResumeDirectory(candidateId);
-
     const fileBuffer = Buffer.from(await uploadedFile.arrayBuffer());
-    await writeFile(resumePath, fileBuffer);
+    if (!hasPdfExtension(uploadedFile.name)) {
+      return buildErrorResponse(
+        "Недопустимое расширение файла. Разрешены только PDF.",
+        415,
+      );
+    }
+
+    if (!isAllowedPdfMimeType(uploadedFile.type)) {
+      return buildErrorResponse(
+        "Недопустимый MIME-тип файла. Разрешен только application/pdf.",
+        415,
+      );
+    }
+
+    if (!hasPdfMagicHeader(fileBuffer) || !hasPdfEofMarker(fileBuffer)) {
+      return buildErrorResponse("Файл не является валидным PDF", 415);
+    }
+
+    await ensureCandidateResumeDirectory(candidateId);
+    await writeFile(resumePath, fileBuffer, { mode: 0o600 });
   } catch (error) {
     console.error("Failed to save candidate resume file", error);
     return buildErrorResponse("Не удалось сохранить файл", 500);
