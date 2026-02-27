@@ -24,6 +24,8 @@ next-env.d.ts
 # misc
 .DS_Store
 *.pem
+/storage/*
+!/storage/.gitkeep
 
 # debug
 npm-debug.log*

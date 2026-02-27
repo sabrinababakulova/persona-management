@@ -103,8 +103,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       <path
         d="M119.5 178.099L128.687 188.99L148.208 169.5"
         stroke="white"
-        stroke-linejoin="round"
         strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth="5"
       />
       <defs>
