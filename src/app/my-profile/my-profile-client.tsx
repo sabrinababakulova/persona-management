@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
-import { ChevronUpIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
+import { ClosableSection } from "../_components/closable-section";
 
 const PROFILE_MENU_ITEMS = [
   { id: "my-profile", label: "Мой профиль" },
@@ -36,8 +36,6 @@ export function MyProfileClient({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isBasicInfoOpen, setIsBasicInfoOpen] = useState(true);
-  const [isPasswordSectionOpen, setIsPasswordSectionOpen] = useState(true);
 
   const changePassword = api.profile.changePassword.useMutation({
     onSuccess: (response) => {
@@ -164,119 +162,72 @@ export function MyProfileClient({
 
             {isProfileSectionActive ? (
               <div className="mt-12 space-y-10">
-                <section className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-                      Основная информация
-                    </h2>
-                    <button
-                      aria-expanded={isBasicInfoOpen}
-                      aria-label="Свернуть или развернуть основную информацию"
-                      className="rounded p-1 text-[#65748A] transition-colors hover:bg-bg-hover"
-                      onClick={() => setIsBasicInfoOpen((prev) => !prev)}
-                      type="button"
-                    >
-                      <ChevronUpIcon
-                        className={`h-4 w-4 transition-transform ${isBasicInfoOpen ? "rotate-0" : "rotate-180"}`}
-                      />
-                    </button>
-                  </div>
-                  {isBasicInfoOpen && (
-                    <div className="space-y-4">
-                      <Input label="Ф.И.О" readOnly value={userFullName} />
-                      <Input label="Город" readOnly value={userCity} />
-                      <Input
-                        label="Электронная почта"
-                        readOnly
-                        value={userEmail}
-                      />
-                    </div>
-                  )}
-                </section>
+                <ClosableSection title="Основная информация">
+                  <Input label="Ф.И.О" readOnly value={userFullName} />
+                  <Input label="Город" readOnly value={userCity} />
+                  <Input label="Электронная почта" readOnly value={userEmail} />
+                </ClosableSection>
+                <ClosableSection title="Изменить пароль">
+                  <Input
+                    label="Введите старый пароль"
+                    onChange={(event) => setOldPassword(event.target.value)}
+                    placeholder="Ваш старый пароль"
+                    type="password"
+                    value={oldPassword}
+                  />
+                  <Input
+                    label="Введите новый пароль"
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="Ваш новый пароль"
+                    type="password"
+                    value={newPassword}
+                  />
 
-                <section className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-                      Изменить пароль
-                    </h2>
-                    <button
-                      aria-expanded={isPasswordSectionOpen}
-                      aria-label="Свернуть или развернуть смену пароля"
-                      className="rounded p-1 text-[#65748A] transition-colors hover:bg-bg-hover"
-                      onClick={() => setIsPasswordSectionOpen((prev) => !prev)}
-                      type="button"
-                    >
-                      <ChevronUpIcon
-                        className={`h-4 w-4 transition-transform ${isPasswordSectionOpen ? "rotate-0" : "rotate-180"}`}
-                      />
-                    </button>
-                  </div>
-                  {isPasswordSectionOpen && (
-                    <div className="space-y-4">
-                      <Input
-                        label="Введите старый пароль"
-                        onChange={(event) => setOldPassword(event.target.value)}
-                        placeholder="Ваш старый пароль"
-                        type="password"
-                        value={oldPassword}
-                      />
-                      <Input
-                        label="Введите новый пароль"
-                        onChange={(event) => setNewPassword(event.target.value)}
-                        placeholder="Ваш новый пароль"
-                        type="password"
-                        value={newPassword}
-                      />
-
-                      {newPassword.length > 0 && (
-                        <div className="space-y-[10px]">
-                          <div className="h-[6px] w-full rounded-[10px] bg-border-input">
-                            <div
-                              className={`h-[6px] rounded-[10px] ${passwordChecks.fillClassName}`}
-                              style={{ width: passwordChecks.fillWidth }}
-                            />
-                          </div>
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="space-y-1">
-                              {passwordChecks.checks.map((check) => (
-                                <p
-                                  className="font-normal text-[12px] text-text-heading leading-[1.4] tracking-[-0.24px]"
-                                  key={check.label}
-                                >
-                                  <span
-                                    className={
-                                      check.passed
-                                        ? "text-success-green"
-                                        : "text-danger-red"
-                                    }
-                                  >
-                                    {check.passed ? "✅" : "❌"}
-                                  </span>
-                                  <span className="ml-2">{check.label}</span>
-                                </p>
-                              ))}
-                            </div>
+                  {newPassword.length > 0 && (
+                    <div className="space-y-[10px]">
+                      <div className="h-[6px] w-full rounded-[10px] bg-border-input">
+                        <div
+                          className={`h-[6px] rounded-[10px] ${passwordChecks.fillClassName}`}
+                          style={{ width: passwordChecks.fillWidth }}
+                        />
+                      </div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          {passwordChecks.checks.map((check) => (
                             <p
-                              className={`pt-[2px] font-semibold text-[12px] leading-[1.4] tracking-[-0.24px] ${passwordChecks.strengthLabelClassName}`}
+                              className="font-normal text-[12px] text-text-heading leading-[1.4] tracking-[-0.24px]"
+                              key={check.label}
                             >
-                              {passwordChecks.strengthLabel}
+                              <span
+                                className={
+                                  check.passed
+                                    ? "text-success-green"
+                                    : "text-danger-red"
+                                }
+                              >
+                                {check.passed ? "✅" : "❌"}
+                              </span>
+                              <span className="ml-2">{check.label}</span>
                             </p>
-                          </div>
+                          ))}
                         </div>
-                      )}
-
-                      <Input
-                        label="Повторите новый пароль"
-                        onChange={(event) =>
-                          setConfirmPassword(event.target.value)
-                        }
-                        placeholder="Ваш новый пароль"
-                        type="password"
-                        value={confirmPassword}
-                      />
+                        <p
+                          className={`pt-[2px] font-semibold text-[12px] leading-[1.4] tracking-[-0.24px] ${passwordChecks.strengthLabelClassName}`}
+                        >
+                          {passwordChecks.strengthLabel}
+                        </p>
+                      </div>
                     </div>
                   )}
-                </section>
+
+                  <Input
+                    label="Повторите новый пароль"
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Ваш новый пароль"
+                    type="password"
+                    value={confirmPassword}
+                  />
+                </ClosableSection>
               </div>
             ) : (
               <section className="mt-12 rounded-[8px] border border-border-input bg-bg-input p-6">
