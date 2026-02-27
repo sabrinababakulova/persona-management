@@ -64,6 +64,20 @@
       "when": 1772175624014,
       "tag": "0008_graceful_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1772496000000,
+      "tag": "0009_solid_ai_analysis",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772195437688,
+      "tag": "0010_brainy_kabuki",
+      "breakpoints": true
     }
   ]
 }

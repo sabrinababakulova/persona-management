@@ -13,6 +13,9 @@ export type ResumeUploadMeta = {
   prefillData: CandidateResumePrefillData;
   prefillStatus: "success" | "no_data" | "failed";
   prefillErrorMessage?: string;
+  aiAnalysis: string;
+  aiAnalysisStatus: "success" | "failed";
+  aiAnalysisErrorMessage?: string;
 };
 
 type ResumeFileUploaderProps = {

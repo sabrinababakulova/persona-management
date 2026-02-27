@@ -266,12 +266,13 @@ export default function CandidatesPage() {
       city: prefill?.city || "Не указан",
       contacts: mergedContacts,
       source: payload.source || prefill?.source || undefined,
+      aiAnalysis: payload.aiAnalysis || undefined,
       salaryExpectation: prefill?.salaryExpectation,
       salaryCurrency: prefill?.salaryCurrency ?? "UZS",
       currentPosition: prefill?.currentPosition || undefined,
       skills: prefill?.skills ?? [],
       languages: prefill?.languages ?? [],
-      status: prefill?.status || defaultStatus,
+      status: payload.status || prefill?.status || defaultStatus,
       resumeUrl: payload.resumeUrl || undefined,
       resumeFileName: payload.resumeFileName || undefined,
       resumeFileSize: payload.resumeFileSize || undefined,
@@ -323,6 +324,7 @@ export default function CandidatesPage() {
         }}
         onSaveCandidate={handleQuickSaveCandidate}
         sourceOptions={lookups.sources}
+        statusOptions={statusOptions}
       />
 
       <QuickOverview

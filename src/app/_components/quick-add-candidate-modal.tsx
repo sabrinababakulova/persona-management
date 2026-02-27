@@ -7,7 +7,7 @@ import type {
   QuickAddCandidatePayload,
 } from "~/types/components/quick-add-candidate-modal";
 import { Dropdown } from "./dropdown";
-import { AIGenerationIcon, SmallChevronDownIcon } from "./icons";
+import { AIGenerationIcon } from "./icons";
 import {
   ResumeFileUploader,
   type ResumeUploadMeta,
@@ -23,6 +23,7 @@ export function QuickAddCandidateModal({
   errorMessage,
   contactTypeOptions = [],
   sourceOptions = [],
+  statusOptions = [],
 }: QuickAddCandidateModalProps) {
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
@@ -34,10 +35,12 @@ export function QuickAddCandidateModal({
   const [candidateDraftId, setCandidateDraftId] = useState(() =>
     crypto.randomUUID(),
   );
+  const [status, setStatus] = useState(statusOptions[0]?.value ?? "");
   const [source, setSource] = useState(sourceOptions[0]?.value ?? "");
   const [resumeUrl, setResumeUrl] = useState("");
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState("");
   const [resumePrefillData, setResumePrefillData] =
     useState<ResumeUploadMeta["prefillData"]>();
   const [isResumeUploading, setIsResumeUploading] = useState(false);
@@ -52,20 +55,26 @@ export function QuickAddCandidateModal({
   }, [sourceOptions]);
 
   useEffect(() => {
+    setStatus(statusOptions[0]?.value ?? "");
+  }, [statusOptions]);
+
+  useEffect(() => {
     if (!isOpen) {
       setFullName("");
       setContactValue("");
       setContactType(contactTypeOptions[0]?.value ?? "");
       setCandidateDraftId(crypto.randomUUID());
+      setStatus(statusOptions[0]?.value ?? "");
       setSource(sourceOptions[0]?.value ?? "");
       setResumeUrl("");
       setResumeFileName("");
       setResumeFileSize("");
+      setAiAnalysis("");
       setResumePrefillData(undefined);
       setIsResumeUploading(false);
       setLocalError(null);
     }
-  }, [contactTypeOptions, isOpen, sourceOptions]);
+  }, [contactTypeOptions, isOpen, sourceOptions, statusOptions]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -160,6 +169,7 @@ export function QuickAddCandidateModal({
     setResumeUrl(uploadedResume.resumeUrl);
     setResumeFileName(uploadedResume.resumeFileName);
     setResumeFileSize(uploadedResume.resumeFileSize);
+    setAiAnalysis(uploadedResume.aiAnalysis);
     setResumePrefillData(uploadedResume.prefillData);
 
     const { prefillData } = uploadedResume;
@@ -188,6 +198,13 @@ export function QuickAddCandidateModal({
         setSource(matchedSource);
       }
     }
+
+    if (prefillData.status) {
+      const matchedStatus = findOptionValue(prefillData.status, statusOptions);
+      if (matchedStatus) {
+        setStatus(matchedStatus);
+      }
+    }
   };
 
   const handleSave = () => {
@@ -199,6 +216,10 @@ export function QuickAddCandidateModal({
       setLocalError("Выберите тип контакта");
       return;
     }
+    if (statusOptions.length > 0 && !status) {
+      setLocalError("Выберите статус кандидата");
+      return;
+    }
 
     setLocalError(null);
     onSaveCandidate?.({
@@ -206,7 +227,9 @@ export function QuickAddCandidateModal({
       fullName: fullName.trim(),
       contactType,
       contactValue: contactValue.trim(),
+      status: status || undefined,
       source,
+      aiAnalysis: aiAnalysis || undefined,
       resumeUrl: resumeUrl || undefined,
       resumeFileName: resumeFileName || undefined,
       resumeFileSize: resumeFileSize || undefined,
@@ -241,13 +264,15 @@ export function QuickAddCandidateModal({
             >
               Быстрое добавление кандидата
             </h2>
-            <button
-              className="flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input p-2 text-[14px] text-text-placeholder leading-none tracking-[-0.28px]"
-              type="button"
-            >
-              Новый
-              <SmallChevronDownIcon className="h-[10px] w-[10px]" />
-            </button>
+            <Dropdown
+              fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
+              hideLabel
+              iconClassName="right-2 text-text-placeholder"
+              label="Статус"
+              onChange={(value) => setStatus(value)}
+              options={statusOptions}
+              value={status}
+            />
           </div>
 
           <div className="flex flex-col gap-1">

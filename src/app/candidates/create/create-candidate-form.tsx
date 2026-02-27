@@ -63,6 +63,7 @@ export function CreateCandidateForm() {
     skills: [],
     languages: [{ name: "", level: "" }],
     status: "",
+    aiAnalysis: "",
     resumeUrl: "",
     resumeFileName: "",
     resumeFileSize: "",
@@ -296,6 +297,7 @@ export function CreateCandidateForm() {
       resumeUrl: uploadedResume.resumeUrl,
       resumeFileName: uploadedResume.resumeFileName,
       resumeFileSize: uploadedResume.resumeFileSize,
+      aiAnalysis: uploadedResume.aiAnalysis,
       fullName: prefillData.fullName || prev.fullName,
       city: prefillData.city || prev.city,
       contacts:

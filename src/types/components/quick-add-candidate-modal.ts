@@ -6,7 +6,9 @@ export type QuickAddCandidatePayload = {
   fullName: string;
   contactType: string;
   contactValue: string;
+  status?: string;
   source: string;
+  aiAnalysis?: string;
   resumeUrl?: string;
   resumeFileName?: string;
   resumeFileSize?: string;
@@ -22,4 +24,5 @@ export type QuickAddCandidateModalProps = {
   errorMessage?: string | null;
   contactTypeOptions?: LookupOption[];
   sourceOptions?: LookupOption[];
+  statusOptions?: LookupOption[];
 };

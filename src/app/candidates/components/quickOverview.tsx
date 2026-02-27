@@ -111,21 +111,12 @@ export function QuickOverview({
     };
   }, [isOpen, onClose]);
 
-  const summaryLines = useMemo(() => {
+  const aiSummaryText = useMemo(() => {
     if (!candidate) {
-      return [];
+      return "";
     }
 
-    const lines = candidate.notes
-      .map((note) => note.content.trim())
-      .filter((line) => line.length > 0)
-      .slice(0, 2);
-
-    if (lines.length === 0) {
-      return ["Нет данных о заметках по кандидату"];
-    }
-
-    return lines;
+    return candidate.aiAnalysis.trim() || "AI-анализ пока недоступен";
   }, [candidate]);
 
   const positionAndSkillTokens = useMemo(() => {
@@ -225,7 +216,7 @@ export function QuickOverview({
                   className="whitespace-pre-wrap font-normal text-[12px] leading-[1.3] tracking-[-0.24px]"
                   id="candidate-quick-overview-description"
                 >
-                  {summaryLines.map((line) => `- ${line}`).join("\n")}
+                  {aiSummaryText}
                 </p>
               </div>
             </div>

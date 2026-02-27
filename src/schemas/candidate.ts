@@ -21,6 +21,7 @@ export const candidateFormSchema = z.object({
   skills: z.array(z.string()).default([]),
   languages: z.array(candidateLanguageSchema).default([]),
   status: z.string().default("new"),
+  aiAnalysis: z.string().max(5000).optional(),
   resumeUrl: z.string().optional(),
   resumeFileName: z.string().optional(),
   resumeFileSize: z.string().optional(),

@@ -9,6 +9,7 @@ export type CandidateFormData = {
   skills: string[];
   languages: { name: string; level: string }[];
   status: string;
+  aiAnalysis?: string;
   resumeUrl?: string;
   resumeFileName?: string;
   resumeFileSize?: string;

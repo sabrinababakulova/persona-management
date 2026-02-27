@@ -15,6 +15,7 @@ import {
   vacancyLevels,
 } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
+import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import {
   buildCandidateResumeUrl,
   ensureCandidateResumeDirectory,
@@ -255,20 +256,26 @@ export const candidatesRouter = createTRPCRouter({
           .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
       ]);
 
-      const prefillExtraction = await extractCandidateResumePrefillData({
-        fileBuffer,
-        fileName: resumeFileName,
-        lookupOptions: {
-          contactTypes: contactTypeOptions,
-          sources: sourceOptions,
-          positions: positionOptions,
-          skills: skillOptions,
-          languages: languageOptions,
-          languageLevels: languageLevelOptions,
-          statusOptions,
-          vacancyLevels: vacancyLevelOptions,
-        },
-      });
+      const [prefillExtraction, aiAnalysisResult] = await Promise.all([
+        extractCandidateResumePrefillData({
+          fileBuffer,
+          fileName: resumeFileName,
+          lookupOptions: {
+            contactTypes: contactTypeOptions,
+            sources: sourceOptions,
+            positions: positionOptions,
+            skills: skillOptions,
+            languages: languageOptions,
+            languageLevels: languageLevelOptions,
+            statusOptions,
+            vacancyLevels: vacancyLevelOptions,
+          },
+        }),
+        generateCandidateAiAnalysis({
+          fileBuffer,
+          fileName: resumeFileName,
+        }),
+      ]);
 
       await ctx.db
         .update(candidates)
@@ -276,6 +283,10 @@ export const candidatesRouter = createTRPCRouter({
           resumeUrl,
           resumeFileName,
           resumeFileSize,
+          aiAnalysis:
+            aiAnalysisResult.status === "success"
+              ? aiAnalysisResult.text
+              : null,
         })
         .where(eq(candidates.id, input.candidateId));
 
@@ -287,6 +298,10 @@ export const candidatesRouter = createTRPCRouter({
         prefillData: prefillExtraction.prefillData,
         prefillStatus: prefillExtraction.status,
         prefillErrorMessage: prefillExtraction.errorMessage,
+        aiAnalysis:
+          aiAnalysisResult.status === "success" ? aiAnalysisResult.text : "",
+        aiAnalysisStatus: aiAnalysisResult.status,
+        aiAnalysisErrorMessage: aiAnalysisResult.errorMessage,
       };
     }),
 
@@ -379,6 +394,7 @@ export const candidatesRouter = createTRPCRouter({
         languages: (c.languages ?? []) as { name: string; level: string }[],
         skills: (c.skills ?? []) as string[],
         contacts: { phone, telegram, email },
+        aiAnalysis: c.aiAnalysis ?? "",
         otherVacancies: [] as string[],
         workExperience: (c.workExperience ?? []) as {
           company: string;
@@ -446,6 +462,7 @@ export const candidatesRouter = createTRPCRouter({
           .max(20)
           .default([]),
         status: z.string().max(50).default("new"),
+        aiAnalysis: z.string().max(5000).optional(),
         resumeUrl: z
           .string()
           .max(500)
@@ -580,6 +597,7 @@ export const candidatesRouter = createTRPCRouter({
           skills: input.skills,
           languages: input.languages,
           status: input.status,
+          aiAnalysis: input.aiAnalysis?.trim() || null,
           resumeUrl: input.resumeUrl ?? null,
           resumeFileName: input.resumeFileName ?? null,
           resumeFileSize: input.resumeFileSize ?? null,

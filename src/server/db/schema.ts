@@ -130,6 +130,7 @@ export const candidates = createTable(
     resumeFileSize: d.varchar({ length: 50 }),
     experience: d.varchar({ length: 255 }),
     matchScore: d.integer(),
+    aiAnalysis: d.text(),
     // JSON fields for arrays
     contacts: d.json().$type<{ type: string; value: string }[]>().default([]),
     skills: d.json().$type<string[]>().default([]),
