@@ -211,6 +211,9 @@ export const vacancies = createTable(
     city: d.varchar({ length: 255 }),
     responses: d.integer().default(0),
     workType: d.varchar({ length: 100 }),
+    tasks: d.text(),
+    team: d.text(),
+    companyDescription: d.text(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())

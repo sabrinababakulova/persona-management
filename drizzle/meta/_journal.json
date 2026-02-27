@@ -57,6 +57,13 @@
       "when": 1772026624285,
       "tag": "0007_cloudy_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772175624014,
+      "tag": "0008_graceful_terror",
+      "breakpoints": true
     }
   ]
 }

@@ -57,26 +57,30 @@ export default function VacancyDetailPage() {
           items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
           onSelect={setActiveSectionId}
         />
-        <section className="min-w-0 flex-3">
-          <Breadcrumbs
-            label={vacancy.title}
-            rootHref="/vacancies"
-            rootLabel="Вакансии"
-          />
-          <div className="w-full max-w-[1000px] p-4 lg:p-6">
-            {activeSectionId === "description" && (
+
+        <section className="flex flex-3 flex-col">
+          <div className="w-full max-w-[560px]">
+            <Breadcrumbs
+              label={vacancy.title}
+              rootHref="/vacancies"
+              rootLabel="Вакансии"
+            />
+
+            {activeSectionId === "description" ? (
               <VacancyDescription
                 city={vacancy.city}
+                companyDescription={vacancy.companyDescription}
                 level={vacancy.level}
                 status={vacancy.status}
+                tasks={vacancy.tasks}
+                team={vacancy.team}
                 title={vacancy.title}
                 vacancyId={vacancyId}
                 vacancyLookups={vacancyLookups}
+                workType={vacancy.workType}
               />
-            )}
-
-            {activeSectionId !== "description" && (
-              <div className="rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
+            ) : (
+              <div className="mt-12 rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
                 Секция "{activeSection?.label}" будет доступна позже.
               </div>
             )}

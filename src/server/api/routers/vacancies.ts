@@ -42,6 +42,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: v.city ?? "",
         responses: v.responses ?? 0,
         workType: v.workType ?? "",
+        tasks: v.tasks ?? "",
+        team: v.team ?? "",
+        companyDescription: v.companyDescription ?? "",
       }));
     }),
 
@@ -72,6 +75,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: vacancy.city ?? "",
         responses: vacancy.responses ?? 0,
         workType: vacancy.workType ?? "",
+        tasks: vacancy.tasks ?? "",
+        team: vacancy.team ?? "",
+        companyDescription: vacancy.companyDescription ?? "",
       };
     }),
 
@@ -100,6 +106,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: v.city ?? "",
         responses: v.responses ?? 0,
         workType: v.workType ?? "",
+        tasks: v.tasks ?? "",
+        team: v.team ?? "",
+        companyDescription: v.companyDescription ?? "",
       }));
     }),
 
@@ -114,6 +123,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: z.string().max(255).optional(),
         responses: z.number().int().min(0).default(0),
         workType: z.string().max(100).optional(),
+        tasks: z.string().max(4000).optional(),
+        team: z.string().max(4000).optional(),
+        companyDescription: z.string().max(8000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -126,6 +138,9 @@ export const vacanciesRouter = createTRPCRouter({
           city: input.city ?? null,
           responses: input.responses,
           workType: input.workType ?? null,
+          tasks: input.tasks ?? null,
+          team: input.team ?? null,
+          companyDescription: input.companyDescription ?? null,
         })
         .returning();
 
@@ -171,6 +186,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: created.city ?? "",
         responses: created.responses ?? 0,
         workType: created.workType ?? "",
+        tasks: created.tasks ?? "",
+        team: created.team ?? "",
+        companyDescription: created.companyDescription ?? "",
       };
     }),
 
@@ -186,6 +204,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: z.string().max(255).optional(),
         responses: z.number().int().min(0).optional(),
         workType: z.string().max(100).optional(),
+        tasks: z.string().max(4000).optional(),
+        team: z.string().max(4000).optional(),
+        companyDescription: z.string().max(8000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -212,6 +233,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: string | null;
         responses: number;
         workType: string | null;
+        tasks: string | null;
+        team: string | null;
+        companyDescription: string | null;
       }> = {};
 
       if (input.title && input.title !== existing.title) {
@@ -242,6 +266,21 @@ export const vacanciesRouter = createTRPCRouter({
         input.workType !== (existing.workType ?? "")
       ) {
         valuesToUpdate.workType = input.workType || null;
+      }
+
+      if (input.tasks !== undefined && input.tasks !== (existing.tasks ?? "")) {
+        valuesToUpdate.tasks = input.tasks || null;
+      }
+
+      if (input.team !== undefined && input.team !== (existing.team ?? "")) {
+        valuesToUpdate.team = input.team || null;
+      }
+
+      if (
+        input.companyDescription !== undefined &&
+        input.companyDescription !== (existing.companyDescription ?? "")
+      ) {
+        valuesToUpdate.companyDescription = input.companyDescription || null;
       }
 
       if (Object.keys(valuesToUpdate).length === 0) {
@@ -295,6 +334,9 @@ export const vacanciesRouter = createTRPCRouter({
         city: updated.city ?? "",
         responses: updated.responses ?? 0,
         workType: updated.workType ?? "",
+        tasks: updated.tasks ?? "",
+        team: updated.team ?? "",
+        companyDescription: updated.companyDescription ?? "",
       };
     }),
 });

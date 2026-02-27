@@ -6,5 +6,8 @@ export interface Vacancy {
   city: string;
   responses: number;
   workType: string;
+  tasks?: string;
+  team?: string;
+  companyDescription?: string;
   selected?: boolean;
 }

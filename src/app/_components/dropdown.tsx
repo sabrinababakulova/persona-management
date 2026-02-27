@@ -19,7 +19,11 @@ export function Dropdown({
     <div className={`flex flex-col gap-1 ${className ?? ""}`}>
       <div className="flex w-full flex-col gap-2">
         <label
-          className={`w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px] ${hideLabel ? "sr-only" : ""}`}
+          className={
+            hideLabel
+              ? "sr-only"
+              : "w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+          }
           htmlFor={selectId}
         >
           {label}
