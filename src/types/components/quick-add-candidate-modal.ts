@@ -1,3 +1,4 @@
+import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 
 export type QuickAddCandidatePayload = {
@@ -9,6 +10,7 @@ export type QuickAddCandidatePayload = {
   resumeUrl?: string;
   resumeFileName?: string;
   resumeFileSize?: string;
+  resumePrefillData?: CandidateResumePrefillData;
 };
 
 export type QuickAddCandidateModalProps = {

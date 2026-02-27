@@ -9,7 +9,10 @@ import type {
 } from "~/types/components/quick-add-candidate-modal";
 import { Dropdown } from "./dropdown";
 import { AIGenerationIcon, SmallChevronDownIcon } from "./icons";
-import { ResumeFileUploader } from "./resume-file-uploader";
+import {
+  ResumeFileUploader,
+  type ResumeUploadMeta,
+} from "./resume-file-uploader";
 export type { QuickAddCandidatePayload };
 
 export function QuickAddCandidateModal({
@@ -36,6 +39,8 @@ export function QuickAddCandidateModal({
   const [resumeUrl, setResumeUrl] = useState("");
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
+  const [resumePrefillData, setResumePrefillData] =
+    useState<ResumeUploadMeta["prefillData"]>();
   const [isResumeUploading, setIsResumeUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -57,6 +62,7 @@ export function QuickAddCandidateModal({
       setResumeUrl("");
       setResumeFileName("");
       setResumeFileSize("");
+      setResumePrefillData(undefined);
       setIsResumeUploading(false);
       setLocalError(null);
     }
@@ -131,6 +137,60 @@ export function QuickAddCandidateModal({
     return null;
   }
 
+  const normalizeOptionToken = (value: string) => value.trim().toLowerCase();
+
+  const findOptionValue = (
+    rawValue: string,
+    options: { value: string; label: string }[],
+  ) => {
+    const token = normalizeOptionToken(rawValue);
+    if (!token) {
+      return "";
+    }
+
+    const match = options.find(
+      (option) =>
+        normalizeOptionToken(option.value) === token ||
+        normalizeOptionToken(option.label) === token,
+    );
+
+    return match?.value ?? "";
+  };
+
+  const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
+    setResumeUrl(uploadedResume.resumeUrl);
+    setResumeFileName(uploadedResume.resumeFileName);
+    setResumeFileSize(uploadedResume.resumeFileSize);
+    setResumePrefillData(uploadedResume.prefillData);
+
+    const { prefillData } = uploadedResume;
+    if (prefillData.fullName) {
+      setFullName(prefillData.fullName);
+      setLocalError(null);
+    }
+
+    const firstContact = prefillData.contacts[0];
+    if (firstContact?.value) {
+      setContactValue(firstContact.value);
+    }
+    if (firstContact?.type) {
+      const matchedContactType = findOptionValue(
+        firstContact.type,
+        contactTypeOptions,
+      );
+      if (matchedContactType) {
+        setContactType(matchedContactType);
+      }
+    }
+
+    if (prefillData.source) {
+      const matchedSource = findOptionValue(prefillData.source, sourceOptions);
+      if (matchedSource) {
+        setSource(matchedSource);
+      }
+    }
+  };
+
   const handleSave = () => {
     if (!fullName.trim()) {
       setLocalError("Введите Ф.И.О");
@@ -147,6 +207,7 @@ export function QuickAddCandidateModal({
       resumeUrl: resumeUrl || undefined,
       resumeFileName: resumeFileName || undefined,
       resumeFileSize: resumeFileSize || undefined,
+      resumePrefillData,
     });
   };
 
@@ -253,11 +314,7 @@ export function QuickAddCandidateModal({
             <ResumeFileUploader
               candidateId={candidateDraftId}
               disabled={isSaving}
-              onUploaded={(uploadedResume) => {
-                setResumeUrl(uploadedResume.resumeUrl);
-                setResumeFileName(uploadedResume.resumeFileName);
-                setResumeFileSize(uploadedResume.resumeFileSize);
-              }}
+              onUploaded={handleResumeUploaded}
               onUploadingChange={setIsResumeUploading}
             />
             <p className="flex gap-1 font-medium text-[#9747FF] text-[12px] leading-[1.4] tracking-[-0.24px]">

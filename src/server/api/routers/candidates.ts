@@ -33,6 +33,19 @@ function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
 }
 
+function isValidResumeUrl(value: string) {
+  if (value.startsWith("/")) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export const candidatesRouter = createTRPCRouter({
   uploadResume: protectedProcedure
     .input(
@@ -329,7 +342,13 @@ export const candidatesRouter = createTRPCRouter({
           .max(20)
           .default([]),
         status: z.string().max(50).default("new"),
-        resumeUrl: z.string().url().max(500).optional(),
+        resumeUrl: z
+          .string()
+          .max(500)
+          .optional()
+          .refine((value) => !value || isValidResumeUrl(value), {
+            message: "Некорректная ссылка на резюме",
+          }),
         resumeFileName: z.string().max(255).optional(),
         resumeFileSize: z.string().max(50).optional(),
       }),

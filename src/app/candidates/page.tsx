@@ -242,15 +242,37 @@ export default function CandidatesPage() {
   };
 
   const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
+    const prefill = payload.resumePrefillData;
+    const primaryContact =
+      payload.contactValue.trim().length > 0
+        ? [{ type: payload.contactType, value: payload.contactValue.trim() }]
+        : [];
+    const parsedContacts = prefill?.contacts ?? [];
+    const mergedContacts = [...primaryContact];
+
+    for (const parsedContact of parsedContacts) {
+      const isDuplicate = mergedContacts.some(
+        (contact) =>
+          contact.type === parsedContact.type &&
+          contact.value === parsedContact.value,
+      );
+      if (!isDuplicate) {
+        mergedContacts.push(parsedContact);
+      }
+    }
+
     createQuickCandidate.mutate({
       id: payload.candidateId,
       fullName: payload.fullName,
-      city: "Не указан",
-      contacts: payload.contactValue
-        ? [{ type: payload.contactType, value: payload.contactValue }]
-        : [],
-      source: payload.source || undefined,
-      status: "new",
+      city: prefill?.city || "Не указан",
+      contacts: mergedContacts,
+      source: payload.source || prefill?.source || undefined,
+      salaryExpectation: prefill?.salaryExpectation,
+      salaryCurrency: prefill?.salaryCurrency ?? "UZS",
+      currentPosition: prefill?.currentPosition || undefined,
+      skills: prefill?.skills ?? [],
+      languages: prefill?.languages ?? [],
+      status: prefill?.status || "new",
       resumeUrl: payload.resumeUrl || undefined,
       resumeFileName: payload.resumeFileName || undefined,
       resumeFileSize: payload.resumeFileSize || undefined,
