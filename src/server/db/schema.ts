@@ -212,6 +212,8 @@ export const vacancies = createTable(
     city: d.varchar({ length: 255 }),
     responses: d.integer().default(0),
     workType: d.varchar({ length: 100 }),
+    salaryExpectation: d.integer(),
+    salaryCurrency: d.varchar({ length: 10 }).default("UZS"),
     tasks: d.text(),
     team: d.text(),
     companyDescription: d.text(),

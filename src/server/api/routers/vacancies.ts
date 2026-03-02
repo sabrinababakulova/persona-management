@@ -8,6 +8,43 @@ function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
 }
 
+type VacancyStatus = "active" | "draft" | "paused" | "closed" | "archive";
+type SalaryCurrency = "UZS" | "USD";
+
+function toVacancyStatus(value: string | null): VacancyStatus {
+  switch (value) {
+    case "active":
+    case "draft":
+    case "paused":
+    case "closed":
+    case "archive":
+      return value;
+    default:
+      return "active";
+  }
+}
+
+function toSalaryCurrency(value: string | null): SalaryCurrency {
+  return value === "USD" ? "USD" : "UZS";
+}
+
+function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
+  return {
+    id: vacancy.id,
+    title: vacancy.title,
+    level: vacancy.level ?? "",
+    status: toVacancyStatus(vacancy.status),
+    city: vacancy.city ?? "",
+    responses: vacancy.responses ?? 0,
+    workType: vacancy.workType ?? "",
+    salaryExpectation: vacancy.salaryExpectation ?? undefined,
+    salaryCurrency: toSalaryCurrency(vacancy.salaryCurrency),
+    tasks: vacancy.tasks ?? "",
+    team: vacancy.team ?? "",
+    companyDescription: vacancy.companyDescription ?? "",
+  };
+}
+
 export const vacanciesRouter = createTRPCRouter({
   getAllVacancies: protectedProcedure
     .input(
@@ -29,23 +66,7 @@ export const vacanciesRouter = createTRPCRouter({
         .limit(limit)
         .offset(offset);
 
-      return rows.map((v) => ({
-        id: v.id,
-        title: v.title,
-        level: v.level ?? "",
-        status: v.status as
-          | "active"
-          | "draft"
-          | "paused"
-          | "closed"
-          | "archive",
-        city: v.city ?? "",
-        responses: v.responses ?? 0,
-        workType: v.workType ?? "",
-        tasks: v.tasks ?? "",
-        team: v.team ?? "",
-        companyDescription: v.companyDescription ?? "",
-      }));
+      return rows.map(formatVacancy);
     }),
 
   getVacancyById: protectedProcedure
@@ -62,23 +83,7 @@ export const vacanciesRouter = createTRPCRouter({
         return null;
       }
 
-      return {
-        id: vacancy.id,
-        title: vacancy.title,
-        level: vacancy.level ?? "",
-        status: vacancy.status as
-          | "active"
-          | "draft"
-          | "paused"
-          | "closed"
-          | "archive",
-        city: vacancy.city ?? "",
-        responses: vacancy.responses ?? 0,
-        workType: vacancy.workType ?? "",
-        tasks: vacancy.tasks ?? "",
-        team: vacancy.team ?? "",
-        companyDescription: vacancy.companyDescription ?? "",
-      };
+      return formatVacancy(vacancy);
     }),
 
   searchVacancies: protectedProcedure
@@ -93,23 +98,7 @@ export const vacanciesRouter = createTRPCRouter({
             .limit(50)
         : await ctx.db.select().from(vacancies).limit(50);
 
-      return rows.map((v) => ({
-        id: v.id,
-        title: v.title,
-        level: v.level ?? "",
-        status: v.status as
-          | "active"
-          | "draft"
-          | "paused"
-          | "closed"
-          | "archive",
-        city: v.city ?? "",
-        responses: v.responses ?? 0,
-        workType: v.workType ?? "",
-        tasks: v.tasks ?? "",
-        team: v.team ?? "",
-        companyDescription: v.companyDescription ?? "",
-      }));
+      return rows.map(formatVacancy);
     }),
 
   createVacancy: protectedProcedure
@@ -123,6 +112,13 @@ export const vacanciesRouter = createTRPCRouter({
         city: z.string().max(255).optional(),
         responses: z.number().int().min(0).default(0),
         workType: z.string().max(100).optional(),
+        salaryExpectation: z
+          .number()
+          .int()
+          .min(0)
+          .max(1_000_000_000)
+          .optional(),
+        salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
         tasks: z.string().max(4000).optional(),
         team: z.string().max(4000).optional(),
         companyDescription: z.string().max(8000).optional(),
@@ -138,6 +134,8 @@ export const vacanciesRouter = createTRPCRouter({
           city: input.city ?? null,
           responses: input.responses,
           workType: input.workType ?? null,
+          salaryExpectation: input.salaryExpectation ?? null,
+          salaryCurrency: input.salaryCurrency,
           tasks: input.tasks ?? null,
           team: input.team ?? null,
           companyDescription: input.companyDescription ?? null,
@@ -173,23 +171,7 @@ export const vacanciesRouter = createTRPCRouter({
         );
       }
 
-      return {
-        id: created.id,
-        title: created.title,
-        level: created.level ?? "",
-        status: created.status as
-          | "active"
-          | "draft"
-          | "paused"
-          | "closed"
-          | "archive",
-        city: created.city ?? "",
-        responses: created.responses ?? 0,
-        workType: created.workType ?? "",
-        tasks: created.tasks ?? "",
-        team: created.team ?? "",
-        companyDescription: created.companyDescription ?? "",
-      };
+      return formatVacancy(created);
     }),
 
   updateVacancy: protectedProcedure
@@ -204,6 +186,14 @@ export const vacanciesRouter = createTRPCRouter({
         city: z.string().max(255).optional(),
         responses: z.number().int().min(0).optional(),
         workType: z.string().max(100).optional(),
+        salaryExpectation: z
+          .number()
+          .int()
+          .min(0)
+          .max(1_000_000_000)
+          .nullable()
+          .optional(),
+        salaryCurrency: z.enum(["UZS", "USD"]).optional(),
         tasks: z.string().max(4000).optional(),
         team: z.string().max(4000).optional(),
         companyDescription: z.string().max(8000).optional(),
@@ -233,6 +223,8 @@ export const vacanciesRouter = createTRPCRouter({
         city: string | null;
         responses: number;
         workType: string | null;
+        salaryExpectation: number | null;
+        salaryCurrency: SalaryCurrency;
         tasks: string | null;
         team: string | null;
         companyDescription: string | null;
@@ -268,6 +260,20 @@ export const vacanciesRouter = createTRPCRouter({
         valuesToUpdate.workType = input.workType || null;
       }
 
+      if (
+        input.salaryExpectation !== undefined &&
+        input.salaryExpectation !== existing.salaryExpectation
+      ) {
+        valuesToUpdate.salaryExpectation = input.salaryExpectation;
+      }
+
+      if (
+        input.salaryCurrency !== undefined &&
+        input.salaryCurrency !== toSalaryCurrency(existing.salaryCurrency)
+      ) {
+        valuesToUpdate.salaryCurrency = input.salaryCurrency;
+      }
+
       if (input.tasks !== undefined && input.tasks !== (existing.tasks ?? "")) {
         valuesToUpdate.tasks = input.tasks || null;
       }
@@ -284,7 +290,7 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       if (Object.keys(valuesToUpdate).length === 0) {
-        return existing;
+        return formatVacancy(existing);
       }
 
       const updatedRows = await ctx.db
@@ -321,22 +327,6 @@ export const vacanciesRouter = createTRPCRouter({
         console.error("Failed to write recent activity log for vacancy", error);
       }
 
-      return {
-        id: updated.id,
-        title: updated.title,
-        level: updated.level ?? "",
-        status: updated.status as
-          | "active"
-          | "draft"
-          | "paused"
-          | "closed"
-          | "archive",
-        city: updated.city ?? "",
-        responses: updated.responses ?? 0,
-        workType: updated.workType ?? "",
-        tasks: updated.tasks ?? "",
-        team: updated.team ?? "",
-        companyDescription: updated.companyDescription ?? "",
-      };
+      return formatVacancy(updated);
     }),
 });

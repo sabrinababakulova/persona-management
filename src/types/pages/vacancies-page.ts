@@ -6,6 +6,8 @@ export interface Vacancy {
   city: string;
   responses: number;
   workType: string;
+  salaryExpectation?: number;
+  salaryCurrency?: "UZS" | "USD";
   tasks?: string;
   team?: string;
   companyDescription?: string;

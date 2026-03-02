@@ -92,6 +92,8 @@ export default function VacancyDetailPage() {
                 city={vacancy.city}
                 companyDescription={vacancy.companyDescription}
                 level={vacancy.level}
+                salaryCurrency={vacancy.salaryCurrency}
+                salaryExpectation={vacancy.salaryExpectation}
                 status={vacancy.status}
                 tasks={vacancy.tasks}
                 team={vacancy.team}

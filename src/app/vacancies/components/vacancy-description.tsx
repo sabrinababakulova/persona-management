@@ -31,6 +31,8 @@ type VacancyDescriptionProps = {
   level: string;
   city: string;
   workType: string;
+  salaryExpectation?: number;
+  salaryCurrency?: "UZS" | "USD";
   tasks: string;
   team: string;
   companyDescription: string;
@@ -84,6 +86,8 @@ export function VacancyDescription({
   level,
   city,
   workType,
+  salaryExpectation,
+  salaryCurrency,
   tasks,
   team,
   companyDescription,
@@ -98,10 +102,12 @@ export function VacancyDescription({
     city,
     workType: mapWorkTypeValue(workType, vacancyLookups.workTypes),
     status,
+    ...DEFAULT_DETAILS_VALUES,
+    salaryExpectation: salaryExpectation ?? undefined,
+    salaryCurrency: salaryCurrency ?? "UZS",
     tasks,
     team,
     companyDescription,
-    ...DEFAULT_DETAILS_VALUES,
   });
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -114,6 +120,8 @@ export function VacancyDescription({
       city,
       workType: mapWorkTypeValue(workType, vacancyLookups.workTypes),
       status,
+      salaryExpectation: salaryExpectation ?? undefined,
+      salaryCurrency: salaryCurrency ?? "UZS",
       tasks,
       team,
       companyDescription,
@@ -123,6 +131,8 @@ export function VacancyDescription({
     level,
     city,
     workType,
+    salaryExpectation,
+    salaryCurrency,
     tasks,
     team,
     companyDescription,
@@ -215,6 +225,8 @@ export function VacancyDescription({
       level: formState.level.trim(),
       city: formState.city.trim(),
       workType: formState.workType.trim(),
+      salaryExpectation: formState.salaryExpectation ?? null,
+      salaryCurrency: formState.salaryCurrency,
       tasks: formState.tasks.trim(),
       team: formState.team.trim(),
       companyDescription: formState.companyDescription.trim(),
