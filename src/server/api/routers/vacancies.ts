@@ -39,6 +39,9 @@ function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
     workType: vacancy.workType ?? "",
     salaryExpectation: vacancy.salaryExpectation ?? undefined,
     salaryCurrency: toSalaryCurrency(vacancy.salaryCurrency),
+    workScheduleStart: vacancy.workScheduleStart ?? "09:00",
+    workScheduleEnd: vacancy.workScheduleEnd ?? "18:00",
+    comments: vacancy.comments ?? "",
     tasks: vacancy.tasks ?? "",
     team: vacancy.team ?? "",
     companyDescription: vacancy.companyDescription ?? "",
@@ -119,6 +122,9 @@ export const vacanciesRouter = createTRPCRouter({
           .max(1_000_000_000)
           .optional(),
         salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
+        workScheduleStart: z.string().max(10).optional(),
+        workScheduleEnd: z.string().max(10).optional(),
+        comments: z.string().max(4000).optional(),
         tasks: z.string().max(4000).optional(),
         team: z.string().max(4000).optional(),
         companyDescription: z.string().max(8000).optional(),
@@ -136,6 +142,9 @@ export const vacanciesRouter = createTRPCRouter({
           workType: input.workType ?? null,
           salaryExpectation: input.salaryExpectation ?? null,
           salaryCurrency: input.salaryCurrency,
+          workScheduleStart: input.workScheduleStart ?? null,
+          workScheduleEnd: input.workScheduleEnd ?? null,
+          comments: input.comments ?? null,
           tasks: input.tasks ?? null,
           team: input.team ?? null,
           companyDescription: input.companyDescription ?? null,
@@ -194,6 +203,9 @@ export const vacanciesRouter = createTRPCRouter({
           .nullable()
           .optional(),
         salaryCurrency: z.enum(["UZS", "USD"]).optional(),
+        workScheduleStart: z.string().max(10).optional(),
+        workScheduleEnd: z.string().max(10).optional(),
+        comments: z.string().max(4000).optional(),
         tasks: z.string().max(4000).optional(),
         team: z.string().max(4000).optional(),
         companyDescription: z.string().max(8000).optional(),
@@ -225,6 +237,9 @@ export const vacanciesRouter = createTRPCRouter({
         workType: string | null;
         salaryExpectation: number | null;
         salaryCurrency: SalaryCurrency;
+        workScheduleStart: string | null;
+        workScheduleEnd: string | null;
+        comments: string | null;
         tasks: string | null;
         team: string | null;
         companyDescription: string | null;
@@ -272,6 +287,27 @@ export const vacanciesRouter = createTRPCRouter({
         input.salaryCurrency !== toSalaryCurrency(existing.salaryCurrency)
       ) {
         valuesToUpdate.salaryCurrency = input.salaryCurrency;
+      }
+
+      if (
+        input.workScheduleStart !== undefined &&
+        input.workScheduleStart !== (existing.workScheduleStart ?? "")
+      ) {
+        valuesToUpdate.workScheduleStart = input.workScheduleStart || null;
+      }
+
+      if (
+        input.workScheduleEnd !== undefined &&
+        input.workScheduleEnd !== (existing.workScheduleEnd ?? "")
+      ) {
+        valuesToUpdate.workScheduleEnd = input.workScheduleEnd || null;
+      }
+
+      if (
+        input.comments !== undefined &&
+        input.comments !== (existing.comments ?? "")
+      ) {
+        valuesToUpdate.comments = input.comments || null;
       }
 
       if (input.tasks !== undefined && input.tasks !== (existing.tasks ?? "")) {

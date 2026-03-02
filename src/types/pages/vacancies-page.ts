@@ -8,6 +8,9 @@ export interface Vacancy {
   workType: string;
   salaryExpectation?: number;
   salaryCurrency?: "UZS" | "USD";
+  workScheduleStart?: string;
+  workScheduleEnd?: string;
+  comments?: string;
   tasks?: string;
   team?: string;
   companyDescription?: string;

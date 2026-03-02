@@ -9,6 +9,10 @@ import { api } from "~/trpc/react";
 import type { SelectOption } from "~/types/candidates/components";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 import type { VacancyLookups } from "~/types/shared/vacancy-lookups";
+import {
+  formatNumberWithSpaces,
+  parseFormattedNumber,
+} from "~/utils/format-salaries";
 
 type VacancyFormState = {
   title: string;
@@ -33,6 +37,9 @@ type VacancyDescriptionProps = {
   workType: string;
   salaryExpectation?: number;
   salaryCurrency?: "UZS" | "USD";
+  workScheduleStart?: string;
+  workScheduleEnd?: string;
+  comments?: string;
   tasks: string;
   team: string;
   companyDescription: string;
@@ -88,6 +95,9 @@ export function VacancyDescription({
   workType,
   salaryExpectation,
   salaryCurrency,
+  workScheduleStart,
+  workScheduleEnd,
+  comments,
   tasks,
   team,
   companyDescription,
@@ -105,6 +115,10 @@ export function VacancyDescription({
     ...DEFAULT_DETAILS_VALUES,
     salaryExpectation: salaryExpectation ?? undefined,
     salaryCurrency: salaryCurrency ?? "UZS",
+    workScheduleStart:
+      workScheduleStart || DEFAULT_DETAILS_VALUES.workScheduleStart,
+    workScheduleEnd: workScheduleEnd || DEFAULT_DETAILS_VALUES.workScheduleEnd,
+    comments: comments ?? "",
     tasks,
     team,
     companyDescription,
@@ -122,6 +136,11 @@ export function VacancyDescription({
       status,
       salaryExpectation: salaryExpectation ?? undefined,
       salaryCurrency: salaryCurrency ?? "UZS",
+      workScheduleStart:
+        workScheduleStart || DEFAULT_DETAILS_VALUES.workScheduleStart,
+      workScheduleEnd:
+        workScheduleEnd || DEFAULT_DETAILS_VALUES.workScheduleEnd,
+      comments: comments ?? "",
       tasks,
       team,
       companyDescription,
@@ -133,6 +152,9 @@ export function VacancyDescription({
     workType,
     salaryExpectation,
     salaryCurrency,
+    workScheduleStart,
+    workScheduleEnd,
+    comments,
     tasks,
     team,
     companyDescription,
@@ -190,6 +212,10 @@ export function VacancyDescription({
     setFormError(null);
   };
 
+  const handleSalaryExpectationChange = (value: string) => {
+    handleInputChange("salaryExpectation", parseFormattedNumber(value));
+  };
+
   const handleCityChange = (_value: string) => {
     // City dropdown options will be wired in a dedicated task.
   };
@@ -227,6 +253,9 @@ export function VacancyDescription({
       workType: formState.workType.trim(),
       salaryExpectation: formState.salaryExpectation ?? null,
       salaryCurrency: formState.salaryCurrency,
+      workScheduleStart: formState.workScheduleStart.trim(),
+      workScheduleEnd: formState.workScheduleEnd.trim(),
+      comments: formState.comments.trim(),
       tasks: formState.tasks.trim(),
       team: formState.team.trim(),
       companyDescription: formState.companyDescription.trim(),
@@ -330,16 +359,18 @@ export function VacancyDescription({
               </div>
             }
             id="salaryExpectation"
+            inputMode="numeric"
             label="Зарплата"
             onChange={(event) =>
-              handleInputChange(
-                "salaryExpectation",
-                event.target.value ? Number(event.target.value) : undefined,
-              )
+              handleSalaryExpectationChange(event.target.value)
             }
             placeholder="Введите сумму"
-            type="number"
-            value={formState.salaryExpectation ?? ""}
+            type="text"
+            value={
+              formState.salaryExpectation !== undefined
+                ? formatNumberWithSpaces(formState.salaryExpectation)
+                : ""
+            }
           />
 
           <div className="space-y-2">

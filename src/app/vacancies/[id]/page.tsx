@@ -90,6 +90,7 @@ export default function VacancyDetailPage() {
             {activeSectionId === "description" ? (
               <VacancyDescription
                 city={vacancy.city}
+                comments={vacancy.comments}
                 companyDescription={vacancy.companyDescription}
                 level={vacancy.level}
                 salaryCurrency={vacancy.salaryCurrency}
@@ -100,6 +101,8 @@ export default function VacancyDetailPage() {
                 title={vacancy.title}
                 vacancyId={vacancyId}
                 vacancyLookups={vacancyLookups}
+                workScheduleEnd={vacancy.workScheduleEnd}
+                workScheduleStart={vacancy.workScheduleStart}
                 workType={vacancy.workType}
               />
             ) : (
