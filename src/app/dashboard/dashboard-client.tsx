@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { StatsCard } from "../_components/stats-card";
@@ -116,9 +117,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
               <h2 className="font-semibold text-gray-900 text-lg">
                 Последние вакансии
               </h2>
-              <button
+              <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
-                type="button"
+                href="/vacancies"
               >
                 Смотреть все
                 <svg
@@ -136,7 +137,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
                     strokeWidth={2}
                   />
                 </svg>
-              </button>
+              </Link>
             </div>
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-4 border-border-light border-b bg-bg-light px-6 py-3 font-medium text-sm text-text-muted">
@@ -250,9 +251,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
           <div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-lg">Кандидаты</h2>
-              <button
+              <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
-                type="button"
+                href="/candidates"
               >
                 Смотреть все
                 <svg
@@ -270,7 +271,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
                     strokeWidth={2}
                   />
                 </svg>
-              </button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

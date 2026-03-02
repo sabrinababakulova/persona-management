@@ -8,6 +8,8 @@ import {
   vacancies,
 } from "~/server/db/schema";
 
+const RECENT_ACTIVITIES_LIMIT = 5;
+
 function pluralize(value: number, forms: [string, string, string]) {
   const abs = Math.abs(value) % 100;
   const last = abs % 10;
@@ -136,7 +138,7 @@ export const dashboardRouter = createTRPCRouter({
         .select()
         .from(recentActivityLogs)
         .orderBy(desc(recentActivityLogs.createdAt))
-        .limit(20)
+        .limit(RECENT_ACTIVITIES_LIMIT)
         .catch(() => []),
     ]);
 
@@ -190,7 +192,7 @@ export const dashboardRouter = createTRPCRouter({
       isRecent?: boolean;
     }[] = [];
 
-    for (const activity of recentActivityRows.slice(0, 10)) {
+    for (const activity of recentActivityRows) {
       const createdAt = activity.createdAt
         ? new Date(activity.createdAt)
         : new Date();
