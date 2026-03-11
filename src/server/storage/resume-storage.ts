@@ -1,48 +1,48 @@
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
+import {
+  createDirectus,
+  deleteFile,
+  readAssetArrayBuffer,
+  readFiles,
+  rest,
+  staticToken,
+  uploadFiles,
+} from "@directus/sdk";
 
 import { env } from "~/env";
 
-const DEFAULT_RESUME_STORAGE_PATH = path.resolve(process.cwd(), "storage");
 const CANDIDATE_ID_PATH_SAFE_PATTERN = /^[A-Za-z0-9-]+$/;
 const PDF_HEADER = Buffer.from("%PDF-", "ascii");
 const PDF_EOF_MARKER = Buffer.from("%%EOF", "ascii");
 const PDF_EOF_SCAN_BYTES = 2048;
 
 export const MAX_RESUME_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const RESUME_FILE_NAME_ON_DISK = "resume.pdf";
+const RESUME_FILE_NAME_ON_STORAGE = "resume.pdf";
+
+const directus = createDirectus(env.DIRECTUS_URL ?? "")
+  .with(staticToken(env.DIRECTUS_TOKEN ?? ""))
+  .with(rest());
+
+async function findFileByTitle(title: string): Promise<string | null> {
+  const files = await directus.request(
+    readFiles({
+      filter: { title: { _eq: title } },
+      fields: ["id"],
+      limit: 1,
+    }),
+  );
+
+  return files[0]?.id ?? null;
+}
 
 function assertPathSafeCandidateId(candidateId: string) {
   if (!CANDIDATE_ID_PATH_SAFE_PATTERN.test(candidateId)) {
-    throw new Error("Invalid candidate id for file storage path");
+    throw new Error("Invalid candidate id for storage key");
   }
 }
 
-export function getResumeStorageRoot() {
-  const configuredStoragePath = env.RESUME_STORAGE_PATH?.trim();
-  if (!configuredStoragePath) {
-    return DEFAULT_RESUME_STORAGE_PATH;
-  }
-
-  return path.isAbsolute(configuredStoragePath)
-    ? configuredStoragePath
-    : path.resolve(process.cwd(), configuredStoragePath);
-}
-
-export function getCandidateResumeDirectory(candidateId: string) {
+export function getCandidateResumeStorageKey(candidateId: string) {
   assertPathSafeCandidateId(candidateId);
-  return path.join(getResumeStorageRoot(), "candidates", candidateId);
-}
-
-export function getCandidateResumeFilePath(candidateId: string) {
-  return path.join(
-    getCandidateResumeDirectory(candidateId),
-    RESUME_FILE_NAME_ON_DISK,
-  );
-}
-
-export async function ensureCandidateResumeDirectory(candidateId: string) {
-  await mkdir(getCandidateResumeDirectory(candidateId), { recursive: true });
+  return `candidates/${candidateId}/${RESUME_FILE_NAME_ON_STORAGE}`;
 }
 
 export function buildCandidateResumeUrl(candidateId: string) {
@@ -102,4 +102,64 @@ export function formatFileSize(fileSizeBytes: number) {
 
   const sizeMb = sizeKb / 1024;
   return `${sizeMb.toFixed(1)} MB`;
+}
+
+export async function uploadCandidateResumeToStorage(
+  candidateId: string,
+  fileBuffer: Buffer,
+  mimeType: string,
+) {
+  const key = getCandidateResumeStorageKey(candidateId);
+
+  // Delete existing file if present (upsert behavior)
+  const existingId = await findFileByTitle(key);
+  if (existingId) {
+    await directus.request(deleteFile(existingId));
+  }
+
+  const formData = new FormData();
+  formData.append("title", key);
+  formData.append(
+    "file",
+    new Blob([new Uint8Array(fileBuffer)], {
+      type: mimeType || "application/pdf",
+    }),
+    RESUME_FILE_NAME_ON_STORAGE,
+  );
+
+  if (env.DIRECTUS_FOLDER) {
+    formData.append("folder", env.DIRECTUS_FOLDER);
+  }
+
+  await directus.request(uploadFiles(formData));
+
+  return { key };
+}
+
+export async function downloadCandidateResumeFromStorage(candidateId: string) {
+  const key = getCandidateResumeStorageKey(candidateId);
+
+  const fileId = await findFileByTitle(key);
+  if (!fileId) return null;
+
+  try {
+    const arrayBuffer = await directus.request(readAssetArrayBuffer(fileId));
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      contentType: "application/pdf",
+    };
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      (err as { status: number }).status === 404
+    ) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+export function buildPublicResumeUrl(key: string) {
+  return `${env.DIRECTUS_URL}/assets/${key}`;
 }

@@ -8,5 +8,5 @@ export default {
   dbCredentials: {
     url: env.DATABASE_URL,
   },
-  tablesFilter: ["persona-management_*"],
+  tablesFilter: ["!directus_*"],
 } satisfies Config;

@@ -16,6 +16,9 @@ export const env = createEnv({
     MAIL_LOGIN_PASSWORD: z.string(),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
     RESUME_STORAGE_PATH: z.string().min(1).optional(),
+    DIRECTUS_URL: z.string().url(),
+    DIRECTUS_TOKEN: z.string().min(1),
+    DIRECTUS_FOLDER: z.string().optional(),
   },
 
   /**
@@ -39,6 +42,9 @@ export const env = createEnv({
     MAIL_LOGIN_PASSWORD: process.env.MAIL_LOGIN_PASSWORD,
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     RESUME_STORAGE_PATH: process.env.RESUME_STORAGE_PATH,
+    DIRECTUS_URL: process.env.DIRECTUS_URL,
+    DIRECTUS_TOKEN: process.env.DIRECTUS_TOKEN,
+    DIRECTUS_FOLDER: process.env.DIRECTUS_FOLDER,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

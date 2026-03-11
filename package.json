@@ -28,6 +28,7 @@
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
+    "@directus/sdk": "^21.2.0",
     "ai": "^6.0.99",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.41.0",

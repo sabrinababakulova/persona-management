@@ -1,0 +1,24 @@
+services:
+  directus:
+    image: directus/directus:latest
+    container_name: directus
+    restart: unless-stopped
+    ports:
+      - "8055:8055"
+    volumes:
+      - directus_uploads:/directus/uploads
+    env_file:
+      - .env
+    environment:
+      SECRET: ${DIRECTUS_SECRET}
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      DB_CLIENT: "pg"
+      DB_HOST: "host.docker.internal"
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+volumes:
+  directus_uploads:

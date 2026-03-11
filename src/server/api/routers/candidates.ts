@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -18,15 +17,15 @@ import { extractCandidateResumePrefillData } from "~/server/resume/extract-candi
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import {
   buildCandidateResumeUrl,
-  ensureCandidateResumeDirectory,
   formatFileSize,
-  getCandidateResumeFilePath,
+  getCandidateResumeStorageKey,
   hasPdfEofMarker,
   hasPdfExtension,
   hasPdfMagicHeader,
   isAllowedPdfMimeType,
   MAX_RESUME_FILE_SIZE_BYTES,
   sanitizeResumeFileName,
+  uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
 import type { CandidateStatus } from "~/types/server/candidates";
 
@@ -137,19 +136,14 @@ export const candidatesRouter = createTRPCRouter({
         });
       }
 
-      let resumePath: string;
       try {
-        resumePath = getCandidateResumeFilePath(input.candidateId);
-      } catch {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Некорректный идентификатор кандидата",
-        });
-      }
-
-      try {
-        await ensureCandidateResumeDirectory(input.candidateId);
-        await writeFile(resumePath, fileBuffer, { mode: 0o600 });
+        // Validate candidate id and upload to Directus Storage
+        getCandidateResumeStorageKey(input.candidateId);
+        await uploadCandidateResumeToStorage(
+          input.candidateId,
+          fileBuffer,
+          input.mimeType || "application/pdf",
+        );
       } catch (error) {
         console.error("Failed to save candidate resume file", error);
         throw new TRPCError({

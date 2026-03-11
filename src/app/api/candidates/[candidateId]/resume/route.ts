@@ -1,19 +1,19 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
 import {
   buildCandidateResumeUrl,
-  ensureCandidateResumeDirectory,
+  downloadCandidateResumeFromStorage,
   formatFileSize,
-  getCandidateResumeFilePath,
+  getCandidateResumeStorageKey,
   hasPdfEofMarker,
   hasPdfExtension,
   hasPdfMagicHeader,
   isAllowedPdfMimeType,
   MAX_RESUME_FILE_SIZE_BYTES,
   sanitizeResumeFileName,
+  uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
 
 type RouteContext = {
@@ -65,15 +65,9 @@ export async function POST(request: Request, context: RouteContext) {
     return buildErrorResponse("Файл слишком большой. Максимум 10MB.", 413);
   }
 
-  const resumePath = (() => {
-    try {
-      return getCandidateResumeFilePath(candidateId);
-    } catch {
-      return null;
-    }
-  })();
-
-  if (!resumePath) {
+  try {
+    getCandidateResumeStorageKey(candidateId);
+  } catch {
     return buildErrorResponse("Некорректный идентификатор кандидата", 400);
   }
 
@@ -97,8 +91,11 @@ export async function POST(request: Request, context: RouteContext) {
       return buildErrorResponse("Файл не является валидным PDF", 415);
     }
 
-    await ensureCandidateResumeDirectory(candidateId);
-    await writeFile(resumePath, fileBuffer, { mode: 0o600 });
+    await uploadCandidateResumeToStorage(
+      candidateId,
+      fileBuffer,
+      uploadedFile.type || "application/pdf",
+    );
   } catch (error) {
     console.error("Failed to save candidate resume file", error);
     return buildErrorResponse("Не удалось сохранить файл", 500);
@@ -146,20 +143,14 @@ export async function GET(_request: Request, context: RouteContext) {
     return buildErrorResponse("Кандидат не найден", 404);
   }
 
-  const resumePath = (() => {
-    try {
-      return getCandidateResumeFilePath(candidateId);
-    } catch {
-      return null;
-    }
-  })();
-
-  if (!resumePath) {
+  try {
+    getCandidateResumeStorageKey(candidateId);
+  } catch {
     return buildErrorResponse("Некорректный идентификатор кандидата", 400);
   }
 
-  const fileBuffer = await readFile(resumePath).catch(() => null);
-  if (!fileBuffer) {
+  const resumeFile = await downloadCandidateResumeFromStorage(candidateId);
+  if (!resumeFile) {
     return buildErrorResponse("Резюме не найдено", 404);
   }
 
@@ -167,12 +158,12 @@ export async function GET(_request: Request, context: RouteContext) {
     candidate.resumeFileName ?? "resume.pdf",
   );
 
-  return new Response(fileBuffer, {
+  return new Response(resumeFile.buffer, {
     status: 200,
     headers: {
-      "Content-Type": "application/pdf",
+      "Content-Type": resumeFile.contentType ?? "application/pdf",
       "Content-Disposition": buildContentDisposition(downloadFileName),
-      "Content-Length": String(fileBuffer.byteLength),
+      "Content-Length": String(resumeFile.buffer.byteLength),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },
