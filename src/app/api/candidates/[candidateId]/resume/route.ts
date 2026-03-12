@@ -37,15 +37,15 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { candidateId } = await context.params;
 
-  // const [candidate] = await db
-  //   .select({ id: candidates.id })
-  //   .from(candidates)
-  //   .where(eq(candidates.id, candidateId))
-  //   .limit(1);
+  const [candidate] = await db
+    .select({ id: candidates.id })
+    .from(candidates)
+    .where(eq(candidates.id, candidateId))
+    .limit(1);
 
-  // if (!candidate) {
-  //   return buildErrorResponse("Кандидат не найден", 404);
-  // }
+  if (!candidate) {
+    return buildErrorResponse("Кандидат не найден", 404);
+  }
 
   const formData = await request.formData().catch(() => null);
   if (!formData) {

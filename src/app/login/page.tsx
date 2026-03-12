@@ -35,12 +35,14 @@ export default function LoginPage() {
 
       if (result?.code === "rate_limited") {
         setErrorMessage("Слишком много попыток входа. Попробуйте позже.");
+        setPassword("");
         setIsSubmitting(false);
         return;
       }
 
       if (result?.error) {
         setErrorMessage("Неверная почта или пароль.");
+        setPassword("");
         setIsSubmitting(false);
         return;
       }
@@ -109,7 +111,10 @@ export default function LoginPage() {
                 type="password"
                 value={password}
               />
-              <span className="mt-1 text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px]">
+              <span
+                className="mt-1 cursor-default text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px]"
+                title="Обратитесь к администратору для сброса пароля"
+              >
                 Забыли пароль?
               </span>
             </div>

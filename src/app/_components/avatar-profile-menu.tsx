@@ -12,12 +12,19 @@ type AvatarProfileMenuProps = {
   avatarAlt: string;
 };
 
-const clearClientCookies = () => {
-  const cookieNames = Object.keys(Cookies.get());
+const AUTH_COOKIE_NAMES = [
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+  "authjs.callback-url",
+  "__Secure-authjs.callback-url",
+  "authjs.csrf-token",
+  "__Host-authjs.csrf-token",
+];
 
-  for (const cookieName of cookieNames) {
-    Cookies.remove(cookieName);
-    Cookies.remove(cookieName, { path: "/" });
+const clearAuthCookies = () => {
+  for (const name of AUTH_COOKIE_NAMES) {
+    Cookies.remove(name);
+    Cookies.remove(name, { path: "/" });
   }
 };
 
@@ -69,7 +76,7 @@ export function AvatarProfileMenu({
 
     try {
       await signOut({ redirect: false, redirectTo: "/login" });
-      clearClientCookies();
+      clearAuthCookies();
       clearClientStorage();
       window.location.replace("/login");
     } catch (error) {

@@ -84,6 +84,7 @@ export const profileRouter = createTRPCRouter({
         .update(users)
         .set({
           password: hashedPassword,
+          passwordChangedAt: new Date(),
         })
         .where(eq(users.id, currentUser.id));
 

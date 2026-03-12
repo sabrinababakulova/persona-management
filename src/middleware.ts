@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 const protectedPaths = [
   "/dashboard",
@@ -9,21 +10,20 @@ const protectedPaths = [
 ];
 const authPaths = ["/login", "/register"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const sessionToken =
-    request.cookies.get("authjs.session-token")?.value ??
-    request.cookies.get("__Secure-authjs.session-token")?.value;
+  const token = await getToken({ req: request });
+  const isAuthenticated = !!token?.id;
 
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   const isAuth = authPaths.some((p) => pathname.startsWith(p));
 
-  if (isProtected && !sessionToken) {
+  if (isProtected && !isAuthenticated) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (isAuth && sessionToken) {
+  if (isAuth && isAuthenticated) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

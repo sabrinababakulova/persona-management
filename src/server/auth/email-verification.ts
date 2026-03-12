@@ -20,7 +20,20 @@ const VERIFICATION_FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+  const trimmed = email.trim().toLowerCase();
+  const atIndex = trimmed.indexOf("@");
+  if (atIndex === -1) return trimmed;
+
+  let localPart = trimmed.slice(0, atIndex);
+  const domain = trimmed.slice(atIndex + 1);
+
+  // Strip + addressing (user+tag@domain → user@domain)
+  const plusIndex = localPart.indexOf("+");
+  if (plusIndex !== -1) {
+    localPart = localPart.slice(0, plusIndex);
+  }
+
+  return `${localPart}@${domain}`;
 }
 
 export function createEmailVerificationIdentifier(userId: string) {

@@ -42,7 +42,7 @@ import {
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
 
-class RegisterFlowError extends CredentialsSignin {
+class AuthFlowError extends CredentialsSignin {
   constructor(code: string) {
     super();
     this.code = code;
@@ -52,17 +52,24 @@ class RegisterFlowError extends CredentialsSignin {
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
 
 function getClientIp(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const [firstIp] = forwardedFor.split(",");
-    if (firstIp?.trim()) {
-      return firstIp.trim();
-    }
+  // Prefer x-real-ip set by the reverse proxy (most reliable)
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
   }
 
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp?.trim()) {
-    return realIp.trim();
+  // Fall back to the rightmost IP in x-forwarded-for
+  // (the last proxy in the chain appends the real client IP)
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const ips = forwardedFor
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter(Boolean);
+    const rightmost = ips[ips.length - 1];
+    if (rightmost) {
+      return rightmost;
+    }
   }
 
   return "unknown";
@@ -99,7 +106,7 @@ export const authConfig = {
           });
 
           if (!parsed.success) {
-            throw new RegisterFlowError("invalid_data");
+            throw new AuthFlowError("invalid_data");
           }
 
           const { firstName, lastName, password } = parsed.data;
@@ -129,8 +136,12 @@ export const authConfig = {
             )) ||
             (await hasActiveRecord(registerCooldownIdentifier))
           ) {
-            throw new RegisterFlowError("rate_limited");
+            throw new AuthFlowError("rate_limited");
           }
+
+          // Always hash the password BEFORE checking user existence
+          // to prevent timing-based user enumeration
+          const hashedPassword = await bcrypt.hash(password, 12);
 
           const [existingUser] = await db
             .select({ id: users.id, emailVerified: users.emailVerified })
@@ -139,10 +150,18 @@ export const authConfig = {
             .limit(1);
 
           if (existingUser?.emailVerified) {
-            throw new RegisterFlowError("registration_failed");
+            // Record rate limit attempts (same timing as the normal flow)
+            await recordAttempt(
+              registerRateIdentifier,
+              REGISTER_RATE_LIMIT_WINDOW_MS,
+            );
+            await recordAttempt(
+              registerRateByIpIdentifier,
+              REGISTER_RATE_LIMIT_WINDOW_MS,
+            );
+            throw new AuthFlowError("registration_failed");
           }
 
-          const hashedPassword = await bcrypt.hash(password, 12);
           const verificationCode = generateEmailVerificationCode();
 
           let createdUserId: string | null = null;
@@ -150,9 +169,20 @@ export const authConfig = {
           let verificationFlowIdentifier: string | null = null;
 
           try {
-            const verificationUserId =
-              existingUser?.id ??
-              (
+            let verificationUserId: string | undefined;
+
+            if (existingUser?.id) {
+              // Unverified user exists: delete old verification tokens
+              // but do NOT overwrite their password (prevents race condition
+              // where an attacker could set a password for someone else's email)
+              verificationUserId = existingUser.id;
+              const oldVerificationId =
+                createEmailVerificationIdentifier(verificationUserId);
+              await db
+                .delete(verificationTokens)
+                .where(eq(verificationTokens.identifier, oldVerificationId));
+            } else {
+              verificationUserId = (
                 await db
                   .insert(users)
                   .values({
@@ -164,21 +194,11 @@ export const authConfig = {
                   .returning({ id: users.id })
               )[0]?.id;
 
-            if (!verificationUserId) {
-              throw new RegisterFlowError("registration_failed");
-            }
+              if (!verificationUserId) {
+                throw new AuthFlowError("registration_failed");
+              }
 
-            if (!existingUser?.id) {
               createdUserId = verificationUserId;
-            } else {
-              await db
-                .update(users)
-                .set({
-                  name: `${firstName} ${lastName}`.trim(),
-                  password: hashedPassword,
-                  hasSeenWelcomeModal: false,
-                })
-                .where(eq(users.id, verificationUserId));
             }
 
             const flowId = generateEmailVerificationFlowId();
@@ -221,12 +241,12 @@ export const authConfig = {
               REGISTER_RESEND_COOLDOWN_MS,
             );
 
-            throw new RegisterFlowError(
+            throw new AuthFlowError(
               `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,
             );
           } catch (error) {
             if (
-              error instanceof RegisterFlowError &&
+              error instanceof AuthFlowError &&
               error.code.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)
             ) {
               throw error;
@@ -265,11 +285,11 @@ export const authConfig = {
                 .catch(() => undefined);
             }
 
-            if (error instanceof RegisterFlowError) {
+            if (error instanceof AuthFlowError) {
               throw error;
             }
 
-            throw new RegisterFlowError("registration_failed");
+            throw new AuthFlowError("registration_failed");
           }
         }
 
@@ -301,7 +321,7 @@ export const authConfig = {
               VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
             )
           ) {
-            throw new RegisterFlowError("rate_limited");
+            throw new AuthFlowError("rate_limited");
           }
 
           if (
@@ -310,7 +330,7 @@ export const authConfig = {
               VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
             )
           ) {
-            throw new RegisterFlowError("rate_limited");
+            throw new AuthFlowError("rate_limited");
           }
 
           const verificationFlowIdentifier =
@@ -421,7 +441,7 @@ export const authConfig = {
             LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
-          throw new RegisterFlowError("rate_limited");
+          throw new AuthFlowError("rate_limited");
         }
         if (
           await isRateLimited(
@@ -429,7 +449,7 @@ export const authConfig = {
             LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
-          throw new RegisterFlowError("rate_limited");
+          throw new AuthFlowError("rate_limited");
         }
 
         const [user] = await db
@@ -446,6 +466,8 @@ export const authConfig = {
           .limit(1);
 
         if (!user?.password || !user.emailVerified) {
+          // Hash a dummy password to prevent timing-based user enumeration
+          await bcrypt.hash(password, 12);
           await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
           await recordAttempt(
             loginRateByIpIdentifier,
@@ -486,11 +508,37 @@ export const authConfig = {
   }),
   session: { strategy: "jwt" },
   secret: env.AUTH_SECRET,
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
   callbacks: {
-    jwt: ({ token, user }) => {
+    jwt: async ({ token, user }) => {
       if (user) {
         (token as { id?: string }).id = user.id;
+        return token;
       }
+
+      // On token refresh, check if password was changed after token was issued
+      const tokenId = (token as { id?: string }).id;
+      if (tokenId && typeof token.iat === "number") {
+        const [dbUser] = await db
+          .select({ passwordChangedAt: users.passwordChangedAt })
+          .from(users)
+          .where(eq(users.id, tokenId))
+          .limit(1);
+
+        if (dbUser?.passwordChangedAt) {
+          const changedAtSec = Math.floor(
+            dbUser.passwordChangedAt.getTime() / 1000,
+          );
+          if (changedAtSec > token.iat) {
+            // Password changed after token issued — invalidate session
+            return { ...token, id: undefined };
+          }
+        }
+      }
+
       return token;
     },
     session: ({ session, token }) => {

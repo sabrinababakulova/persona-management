@@ -34,6 +34,7 @@ export const users = createTable("user", (d) => ({
   name: d.varchar({ length: 255 }),
   email: d.varchar({ length: 255 }).notNull().unique(),
   password: d.varchar({ length: 255 }),
+  passwordChangedAt: d.timestamp({ mode: "date", withTimezone: true }),
   hasSeenWelcomeModal: d.boolean().notNull().default(true),
   emailVerified: d.timestamp({
     mode: "date",

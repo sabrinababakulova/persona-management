@@ -1,6 +1,7 @@
 import { createDirectus, rest, staticToken, uploadFiles } from "@directus/sdk";
 
 import { env } from "~/env";
+import { auth } from "~/server/auth";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,11 @@ const directus = createDirectus(env.DIRECTUS_URL ?? "")
   .with(rest());
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const form = await req.formData();
   const file = form.get("file");
 
