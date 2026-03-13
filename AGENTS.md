@@ -171,7 +171,7 @@ PostgreSQL accessed via `postgres` (postgres.js driver) + Drizzle ORM.
 `src/server/db/index.ts` — cached singleton in development, fresh connection in production.
 
 ### Table Prefix
-All tables are prefixed with `persona-management_`. The Drizzle config filters on this prefix.
+Tables use their plain schema names with no `persona-management_` prefix.
 
 ### Schema (`src/server/db/schema.ts`)
 
@@ -341,7 +341,7 @@ All TypeScript types live in `src/types/`, organized by domain:
 - JSON columns for nested/array data (contacts, skills, work experience)
 - Lookup tables for enumerated dropdown options
 - Timestamps: `createdAt` (default `now()`), `updatedAt` (manual or `now()`)
-- Table names prefixed with `persona-management_`
+- Table names are unprefixed
 
 ### Error Handling
 - tRPC errors use standard codes: `UNAUTHORIZED`, `NOT_FOUND`, `TOO_MANY_REQUESTS`
@@ -369,7 +369,7 @@ All TypeScript types live in `src/types/`, organized by domain:
 
 ### Add a new DB table
 1. Define table in `src/server/db/schema.ts` using Drizzle's `pgTable`
-2. Prefix table name with `persona-management_`
+2. Define the table with its plain name (no `persona-management_` prefix)
 3. Run `bun run db:generate` then `bun run db:push` (or `db:migrate`)
 
 ### Add a new icon
