@@ -1,24 +1,32 @@
 services:
   directus:
-    image: directus/directus:latest
+    image: directus/directus@sha256:8543bb57029d6e4087fd6bd83944233b271b3858465aa8e43d888e618bbe0a69
     container_name: directus
     restart: unless-stopped
     ports:
-      - "8055:8055"
+      - "127.0.0.1:8055:8055"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - directus_uploads:/directus/uploads
-    env_file:
-      - .env
     environment:
       SECRET: ${DIRECTUS_SECRET}
       ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL}
       DB_CLIENT: "pg"
-      DB_HOST: "host.docker.internal"
-      DB_PORT: ${DB_PORT}
+      DB_HOST: "postgres-internal"
+      DB_PORT: "5432"
       DB_DATABASE: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - default
+      - persona-management-internal
 
 volumes:
   directus_uploads:
+
+networks:
+  persona-management-internal:
+    external: true

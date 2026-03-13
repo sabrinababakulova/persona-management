@@ -18,8 +18,12 @@ const PDF_EOF_SCAN_BYTES = 2048;
 export const MAX_RESUME_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const RESUME_FILE_NAME_ON_STORAGE = "resume.pdf";
 
-const directus = createDirectus(env.DIRECTUS_URL ?? "")
-  .with(staticToken(env.DIRECTUS_TOKEN ?? ""))
+const directusInternalUrl = env.DIRECTUS_INTERNAL_URL ?? env.DIRECTUS_URL;
+const directusPublicUrl = env.DIRECTUS_PUBLIC_URL ?? env.DIRECTUS_URL;
+const directusStorageToken = env.DIRECTUS_STORAGE_TOKEN ?? env.DIRECTUS_TOKEN;
+
+const directus = createDirectus(directusInternalUrl)
+  .with(staticToken(directusStorageToken))
   .with(rest());
 
 async function findFileByTitle(title: string): Promise<string | null> {
@@ -161,5 +165,5 @@ export async function downloadCandidateResumeFromStorage(candidateId: string) {
 }
 
 export function buildPublicResumeUrl(key: string) {
-  return `${env.DIRECTUS_URL}/assets/${key}`;
+  return `${directusPublicUrl}/assets/${key}`;
 }

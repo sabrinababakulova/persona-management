@@ -18,6 +18,9 @@ export const env = createEnv({
     RESUME_STORAGE_PATH: z.string().min(1).optional(),
     DIRECTUS_URL: z.string().url(),
     DIRECTUS_TOKEN: z.string().min(1),
+    DIRECTUS_INTERNAL_URL: z.string().url().optional(),
+    DIRECTUS_PUBLIC_URL: z.string().url().optional(),
+    DIRECTUS_STORAGE_TOKEN: z.string().min(1).optional(),
     DIRECTUS_FOLDER: z.string().optional(),
   },
 
@@ -44,6 +47,9 @@ export const env = createEnv({
     RESUME_STORAGE_PATH: process.env.RESUME_STORAGE_PATH,
     DIRECTUS_URL: process.env.DIRECTUS_URL,
     DIRECTUS_TOKEN: process.env.DIRECTUS_TOKEN,
+    DIRECTUS_INTERNAL_URL: process.env.DIRECTUS_INTERNAL_URL,
+    DIRECTUS_PUBLIC_URL: process.env.DIRECTUS_PUBLIC_URL,
+    DIRECTUS_STORAGE_TOKEN: process.env.DIRECTUS_STORAGE_TOKEN,
     DIRECTUS_FOLDER: process.env.DIRECTUS_FOLDER,
   },
   /**

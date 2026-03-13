@@ -16,9 +16,12 @@ set -a
 source .env
 
 DB_PASSWORD=$(echo "$DATABASE_URL" | awk -F':' '{print $3}' | awk -F'@' '{print $1}')
-DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'\/' '{print $1}')
+DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')
 DB_NAME=$(echo "$DATABASE_URL" | awk -F'/' '{print $4}')
 DB_CONTAINER_NAME="$DB_NAME-postgres"
+DB_BIND_ADDRESS="127.0.0.1"
+DB_NETWORK_NAME="persona-management-internal"
+DB_NETWORK_ALIAS="postgres-internal"
 
 if ! [ -x "$(command -v docker)" ] && ! [ -x "$(command -v podman)" ]; then
   echo -e "Docker or Podman is not installed. Please install docker or podman and try again.\nDocker install guide: https://docs.docker.com/engine/install/\nPodman install guide: https://podman.io/getting-started/installation"
@@ -35,6 +38,10 @@ fi
 if ! $DOCKER_CMD info > /dev/null 2>&1; then
   echo "$DOCKER_CMD daemon is not running. Please start $DOCKER_CMD and try again."
   exit 1
+fi
+
+if ! $DOCKER_CMD network inspect "$DB_NETWORK_NAME" > /dev/null 2>&1; then
+  $DOCKER_CMD network create "$DB_NETWORK_NAME" > /dev/null
 fi
 
 if command -v nc >/dev/null 2>&1; then
@@ -57,6 +64,16 @@ if [ "$($DOCKER_CMD ps -q -f name=$DB_CONTAINER_NAME)" ]; then
 fi
 
 if [ "$($DOCKER_CMD ps -q -a -f name=$DB_CONTAINER_NAME)" ]; then
+  EXISTING_BINDINGS=$($DOCKER_CMD port "$DB_CONTAINER_NAME" 5432/tcp 2>/dev/null || true)
+  if echo "$EXISTING_BINDINGS" | grep -Eq '(^|[[:space:]])0\.0\.0\.0:|(^|[[:space:]]):::|(^|[[:space:]])\[::\]:'; then
+    echo "Existing database container '$DB_CONTAINER_NAME' is published on a non-local interface."
+    echo "Refusing to start it because that would expose Postgres to the network."
+    echo "Remove and recreate it so the port binds only to $DB_BIND_ADDRESS:"
+    echo "  $DOCKER_CMD rm -f $DB_CONTAINER_NAME"
+    echo "  ./start-database.sh"
+    exit 1
+  fi
+
   $DOCKER_CMD start "$DB_CONTAINER_NAME"
   echo "Existing database container '$DB_CONTAINER_NAME' started"
   exit 0
@@ -81,8 +98,10 @@ fi
 
 $DOCKER_CMD run -d \
   --name $DB_CONTAINER_NAME \
+  --network "$DB_NETWORK_NAME" \
+  --network-alias "$DB_NETWORK_ALIAS" \
   -e POSTGRES_USER="postgres" \
   -e POSTGRES_PASSWORD="$DB_PASSWORD" \
   -e POSTGRES_DB="$DB_NAME" \
-  -p "$DB_PORT":5432 \
+  -p "$DB_BIND_ADDRESS:$DB_PORT:5432" \
   docker.io/postgres && echo "Database container '$DB_CONTAINER_NAME' was successfully created"
