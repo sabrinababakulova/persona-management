@@ -148,23 +148,19 @@ async function main() {
     },
   );
 
-  await seedTable(
-    "candidate_language",
-    CANDIDATE_LANGUAGES,
-    async (row) => {
-      await db
-        .insert(schema.candidateLanguages)
-        .values(row)
-        .onConflictDoUpdate({
-          target: schema.candidateLanguages.value,
-          set: {
-            label: row.label,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          },
-        });
-    },
-  );
+  await seedTable("candidate_language", CANDIDATE_LANGUAGES, async (row) => {
+    await db
+      .insert(schema.candidateLanguages)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.candidateLanguages.value,
+        set: {
+          label: row.label,
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        },
+      });
+  });
 
   await seedTable(
     "candidate_language_level",
@@ -184,59 +180,47 @@ async function main() {
     },
   );
 
-  await seedTable(
-    "candidate_position",
-    CANDIDATE_POSITIONS,
-    async (row) => {
-      await db
-        .insert(schema.candidatePositions)
-        .values(row)
-        .onConflictDoUpdate({
-          target: schema.candidatePositions.value,
-          set: {
-            label: row.label,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          },
-        });
-    },
-  );
+  await seedTable("candidate_position", CANDIDATE_POSITIONS, async (row) => {
+    await db
+      .insert(schema.candidatePositions)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.candidatePositions.value,
+        set: {
+          label: row.label,
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        },
+      });
+  });
 
-  await seedTable(
-    "candidate_skill",
-    CANDIDATE_SKILLS,
-    async (row) => {
-      await db
-        .insert(schema.candidateSkills)
-        .values(row)
-        .onConflictDoUpdate({
-          target: schema.candidateSkills.value,
-          set: {
-            label: row.label,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          },
-        });
-    },
-  );
+  await seedTable("candidate_skill", CANDIDATE_SKILLS, async (row) => {
+    await db
+      .insert(schema.candidateSkills)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.candidateSkills.value,
+        set: {
+          label: row.label,
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        },
+      });
+  });
 
-  await seedTable(
-    "candidate_source",
-    CANDIDATE_SOURCES,
-    async (row) => {
-      await db
-        .insert(schema.candidateSources)
-        .values(row)
-        .onConflictDoUpdate({
-          target: schema.candidateSources.value,
-          set: {
-            label: row.label,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          },
-        });
-    },
-  );
+  await seedTable("candidate_source", CANDIDATE_SOURCES, async (row) => {
+    await db
+      .insert(schema.candidateSources)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.candidateSources.value,
+        set: {
+          label: row.label,
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        },
+      });
+  });
 
   await seedTable(
     "candidate_status_option",
@@ -256,23 +240,19 @@ async function main() {
     },
   );
 
-  await seedTable(
-    "vacancy_level_option",
-    VACANCY_LEVELS,
-    async (row) => {
-      await db
-        .insert(schema.vacancyLevels)
-        .values(row)
-        .onConflictDoUpdate({
-          target: schema.vacancyLevels.value,
-          set: {
-            label: row.label,
-            sortOrder: row.sortOrder,
-            isActive: row.isActive,
-          },
-        });
-    },
-  );
+  await seedTable("vacancy_level_option", VACANCY_LEVELS, async (row) => {
+    await db
+      .insert(schema.vacancyLevels)
+      .values(row)
+      .onConflictDoUpdate({
+        target: schema.vacancyLevels.value,
+        set: {
+          label: row.label,
+          sortOrder: row.sortOrder,
+          isActive: row.isActive,
+        },
+      });
+  });
 
   await seedTable(
     "vacancy_status_option",

@@ -30,6 +30,7 @@ fi
 
 git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
 bun install --frozen-lockfile
+bun run db:push
 bun run build
 
 run_as_root systemctl restart "$APP_SERVICE"
