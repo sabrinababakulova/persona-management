@@ -1,1 +1,0 @@
-ALTER TABLE "persona-management_candidate" ADD COLUMN "aiAnalysis" text;

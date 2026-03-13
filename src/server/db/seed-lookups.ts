@@ -131,7 +131,7 @@ async function seedTable(
 
 async function main() {
   await seedTable(
-    "persona-management_candidate_contact_type",
+    "candidate_contact_type",
     CANDIDATE_CONTACT_TYPES,
     async (row) => {
       await db
@@ -149,7 +149,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_language",
+    "candidate_language",
     CANDIDATE_LANGUAGES,
     async (row) => {
       await db
@@ -167,7 +167,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_language_level",
+    "candidate_language_level",
     CANDIDATE_LANGUAGE_LEVELS,
     async (row) => {
       await db
@@ -185,7 +185,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_position",
+    "candidate_position",
     CANDIDATE_POSITIONS,
     async (row) => {
       await db
@@ -203,7 +203,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_skill",
+    "candidate_skill",
     CANDIDATE_SKILLS,
     async (row) => {
       await db
@@ -221,7 +221,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_source",
+    "candidate_source",
     CANDIDATE_SOURCES,
     async (row) => {
       await db
@@ -239,7 +239,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_candidate_status_option",
+    "candidate_status_option",
     CANDIDATE_STATUS_OPTIONS,
     async (row) => {
       await db
@@ -257,7 +257,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_vacancy_level_option",
+    "vacancy_level_option",
     VACANCY_LEVELS,
     async (row) => {
       await db
@@ -275,7 +275,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_vacancy_status_option",
+    "vacancy_status_option",
     VACANCY_STATUS_OPTIONS,
     async (row) => {
       await db
@@ -293,7 +293,7 @@ async function main() {
   );
 
   await seedTable(
-    "persona-management_vacancy_work_type_option",
+    "vacancy_work_type_option",
     VACANCY_WORK_TYPES,
     async (row) => {
       await db
