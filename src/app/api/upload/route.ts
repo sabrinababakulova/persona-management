@@ -5,8 +5,12 @@ import { auth } from "~/server/auth";
 
 export const runtime = "nodejs";
 
-const directus = createDirectus(env.DIRECTUS_URL ?? "")
-  .with(staticToken(env.DIRECTUS_TOKEN ?? ""))
+const directusInternalUrl = env.DIRECTUS_INTERNAL_URL ?? env.DIRECTUS_URL;
+const directusPublicUrl = env.DIRECTUS_PUBLIC_URL ?? env.DIRECTUS_URL;
+const directusStorageToken = env.DIRECTUS_STORAGE_TOKEN ?? env.DIRECTUS_TOKEN;
+
+const directus = createDirectus(directusInternalUrl)
+  .with(staticToken(directusStorageToken))
   .with(rest());
 
 export async function POST(req: Request) {
@@ -40,7 +44,7 @@ export async function POST(req: Request) {
   try {
     const result = await directus.request(uploadFiles(uploadForm));
     const fileId = (result as { id: string }).id;
-    const publicUrl = `${env.DIRECTUS_URL}/assets/${fileId}`;
+    const publicUrl = `${directusPublicUrl}/assets/${fileId}`;
 
     return Response.json({ key, fileId, publicUrl });
   } catch (err) {

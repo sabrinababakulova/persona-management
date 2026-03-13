@@ -28,6 +28,32 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
 
+## GitHub Actions Deploy
+
+This repo includes a GitHub Actions workflow at `.github/workflows/deploy.yml` that follows:
+
+1. Run `bun install --frozen-lockfile`
+2. Run `bun run check`
+3. Run `bun run typecheck`
+4. SSH into the server
+5. Execute `scripts/deploy.sh`
+
+The server-side deploy script:
+
+- refuses to deploy if the server worktree is dirty
+- fast-forwards the target branch
+- runs `bun install --frozen-lockfile`
+- runs `bun run build`
+- restarts `yeshunt.service`
+
+Required GitHub repository secrets:
+
+- `DEPLOY_HOST`
+- `DEPLOY_PORT`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
+- `DEPLOY_KNOWN_HOSTS`
+
 ## Candidate Lookup Constants
 
 The candidate create form select options (contact types, sources, positions, skills, languages, language levels, statuses) are stored in Postgres lookup tables and served from the backend via tRPC.

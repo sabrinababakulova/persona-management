@@ -253,7 +253,7 @@ export const recentActivityLogs = createTable(
 );
 
 // Lookup tables for candidate create form select options.
-// NOTE: These are intended to be managed from the backend (seeded via migrations).
+// NOTE: These are managed by the backend and populated via `bun run db:seed`.
 export const candidateContactTypes = createTable(
   "candidate_contact_type",
   (d) => ({
