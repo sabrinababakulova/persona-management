@@ -67,3 +67,40 @@ To apply locally:
 ./start-database.sh
 bun run db:migrate
 ```
+
+## Monitoring And Alerts
+
+This repo now includes a lightweight monitor runner at `scripts/monitor.ts` plus a health endpoint at `/api/health`.
+
+What it watches:
+
+- host CPU load
+- host memory usage
+- disk usage for `MONITOR_DISK_PATH`
+- API request spikes using app-side counters
+- auth failure spikes using app-side counters
+- service health via `/api/health` (app, database, Directus reachability)
+
+Setup:
+
+```sh
+./start-database.sh
+bun run db:migrate
+```
+
+Populate the monitoring vars in `.env`:
+
+- `ALERT_CHANNELS=email`, `telegram`, or `sms` (comma-separated is supported)
+- `ALERT_EMAIL_TO` plus SMTP settings for email alerts
+- `ALERT_TELEGRAM_BOT_TOKEN` and `ALERT_TELEGRAM_CHAT_ID` for Telegram
+- `ALERT_TWILIO_ACCOUNT_SID`, `ALERT_TWILIO_AUTH_TOKEN`, `ALERT_TWILIO_FROM`, and `ALERT_SMS_TO` for SMS
+- the `MONITOR_*` threshold vars if you want to override the defaults in `.env.example`
+
+Useful commands:
+
+```sh
+bun run monitor:run
+bun run monitor:install-cron
+```
+
+The cron installer registers a once-per-minute job that writes output to `storage/monitor/monitor.log`.

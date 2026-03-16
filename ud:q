@@ -1,0 +1,22 @@
+[0;1;32m●[0m yeshunt.service - YesHunt app
+     Loaded: loaded (]8;;file://yeshunt/etc/systemd/system/yeshunt.service/etc/systemd/system/yeshunt.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Fri 2026-03-13 09:46:40 UTC; 3 days ago
+   Main PID: 49990 (npm run start -)
+      Tasks: 23 (limit: 9492)
+     Memory: 156.0M (peak: 174.0M)
+        CPU: 27.283s
+     CGroup: /system.slice/yeshunt.service
+             ├─[0;38;5;245m49990 "npm run start -H 127.0.0.1 -p 3000"[0m
+             ├─[0;38;5;245m50020 sh -c "next start -H 127.0.0.1 -p 3000"[0m
+             └─[0;38;5;245m50021 "next-server (v15.5.10)"[0m
+
+Mar 16 11:23:44 yeshunt npm[50021]: [TRPC] dashboard.getDashboardData took 9ms to execute
+Mar 16 11:23:44 yeshunt npm[50021]:  ⨯ The requested resource "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Mar 16 11:23:49 yeshunt npm[50021]:  ⨯ The requested resource "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Mar 16 11:23:50 yeshunt npm[50021]:  ⨯ The requested resource "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Mar 16 11:23:50 yeshunt npm[50021]: [TRPC] dashboard.getWelcomeModalState took 5ms to execute
+Mar 16 11:23:50 yeshunt npm[50021]: [TRPC] dashboard.getDashboardData took 6ms to execute
+Mar 16 11:23:54 yeshunt npm[50021]: [TRPC] dashboard.getWelcomeModalState took 5ms to execute
+Mar 16 11:23:54 yeshunt npm[50021]: [TRPC] dashboard.getDashboardData took 8ms to execute
+Mar 16 11:23:55 yeshunt npm[50021]:  ⨯ The requested resource "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Mar 16 11:24:04 yeshunt npm[50021]:  ⨯ The requested resource "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.

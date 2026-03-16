@@ -41,6 +41,7 @@ import {
   verificationTokens,
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
+import { recordMonitorEvent } from "~/server/monitoring/events";
 
 class AuthFlowError extends CredentialsSignin {
   constructor(code: string) {
@@ -136,6 +137,11 @@ export const authConfig = {
             )) ||
             (await hasActiveRecord(registerCooldownIdentifier))
           ) {
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "register",
+              outcome: "rate_limited",
+            });
             throw new AuthFlowError("rate_limited");
           }
 
@@ -159,6 +165,11 @@ export const authConfig = {
               registerRateByIpIdentifier,
               REGISTER_RATE_LIMIT_WINDOW_MS,
             );
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "register",
+              outcome: "failure",
+            });
             throw new AuthFlowError("registration_failed");
           }
 
@@ -240,6 +251,11 @@ export const authConfig = {
               registerCooldownIdentifier,
               REGISTER_RESEND_COOLDOWN_MS,
             );
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "register",
+              outcome: "verification_required",
+            });
 
             throw new AuthFlowError(
               `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,
@@ -286,9 +302,19 @@ export const authConfig = {
             }
 
             if (error instanceof AuthFlowError) {
+              await recordMonitorEvent({
+                eventType: "auth_attempt",
+                target: "register",
+                outcome: error.code,
+              });
               throw error;
             }
 
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "register",
+              outcome: "failure",
+            });
             throw new AuthFlowError("registration_failed");
           }
         }
@@ -321,6 +347,11 @@ export const authConfig = {
               VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
             )
           ) {
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "verify-code",
+              outcome: "rate_limited",
+            });
             throw new AuthFlowError("rate_limited");
           }
 
@@ -330,6 +361,11 @@ export const authConfig = {
               VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
             )
           ) {
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "verify-code",
+              outcome: "rate_limited",
+            });
             throw new AuthFlowError("rate_limited");
           }
 
@@ -394,6 +430,11 @@ export const authConfig = {
               verifyRateByIpIdentifier,
               VERIFY_RATE_LIMIT_WINDOW_MS,
             );
+            await recordMonitorEvent({
+              eventType: "auth_attempt",
+              target: "verify-code",
+              outcome: "failure",
+            });
             return null;
           }
 
@@ -408,6 +449,12 @@ export const authConfig = {
             clearIdentifier(verifyRateIdentifier),
             clearIdentifier(verifyRateByIpIdentifier),
           ]);
+
+          await recordMonitorEvent({
+            eventType: "auth_attempt",
+            target: "verify-code",
+            outcome: "success",
+          });
 
           return {
             id: user.id,
@@ -441,6 +488,11 @@ export const authConfig = {
             LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
+          await recordMonitorEvent({
+            eventType: "auth_attempt",
+            target: "login",
+            outcome: "rate_limited",
+          });
           throw new AuthFlowError("rate_limited");
         }
         if (
@@ -449,6 +501,11 @@ export const authConfig = {
             LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
+          await recordMonitorEvent({
+            eventType: "auth_attempt",
+            target: "login",
+            outcome: "rate_limited",
+          });
           throw new AuthFlowError("rate_limited");
         }
 
@@ -473,6 +530,11 @@ export const authConfig = {
             loginRateByIpIdentifier,
             LOGIN_RATE_LIMIT_WINDOW_MS,
           );
+          await recordMonitorEvent({
+            eventType: "auth_attempt",
+            target: "login",
+            outcome: "failure",
+          });
           return null;
         }
 
@@ -483,6 +545,11 @@ export const authConfig = {
             loginRateByIpIdentifier,
             LOGIN_RATE_LIMIT_WINDOW_MS,
           );
+          await recordMonitorEvent({
+            eventType: "auth_attempt",
+            target: "login",
+            outcome: "failure",
+          });
           return null;
         }
 
@@ -490,6 +557,12 @@ export const authConfig = {
           clearIdentifier(loginRateIdentifier),
           clearIdentifier(loginRateByIpIdentifier),
         ]);
+
+        await recordMonitorEvent({
+          eventType: "auth_attempt",
+          target: "login",
+          outcome: "success",
+        });
 
         return {
           id: user.id,

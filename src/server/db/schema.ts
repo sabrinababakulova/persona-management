@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -100,6 +100,31 @@ export const verificationTokens = createTable(
     expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
   }),
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
+export const monitorEventBuckets = createTable(
+  "monitor_event_bucket",
+  (d) => ({
+    eventType: d.varchar({ length: 64 }).notNull(),
+    bucketStart: d.timestamp({ withTimezone: true }).notNull(),
+    target: d.varchar({ length: 255 }).notNull().default("all"),
+    outcome: d.varchar({ length: 64 }).notNull().default("count"),
+    count: d.integer().notNull().default(1),
+    lastSeenAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  }),
+  (t) => [
+    primaryKey({
+      columns: [t.eventType, t.bucketStart, t.target, t.outcome],
+    }),
+    index("monitor_event_bucket_type_bucket_idx").on(
+      t.eventType,
+      t.bucketStart,
+    ),
+    index("monitor_event_bucket_target_idx").on(t.target, t.bucketStart),
+  ],
 );
 
 // Candidates table

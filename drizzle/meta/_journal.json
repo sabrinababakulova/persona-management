@@ -8,6 +8,13 @@
       "when": 1773392550191,
       "tag": "0000_acoustic_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773409429959,
+      "tag": "0001_narrow_doomsday",
+      "breakpoints": true
     }
   ]
 }

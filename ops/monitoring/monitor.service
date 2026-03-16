@@ -1,0 +1,9 @@
+[Unit]
+Description=Persona Management monitor runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/projects/persona-management
+ExecStart=/root/.bun/bin/bun run scripts/monitor.ts

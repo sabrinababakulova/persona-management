@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
+import { recordMonitorEvent } from "~/server/monitoring/events";
 
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
@@ -15,8 +16,8 @@ const createContext = async (req: NextRequest) => {
   });
 };
 
-const handler = (req: NextRequest) =>
-  fetchRequestHandler({
+const handler = async (req: NextRequest) => {
+  const response = await fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
     router: appRouter,
@@ -30,5 +31,21 @@ const handler = (req: NextRequest) =>
           }
         : undefined,
   });
+
+  const outcome =
+    response.status >= 500
+      ? "server_error"
+      : response.status >= 400
+        ? "client_error"
+        : "success";
+
+  await recordMonitorEvent({
+    eventType: "api_request",
+    target: "/api/trpc",
+    outcome,
+  });
+
+  return response;
+};
 
 export { handler as GET, handler as POST };

@@ -1,0 +1,1 @@
+* * * * * cd /root/projects/persona-management && /root/.bun/bin/bun run scripts/monitor.ts >> /root/projects/persona-management/storage/monitor/monitor.log 2>&1
