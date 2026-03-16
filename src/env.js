@@ -22,7 +22,8 @@ export const env = createEnv({
     DIRECTUS_PUBLIC_URL: z.string().url().optional(),
     DIRECTUS_STORAGE_TOKEN: z.string().min(1).optional(),
     DIRECTUS_FOLDER: z.string().optional(),
-    VERCEL_URL: z.string().url().optional(),
+    AUTH_URL: z.string().url().optional(),
+    VERCEL_URL: z.string().optional(),
   },
 
   /**
@@ -52,6 +53,7 @@ export const env = createEnv({
     DIRECTUS_PUBLIC_URL: process.env.DIRECTUS_PUBLIC_URL,
     DIRECTUS_STORAGE_TOKEN: process.env.DIRECTUS_STORAGE_TOKEN,
     DIRECTUS_FOLDER: process.env.DIRECTUS_FOLDER,
+    AUTH_URL: process.env.AUTH_URL,
     VERCEL_URL: process.env.VERCEL_URL,
   },
   /**
