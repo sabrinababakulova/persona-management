@@ -22,6 +22,7 @@ export const env = createEnv({
     DIRECTUS_PUBLIC_URL: z.string().url().optional(),
     DIRECTUS_STORAGE_TOKEN: z.string().min(1).optional(),
     DIRECTUS_FOLDER: z.string().optional(),
+    VERCEL_URL: z.string().url().optional(),
   },
 
   /**
@@ -51,6 +52,7 @@ export const env = createEnv({
     DIRECTUS_PUBLIC_URL: process.env.DIRECTUS_PUBLIC_URL,
     DIRECTUS_STORAGE_TOKEN: process.env.DIRECTUS_STORAGE_TOKEN,
     DIRECTUS_FOLDER: process.env.DIRECTUS_FOLDER,
+    VERCEL_URL: process.env.VERCEL_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
