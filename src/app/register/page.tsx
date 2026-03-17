@@ -140,7 +140,7 @@ function RegisterPageContent() {
         return;
       }
 
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } catch {
       setVerificationErrorMessage("Что-то пошло не так!");
       setIsVerifyingCode(false);

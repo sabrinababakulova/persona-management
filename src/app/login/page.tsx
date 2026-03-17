@@ -47,7 +47,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } catch {
       setErrorMessage("Что-то пошло не так!");
       setIsSubmitting(false);
