@@ -1,5 +1,5 @@
-import { type ChatStreamHandlerParams, handleChatStream } from "@mastra/ai-sdk";
-import { createUIMessageStreamResponse, type UIMessage } from "ai";
+import { handleChatStream } from "@mastra/ai-sdk";
+import { createUIMessageStreamResponse } from "ai";
 
 import { mastra } from "~/mastra";
 import { auth } from "~/server/auth";
@@ -24,9 +24,7 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const body = (await request.json()) as Partial<
-    ChatStreamHandlerParams<UIMessage>
-  >;
+  const body = (await request.json()) as Record<string, unknown>;
   if (!Array.isArray(body.messages)) {
     return Response.json(
       { error: "Некорректный запрос: требуется массив messages" },
@@ -38,11 +36,10 @@ export async function POST(request: Request, context: RouteContext) {
   const stream = await handleChatStream({
     mastra,
     agentId,
-    params: {
-      ...body,
-      messages: body.messages as UIMessage[],
-    },
+    // @ts-expect-error - @mastra/ai-sdk@1.1.3 bundles ai v5 types, incompatible with ai v6 provider types. Safe at runtime.
+    params: body,
   });
 
+  // @ts-expect-error - same ai v5/v6 type mismatch, stream data is compatible at runtime
   return createUIMessageStreamResponse({ stream });
 }
