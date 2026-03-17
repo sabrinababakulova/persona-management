@@ -79,7 +79,7 @@ echo "=== 4. Creating new container with named volume ==="
 echo ""
 echo "=== 5. Waiting for database to be ready ==="
 for i in $(seq 1 30); do
-  if pg_isready -h localhost -p "$DB_PORT" -q 2>/dev/null; then
+  if $DOCKER_CMD exec "$DB_CONTAINER_NAME" pg_isready -U postgres -q 2>/dev/null; then
     echo "Database is ready."
     break
   fi

@@ -15,9 +15,10 @@ echo "=== 1. Starting database ==="
 
 echo ""
 echo "=== 2. Waiting for database to be ready ==="
-DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')
+DB_NAME=$(echo "$DATABASE_URL" | awk -F'/' '{print $4}')
+DB_CONTAINER_NAME="$DB_NAME-postgres"
 for i in $(seq 1 30); do
-  if pg_isready -h localhost -p "$DB_PORT" -q 2>/dev/null; then
+  if docker exec "$DB_CONTAINER_NAME" pg_isready -U postgres -q 2>/dev/null; then
     echo "Database is ready."
     break
   fi
