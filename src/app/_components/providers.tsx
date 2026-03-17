@@ -6,7 +6,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
       <TRPCReactProvider>{children}</TRPCReactProvider>
     </SessionProvider>
   );

@@ -1,4 +1,5 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import * as argon2 from "argon2";
 import bcrypt from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
@@ -476,7 +477,10 @@ export const authConfig = {
           return null;
         }
 
-        const isValid = await bcrypt.compare(password, user.password);
+        const isArgon2 = user.password.startsWith("$argon2");
+        const isValid = isArgon2
+          ? await argon2.verify(user.password, password)
+          : await bcrypt.compare(password, user.password);
         if (!isValid) {
           await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
           await recordAttempt(
@@ -548,7 +552,9 @@ export const authConfig = {
           : undefined;
 
       if (!session.user || !tokenId) {
-        return session;
+        // Token is invalid — clear the session user so the client
+        // treats this as unauthenticated
+        return { ...session, user: undefined } as unknown as typeof session;
       }
 
       return {
