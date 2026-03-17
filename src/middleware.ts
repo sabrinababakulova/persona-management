@@ -13,7 +13,7 @@ const authPaths = ["/login", "/register"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const token = await getToken({ req: request });
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
   const isAuthenticated = !!token?.id;
 
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));

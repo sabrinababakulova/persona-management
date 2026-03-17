@@ -67,7 +67,7 @@ jobs:
             "bash -c '
               cd /root/projects/persona-management &&
               DEPLOY_BRANCH=${{ env.DEPLOY_REF }} \
-              APP_SERVICE=yeshunt.service \
+              APP_NAME=yeshunt \
               DEPLOY_PATH=/root/projects/persona-management \
               DEPLOY_REPOSITORY=origin \
               bash ./scripts/deploy.sh

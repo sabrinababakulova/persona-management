@@ -4,7 +4,7 @@ set -euo pipefail
 DEPLOY_PATH="${DEPLOY_PATH:-/root/projects/persona-management}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_REPOSITORY="${DEPLOY_REPOSITORY:-origin}"
-APP_SERVICE="${APP_SERVICE:-yeshunt.service}"
+APP_NAME="${APP_NAME:-yeshunt}"
 
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -24,8 +24,18 @@ ensure_bun() {
   fi
 }
 
+ensure_pm2() {
+  export PATH="$HOME/.bun/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
+
+  if ! command -v pm2 >/dev/null 2>&1; then
+    echo "pm2 is not installed. Installing globally with bun..."
+    bun install -g pm2
+  fi
+}
+
 cd "$DEPLOY_PATH"
-ensure_bun()
+ensure_bun
+ensure_pm2
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Refusing to deploy: worktree has uncommitted changes in $DEPLOY_PATH" >&2
@@ -44,5 +54,16 @@ bun install --frozen-lockfile
 bun run db:push
 bun run build
 
-run_as_root systemctl restart "$APP_SERVICE"
-run_as_root systemctl status "$APP_SERVICE" --no-pager --lines=20
+# Restart or start the app with pm2
+if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
+  pm2 restart "$APP_NAME"
+  echo "Restarted '$APP_NAME' with pm2"
+else
+  pm2 start bun --name "$APP_NAME" -- run start
+  echo "Started '$APP_NAME' with pm2"
+fi
+
+pm2 save
+
+echo ""
+pm2 status "$APP_NAME"

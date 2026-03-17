@@ -96,6 +96,8 @@ if [ "$DB_PASSWORD" = "password" ]; then
   fi
 fi
 
+DB_VOLUME_NAME="$DB_NAME-postgres-data"
+
 $DOCKER_CMD run -d \
   --name $DB_CONTAINER_NAME \
   --network "$DB_NETWORK_NAME" \
@@ -103,5 +105,6 @@ $DOCKER_CMD run -d \
   -e POSTGRES_USER="postgres" \
   -e POSTGRES_PASSWORD="$DB_PASSWORD" \
   -e POSTGRES_DB="$DB_NAME" \
+  -v "$DB_VOLUME_NAME:/var/lib/postgresql" \
   -p "$DB_BIND_ADDRESS:$DB_PORT:5432" \
   docker.io/postgres && echo "Database container '$DB_CONTAINER_NAME' was successfully created"

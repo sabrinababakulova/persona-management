@@ -68,7 +68,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
       </g>
       <defs>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="127.654"
           id="filter0_d_429_3063"
@@ -76,7 +76,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="45.9395"
           y="39.3076"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -102,7 +102,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="102.931"
           id="filter1_d_429_3063"
@@ -110,7 +110,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="49.9961"
           y="63.7173"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -136,7 +136,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="90.4263"
           id="filter2_d_429_3063"
@@ -144,7 +144,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="38.0801"
           y="88.4263"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -170,7 +170,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="44.3286"
           id="filter3_d_429_3063"
@@ -178,7 +178,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="101.096"
           y="130.293"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -211,8 +211,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="26.2734"
           y2="109.182"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -222,8 +222,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="46.8175"
           y2="158.122"
         >
-          <stop stop-color="#FDFEFF" />
-          <stop offset="0.9964" stop-color="#ECF0F5" />
+          <stop stopColor="#FDFEFF" />
+          <stop offset="0.9964" stopColor="#ECF0F5" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -233,8 +233,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="71.799"
           y2="157.542"
         >
-          <stop stop-color="#FDFEFF" />
-          <stop offset="0.9964" stop-color="#ECF0F5" />
+          <stop stopColor="#FDFEFF" />
+          <stop offset="0.9964" stopColor="#ECF0F5" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -244,8 +244,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="100.873"
           y2="140.402"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -255,8 +255,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="141.139"
           y2="154.794"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
       </defs>
     </svg>

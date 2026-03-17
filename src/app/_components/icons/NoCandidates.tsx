@@ -108,7 +108,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
       </g>
       <defs>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="126.478"
           id="filter0_d_429_3508"
@@ -116,7 +116,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="134.068"
           y="45.8828"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -142,7 +142,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="121.621"
           id="filter1_d_429_3508"
@@ -150,7 +150,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="3.45312"
           y="50.7402"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -176,7 +176,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="165.709"
           id="filter2_d_429_3508"
@@ -184,7 +184,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="34.918"
           y="17.5801"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -217,8 +217,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="71.4094"
           y2="71.4094"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -228,8 +228,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="119.943"
           y2="110.269"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -239,8 +239,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="123"
           y2="115.899"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -250,8 +250,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="74.5858"
           y2="74.5858"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -261,8 +261,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="115.136"
           y2="115.136"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -272,8 +272,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="50.1617"
           y2="50.1617"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -283,8 +283,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="121.584"
           y2="107.33"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -294,8 +294,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="161.544"
           y2="161.544"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
       </defs>
     </svg>
