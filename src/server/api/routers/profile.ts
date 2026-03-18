@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { changePasswordSchema } from "~/schemas/change-password";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createRateLimitIdentifier } from "~/server/auth/email-verification";
@@ -15,6 +16,21 @@ const CHANGE_PASSWORD_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
 export const profileRouter = createTRPCRouter({
+  updateAvatar: protectedProcedure
+    .input(
+      z.object({
+        imageUrl: z.string().min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(users)
+        .set({ image: input.imageUrl })
+        .where(eq(users.id, ctx.session.user.id));
+
+      return { success: true, imageUrl: input.imageUrl };
+    }),
+
   changePassword: protectedProcedure
     .input(changePasswordSchema)
     .mutation(async ({ ctx, input }) => {

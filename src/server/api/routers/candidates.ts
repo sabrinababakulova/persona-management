@@ -17,7 +17,6 @@ import {
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import {
-  buildCandidateResumeUrl,
   formatFileSize,
   getCandidateResumeStorageKey,
   hasPdfEofMarker,
@@ -137,14 +136,16 @@ export const candidatesRouter = createTRPCRouter({
         });
       }
 
+      let resumeUrl: string;
       try {
         // Validate candidate id and upload to Directus Storage
         getCandidateResumeStorageKey(input.candidateId);
-        await uploadCandidateResumeToStorage(
+        const uploadResult = await uploadCandidateResumeToStorage(
           input.candidateId,
           fileBuffer,
           input.mimeType || "application/pdf",
         );
+        resumeUrl = uploadResult.publicUrl;
       } catch (error) {
         console.error("Failed to save candidate resume file", error);
         throw new TRPCError({
@@ -155,7 +156,6 @@ export const candidatesRouter = createTRPCRouter({
 
       const resumeFileName = sanitizeResumeFileName(input.fileName);
       const resumeFileSize = formatFileSize(fileBuffer.length);
-      const resumeUrl = buildCandidateResumeUrl(input.candidateId);
 
       const [
         contactTypeOptions,

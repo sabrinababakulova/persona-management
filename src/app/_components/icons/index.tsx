@@ -17,6 +17,7 @@ export { MailIcon } from "./MailIcon";
 export { MoreIcon } from "./MoreIcon";
 export { NoCandidates } from "./NoCandidates";
 export { NoVacancies } from "./NoVacancies";
+export { PencilIcon } from "./PencilIcon";
 export { PeopleIcon } from "./PeopleIcon";
 export { PlusIcon } from "./PlusIcon";
 export { ProfileOutlineIcon } from "./ProfileOutlineIcon";
