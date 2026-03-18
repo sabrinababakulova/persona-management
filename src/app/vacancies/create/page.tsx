@@ -39,6 +39,10 @@ export default function CreateVacancyPage() {
   const router = useRouter();
   const utils = api.useUtils();
   const [activeSectionId, setActiveSectionId] = useState<string>("description");
+  const [savedVacancyId, setSavedVacancyId] = useState<string | null>(null);
+  const [telegramStatus, setTelegramStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
   const [errors, setErrors] = useState<{
     title?: string;
     _form?: string;
@@ -62,6 +66,8 @@ export default function CreateVacancyPage() {
   } = api.lookups.getVacancyCreateOptions.useQuery();
   const vacancyLookups = vacancyLookupsData;
 
+  const { data: telegramConfig } = api.vacancies.isTelegramEnabled.useQuery();
+
   useEffect(() => {
     if (!vacancyLookupsData) {
       return;
@@ -81,15 +87,28 @@ export default function CreateVacancyPage() {
   }, [formData.status, vacancyLookupsData]);
 
   const createVacancy = api.vacancies.createVacancy.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await utils.vacancies.getAllVacancies.invalidate();
-      router.push("/vacancies");
+      if (telegramConfig?.enabled) {
+        setSavedVacancyId(data.id);
+      } else {
+        router.push("/vacancies");
+      }
     },
     onError: (error) => {
       setErrors((prev) => ({
         ...prev,
         _form: error.message || "Не удалось создать вакансию",
       }));
+    },
+  });
+
+  const postToTelegram = api.vacancies.postVacancyToTelegram.useMutation({
+    onSuccess: () => {
+      setTelegramStatus("sent");
+    },
+    onError: () => {
+      setTelegramStatus("error");
     },
   });
 
@@ -256,6 +275,53 @@ export default function CreateVacancyPage() {
             )}
           </section>
         </div>
+
+        {savedVacancyId && (
+          <div className="mt-8 rounded-[8px] border border-border-input bg-white p-6">
+            <h3 className="mb-4 font-semibold text-[18px] text-text-heading">
+              Вакансия сохранена
+            </h3>
+            <p className="mb-4 text-[14px] text-text-secondary">
+              Опубликовать вакансию в Telegram-канал?
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                className="rounded-[8px] bg-[#0088cc] px-5 py-2.5 font-medium text-[14px] text-white transition-colors hover:bg-[#006da3] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  postToTelegram.isPending || telegramStatus === "sent"
+                }
+                onClick={() => {
+                  setTelegramStatus("sending");
+                  postToTelegram.mutate({ vacancyId: savedVacancyId });
+                }}
+                type="button"
+              >
+                {telegramStatus === "sending"
+                  ? "Отправка..."
+                  : telegramStatus === "sent"
+                    ? "Отправлено"
+                    : "Telegram"}
+              </button>
+              <button
+                className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-gray-50"
+                onClick={() => router.push("/vacancies")}
+                type="button"
+              >
+                Перейти к вакансиям
+              </button>
+            </div>
+            {telegramStatus === "error" && (
+              <div className="mt-3 rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+                Не удалось отправить в Telegram. Попробуйте ещё раз.
+              </div>
+            )}
+            {telegramStatus === "sent" && (
+              <div className="mt-3 rounded-[6px] border border-green-200 bg-green-50 px-3 py-2 text-[14px] text-green-700">
+                Вакансия опубликована в Telegram-канал.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

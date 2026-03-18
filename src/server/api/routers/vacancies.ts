@@ -2,7 +2,13 @@ import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { recentActivityLogs, vacancies } from "~/server/db/schema";
+import { recentActivityLogs, users, vacancies } from "~/server/db/schema";
+import {
+  isTelegramConfigured,
+  sendTelegramMessage,
+} from "~/server/services/telegram";
+import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
+import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
 function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
@@ -45,6 +51,7 @@ function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
     tasks: vacancy.tasks ?? "",
     team: vacancy.team ?? "",
     companyDescription: vacancy.companyDescription ?? "",
+    companyId: vacancy.companyId ?? undefined,
   };
 }
 
@@ -131,6 +138,17 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Get the user's companyId
+      let companyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        companyId = userRows[0]?.companyId ?? null;
+      }
+
       const createdRows = await ctx.db
         .insert(vacancies)
         .values({
@@ -148,6 +166,7 @@ export const vacanciesRouter = createTRPCRouter({
           tasks: input.tasks ?? null,
           team: input.team ?? null,
           companyDescription: input.companyDescription ?? null,
+          companyId,
         })
         .returning();
 
@@ -364,5 +383,51 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       return formatVacancy(updated);
+    }),
+
+  isTelegramEnabled: protectedProcedure.query(() => {
+    return { enabled: isTelegramConfigured() };
+  }),
+
+  postVacancyToTelegram: protectedProcedure
+    .input(z.object({ vacancyId: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      if (!isTelegramConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Telegram не настроен",
+        });
+      }
+
+      const rows = await ctx.db
+        .select()
+        .from(vacancies)
+        .where(eq(vacancies.id, input.vacancyId))
+        .limit(1);
+
+      const vacancy = rows[0];
+      if (!vacancy) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
+      }
+
+      if (!vacancy.companyId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "У вакансии не указана компания",
+        });
+      }
+
+      const keyword = generateVacancyKeyword(vacancy.id, vacancy.companyId);
+      const formatted = formatVacancy(vacancy);
+      const message = formatTelegramVacancy(formatted, keyword);
+
+      await sendTelegramMessage(message);
+
+      return { success: true, keyword };
     }),
 });

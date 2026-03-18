@@ -14,5 +14,6 @@ export interface Vacancy {
   tasks?: string;
   team?: string;
   companyDescription?: string;
+  companyId?: string;
   selected?: boolean;
 }

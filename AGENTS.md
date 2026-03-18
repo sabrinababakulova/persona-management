@@ -17,6 +17,7 @@
 | DB push | `bun run db:push` (`drizzle-kit push`) |
 | DB generate migration | `bun run db:generate` |
 | DB migrate | `bun run db:migrate` |
+| DB seed | `bun run db:seed` (lookups + default company) |
 | DB GUI | `bun run db:studio` (Drizzle Studio) |
 | Path alias | `~/` → `./src/` |
 | Module type | ESM (`"type": "module"` in package.json) |
@@ -35,17 +36,26 @@
 │   │   │   └── icons/        # SVG icon components + types
 │   │   ├── api/
 │   │   │   ├── auth/[...nextauth]/route.ts   # NextAuth route handler
+│   │   │   ├── candidates/[candidateId]/resume/route.ts  # Resume upload/download
+│   │   │   ├── mastra/chat/[agentId]/route.ts            # AI agent streaming chat
 │   │   │   └── trpc/[trpc]/route.ts          # tRPC HTTP handler
 │   │   ├── dashboard/        # Dashboard page + client components
 │   │   │   └── components/   # Dashboard-specific widgets
 │   │   ├── candidates/       # Candidates list, detail [id], create
 │   │   │   └── components/   # Candidate-specific components
-│   │   ├── vacancies/        # Vacancies list, create
+│   │   ├── vacancies/        # Vacancies list, detail [id], create
 │   │   │   └── components/   # Vacancy-specific components
+│   │   ├── my-profile/       # User profile + password change
 │   │   ├── login/            # Login page
 │   │   ├── register/         # Registration page + email verification
 │   │   ├── layout.tsx        # Root layout (sidebar + header + providers)
 │   │   └── page.tsx          # Root redirect → /dashboard
+│   ├── mastra/               # AI agent definitions (Mastra framework)
+│   │   ├── index.ts          # Agent registry
+│   │   └── agents/           # Individual agent configs
+│   │       ├── candidate-resume-analyzer.ts  # Extracts structured data from resumes
+│   │       ├── candidate-resume-summary.ts   # Generates candidate assessments
+│   │       └── hr-assistant.ts               # General HR chatbot
 │   ├── server/               # All server-side logic
 │   │   ├── api/
 │   │   │   ├── root.ts       # tRPC app router (merges all sub-routers)
@@ -55,6 +65,7 @@
 │   │   │       ├── candidates.ts
 │   │   │       ├── vacancies.ts
 │   │   │       ├── lookups.ts
+│   │   │       ├── profile.ts
 │   │   │       └── post.ts   # Template example
 │   │   ├── auth/
 │   │   │   ├── config.ts     # NextAuth config (credentials provider, callbacks)
@@ -63,17 +74,31 @@
 │   │   │   └── email-verification.ts  # 6-digit code generation + HMAC verification
 │   │   ├── db/
 │   │   │   ├── schema.ts     # All Drizzle table definitions
-│   │   │   └── index.ts      # DB connection singleton
-│   │   └── mail/
-│   │       └── send-registration-code.ts  # Nodemailer SMTP (Yandex)
+│   │   │   ├── index.ts      # DB connection singleton
+│   │   │   └── seed-lookups.ts  # Seeds lookup tables + default company
+│   │   ├── mail/
+│   │   │   └── send-registration-code.ts  # Nodemailer SMTP (Yandex)
+│   │   ├── resume/           # AI-powered resume processing
+│   │   │   ├── extract-candidate-resume-prefill.ts  # Form prefill from PDF
+│   │   │   └── generate-candidate-ai-analysis.ts    # AI summary generation
+│   │   ├── services/
+│   │   │   └── telegram.ts   # Telegram Bot API integration
+│   │   └── storage/
+│   │       └── resume-storage.ts  # Directus-backed file storage for resumes
 │   ├── trpc/                 # tRPC client-side setup
 │   │   ├── react.tsx         # React Query + tRPC provider
 │   │   ├── query-client.ts   # TanStack Query client config
 │   │   └── server.ts         # Server-side tRPC caller
 │   ├── schemas/              # Zod validation schemas
-│   │   └── register.ts       # registerSchema, registerFormSchema
+│   │   ├── register.ts       # registerSchema, registerFormSchema
+│   │   ├── change-password.ts  # changePasswordSchema
+│   │   └── resume-analysis.ts  # AI output validation schemas
 │   ├── shared/               # Code shared between client and server
 │   │   └── candidate-lookups.ts  # DEFAULT_CANDIDATE_LOOKUPS fallback data
+│   ├── utils/                # Utility functions
+│   │   ├── format-telegram-vacancy.ts    # HTML message formatter for Telegram
+│   │   ├── generate-vacancy-keyword.ts   # SHA-256 keyword for vacancy postings
+│   │   └── resume-prefill-helpers.ts     # Lookup normalization for AI output
 │   ├── styles/
 │   │   └── globals.css       # Tailwind v4 theme tokens (colors, fonts)
 │   ├── types/                # TypeScript type definitions
@@ -81,7 +106,7 @@
 │   │   ├── candidates/       # Candidate domain types
 │   │   ├── components/       # Component prop interfaces
 │   │   ├── icons/            # IconProps
-│   │   ├── pages/            # Page-level types (CandidatesPage, etc.)
+│   │   ├── pages/            # Page-level types (CandidatesPage, VacanciesPage)
 │   │   ├── register/         # Registration flow types
 │   │   ├── server/           # Server enums (CandidateStatus)
 │   │   ├── shared/           # Shared types (CandidateLookups, LookupOption)
@@ -131,6 +156,19 @@
 | `nodemailer` 8.0 | SMTP email for verification codes (Yandex) |
 | `server-only` | Prevents server code from being imported in client bundles |
 
+### AI & Resume Processing
+| Package | Purpose |
+|---------|---------|
+| `@mastra/core` 1.13 | AI agent framework |
+| `@mastra/ai-sdk` 1.1 | Mastra AI SDK integration |
+| `@google/genai` 1.42 | Google Generative AI (Gemini 2.5 Flash) |
+| `ai` 6.0 | Vercel AI SDK for streaming responses |
+
+### File Storage
+| Package | Purpose |
+|---------|---------|
+| `@directus/sdk` 21.2 | Directus API client for file storage |
+
 ### Styling
 | Package | Purpose |
 |---------|---------|
@@ -153,10 +191,22 @@ Defined and validated in `src/env.js`:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `AUTH_SECRET` | Yes | NextAuth secret for JWT signing + HMAC verification codes |
+| `AUTH_SECRET` | Yes | NextAuth secret for JWT signing + HMAC verification codes (min 32 chars) |
 | `MAIL_LOGIN` | Yes | Yandex SMTP email address (sender) |
 | `MAIL_LOGIN_PASSWORD` | Yes | Yandex SMTP app password |
+| `DIRECTUS_URL` | Yes | Directus CMS/file storage base URL |
+| `DIRECTUS_TOKEN` | Yes | Directus API token |
 | `NODE_ENV` | No | `"development"` (default) / `"test"` / `"production"` |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | No | Google Gemini API key for AI resume analysis |
+| `RESUME_STORAGE_PATH` | No | Local path for resume file storage |
+| `DIRECTUS_INTERNAL_URL` | No | Internal Directus URL (defaults to `DIRECTUS_URL`) |
+| `DIRECTUS_PUBLIC_URL` | No | Public Directus URL for file access (defaults to `DIRECTUS_URL`) |
+| `DIRECTUS_STORAGE_TOKEN` | No | Directus storage-specific token (defaults to `DIRECTUS_TOKEN`) |
+| `DIRECTUS_FOLDER` | No | Directus folder ID for uploaded files |
+| `AUTH_URL` | No | NextAuth base URL override |
+| `VERCEL_URL` | No | Auto-set by Vercel deployment |
+| `TELEGRAM_BOT_TOKEN` | No | Telegram bot token for vacancy posting |
+| `TELEGRAM_CHANNEL_ID` | No | Target Telegram channel (e.g., `@channelname` or numeric chat ID) |
 
 No `NEXT_PUBLIC_*` variables exist — all env vars are server-only.
 
@@ -176,20 +226,34 @@ Tables use their plain schema names with no `persona-management_` prefix.
 ### Schema (`src/server/db/schema.ts`)
 
 **Auth tables** (managed by NextAuth + Drizzle adapter):
-- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified
+- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified, passwordChangedAt, companyId (FK)
 - `accounts` — OAuth accounts linked to users
 - `sessions` — Active sessions
 - `verificationTokens` — Email verification codes + rate-limit markers (TTL-based)
 
 **Domain tables**:
-- `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities
-- `vacancies` — Job listings with title, level, status, city, workType, responses count
+- `companies` — id (UUID), name. Each user belongs to a company; vacancies and candidates are scoped to a company.
+- `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK).
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK).
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy)
+
+**Multi-tenancy**:
+- `companies` table holds company records (seeded with a "Default Company" via `bun run db:seed`)
+- `users.companyId`, `candidates.companyId`, `vacancies.companyId` — all reference `companies.id`
+- Candidates and vacancies are auto-assigned the creating user's `companyId`
+- `getAllCandidates` filters by the current user's company — users only see their own company's candidates
 
 **Lookup tables** (dropdown options, each with value/label/sortOrder/isActive):
 - `candidateContactTypes`, `candidateSources`, `candidatePositions`
 - `candidateSkills`, `candidateLanguages`, `candidateLanguageLevels`
 - `candidateStatusOptions`
+- `vacancyStatusOptions`, `vacancyLevels`, `vacancyWorkTypes`
+
+### Seeding
+`bun run db:seed` runs `src/server/db/seed-lookups.ts`:
+- Upserts all lookup table rows (idempotent)
+- Creates a default company (`00000000-0000-0000-0000-000000000001`)
+- Assigns the default company to any users, vacancies, and candidates without one
 
 ### Migrations
 Located in `/drizzle/`. Generated with `bun run db:generate`, applied with `bun run db:migrate` or `bun run db:push`.
@@ -208,13 +272,14 @@ JWT strategy — no database sessions. User ID injected via JWT + session callba
 1. **Register**: User submits name + email + password → server hashes password, creates unverified user, generates 6-digit code, sends email via Yandex SMTP
 2. **Verify**: User enters code → server validates HMAC hash → sets `emailVerified` timestamp
 3. **Login**: Email + password checked → bcrypt comparison → JWT issued
-4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
+4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
 
 ### Rate Limiting
 Uses `verificationTokens` table as a generic rate-limit store:
 - Login: 5 attempts / 15 min per email or IP
 - Register: 3 attempts / hour per email or IP + 60s cooldown
 - Code verification: 8 attempts / 15 min per flow or IP
+- Password change: 5 attempts / 15 min
 
 ---
 
@@ -228,9 +293,10 @@ Uses `verificationTokens` table as a generic rate-limit store:
 | Router | Key procedures | Auth |
 |--------|---------------|------|
 | `dashboard` | `getWelcomeModalState`, `markWelcomeModalSeen`, `getDashboardData` | Protected |
-| `candidates` | `getAllCandidates` (search, paginate), `getCandidateById`, `createCandidate` | Protected |
-| `vacancies` | `getAllVacancies` (paginate), `searchVacancies` | Protected |
-| `lookups` | `getCandidateCreateOptions` (returns all dropdown options) | Protected |
+| `candidates` | `getAllCandidates` (search, paginate, company-scoped), `getCandidateById`, `createCandidate` (auto-assigns companyId), `updateCandidate`, `uploadResume` | Protected |
+| `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `isTelegramEnabled`, `postVacancyToTelegram` | Protected |
+| `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
+| `profile` | `changePassword` (rate-limited) | Protected |
 | `post` | Template example | Protected |
 
 ### Procedures
@@ -240,6 +306,50 @@ Uses `verificationTokens` table as a generic rate-limit store:
 ### Client Setup
 `src/trpc/react.tsx` — provides `api` hook via `createTRPCReact`. Wraps app with `TRPCReactProvider` (QueryClient + httpBatchStreamLink).
 `src/trpc/server.ts` — server-side caller for use in Server Components.
+
+---
+
+## Telegram Integration
+
+Vacancies can be published to a Telegram channel directly from the UI.
+
+### Setup
+Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID` env vars. Both are optional — when not set, the Telegram button is hidden.
+
+### Flow
+1. User saves a vacancy via the create form
+2. If Telegram is configured, a "Telegram" button appears after save
+3. Clicking it calls `postVacancyToTelegram` mutation
+4. The mutation generates a unique keyword (`SHA-256(vacancyId + companyId)`, 8 hex chars)
+5. Formats the vacancy as an HTML message (title, level, city, workType, salary, schedule, tasks, team, company description, comments)
+6. Sends via Telegram Bot API `sendMessage` with `parse_mode: "HTML"`
+7. Last line instructs applicants to paste the keyword in their reply
+
+### Key Files
+- `src/server/services/telegram.ts` — `sendTelegramMessage()`, `isTelegramConfigured()`
+- `src/utils/format-telegram-vacancy.ts` — HTML template (handles escaping, 4096-char truncation)
+- `src/utils/generate-vacancy-keyword.ts` — deterministic keyword from vacancyId + companyId
+
+---
+
+## AI & Resume Processing
+
+### Mastra Agents (`src/mastra/`)
+Uses Google Gemini 2.5 Flash via the Mastra framework:
+- **Resume Analyzer** — extracts structured candidate data (name, contacts, skills, languages, experience, salary) from PDF resumes, validates against lookup tables
+- **Resume Summary** — generates a ~150-word candidate assessment
+- **HR Assistant** — general-purpose HR chatbot
+
+### Resume Pipeline (`src/server/resume/`)
+1. User uploads PDF via `uploadResume` mutation → validated (magic header, EOF marker, MIME, 10MB limit)
+2. File stored in Directus via `src/server/storage/resume-storage.ts`
+3. AI extraction + analysis run in parallel
+4. Prefill data returned to form; AI summary stored in `candidates.aiAnalysis`
+
+### API Route
+- `POST /api/candidates/[candidateId]/resume` — upload endpoint
+- `GET /api/candidates/[candidateId]/resume` — download endpoint
+- `POST /api/mastra/chat/[agentId]` — streaming AI chat
 
 ---
 
@@ -254,11 +364,13 @@ Next.js 15 **App Router** with file-based routing. All pages are under `src/app/
 |-------|-------------|
 | `/` | Redirects to `/dashboard` |
 | `/dashboard` | Stats cards, recent activities, channel/status charts |
-| `/candidates` | Searchable candidate table with quick-add modal |
+| `/candidates` | Searchable candidate table (company-scoped) with quick-add modal |
 | `/candidates/[id]` | Candidate detail view (header, sidebar, info sections) |
-| `/candidates/create` | Multi-section candidate creation form |
+| `/candidates/create` | Multi-section candidate creation form with AI resume prefill |
 | `/vacancies` | Vacancy listing table |
-| `/vacancies/create` | Vacancy creation form |
+| `/vacancies/[id]` | Vacancy detail view with description editing |
+| `/vacancies/create` | Vacancy creation form with optional Telegram posting |
+| `/my-profile` | User profile and password change |
 | `/login` | Email + password login |
 | `/register` | Registration with email verification step |
 
@@ -271,16 +383,19 @@ Root layout (`src/app/layout.tsx`):
 
 ### Shared Components (`src/app/_components/`)
 - **Layout**: `header.tsx`, `sidebar.tsx`, `providers.tsx`
-- **Forms**: `input.tsx`, `checkbox.tsx`, `dropdown.tsx`, `quick-add-candidate-modal.tsx`
+- **Forms**: `input.tsx`, `textarea.tsx`, `checkbox.tsx`, `dropdown.tsx`, `quick-add-candidate-modal.tsx`
 - **Data display**: `activity-item.tsx`, `vacancy-row.tsx`, `stats-card.tsx`, `progress-bar.tsx`, `donut-chart.tsx`, `status-badge.tsx`
-- **Navigation**: `breadcrumbs.tsx`
+- **Navigation**: `breadcrumbs.tsx`, `sideMenu.tsx`
+- **Sections**: `closable-section.tsx`, `form-progress.tsx`
+- **Files**: `resume-file-uploader.tsx`
 - **Modals**: `welcome-modal.tsx`
 - **User**: `avatar-profile-menu.tsx`
-- **Icons**: 24 SVG components in `icons/` — all re-exported from `icons/index.tsx`. Props: `{ className?: string }`.
+- **Icons**: SVG components in `icons/` — all re-exported from `icons/index.tsx`. Props: `{ className?: string }`.
 
 ### Styling
 **Tailwind CSS v4** with CSS-native theme tokens defined in `src/styles/globals.css`:
 - Primary blue: `#237af8`
+- Telegram blue: `#0088cc` (used for Telegram button)
 - Dark sidebar: `#1a1a1a`
 - Status colors: green (active), yellow (paused), red (closed), gray (draft)
 - Chart colors: pink, purple, orange, blue
@@ -296,6 +411,9 @@ Located in `src/schemas/`:
 |--------|------|--------|
 | `registerSchema` | `register.ts` | firstName, lastName, email, password |
 | `registerFormSchema` | `register.ts` | Extends above + confirmPassword with match refinement |
+| `changePasswordSchema` | `change-password.ts` | currentPassword, newPassword, confirmPassword (min 8 chars, requires special char + uppercase) |
+| `candidateResumePrefillSchema` | `resume-analysis.ts` | Raw AI output format for resume extraction |
+| `candidateResumePrefillDataSchema` | `resume-analysis.ts` | Normalized form data from resume |
 
 tRPC input validation is done inline with Zod in each router procedure.
 
@@ -311,7 +429,7 @@ All TypeScript types live in `src/types/`, organized by domain:
 | `candidates/` | Candidate domain types |
 | `components/` | Component prop interfaces |
 | `icons/` | `IconProps` |
-| `pages/` | Page-level data types (e.g., candidate list item shape) |
+| `pages/` | Page-level data types (CandidatesPage, VacanciesPage) |
 | `register/` | Registration flow types |
 | `server/` | Server enums (`CandidateStatus`) |
 | `shared/` | `CandidateLookups`, `LookupOption` |
@@ -337,14 +455,15 @@ All TypeScript types live in `src/types/`, organized by domain:
 - Icons are inline SVG components accepting `{ className?: string }`
 
 ### Database Patterns
-- UUIDs for all primary keys (`gen_random_uuid()`)
+- UUIDs for all primary keys (`crypto.randomUUID()`)
 - JSON columns for nested/array data (contacts, skills, work experience)
 - Lookup tables for enumerated dropdown options
 - Timestamps: `createdAt` (default `now()`), `updatedAt` (manual or `now()`)
 - Table names are unprefixed
+- Multi-tenant: domain entities (candidates, vacancies) scoped by `companyId`
 
 ### Error Handling
-- tRPC errors use standard codes: `UNAUTHORIZED`, `NOT_FOUND`, `TOO_MANY_REQUESTS`
+- tRPC errors use standard codes: `UNAUTHORIZED`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `PRECONDITION_FAILED`
 - Rate-limit errors include `retryAfter` in error cause
 - Auth errors use custom `RegisterFlowError` class with `flowId` and `email`
 

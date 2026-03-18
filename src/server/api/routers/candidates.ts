@@ -1,4 +1,4 @@
-import { asc, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -11,6 +11,7 @@ import {
   candidateStatusOptions,
   candidates,
   recentActivityLogs,
+  users,
   vacancyLevels,
 } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
@@ -314,14 +315,29 @@ export const candidatesRouter = createTRPCRouter({
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
 
-      const conditions = search
-        ? [ilike(candidates.fullName, `%${escapeLike(search)}%`)]
-        : [];
+      // Get the user's companyId to filter candidates
+      let userCompanyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        userCompanyId = userRows[0]?.companyId ?? null;
+      }
+
+      const conditions = [];
+      if (userCompanyId) {
+        conditions.push(eq(candidates.companyId, userCompanyId));
+      }
+      if (search) {
+        conditions.push(ilike(candidates.fullName, `%${escapeLike(search)}%`));
+      }
 
       const rows = await ctx.db
         .select()
         .from(candidates)
-        .where(conditions.length > 0 ? conditions[0] : undefined)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(candidates.createdAt))
         .limit(limit)
         .offset(offset);
@@ -577,6 +593,17 @@ export const candidatesRouter = createTRPCRouter({
         });
       }
 
+      // Get the user's companyId to assign to the candidate
+      let companyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        companyId = userRows[0]?.companyId ?? null;
+      }
+
       const newCandidate = await ctx.db
         .insert(candidates)
         .values({
@@ -595,6 +622,7 @@ export const candidatesRouter = createTRPCRouter({
           resumeUrl: input.resumeUrl ?? null,
           resumeFileName: input.resumeFileName ?? null,
           resumeFileSize: input.resumeFileSize ?? null,
+          companyId,
         })
         .returning();
 

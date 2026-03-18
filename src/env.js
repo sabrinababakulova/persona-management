@@ -24,6 +24,8 @@ export const env = createEnv({
     DIRECTUS_FOLDER: z.string().optional(),
     AUTH_URL: z.string().url().optional(),
     VERCEL_URL: z.string().optional(),
+    TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+    TELEGRAM_CHANNEL_ID: z.string().min(1).optional(),
   },
 
   /**
@@ -55,6 +57,8 @@ export const env = createEnv({
     DIRECTUS_FOLDER: process.env.DIRECTUS_FOLDER,
     AUTH_URL: process.env.AUTH_URL,
     VERCEL_URL: process.env.VERCEL_URL,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHANNEL_ID: process.env.TELEGRAM_CHANNEL_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

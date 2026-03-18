@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -289,6 +290,38 @@ async function main() {
         });
     },
   );
+
+  // Seed default company and assign to all users/vacancies without one
+  const DEFAULT_COMPANY_ID = "00000000-0000-0000-0000-000000000001";
+  await db
+    .insert(schema.companies)
+    .values({
+      id: DEFAULT_COMPANY_ID,
+      name: "Default Company",
+    })
+    .onConflictDoNothing({ target: schema.companies.id });
+  console.log("Seeded default company");
+
+  // Assign default company to all users without a companyId
+  await db
+    .update(schema.users)
+    .set({ companyId: DEFAULT_COMPANY_ID })
+    .where(sql`${schema.users.companyId} IS NULL`);
+  console.log("Assigned default company to users without one");
+
+  // Assign default company to all vacancies without a companyId
+  await db
+    .update(schema.vacancies)
+    .set({ companyId: DEFAULT_COMPANY_ID })
+    .where(sql`${schema.vacancies.companyId} IS NULL`);
+  console.log("Assigned default company to vacancies without one");
+
+  // Assign default company to all candidates without a companyId
+  await db
+    .update(schema.candidates)
+    .set({ companyId: DEFAULT_COMPANY_ID })
+    .where(sql`${schema.candidates.companyId} IS NULL`);
+  console.log("Assigned default company to candidates without one");
 }
 
 try {
