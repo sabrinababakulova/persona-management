@@ -364,3 +364,54 @@ export const vacancyWorkTypes = createTable(
     isActive: d.boolean().notNull().default(true),
   }),
 );
+
+// Company Telegram channels (for vacancy posting)
+export const companyTelegramChannels = createTable(
+  "company_telegram_channel",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id),
+    channelId: d.varchar({ length: 255 }).notNull(),
+    label: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [index("company_tg_channel_company_id_idx").on(t.companyId)],
+);
+
+// Company hh.uz (HeadHunter) accounts
+export const companyHhAccounts = createTable(
+  "company_hh_account",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id)
+      .unique(),
+    clientId: d.varchar({ length: 255 }),
+    clientSecret: d.varchar({ length: 500 }),
+    accessToken: d.text(),
+    refreshToken: d.text(),
+    employerId: d.varchar({ length: 255 }),
+    email: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+);

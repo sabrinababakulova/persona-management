@@ -75,7 +75,7 @@
 │   │   ├── db/
 │   │   │   ├── schema.ts     # All Drizzle table definitions
 │   │   │   ├── index.ts      # DB connection singleton
-│   │   │   └── seed-lookups.ts  # Seeds lookup tables + default company
+│   │   │   └── seed-demo-data.ts  # Seeds lookup tables, demo data, and default company
 │   │   ├── mail/
 │   │   │   └── send-registration-code.ts  # Nodemailer SMTP (Yandex)
 │   │   ├── resume/           # AI-powered resume processing
@@ -250,10 +250,11 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `vacancyStatusOptions`, `vacancyLevels`, `vacancyWorkTypes`
 
 ### Seeding
-`bun run db:seed` runs `src/server/db/seed-lookups.ts`:
+`bun run db:seed` runs `src/server/db/seed-demo-data.ts`:
 - Upserts all lookup table rows (idempotent)
 - Creates a default company (`00000000-0000-0000-0000-000000000001`)
 - Assigns the default company to any users, vacancies, and candidates without one
+- Inserts demo candidates, vacancies, and recent activity rows
 
 ### Migrations
 Located in `/drizzle/`. Generated with `bun run db:generate`, applied with `bun run db:migrate` or `bun run db:push`.

@@ -8,6 +8,7 @@ import { Input } from "~/app/_components/input";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
+import { CompanySettingsSection } from "./company-settings-section";
 
 const PROFILE_MENU_ITEMS = [
   { id: "my-profile", label: "Мой профиль" },
@@ -299,14 +300,7 @@ export function MyProfileClient({
                 </ClosableSection>
               </div>
             ) : (
-              <section className="mt-12 rounded-[8px] border border-border-input bg-bg-input p-6">
-                <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-                  Настройки компании
-                </h2>
-                <p className="mt-3 text-[16px] text-text-secondary leading-[1.4] tracking-[-0.32px]">
-                  Раздел находится в разработке.
-                </p>
-              </section>
+              <CompanySettingsSection />
             )}
           </div>
 

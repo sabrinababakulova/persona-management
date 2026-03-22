@@ -1,5 +1,6 @@
 import { candidatesRouter } from "~/server/api/routers/candidates";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
+import { integrationsRouter } from "~/server/api/routers/integrations";
 import { lookupsRouter } from "~/server/api/routers/lookups";
 import { postRouter } from "~/server/api/routers/post";
 import { profileRouter } from "~/server/api/routers/profile";
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   candidates: candidatesRouter,
   lookups: lookupsRouter,
   profile: profileRouter,
+  integrations: integrationsRouter,
 });
 
 /**
