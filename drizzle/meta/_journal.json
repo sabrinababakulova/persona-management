@@ -8,6 +8,34 @@
       "when": 1773392550191,
       "tag": "0000_acoustic_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773815357589,
+      "tag": "0001_small_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773816834403,
+      "tag": "0002_moaning_photon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773817303514,
+      "tag": "0003_purple_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773829831025,
+      "tag": "0004_dark_puff_adder",
+      "breakpoints": true
     }
   ]
 }

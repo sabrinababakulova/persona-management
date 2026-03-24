@@ -135,9 +135,11 @@ export async function uploadCandidateResumeToStorage(
     formData.append("folder", env.DIRECTUS_FOLDER);
   }
 
-  await directus.request(uploadFiles(formData));
+  const result = await directus.request(uploadFiles(formData));
+  const fileId = (result as { id: string }).id;
+  const publicUrl = `${directusPublicUrl}/assets/${fileId}`;
 
-  return { key };
+  return { key, fileId, publicUrl };
 }
 
 export async function downloadCandidateResumeFromStorage(candidateId: string) {

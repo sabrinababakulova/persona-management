@@ -48,6 +48,7 @@ export async function POST(req: Request) {
 
     return Response.json({ key, fileId, publicUrl });
   } catch (err) {
+    console.error("Upload to Directus failed:", err);
     const message = err instanceof Error ? err.message : "Upload failed";
     return new Response(message, { status: 500 });
   }

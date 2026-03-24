@@ -1,10 +1,11 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import * as argon2 from "argon2";
 import bcrypt from "bcryptjs";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { env } from "~/env";
 import { registerSchema } from "~/schemas/register";
 import {
@@ -37,6 +38,7 @@ import {
 import { db } from "~/server/db";
 import {
   accounts,
+  companies,
   sessions,
   users,
   verificationTokens,
@@ -51,6 +53,7 @@ class AuthFlowError extends CredentialsSignin {
 }
 
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
+const DEFAULT_COMPANY_ID = "00000000-0000-0000-0000-000000000001";
 
 function getClientIp(request: Request) {
   // Prefer x-real-ip set by the reverse proxy (most reliable)
@@ -76,423 +79,352 @@ function getClientIp(request: Request) {
   return "unknown";
 }
 
-/**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
- *
- * @see https://next-auth.js.org/configuration/options
- */
-export const authConfig = {
-  providers: [
-    Credentials({
-      name: "Credentials",
-      credentials: {
-        mode: { label: "Mode", type: "text" },
-        firstName: { label: "First Name", type: "text" },
-        lastName: { label: "Last Name", type: "text" },
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        code: { label: "Code", type: "text" },
-        flowId: { label: "Flow ID", type: "text" },
-      },
-      async authorize(credentials, request) {
-        const mode = credentials?.mode?.toString().trim().toLowerCase();
-        const clientIp = getClientIp(request);
+async function ensureOAuthUserDefaults(userId: string) {
+  await db
+    .insert(companies)
+    .values({
+      id: DEFAULT_COMPANY_ID,
+      name: "Default Company",
+    })
+    .onConflictDoNothing({ target: companies.id });
 
-        if (mode === "register") {
-          const parsed = registerSchema.safeParse({
-            firstName: credentials?.firstName,
-            lastName: credentials?.lastName,
-            email: credentials?.email,
-            password: credentials?.password,
-          });
+  await db
+    .update(users)
+    .set({
+      companyId: DEFAULT_COMPANY_ID,
+    })
+    .where(and(eq(users.id, userId), isNull(users.companyId)));
 
-          if (!parsed.success) {
-            throw new AuthFlowError("invalid_data");
-          }
+  await db
+    .update(users)
+    .set({
+      emailVerified: new Date(),
+    })
+    .where(and(eq(users.id, userId), isNull(users.emailVerified)));
+}
 
-          const { firstName, lastName, password } = parsed.data;
-          const email = normalizeEmail(parsed.data.email);
+const providers: NextAuthConfig["providers"] = [
+  Credentials({
+    name: "Credentials",
+    credentials: {
+      mode: { label: "Mode", type: "text" },
+      firstName: { label: "First Name", type: "text" },
+      lastName: { label: "Last Name", type: "text" },
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" },
+      code: { label: "Code", type: "text" },
+      flowId: { label: "Flow ID", type: "text" },
+    },
+    async authorize(credentials, request) {
+      const mode = credentials?.mode?.toString().trim().toLowerCase();
+      const clientIp = getClientIp(request);
 
-          const registerRateIdentifier = createRateLimitIdentifier(
-            "register",
-            email,
+      if (mode === "register") {
+        const parsed = registerSchema.safeParse({
+          firstName: credentials?.firstName,
+          lastName: credentials?.lastName,
+          email: credentials?.email,
+          password: credentials?.password,
+        });
+
+        if (!parsed.success) {
+          throw new AuthFlowError("invalid_data");
+        }
+
+        const { firstName, lastName, password } = parsed.data;
+        const email = normalizeEmail(parsed.data.email);
+
+        const registerRateIdentifier = createRateLimitIdentifier(
+          "register",
+          email,
+        );
+        const registerRateByIpIdentifier = createRateLimitIdentifier(
+          "register-ip",
+          clientIp,
+        );
+        const registerCooldownIdentifier = createRateLimitIdentifier(
+          "register-cooldown",
+          email,
+        );
+
+        if (
+          (await isRateLimited(
+            registerRateIdentifier,
+            REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
+          )) ||
+          (await isRateLimited(
+            registerRateByIpIdentifier,
+            REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
+          )) ||
+          (await hasActiveRecord(registerCooldownIdentifier))
+        ) {
+          throw new AuthFlowError("rate_limited");
+        }
+
+        // Always hash the password BEFORE checking user existence
+        // to prevent timing-based user enumeration
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const [existingUser] = await db
+          .select({ id: users.id, emailVerified: users.emailVerified })
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1);
+
+        if (existingUser?.emailVerified) {
+          // Record rate limit attempts (same timing as the normal flow)
+          await recordAttempt(
+            registerRateIdentifier,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
           );
-          const registerRateByIpIdentifier = createRateLimitIdentifier(
-            "register-ip",
-            clientIp,
+          await recordAttempt(
+            registerRateByIpIdentifier,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
           );
-          const registerCooldownIdentifier = createRateLimitIdentifier(
-            "register-cooldown",
-            email,
-          );
+          throw new AuthFlowError("registration_failed");
+        }
 
-          if (
-            (await isRateLimited(
-              registerRateIdentifier,
-              REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
-            )) ||
-            (await isRateLimited(
-              registerRateByIpIdentifier,
-              REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
-            )) ||
-            (await hasActiveRecord(registerCooldownIdentifier))
-          ) {
-            throw new AuthFlowError("rate_limited");
-          }
+        const verificationCode = generateEmailVerificationCode();
 
-          // Always hash the password BEFORE checking user existence
-          // to prevent timing-based user enumeration
-          const hashedPassword = await bcrypt.hash(password, 12);
+        let createdUserId: string | null = null;
+        let verificationIdentifier: string | null = null;
+        let verificationFlowIdentifier: string | null = null;
 
-          const [existingUser] = await db
-            .select({ id: users.id, emailVerified: users.emailVerified })
-            .from(users)
-            .where(eq(users.email, email))
-            .limit(1);
+        try {
+          let verificationUserId: string | undefined;
 
-          if (existingUser?.emailVerified) {
-            // Record rate limit attempts (same timing as the normal flow)
-            await recordAttempt(
-              registerRateIdentifier,
-              REGISTER_RATE_LIMIT_WINDOW_MS,
-            );
-            await recordAttempt(
-              registerRateByIpIdentifier,
-              REGISTER_RATE_LIMIT_WINDOW_MS,
-            );
-            throw new AuthFlowError("registration_failed");
-          }
-
-          const verificationCode = generateEmailVerificationCode();
-
-          let createdUserId: string | null = null;
-          let verificationIdentifier: string | null = null;
-          let verificationFlowIdentifier: string | null = null;
-
-          try {
-            let verificationUserId: string | undefined;
-
-            if (existingUser?.id) {
-              // Unverified user exists: delete old verification tokens
-              // but do NOT overwrite their password (prevents race condition
-              // where an attacker could set a password for someone else's email)
-              verificationUserId = existingUser.id;
-              const oldVerificationId =
-                createEmailVerificationIdentifier(verificationUserId);
-              await db
-                .delete(verificationTokens)
-                .where(eq(verificationTokens.identifier, oldVerificationId));
-            } else {
-              verificationUserId = (
-                await db
-                  .insert(users)
-                  .values({
-                    email,
-                    name: `${firstName} ${lastName}`.trim(),
-                    password: hashedPassword,
-                    hasSeenWelcomeModal: false,
-                  })
-                  .returning({ id: users.id })
-              )[0]?.id;
-
-              if (!verificationUserId) {
-                throw new AuthFlowError("registration_failed");
-              }
-
-              createdUserId = verificationUserId;
-            }
-
-            const flowId = generateEmailVerificationFlowId();
-            verificationIdentifier =
+          if (existingUser?.id) {
+            // Unverified user exists: delete old verification tokens
+            // but do NOT overwrite their password (prevents race condition
+            // where an attacker could set a password for someone else's email)
+            verificationUserId = existingUser.id;
+            const oldVerificationId =
               createEmailVerificationIdentifier(verificationUserId);
-            verificationFlowIdentifier =
-              createEmailVerificationFlowIdentifier(flowId);
-
             await db
               .delete(verificationTokens)
-              .where(eq(verificationTokens.identifier, verificationIdentifier));
-
-            await db.insert(verificationTokens).values({
-              identifier: verificationIdentifier,
-              token: hashEmailVerificationCode(
-                verificationCode,
-                verificationUserId,
-              ),
-              expires: new Date(Date.now() + EMAIL_VERIFICATION_CODE_TTL_MS),
-            });
-
-            await db.insert(verificationTokens).values({
-              identifier: verificationFlowIdentifier,
-              token: verificationUserId,
-              expires: new Date(Date.now() + EMAIL_VERIFICATION_FLOW_TTL_MS),
-            });
-
-            await sendRegistrationCode(email, verificationCode);
-
-            await recordAttempt(
-              registerRateIdentifier,
-              REGISTER_RATE_LIMIT_WINDOW_MS,
-            );
-            await recordAttempt(
-              registerRateByIpIdentifier,
-              REGISTER_RATE_LIMIT_WINDOW_MS,
-            );
-            await setMarker(
-              registerCooldownIdentifier,
-              REGISTER_RESEND_COOLDOWN_MS,
-            );
-
-            throw new AuthFlowError(
-              `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,
-            );
-          } catch (error) {
-            if (
-              error instanceof AuthFlowError &&
-              error.code.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)
-            ) {
-              throw error;
-            }
-
-            if (createdUserId) {
-              const verificationIdentifier =
-                createEmailVerificationIdentifier(createdUserId);
+              .where(eq(verificationTokens.identifier, oldVerificationId));
+          } else {
+            verificationUserId = (
               await db
-                .delete(verificationTokens)
-                .where(
-                  eq(verificationTokens.identifier, verificationIdentifier),
-                )
-                .catch(() => undefined);
-              await db
-                .delete(users)
-                .where(eq(users.id, createdUserId))
-                .catch(() => undefined);
+                .insert(users)
+                .values({
+                  email,
+                  name: `${firstName} ${lastName}`.trim(),
+                  password: hashedPassword,
+                  hasSeenWelcomeModal: false,
+                })
+                .returning({ id: users.id })
+            )[0]?.id;
+
+            if (!verificationUserId) {
+              throw new AuthFlowError("registration_failed");
             }
 
-            if (verificationIdentifier) {
-              await db
-                .delete(verificationTokens)
-                .where(
-                  eq(verificationTokens.identifier, verificationIdentifier),
-                )
-                .catch(() => undefined);
-            }
-
-            if (verificationFlowIdentifier) {
-              await db
-                .delete(verificationTokens)
-                .where(
-                  eq(verificationTokens.identifier, verificationFlowIdentifier),
-                )
-                .catch(() => undefined);
-            }
-
-            if (error instanceof AuthFlowError) {
-              throw error;
-            }
-
-            throw new AuthFlowError("registration_failed");
-          }
-        }
-
-        if (mode === "verify-code") {
-          const flowId = credentials?.flowId?.toString().trim();
-          const code = credentials?.code?.toString().trim();
-
-          if (
-            !flowId ||
-            !code ||
-            !isEmailVerificationFlowIdValid(flowId) ||
-            !isEmailVerificationCodeValid(code)
-          ) {
-            return null;
+            createdUserId = verificationUserId;
           }
 
-          const verifyRateIdentifier = createRateLimitIdentifier(
-            "verify",
-            flowId,
-          );
-          const verifyRateByIpIdentifier = createRateLimitIdentifier(
-            "verify-ip",
-            clientIp,
-          );
-
-          if (
-            await isRateLimited(
-              verifyRateIdentifier,
-              VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
-            )
-          ) {
-            throw new AuthFlowError("rate_limited");
-          }
-
-          if (
-            await isRateLimited(
-              verifyRateByIpIdentifier,
-              VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
-            )
-          ) {
-            throw new AuthFlowError("rate_limited");
-          }
-
-          const verificationFlowIdentifier =
+          const flowId = generateEmailVerificationFlowId();
+          verificationIdentifier =
+            createEmailVerificationIdentifier(verificationUserId);
+          verificationFlowIdentifier =
             createEmailVerificationFlowIdentifier(flowId);
 
-          const [flowRecord] = await db
-            .select({ userId: verificationTokens.token })
-            .from(verificationTokens)
-            .where(
-              and(
-                eq(verificationTokens.identifier, verificationFlowIdentifier),
-                gt(verificationTokens.expires, new Date()),
-              ),
-            )
-            .limit(1);
-
-          const verificationUserId = flowRecord?.userId;
-          if (!verificationUserId) {
-            return null;
-          }
-
-          const [user] = await db
-            .select({
-              id: users.id,
-              email: users.email,
-              name: users.name,
-              image: users.image,
-            })
-            .from(users)
-            .where(eq(users.id, verificationUserId))
-            .limit(1);
-
-          if (!user) {
-            return null;
-          }
-
-          const verificationIdentifier =
-            createEmailVerificationIdentifier(verificationUserId);
-
-          const [verificationToken] = await db
-            .select({ token: verificationTokens.token })
-            .from(verificationTokens)
-            .where(
-              and(
-                eq(verificationTokens.identifier, verificationIdentifier),
-                eq(
-                  verificationTokens.token,
-                  hashEmailVerificationCode(code, verificationUserId),
-                ),
-                gt(verificationTokens.expires, new Date()),
-              ),
-            )
-            .limit(1);
-
-          if (!verificationToken) {
-            await recordAttempt(
-              verifyRateIdentifier,
-              VERIFY_RATE_LIMIT_WINDOW_MS,
-            );
-            await recordAttempt(
-              verifyRateByIpIdentifier,
-              VERIFY_RATE_LIMIT_WINDOW_MS,
-            );
-            return null;
-          }
-
           await db
-            .update(users)
-            .set({ emailVerified: new Date() })
-            .where(eq(users.id, user.id));
+            .delete(verificationTokens)
+            .where(eq(verificationTokens.identifier, verificationIdentifier));
 
-          await Promise.all([
-            clearIdentifier(verificationIdentifier),
-            clearIdentifier(verificationFlowIdentifier),
-            clearIdentifier(verifyRateIdentifier),
-            clearIdentifier(verifyRateByIpIdentifier),
-          ]);
+          await db.insert(verificationTokens).values({
+            identifier: verificationIdentifier,
+            token: hashEmailVerificationCode(
+              verificationCode,
+              verificationUserId,
+            ),
+            expires: new Date(Date.now() + EMAIL_VERIFICATION_CODE_TTL_MS),
+          });
 
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name ?? undefined,
-            image: user.image ?? undefined,
-          };
+          await db.insert(verificationTokens).values({
+            identifier: verificationFlowIdentifier,
+            token: verificationUserId,
+            expires: new Date(Date.now() + EMAIL_VERIFICATION_FLOW_TTL_MS),
+          });
+
+          await sendRegistrationCode(email, verificationCode);
+
+          await recordAttempt(
+            registerRateIdentifier,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
+          );
+          await recordAttempt(
+            registerRateByIpIdentifier,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
+          );
+          await setMarker(
+            registerCooldownIdentifier,
+            REGISTER_RESEND_COOLDOWN_MS,
+          );
+
+          throw new AuthFlowError(
+            `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,
+          );
+        } catch (error) {
+          if (
+            error instanceof AuthFlowError &&
+            error.code.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)
+          ) {
+            throw error;
+          }
+
+          if (createdUserId) {
+            const verificationIdentifier =
+              createEmailVerificationIdentifier(createdUserId);
+            await db
+              .delete(verificationTokens)
+              .where(eq(verificationTokens.identifier, verificationIdentifier))
+              .catch(() => undefined);
+            await db
+              .delete(users)
+              .where(eq(users.id, createdUserId))
+              .catch(() => undefined);
+          }
+
+          if (verificationIdentifier) {
+            await db
+              .delete(verificationTokens)
+              .where(eq(verificationTokens.identifier, verificationIdentifier))
+              .catch(() => undefined);
+          }
+
+          if (verificationFlowIdentifier) {
+            await db
+              .delete(verificationTokens)
+              .where(
+                eq(verificationTokens.identifier, verificationFlowIdentifier),
+              )
+              .catch(() => undefined);
+          }
+
+          if (error instanceof AuthFlowError) {
+            throw error;
+          }
+
+          throw new AuthFlowError("registration_failed");
         }
+      }
 
-        if (mode !== "login") {
+      if (mode === "verify-code") {
+        const flowId = credentials?.flowId?.toString().trim();
+        const code = credentials?.code?.toString().trim();
+
+        if (
+          !flowId ||
+          !code ||
+          !isEmailVerificationFlowIdValid(flowId) ||
+          !isEmailVerificationCodeValid(code)
+        ) {
           return null;
         }
 
-        const rawEmail = credentials?.email?.toString();
-        const password = credentials?.password?.toString();
-
-        if (!rawEmail || !password) {
-          return null;
-        }
-
-        const email = normalizeEmail(rawEmail);
-        const loginRateIdentifier = createRateLimitIdentifier("login", email);
-        const loginRateByIpIdentifier = createRateLimitIdentifier(
-          "login-ip",
+        const verifyRateIdentifier = createRateLimitIdentifier(
+          "verify",
+          flowId,
+        );
+        const verifyRateByIpIdentifier = createRateLimitIdentifier(
+          "verify-ip",
           clientIp,
         );
 
         if (
           await isRateLimited(
-            loginRateIdentifier,
-            LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+            verifyRateIdentifier,
+            VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
           throw new AuthFlowError("rate_limited");
         }
+
         if (
           await isRateLimited(
-            loginRateByIpIdentifier,
-            LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+            verifyRateByIpIdentifier,
+            VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
           )
         ) {
           throw new AuthFlowError("rate_limited");
+        }
+
+        const verificationFlowIdentifier =
+          createEmailVerificationFlowIdentifier(flowId);
+
+        const [flowRecord] = await db
+          .select({ userId: verificationTokens.token })
+          .from(verificationTokens)
+          .where(
+            and(
+              eq(verificationTokens.identifier, verificationFlowIdentifier),
+              gt(verificationTokens.expires, new Date()),
+            ),
+          )
+          .limit(1);
+
+        const verificationUserId = flowRecord?.userId;
+        if (!verificationUserId) {
+          return null;
         }
 
         const [user] = await db
           .select({
             id: users.id,
             email: users.email,
-            password: users.password,
-            emailVerified: users.emailVerified,
             name: users.name,
             image: users.image,
           })
           .from(users)
-          .where(eq(users.email, email))
+          .where(eq(users.id, verificationUserId))
           .limit(1);
 
-        if (!user?.password || !user.emailVerified) {
-          // Hash a dummy password to prevent timing-based user enumeration
-          await bcrypt.hash(password, 12);
-          await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        if (!user) {
+          return null;
+        }
+
+        const verificationIdentifier =
+          createEmailVerificationIdentifier(verificationUserId);
+
+        const [verificationToken] = await db
+          .select({ token: verificationTokens.token })
+          .from(verificationTokens)
+          .where(
+            and(
+              eq(verificationTokens.identifier, verificationIdentifier),
+              eq(
+                verificationTokens.token,
+                hashEmailVerificationCode(code, verificationUserId),
+              ),
+              gt(verificationTokens.expires, new Date()),
+            ),
+          )
+          .limit(1);
+
+        if (!verificationToken) {
           await recordAttempt(
-            loginRateByIpIdentifier,
-            LOGIN_RATE_LIMIT_WINDOW_MS,
+            verifyRateIdentifier,
+            VERIFY_RATE_LIMIT_WINDOW_MS,
+          );
+          await recordAttempt(
+            verifyRateByIpIdentifier,
+            VERIFY_RATE_LIMIT_WINDOW_MS,
           );
           return null;
         }
 
-        const isArgon2 = user.password.startsWith("$argon2");
-        const isValid = isArgon2
-          ? await argon2.verify(user.password, password)
-          : await bcrypt.compare(password, user.password);
-        if (!isValid) {
-          await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-          await recordAttempt(
-            loginRateByIpIdentifier,
-            LOGIN_RATE_LIMIT_WINDOW_MS,
-          );
-          return null;
-        }
+        await db
+          .update(users)
+          .set({ emailVerified: new Date() })
+          .where(eq(users.id, user.id));
 
         await Promise.all([
-          clearIdentifier(loginRateIdentifier),
-          clearIdentifier(loginRateByIpIdentifier),
+          clearIdentifier(verificationIdentifier),
+          clearIdentifier(verificationFlowIdentifier),
+          clearIdentifier(verifyRateIdentifier),
+          clearIdentifier(verifyRateByIpIdentifier),
         ]);
 
         return {
@@ -501,9 +433,109 @@ export const authConfig = {
           name: user.name ?? undefined,
           image: user.image ?? undefined,
         };
-      },
+      }
+
+      if (mode !== "login") {
+        return null;
+      }
+
+      const rawEmail = credentials?.email?.toString();
+      const password = credentials?.password?.toString();
+
+      if (!rawEmail || !password) {
+        return null;
+      }
+
+      const email = normalizeEmail(rawEmail);
+      const loginRateIdentifier = createRateLimitIdentifier("login", email);
+      const loginRateByIpIdentifier = createRateLimitIdentifier(
+        "login-ip",
+        clientIp,
+      );
+
+      if (
+        await isRateLimited(loginRateIdentifier, LOGIN_RATE_LIMIT_MAX_ATTEMPTS)
+      ) {
+        throw new AuthFlowError("rate_limited");
+      }
+      if (
+        await isRateLimited(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+        )
+      ) {
+        throw new AuthFlowError("rate_limited");
+      }
+
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          password: users.password,
+          emailVerified: users.emailVerified,
+          name: users.name,
+          image: users.image,
+        })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (!user?.password || !user.emailVerified) {
+        // Hash a dummy password to prevent timing-based user enumeration
+        await bcrypt.hash(password, 12);
+        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        await recordAttempt(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        );
+        return null;
+      }
+
+      const isArgon2 = user.password.startsWith("$argon2");
+      const isValid = isArgon2
+        ? await argon2.verify(user.password, password)
+        : await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        await recordAttempt(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        );
+        return null;
+      }
+
+      await Promise.all([
+        clearIdentifier(loginRateIdentifier),
+        clearIdentifier(loginRateByIpIdentifier),
+      ]);
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name ?? undefined,
+        image: user.image ?? undefined,
+      };
+    },
+  }),
+];
+
+if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+  providers.unshift(
+    Google({
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
     }),
-  ],
+  );
+}
+
+/**
+ * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
+ *
+ * @see https://next-auth.js.org/configuration/options
+ */
+export const authConfig = {
+  providers,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
@@ -516,9 +548,25 @@ export const authConfig = {
   useSecureCookies: env.AUTH_URL?.startsWith("https://") ?? false,
   pages: {
     signIn: "/login",
-    error: "/login",
+    error: "/auth/error",
   },
   callbacks: {
+    signIn: async ({ account, user, profile }) => {
+      if (account?.provider !== "google") {
+        return true;
+      }
+
+      const googleProfile = profile as
+        | { email_verified?: boolean; email?: string | null }
+        | undefined;
+
+      if (!user.id || !user.email || googleProfile?.email_verified === false) {
+        return false;
+      }
+
+      await ensureOAuthUserDefaults(user.id);
+      return true;
+    },
     jwt: async ({ token, user }) => {
       if (user) {
         (token as { id?: string }).id = user.id;

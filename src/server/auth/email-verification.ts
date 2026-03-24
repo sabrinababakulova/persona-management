@@ -16,6 +16,14 @@ export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const VERIFY_RATE_LIMIT_MAX_ATTEMPTS = 8;
 export const VERIFY_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
+export const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000;
+export const PASSWORD_RESET_FLOW_TTL_MS = 30 * 60 * 1000;
+export const PASSWORD_RESET_REQUEST_MAX_ATTEMPTS = 3;
+export const PASSWORD_RESET_REQUEST_WINDOW_MS = 60 * 60 * 1000;
+export const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000;
+export const PASSWORD_RESET_VERIFY_MAX_ATTEMPTS = 8;
+export const PASSWORD_RESET_VERIFY_WINDOW_MS = 15 * 60 * 1000;
+
 const VERIFICATION_FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -44,6 +52,14 @@ export function createEmailVerificationFlowIdentifier(flowId: string) {
   return `email-verification-flow:${flowId}`;
 }
 
+export function createPasswordResetIdentifier(userId: string) {
+  return `password-reset:${userId}`;
+}
+
+export function createPasswordResetFlowIdentifier(flowId: string) {
+  return `password-reset-flow:${flowId}`;
+}
+
 export function createRateLimitIdentifier(scope: string, key: string) {
   return `rate-limit:${scope}:${key}`;
 }
@@ -66,7 +82,7 @@ export function generateRateLimitToken() {
   return randomUUID();
 }
 
-export function hashEmailVerificationCode(code: string, userId: string) {
+function hashVerificationCode(code: string, userId: string) {
   if (!env.AUTH_SECRET) {
     throw new Error("AUTH_SECRET is required for email verification hashing");
   }
@@ -74,6 +90,14 @@ export function hashEmailVerificationCode(code: string, userId: string) {
   return createHmac("sha256", env.AUTH_SECRET)
     .update(`${userId}:${code}`)
     .digest("hex");
+}
+
+export function hashEmailVerificationCode(code: string, userId: string) {
+  return hashVerificationCode(code, userId);
+}
+
+export function hashPasswordResetCode(code: string, userId: string) {
+  return hashVerificationCode(code, userId);
 }
 
 export function isEmailVerificationCodeValid(code: string) {

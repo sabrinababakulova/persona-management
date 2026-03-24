@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
+import { PencilIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
+import { CompanySettingsSection } from "./company-settings-section";
 
 const PROFILE_MENU_ITEMS = [
   { id: "my-profile", label: "Мой профиль" },
@@ -34,8 +36,60 @@ export function MyProfileClient({
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentAvatarSrc, setCurrentAvatarSrc] = useState(avatarSrc);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const updateAvatar = api.profile.updateAvatar.useMutation({
+    onSuccess: (data) => {
+      setCurrentAvatarSrc(data.imageUrl);
+    },
+  });
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setFormError("Допустимые форматы: JPEG, PNG, WebP, GIF");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError("Максимальный размер файла — 5 МБ");
+      return;
+    }
+
+    setAvatarUploading(true);
+    setFormError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Не удалось загрузить файл");
+      }
+
+      const { publicUrl } = (await res.json()) as { publicUrl: string };
+      updateAvatar.mutate({ imageUrl: publicUrl });
+    } catch {
+      setFormError("Не удалось загрузить аватар");
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = "";
+      }
+    }
+  };
 
   const changePassword = api.profile.changePassword.useMutation({
     onSuccess: (response) => {
@@ -141,15 +195,31 @@ export function MyProfileClient({
             />
 
             <div className="mt-6 flex items-center gap-6">
-              <div className="h-[72px] w-[72px] overflow-hidden rounded-full bg-[#CEDBF5]">
+              <button
+                className="group relative h-[72px] w-[72px] overflow-hidden rounded-full bg-[#CEDBF5] focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={avatarUploading}
+                onClick={() => avatarInputRef.current?.click()}
+                title="Изменить аватар"
+                type="button"
+              >
                 <Image
                   alt="Аватар"
                   className="h-full w-full object-cover"
                   height={72}
-                  src={avatarSrc}
+                  src={currentAvatarSrc}
                   width={72}
                 />
-              </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
+                  <PencilIcon className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                <input
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => void handleAvatarChange(e)}
+                  ref={avatarInputRef}
+                  type="file"
+                />
+              </button>
               <div className="space-y-[10px]">
                 <h1 className="font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
                   {userFullName}
@@ -230,14 +300,7 @@ export function MyProfileClient({
                 </ClosableSection>
               </div>
             ) : (
-              <section className="mt-12 rounded-[8px] border border-border-input bg-bg-input p-6">
-                <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-                  Настройки компании
-                </h2>
-                <p className="mt-3 text-[16px] text-text-secondary leading-[1.4] tracking-[-0.32px]">
-                  Раздел находится в разработке.
-                </p>
-              </section>
+              <CompanySettingsSection />
             )}
           </div>
 

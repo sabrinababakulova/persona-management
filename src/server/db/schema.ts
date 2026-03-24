@@ -4,6 +4,27 @@ import type { AdapterAccount } from "next-auth/adapters";
 
 export const createTable = pgTableCreator((name) => name);
 
+// Companies table
+export const companies = createTable("company", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: d.varchar({ length: 255 }).notNull(),
+  city: d.varchar({ length: 255 }),
+  country: d.varchar({ length: 255 }).default("Узбекистан"),
+  description: d.text(),
+  website: d.varchar({ length: 500 }),
+  phone: d.varchar({ length: 50 }),
+  logoUrl: d.varchar({ length: 500 }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
 export const posts = createTable(
   "post",
   (d) => ({
@@ -41,6 +62,7 @@ export const users = createTable("user", (d) => ({
     withTimezone: true,
   }),
   image: d.varchar({ length: 255 }),
+  companyId: d.varchar({ length: 255 }).references(() => companies.id),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -177,6 +199,7 @@ export const candidates = createTable(
         }[]
       >()
       .default([]),
+    companyId: d.varchar({ length: 255 }).references(() => companies.id),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
@@ -187,6 +210,7 @@ export const candidates = createTable(
     index("candidate_name_idx").on(t.fullName),
     index("candidate_city_idx").on(t.city),
     index("candidate_created_at_idx").on(t.createdAt),
+    index("candidate_company_id_idx").on(t.companyId),
   ],
 );
 
@@ -213,6 +237,7 @@ export const vacancies = createTable(
     tasks: d.text(),
     team: d.text(),
     companyDescription: d.text(),
+    companyId: d.varchar({ length: 255 }).references(() => companies.id),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
@@ -222,6 +247,7 @@ export const vacancies = createTable(
   (t) => [
     index("vacancy_title_idx").on(t.title),
     index("vacancy_status_idx").on(t.status),
+    index("vacancy_company_id_idx").on(t.companyId),
   ],
 );
 
@@ -336,5 +362,56 @@ export const vacancyWorkTypes = createTable(
     label: d.varchar({ length: 255 }).notNull(),
     sortOrder: d.integer().notNull().default(0),
     isActive: d.boolean().notNull().default(true),
+  }),
+);
+
+// Company Telegram channels (for vacancy posting)
+export const companyTelegramChannels = createTable(
+  "company_telegram_channel",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id),
+    channelId: d.varchar({ length: 255 }).notNull(),
+    label: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [index("company_tg_channel_company_id_idx").on(t.companyId)],
+);
+
+// Company hh.uz (HeadHunter) accounts
+export const companyHhAccounts = createTable(
+  "company_hh_account",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id)
+      .unique(),
+    clientId: d.varchar({ length: 255 }),
+    clientSecret: d.varchar({ length: 500 }),
+    accessToken: d.text(),
+    refreshToken: d.text(),
+    employerId: d.varchar({ length: 255 }),
+    email: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
 );

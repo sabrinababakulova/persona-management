@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { Suspense, useMemo, useState } from "react";
+import { getProviders, signIn } from "next-auth/react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { registerFormSchema } from "~/schemas/register";
 import MailVerificationPage from "./mail-verification";
 
@@ -28,6 +28,8 @@ function RegisterPageContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isGoogleAvailable, setIsGoogleAvailable] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [verificationErrorMessage, setVerificationErrorMessage] = useState<
@@ -44,6 +46,19 @@ function RegisterPageContent() {
 
     return flow;
   }, [searchParams]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void getProviders().then((providers) => {
+      if (!isMounted) return;
+      setIsGoogleAvailable(Boolean(providers?.google));
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +161,18 @@ function RegisterPageContent() {
       setIsVerifyingCode(false);
     }
   };
+
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null);
+    setIsGoogleSubmitting(true);
+
+    try {
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } catch {
+      setErrorMessage("Не удалось продолжить через Google.");
+      setIsGoogleSubmitting(false);
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen bg-white">
       <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
@@ -173,6 +200,30 @@ function RegisterPageContent() {
             <h1 className="mb-8 font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
               Зарегестрироваться
             </h1>
+
+            {isGoogleAvailable && (
+              <>
+                <button
+                  className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-white font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isGoogleSubmitting || isSubmitting}
+                  onClick={() => void handleGoogleSignIn()}
+                  type="button"
+                >
+                  <span className="text-[18px]">G</span>
+                  <span>
+                    {isGoogleSubmitting
+                      ? "Переход..."
+                      : "Продолжить через Google"}
+                  </span>
+                </button>
+
+                <div className="mb-6 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border-input" />
+                  <span className="text-[12px] text-text-muted">или</span>
+                  <div className="h-px flex-1 bg-border-input" />
+                </div>
+              </>
+            )}
 
             <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
               <div className="flex flex-col gap-6 lg:flex-row">

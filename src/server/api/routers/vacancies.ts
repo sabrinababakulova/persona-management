@@ -2,7 +2,18 @@ import { desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { recentActivityLogs, vacancies } from "~/server/db/schema";
+import {
+  companyTelegramChannels,
+  recentActivityLogs,
+  users,
+  vacancies,
+} from "~/server/db/schema";
+import {
+  isTelegramConfigured,
+  sendTelegramMessage,
+} from "~/server/services/telegram";
+import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
+import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
 function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
@@ -45,6 +56,7 @@ function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
     tasks: vacancy.tasks ?? "",
     team: vacancy.team ?? "",
     companyDescription: vacancy.companyDescription ?? "",
+    companyId: vacancy.companyId ?? undefined,
   };
 }
 
@@ -131,6 +143,17 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Get the user's companyId
+      let companyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        companyId = userRows[0]?.companyId ?? null;
+      }
+
       const createdRows = await ctx.db
         .insert(vacancies)
         .values({
@@ -148,6 +171,7 @@ export const vacanciesRouter = createTRPCRouter({
           tasks: input.tasks ?? null,
           team: input.team ?? null,
           companyDescription: input.companyDescription ?? null,
+          companyId,
         })
         .returning();
 
@@ -364,5 +388,111 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       return formatVacancy(updated);
+    }),
+
+  isTelegramEnabled: protectedProcedure.query(async ({ ctx }) => {
+    if (!isTelegramConfigured()) {
+      return { enabled: false };
+    }
+
+    // Check if the user's company has at least one Telegram channel
+    let companyId: string | null = null;
+    if (ctx.session?.user?.id) {
+      const userRows = await ctx.db
+        .select({ companyId: users.companyId })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+      companyId = userRows[0]?.companyId ?? null;
+    }
+
+    if (!companyId) {
+      return { enabled: false };
+    }
+
+    const channels = await ctx.db
+      .select({ id: companyTelegramChannels.id })
+      .from(companyTelegramChannels)
+      .where(eq(companyTelegramChannels.companyId, companyId))
+      .limit(1);
+
+    return { enabled: channels.length > 0 };
+  }),
+
+  postVacancyToTelegram: protectedProcedure
+    .input(z.object({ vacancyId: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      if (!isTelegramConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Telegram не настроен",
+        });
+      }
+
+      const rows = await ctx.db
+        .select()
+        .from(vacancies)
+        .where(eq(vacancies.id, input.vacancyId))
+        .limit(1);
+
+      const vacancy = rows[0];
+      if (!vacancy) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
+      }
+
+      if (!vacancy.companyId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "У вакансии не указана компания",
+        });
+      }
+
+      // Fetch all Telegram channels for this company
+      const channels = await ctx.db
+        .select()
+        .from(companyTelegramChannels)
+        .where(eq(companyTelegramChannels.companyId, vacancy.companyId));
+
+      if (channels.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "У компании не настроены Telegram-каналы",
+        });
+      }
+
+      const keyword = generateVacancyKeyword(vacancy.id, vacancy.companyId);
+      const formatted = formatVacancy(vacancy);
+      const message = formatTelegramVacancy(formatted, keyword);
+
+      // Post to all company channels
+      const errors: string[] = [];
+      for (const channel of channels) {
+        try {
+          await sendTelegramMessage(message, channel.channelId);
+        } catch (err) {
+          errors.push(
+            `Канал ${channel.channelId}: ${err instanceof Error ? err.message : "Неизвестная ошибка"}`,
+          );
+        }
+      }
+
+      if (errors.length === channels.length) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Не удалось отправить ни в один канал:\n${errors.join("\n")}`,
+        });
+      }
+
+      return {
+        success: true,
+        keyword,
+        sentTo: channels.length - errors.length,
+        errors: errors.length > 0 ? errors : undefined,
+      };
     }),
 });
