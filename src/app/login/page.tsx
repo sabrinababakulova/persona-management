@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { getProviders, signIn, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 export default function LoginPage() {
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isGoogleAvailable, setIsGoogleAvailable] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,6 +21,19 @@ export default function LoginPage() {
       router.replace("/dashboard");
     }
   }, [router, status]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void getProviders().then((providers) => {
+      if (!isMounted) return;
+      setIsGoogleAvailable(Boolean(providers?.google));
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +69,18 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setErrorMessage(null);
+    setIsGoogleSubmitting(true);
+
+    try {
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } catch {
+      setErrorMessage("Не удалось войти через Google.");
+      setIsGoogleSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen bg-white">
       {/* Left Sidebar with Logo */}
@@ -74,6 +101,34 @@ export default function LoginPage() {
           <h1 className="mb-8 font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
             Войти
           </h1>
+
+          {isGoogleAvailable && (
+            <>
+              <button
+                className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-white font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isGoogleSubmitting || isSubmitting}
+                onClick={() => void handleGoogleSignIn()}
+                type="button"
+              >
+                <Image
+                  alt="Google Icon"
+                  className="object-cover"
+                  height={24}
+                  src="/google-icon.svg"
+                  width={24}
+                />
+                <span>
+                  {isGoogleSubmitting ? "Переход..." : "Войти через Google"}
+                </span>
+              </button>
+
+              <div className="mb-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-border-input" />
+                <span className="text-[12px] text-text-muted">или</span>
+                <div className="h-px flex-1 bg-border-input" />
+              </div>
+            </>
+          )}
 
           {/* Form */}
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
