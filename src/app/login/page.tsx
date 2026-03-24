@@ -111,12 +111,12 @@ export default function LoginPage() {
                 type="password"
                 value={password}
               />
-              <span
-                className="mt-1 cursor-default text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px]"
-                title="Обратитесь к администратору для сброса пароля"
+              <Link
+                className="mt-1 text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px] transition-colors hover:text-text-heading"
+                href="/forgot-password"
               >
                 Забыли пароль?
-              </span>
+              </Link>
             </div>
 
             {/* Buttons */}
