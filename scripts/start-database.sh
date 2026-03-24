@@ -7,13 +7,16 @@
 # - Docker Desktop for Windows - https://docs.docker.com/docker-for-windows/install/
 # - Podman Desktop - https://podman.io/getting-started/installation
 # 3. Open WSL - `wsl`
-# 4. Run this script - `./start-database.sh`
+# 4. Run this script - `./scripts/start-database.sh`
 
-# On Linux and macOS you can run this script directly - `./start-database.sh`
+# On Linux and macOS you can run this script directly - `./scripts/start-database.sh`
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # import env variables from .env
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 DB_PASSWORD=$(echo "$DATABASE_URL" | awk -F':' '{print $3}' | awk -F'@' '{print $1}')
 DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')
@@ -70,7 +73,7 @@ if [ "$($DOCKER_CMD ps -q -a -f name=$DB_CONTAINER_NAME)" ]; then
     echo "Refusing to start it because that would expose Postgres to the network."
     echo "Remove and recreate it so the port binds only to $DB_BIND_ADDRESS:"
     echo "  $DOCKER_CMD rm -f $DB_CONTAINER_NAME"
-    echo "  ./start-database.sh"
+    echo "  ./scripts/start-database.sh"
     exit 1
   fi
 
@@ -90,9 +93,9 @@ if [ "$DB_PASSWORD" = "password" ]; then
   DB_PASSWORD=$(openssl rand -base64 12 | tr '+/' '-_')
   if [[ "$(uname)" == "Darwin" ]]; then
     # macOS requires an empty string to be passed with the `i` flag
-    sed -i '' "s#:password@#:$DB_PASSWORD@#" .env
+    sed -i '' "s#:password@#:$DB_PASSWORD@#" "$REPO_ROOT/.env"
   else
-    sed -i "s#:password@#:$DB_PASSWORD@#" .env
+    sed -i "s#:password@#:$DB_PASSWORD@#" "$REPO_ROOT/.env"
   fi
 fi
 

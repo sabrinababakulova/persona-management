@@ -2,8 +2,11 @@
 # Register all app tables in Directus admin panel so they're visible in the Content module.
 # Excludes directus_* internal tables.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 # Authenticate and get access token
 TOKEN=$(curl -s -X POST "$DIRECTUS_URL/auth/login" \

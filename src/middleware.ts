@@ -6,10 +6,19 @@ const authPaths = ["/login", "/register", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const forwardedProto = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  const isSecureRequest =
+    forwardedProto === "https" || request.nextUrl.protocol === "https:";
+  const useSecureCookie =
+    process.env.AUTH_URL?.startsWith("https://") ?? isSecureRequest;
 
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    secureCookie: useSecureCookie,
   });
   const isAuthenticated = !!token?.id;
 

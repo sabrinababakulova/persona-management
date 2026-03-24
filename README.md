@@ -64,6 +64,6 @@ The candidate create form select options (contact types, sources, positions, ski
 To apply locally:
 
 ```sh
-./start-database.sh
+./scripts/start-database.sh
 bun run db:migrate
 ```
