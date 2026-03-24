@@ -13,10 +13,11 @@ set -euo pipefail
 # Safe to run: your data is backed up before anything is deleted.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 DB_PASSWORD=$(echo "$DATABASE_URL" | awk -F':' '{print $3}' | awk -F'@' '{print $1}')
 DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')
@@ -45,7 +46,7 @@ fi
 
 # Check container exists
 if ! $DOCKER_CMD ps -a -q -f name="^${DB_CONTAINER_NAME}$" | grep -q .; then
-  echo "Container '$DB_CONTAINER_NAME' not found. Use ./setup.sh for a fresh install."
+  echo "Container '$DB_CONTAINER_NAME' not found. Use ./scripts/setup.sh for a fresh install."
   exit 1
 fi
 
@@ -57,7 +58,7 @@ if ! $DOCKER_CMD ps -q -f name="^${DB_CONTAINER_NAME}$" | grep -q .; then
 fi
 
 echo "=== 1. Backing up database ==="
-BACKUP_FILE="$SCRIPT_DIR/migration-backup-$(date -u +%Y%m%dT%H%M%SZ).sql"
+BACKUP_FILE="$REPO_ROOT/migration-backup-$(date -u +%Y%m%dT%H%M%SZ).sql"
 $DOCKER_CMD exec \
   -e PGPASSWORD="$DB_PASSWORD" \
   "$DB_CONTAINER_NAME" \
@@ -74,7 +75,7 @@ $DOCKER_CMD rm -f "$DB_CONTAINER_NAME"
 
 echo ""
 echo "=== 4. Creating new container with named volume ==="
-./start-database.sh
+"$SCRIPT_DIR/start-database.sh"
 
 echo ""
 echo "=== 5. Waiting for database to be ready ==="

@@ -5,13 +5,14 @@ set -euo pipefail
 # Run this on a fresh server or fresh local machine.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 echo "=== 1. Starting database ==="
-./start-database.sh
+"$SCRIPT_DIR/start-database.sh"
 
 echo ""
 echo "=== 2. Waiting for database to be ready ==="
@@ -58,7 +59,7 @@ done
 
 echo ""
 echo "=== 7. Registering tables in Directus admin panel ==="
-./register-directus-collections.sh
+"$SCRIPT_DIR/register-directus-collections.sh"
 
 echo ""
 echo "=========================================="

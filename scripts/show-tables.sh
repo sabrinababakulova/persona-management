@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Show all app tables and their data (excludes directus_* internal tables)
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 DB_HOST="localhost"
 DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')

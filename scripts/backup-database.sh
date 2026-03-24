@@ -3,14 +3,17 @@ set -euo pipefail
 
 # Create a timestamped PostgreSQL dump from the local development container.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 set -a
-source .env
+source "$REPO_ROOT/.env"
 
 DB_PASSWORD=$(echo "$DATABASE_URL" | awk -F':' '{print $3}' | awk -F'@' '{print $1}')
 DB_PORT=$(echo "$DATABASE_URL" | awk -F':' '{print $4}' | awk -F'/' '{print $1}')
 DB_NAME=$(echo "$DATABASE_URL" | awk -F'/' '{print $4}')
 DB_CONTAINER_NAME="$DB_NAME-postgres"
-BACKUP_DIR="${BACKUP_DIR:-backups}"
+BACKUP_DIR="${BACKUP_DIR:-$REPO_ROOT/backups}"
 TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
 BACKUP_PATH="$BACKUP_DIR/${DB_NAME}-${TIMESTAMP}.sql.gz"
 

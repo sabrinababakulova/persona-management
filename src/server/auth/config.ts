@@ -512,6 +512,7 @@ export const authConfig = {
   }),
   session: { strategy: "jwt" },
   secret: env.AUTH_SECRET,
+  trustHost: true,
   useSecureCookies: env.AUTH_URL?.startsWith("https://") ?? false,
   pages: {
     signIn: "/login",
