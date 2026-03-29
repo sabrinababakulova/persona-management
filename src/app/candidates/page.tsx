@@ -273,7 +273,7 @@ export default function CandidatesPage() {
       skills: prefill?.skills ?? [],
       languages: prefill?.languages ?? [],
       status: payload.status || prefill?.status || defaultStatus,
-      resumeUrl: payload.resumeUrl || undefined,
+      resumeFileId: payload.resumeFileId || undefined,
       resumeFileName: payload.resumeFileName || undefined,
       resumeFileSize: payload.resumeFileSize || undefined,
     });

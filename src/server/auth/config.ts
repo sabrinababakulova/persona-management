@@ -44,6 +44,7 @@ import {
   verificationTokens,
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
+import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
 
 class AuthFlowError extends CredentialsSignin {
   constructor(code: string) {
@@ -375,6 +376,7 @@ const providers: NextAuthConfig["providers"] = [
             id: users.id,
             email: users.email,
             name: users.name,
+            avatarFileId: users.avatarFileId,
             image: users.image,
           })
           .from(users)
@@ -431,7 +433,8 @@ const providers: NextAuthConfig["providers"] = [
           id: user.id,
           email: user.email,
           name: user.name ?? undefined,
-          image: user.image ?? undefined,
+          image:
+            getDirectusAssetUrl(user.avatarFileId) ?? user.image ?? undefined,
         };
       }
 
@@ -474,6 +477,7 @@ const providers: NextAuthConfig["providers"] = [
           password: users.password,
           emailVerified: users.emailVerified,
           name: users.name,
+          avatarFileId: users.avatarFileId,
           image: users.image,
         })
         .from(users)
@@ -513,7 +517,8 @@ const providers: NextAuthConfig["providers"] = [
         id: user.id,
         email: user.email,
         name: user.name ?? undefined,
-        image: user.image ?? undefined,
+        image:
+          getDirectusAssetUrl(user.avatarFileId) ?? user.image ?? undefined,
       };
     },
   }),

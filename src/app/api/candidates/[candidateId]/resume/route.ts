@@ -3,6 +3,10 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
 import {
+  DirectusStorageError,
+  isDirectusNotFoundError,
+} from "~/server/storage/directus-storage";
+import {
   buildCandidateResumeUrl,
   downloadCandidateResumeFromStorage,
   formatFileSize,
@@ -38,7 +42,10 @@ export async function POST(request: Request, context: RouteContext) {
   const { candidateId } = await context.params;
 
   const [candidate] = await db
-    .select({ id: candidates.id })
+    .select({
+      id: candidates.id,
+      resumeFileId: candidates.resumeFileId,
+    })
     .from(candidates)
     .where(eq(candidates.id, candidateId))
     .limit(1);
@@ -91,35 +98,42 @@ export async function POST(request: Request, context: RouteContext) {
       return buildErrorResponse("Файл не является валидным PDF", 415);
     }
 
-    await uploadCandidateResumeToStorage(
+    const uploadResult = await uploadCandidateResumeToStorage(
       candidateId,
       fileBuffer,
+      candidate.resumeFileId ?? null,
       uploadedFile.type || "application/pdf",
     );
-  } catch (error) {
-    console.error("Failed to save candidate resume file", error);
-    return buildErrorResponse("Не удалось сохранить файл", 500);
-  }
 
-  const resumeFileName = sanitizeResumeFileName(uploadedFile.name);
-  const resumeFileSize = formatFileSize(uploadedFile.size);
-  const resumeUrl = buildCandidateResumeUrl(candidateId);
+    const resumeFileName = sanitizeResumeFileName(uploadedFile.name);
+    const resumeFileSize = formatFileSize(uploadedFile.size);
+    const resumeDownloadUrl = buildCandidateResumeUrl(candidateId);
 
-  await db
-    .update(candidates)
-    .set({
-      resumeUrl,
+    await db
+      .update(candidates)
+      .set({
+        resumeFileId: uploadResult.fileId,
+        resumeFileName,
+        resumeFileSize,
+      })
+      .where(eq(candidates.id, candidateId));
+
+    return Response.json({
+      candidateId,
+      resumeDownloadUrl,
+      resumeFileId: uploadResult.fileId,
       resumeFileName,
       resumeFileSize,
-    })
-    .where(eq(candidates.id, candidateId));
-
-  return Response.json({
-    candidateId,
-    resumeUrl,
-    resumeFileName,
-    resumeFileSize,
-  });
+    });
+  } catch (error) {
+    console.error("Failed to save candidate resume file", error);
+    return buildErrorResponse(
+      error instanceof DirectusStorageError
+        ? error.message
+        : "Не удалось сохранить файл",
+      500,
+    );
+  }
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -133,6 +147,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const [candidate] = await db
     .select({
       id: candidates.id,
+      resumeFileId: candidates.resumeFileId,
       resumeFileName: candidates.resumeFileName,
     })
     .from(candidates)
@@ -149,23 +164,40 @@ export async function GET(_request: Request, context: RouteContext) {
     return buildErrorResponse("Некорректный идентификатор кандидата", 400);
   }
 
-  const resumeFile = await downloadCandidateResumeFromStorage(candidateId);
-  if (!resumeFile) {
+  if (!candidate.resumeFileId) {
     return buildErrorResponse("Резюме не найдено", 404);
   }
 
-  const downloadFileName = sanitizeResumeFileName(
-    candidate.resumeFileName ?? "resume.pdf",
-  );
+  try {
+    const resumeFile = await downloadCandidateResumeFromStorage(
+      candidate.resumeFileId,
+    );
 
-  return new Response(resumeFile.buffer, {
-    status: 200,
-    headers: {
-      "Content-Type": resumeFile.contentType ?? "application/pdf",
-      "Content-Disposition": buildContentDisposition(downloadFileName),
-      "Content-Length": String(resumeFile.buffer.byteLength),
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    const downloadFileName = sanitizeResumeFileName(
+      candidate.resumeFileName ?? "resume.pdf",
+    );
+
+    return new Response(resumeFile.buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": resumeFile.contentType ?? "application/pdf",
+        "Content-Disposition": buildContentDisposition(downloadFileName),
+        "Content-Length": String(resumeFile.buffer.byteLength),
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (error) {
+    if (isDirectusNotFoundError(error)) {
+      return buildErrorResponse("Резюме не найдено", 404);
+    }
+
+    console.error("Failed to download candidate resume file", error);
+    return buildErrorResponse(
+      error instanceof DirectusStorageError
+        ? error.message
+        : "Не удалось скачать файл",
+      500,
+    );
+  }
 }

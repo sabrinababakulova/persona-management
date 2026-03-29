@@ -64,7 +64,7 @@ export function CreateCandidateForm() {
     languages: [{ name: "", level: "" }],
     status: "",
     aiAnalysis: "",
-    resumeUrl: "",
+    resumeFileId: "",
     resumeFileName: "",
     resumeFileSize: "",
   });
@@ -294,7 +294,7 @@ export function CreateCandidateForm() {
     const { prefillData } = uploadedResume;
     setFormData((prev) => ({
       ...prev,
-      resumeUrl: uploadedResume.resumeUrl,
+      resumeFileId: uploadedResume.resumeFileId,
       resumeFileName: uploadedResume.resumeFileName,
       resumeFileSize: uploadedResume.resumeFileSize,
       aiAnalysis: uploadedResume.aiAnalysis,
@@ -383,6 +383,7 @@ export function CreateCandidateForm() {
           </div>
           <ResumeFileUploader
             candidateId={candidateDraftId}
+            currentResumeFileId={formData.resumeFileId}
             disabled={createCandidate.isPending}
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}

@@ -467,10 +467,10 @@ export default function CandidateDetailPage() {
                             {exp.position}
                           </div>
                           <ul className="space-y-1">
-                            {exp.description.map((desc, descIndex) => (
+                            {exp.description.map((desc) => (
                               <li
                                 className="text-sm text-text-muted"
-                                key={`${exp.company}-desc-${descIndex}`}
+                                key={`${exp.company}-${exp.position}-${desc}`}
                               >
                                 • {desc}
                               </li>
@@ -534,12 +534,20 @@ export default function CandidateDetailPage() {
                         {candidate.resumeFile.size}
                       </div>
                     </div>
-                    <button
-                      className="text-primary-blue hover:text-primary-blue-dark"
-                      type="button"
-                    >
-                      <DownloadIcon className="h-5 w-5" />
-                    </button>
+                    {candidate.resumeFile.url ? (
+                      <Link
+                        className="text-primary-blue hover:text-primary-blue-dark"
+                        href={candidate.resumeFile.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        <DownloadIcon className="h-5 w-5" />
+                      </Link>
+                    ) : (
+                      <span className="text-gray-300">
+                        <DownloadIcon className="h-5 w-5" />
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

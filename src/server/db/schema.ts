@@ -62,6 +62,7 @@ export const users = createTable("user", (d) => ({
     withTimezone: true,
   }),
   image: d.varchar({ length: 255 }),
+  avatarFileId: d.varchar({ length: 255 }),
   companyId: d.varchar({ length: 255 }).references(() => companies.id),
 }));
 
@@ -140,7 +141,7 @@ export const candidates = createTable(
     currentPosition: d.varchar({ length: 255 }),
     source: d.varchar({ length: 255 }),
     status: d.varchar({ length: 50 }).default("new"),
-    resumeUrl: d.varchar({ length: 500 }),
+    resumeFileId: d.varchar({ length: 255 }),
     resumeFileName: d.varchar({ length: 255 }),
     resumeFileSize: d.varchar({ length: 50 }),
     experience: d.varchar({ length: 255 }),
@@ -389,29 +390,26 @@ export const companyTelegramChannels = createTable(
 );
 
 // Company hh.uz (HeadHunter) accounts
-export const companyHhAccounts = createTable(
-  "company_hh_account",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    companyId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => companies.id)
-      .unique(),
-    clientId: d.varchar({ length: 255 }),
-    clientSecret: d.varchar({ length: 500 }),
-    accessToken: d.text(),
-    refreshToken: d.text(),
-    employerId: d.varchar({ length: 255 }),
-    email: d.varchar({ length: 255 }),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-  }),
-);
+export const companyHhAccounts = createTable("company_hh_account", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  companyId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => companies.id)
+    .unique(),
+  clientId: d.varchar({ length: 255 }),
+  clientSecret: d.varchar({ length: 500 }),
+  accessToken: d.text(),
+  refreshToken: d.text(),
+  employerId: d.varchar({ length: 255 }),
+  email: d.varchar({ length: 255 }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));

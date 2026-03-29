@@ -37,6 +37,7 @@ import {
 } from "~/server/auth/rate-limit";
 import { users, verificationTokens } from "~/server/db/schema";
 import { sendPasswordResetCode } from "~/server/mail/send-password-reset-code";
+import { buildDirectusAssetUrl } from "~/server/storage/directus-storage";
 
 const CHANGE_PASSWORD_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -355,16 +356,20 @@ export const profileRouter = createTRPCRouter({
   updateAvatar: protectedProcedure
     .input(
       z.object({
-        imageUrl: z.string().min(1).max(500),
+        avatarFileId: z.string().min(1).max(255),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await ctx.db
         .update(users)
-        .set({ image: input.imageUrl })
+        .set({ avatarFileId: input.avatarFileId })
         .where(eq(users.id, ctx.session.user.id));
 
-      return { success: true, imageUrl: input.imageUrl };
+      return {
+        success: true,
+        avatarFileId: input.avatarFileId,
+        imageUrl: buildDirectusAssetUrl(input.avatarFileId),
+      };
     }),
 
   changePassword: protectedProcedure

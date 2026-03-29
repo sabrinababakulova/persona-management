@@ -16,7 +16,9 @@ import {
 } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
+import { DirectusStorageError } from "~/server/storage/directus-storage";
 import {
+  buildCandidateResumeUrl,
   formatFileSize,
   getCandidateResumeStorageKey,
   hasPdfEofMarker,
@@ -33,19 +35,6 @@ function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
 }
 
-function isValidResumeUrl(value: string) {
-  if (value.startsWith("/")) {
-    return true;
-  }
-
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 export const candidatesRouter = createTRPCRouter({
   uploadResume: protectedProcedure
     .input(
@@ -54,6 +43,7 @@ export const candidatesRouter = createTRPCRouter({
         fileName: z.string().min(1).max(255),
         mimeType: z.string().max(255).optional().default(""),
         fileBase64: z.string().min(1),
+        previousResumeFileId: z.string().max(255).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -136,21 +126,30 @@ export const candidatesRouter = createTRPCRouter({
         });
       }
 
-      let resumeUrl: string;
+      let resumeFileId: string;
       try {
         // Validate candidate id and upload to Directus Storage
         getCandidateResumeStorageKey(input.candidateId);
+        const [candidate] = await ctx.db
+          .select({ resumeFileId: candidates.resumeFileId })
+          .from(candidates)
+          .where(eq(candidates.id, input.candidateId))
+          .limit(1);
         const uploadResult = await uploadCandidateResumeToStorage(
           input.candidateId,
           fileBuffer,
+          candidate?.resumeFileId ?? input.previousResumeFileId ?? null,
           input.mimeType || "application/pdf",
         );
-        resumeUrl = uploadResult.publicUrl;
+        resumeFileId = uploadResult.fileId;
       } catch (error) {
         console.error("Failed to save candidate resume file", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Не удалось сохранить файл",
+          message:
+            error instanceof DirectusStorageError
+              ? error.message
+              : "Не удалось сохранить файл",
         });
       }
 
@@ -275,7 +274,7 @@ export const candidatesRouter = createTRPCRouter({
       await ctx.db
         .update(candidates)
         .set({
-          resumeUrl,
+          resumeFileId,
           resumeFileName,
           resumeFileSize,
           aiAnalysis:
@@ -287,7 +286,7 @@ export const candidatesRouter = createTRPCRouter({
 
       return {
         candidateId: input.candidateId,
-        resumeUrl,
+        resumeFileId,
         resumeFileName,
         resumeFileSize,
         prefillData: prefillExtraction.prefillData,
@@ -422,7 +421,7 @@ export const candidatesRouter = createTRPCRouter({
         resumeFile: {
           name: c.resumeFileName ?? "",
           size: c.resumeFileSize ?? "",
-          url: c.resumeUrl ?? "",
+          url: c.resumeFileId ? buildCandidateResumeUrl(c.id) : "",
         },
         notes: (c.notes ?? []) as {
           id: string;
@@ -473,13 +472,7 @@ export const candidatesRouter = createTRPCRouter({
           .default([]),
         status: z.string().max(50).default("new"),
         aiAnalysis: z.string().max(5000).optional(),
-        resumeUrl: z
-          .string()
-          .max(500)
-          .optional()
-          .refine((value) => !value || isValidResumeUrl(value), {
-            message: "Некорректная ссылка на резюме",
-          }),
+        resumeFileId: z.string().max(255).optional(),
         resumeFileName: z.string().max(255).optional(),
         resumeFileSize: z.string().max(50).optional(),
       }),
@@ -619,7 +612,7 @@ export const candidatesRouter = createTRPCRouter({
           languages: input.languages,
           status: input.status,
           aiAnalysis: input.aiAnalysis?.trim() || null,
-          resumeUrl: input.resumeUrl ?? null,
+          resumeFileId: input.resumeFileId ?? null,
           resumeFileName: input.resumeFileName ?? null,
           resumeFileSize: input.resumeFileSize ?? null,
           companyId,

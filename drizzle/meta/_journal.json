@@ -36,6 +36,13 @@
       "when": 1773829831025,
       "tag": "0004_dark_puff_adder",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774817312769,
+      "tag": "0005_far_celestials",
+      "breakpoints": true
     }
   ]
 }

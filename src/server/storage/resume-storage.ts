@@ -1,14 +1,7 @@
 import {
-  createDirectus,
-  deleteFile,
-  readAssetArrayBuffer,
-  readFiles,
-  rest,
-  staticToken,
-  uploadFiles,
-} from "@directus/sdk";
-
-import { env } from "~/env";
+  readDirectusAssetArrayBuffer,
+  uploadFileToDirectus,
+} from "~/server/storage/directus-storage";
 
 const CANDIDATE_ID_PATH_SAFE_PATTERN = /^[A-Za-z0-9-]+$/;
 const PDF_HEADER = Buffer.from("%PDF-", "ascii");
@@ -17,26 +10,6 @@ const PDF_EOF_SCAN_BYTES = 2048;
 
 export const MAX_RESUME_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const RESUME_FILE_NAME_ON_STORAGE = "resume.pdf";
-
-const directusInternalUrl = env.DIRECTUS_INTERNAL_URL ?? env.DIRECTUS_URL;
-const directusPublicUrl = env.DIRECTUS_PUBLIC_URL ?? env.DIRECTUS_URL;
-const directusStorageToken = env.DIRECTUS_STORAGE_TOKEN ?? env.DIRECTUS_TOKEN;
-
-const directus = createDirectus(directusInternalUrl)
-  .with(staticToken(directusStorageToken))
-  .with(rest());
-
-async function findFileByTitle(title: string): Promise<string | null> {
-  const files = await directus.request(
-    readFiles({
-      filter: { title: { _eq: title } },
-      fields: ["id"],
-      limit: 1,
-    }),
-  );
-
-  return files[0]?.id ?? null;
-}
 
 function assertPathSafeCandidateId(candidateId: string) {
   if (!CANDIDATE_ID_PATH_SAFE_PATTERN.test(candidateId)) {
@@ -111,61 +84,25 @@ export function formatFileSize(fileSizeBytes: number) {
 export async function uploadCandidateResumeToStorage(
   candidateId: string,
   fileBuffer: Buffer,
+  existingResumeFileId: string | null,
   mimeType: string,
 ) {
   const key = getCandidateResumeStorageKey(candidateId);
+  const result = await uploadFileToDirectus({
+    existingFileId: existingResumeFileId,
+    fileBuffer,
+    fileName: RESUME_FILE_NAME_ON_STORAGE,
+    mimeType: mimeType || "application/pdf",
+    title: key,
+  });
 
-  // Delete existing file if present (upsert behavior)
-  const existingId = await findFileByTitle(key);
-  if (existingId) {
-    await directus.request(deleteFile(existingId));
-  }
-
-  const formData = new FormData();
-  formData.append("title", key);
-  formData.append(
-    "file",
-    new Blob([new Uint8Array(fileBuffer)], {
-      type: mimeType || "application/pdf",
-    }),
-    RESUME_FILE_NAME_ON_STORAGE,
-  );
-
-  if (env.DIRECTUS_FOLDER) {
-    formData.append("folder", env.DIRECTUS_FOLDER);
-  }
-
-  const result = await directus.request(uploadFiles(formData));
-  const fileId = (result as { id: string }).id;
-  const publicUrl = `${directusPublicUrl}/assets/${fileId}`;
-
-  return { key, fileId, publicUrl };
+  return { fileId: result.fileId };
 }
 
-export async function downloadCandidateResumeFromStorage(candidateId: string) {
-  const key = getCandidateResumeStorageKey(candidateId);
-
-  const fileId = await findFileByTitle(key);
-  if (!fileId) return null;
-
-  try {
-    const arrayBuffer = await directus.request(readAssetArrayBuffer(fileId));
-    return {
-      buffer: Buffer.from(arrayBuffer),
-      contentType: "application/pdf",
-    };
-  } catch (err) {
-    if (
-      err instanceof Error &&
-      "status" in err &&
-      (err as { status: number }).status === 404
-    ) {
-      return null;
-    }
-    throw err;
-  }
-}
-
-export function buildPublicResumeUrl(key: string) {
-  return `${directusPublicUrl}/assets/${key}`;
+export async function downloadCandidateResumeFromStorage(fileId: string) {
+  const arrayBuffer = await readDirectusAssetArrayBuffer(fileId);
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: "application/pdf",
+  };
 }

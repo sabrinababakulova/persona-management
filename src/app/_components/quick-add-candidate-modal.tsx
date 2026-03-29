@@ -12,6 +12,7 @@ import {
   ResumeFileUploader,
   type ResumeUploadMeta,
 } from "./resume-file-uploader";
+
 export type { QuickAddCandidatePayload };
 
 export function QuickAddCandidateModal({
@@ -37,7 +38,7 @@ export function QuickAddCandidateModal({
   );
   const [status, setStatus] = useState(statusOptions[0]?.value ?? "");
   const [source, setSource] = useState(sourceOptions[0]?.value ?? "");
-  const [resumeUrl, setResumeUrl] = useState("");
+  const [resumeFileId, setResumeFileId] = useState("");
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState("");
@@ -66,7 +67,7 @@ export function QuickAddCandidateModal({
       setCandidateDraftId(crypto.randomUUID());
       setStatus(statusOptions[0]?.value ?? "");
       setSource(sourceOptions[0]?.value ?? "");
-      setResumeUrl("");
+      setResumeFileId("");
       setResumeFileName("");
       setResumeFileSize("");
       setAiAnalysis("");
@@ -166,7 +167,7 @@ export function QuickAddCandidateModal({
   };
 
   const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
-    setResumeUrl(uploadedResume.resumeUrl);
+    setResumeFileId(uploadedResume.resumeFileId);
     setResumeFileName(uploadedResume.resumeFileName);
     setResumeFileSize(uploadedResume.resumeFileSize);
     setAiAnalysis(uploadedResume.aiAnalysis);
@@ -230,7 +231,7 @@ export function QuickAddCandidateModal({
       status: status || undefined,
       source,
       aiAnalysis: aiAnalysis || undefined,
-      resumeUrl: resumeUrl || undefined,
+      resumeFileId: resumeFileId || undefined,
       resumeFileName: resumeFileName || undefined,
       resumeFileSize: resumeFileSize || undefined,
       resumePrefillData,
@@ -341,6 +342,7 @@ export function QuickAddCandidateModal({
             </p>
             <ResumeFileUploader
               candidateId={candidateDraftId}
+              currentResumeFileId={resumeFileId}
               disabled={isSaving}
               onUploaded={handleResumeUploaded}
               onUploadingChange={setIsResumeUploading}

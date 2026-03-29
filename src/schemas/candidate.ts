@@ -22,7 +22,7 @@ export const candidateFormSchema = z.object({
   languages: z.array(candidateLanguageSchema).default([]),
   status: z.string().default("new"),
   aiAnalysis: z.string().max(5000).optional(),
-  resumeUrl: z.string().optional(),
+  resumeFileId: z.string().optional(),
   resumeFileName: z.string().optional(),
   resumeFileSize: z.string().optional(),
 });

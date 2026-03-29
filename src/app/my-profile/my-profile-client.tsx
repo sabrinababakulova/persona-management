@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { PencilIcon } from "~/app/_components/icons";
@@ -30,6 +31,7 @@ export function MyProfileClient({
   userEmail,
   userFullName,
 }: MyProfileClientProps) {
+  const router = useRouter();
   const [activeSectionId, setActiveSectionId] = useState<string>(
     PROFILE_MENU_ITEMS[0].id,
   );
@@ -45,6 +47,7 @@ export function MyProfileClient({
   const updateAvatar = api.profile.updateAvatar.useMutation({
     onSuccess: (data) => {
       setCurrentAvatarSrc(data.imageUrl);
+      router.refresh();
     },
   });
 
@@ -75,14 +78,24 @@ export function MyProfileClient({
         body: formData,
       });
 
+      const payload = (await res.json().catch(() => null)) as {
+        error?: string;
+        fileId?: string;
+      } | null;
+
       if (!res.ok) {
-        throw new Error("Не удалось загрузить файл");
+        throw new Error(payload?.error ?? "Не удалось загрузить файл");
       }
 
-      const { publicUrl } = (await res.json()) as { publicUrl: string };
-      updateAvatar.mutate({ imageUrl: publicUrl });
-    } catch {
-      setFormError("Не удалось загрузить аватар");
+      if (!payload?.fileId) {
+        throw new Error("Сервер не вернул идентификатор аватара");
+      }
+
+      await updateAvatar.mutateAsync({ avatarFileId: payload.fileId });
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Не удалось загрузить аватар",
+      );
     } finally {
       setAvatarUploading(false);
       if (avatarInputRef.current) {

@@ -10,7 +10,7 @@ export type CandidateFormData = {
   languages: { name: string; level: string }[];
   status: string;
   aiAnalysis?: string;
-  resumeUrl?: string;
+  resumeFileId?: string;
   resumeFileName?: string;
   resumeFileSize?: string;
 };

@@ -9,7 +9,7 @@ export type QuickAddCandidatePayload = {
   status?: string;
   source: string;
   aiAnalysis?: string;
-  resumeUrl?: string;
+  resumeFileId?: string;
   resumeFileName?: string;
   resumeFileSize?: string;
   resumePrefillData?: CandidateResumePrefillData;

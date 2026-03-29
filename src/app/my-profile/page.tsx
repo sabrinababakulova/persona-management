@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { companies, users } from "~/server/db/schema";
+import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
 import { MyProfileClient } from "./my-profile-client";
 
 const DEFAULT_AVATAR_SRC =
@@ -18,12 +19,17 @@ export default async function MyProfilePage() {
   // Fetch company name from DB
   let companyName = "";
   const userRows = await db
-    .select({ companyId: users.companyId })
+    .select({
+      avatarFileId: users.avatarFileId,
+      companyId: users.companyId,
+      image: users.image,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
 
-  const companyId = userRows[0]?.companyId;
+  const user = userRows[0];
+  const companyId = user?.companyId;
   if (companyId) {
     const companyRows = await db
       .select({ name: companies.name })
@@ -35,7 +41,11 @@ export default async function MyProfilePage() {
 
   return (
     <MyProfileClient
-      avatarSrc={session.user.image ?? DEFAULT_AVATAR_SRC}
+      avatarSrc={
+        getDirectusAssetUrl(user?.avatarFileId) ??
+        user?.image ??
+        DEFAULT_AVATAR_SRC
+      }
       companyName={companyName}
       userCity="Ташкент"
       userEmail={session.user.email ?? ""}

@@ -7,7 +7,7 @@ import { bytesToBase64 } from "~/utils/bytes-to-base64";
 import { FileUploadIcon } from "./icons";
 
 export type ResumeUploadMeta = {
-  resumeUrl: string;
+  resumeFileId: string;
   resumeFileName: string;
   resumeFileSize: string;
   prefillData: CandidateResumePrefillData;
@@ -20,6 +20,7 @@ export type ResumeUploadMeta = {
 
 type ResumeFileUploaderProps = {
   candidateId: string;
+  currentResumeFileId?: string;
   disabled?: boolean;
   onUploaded?: (uploadedResume: ResumeUploadMeta) => void;
   onUploadingChange?: (isUploading: boolean) => void;
@@ -28,6 +29,7 @@ type ResumeFileUploaderProps = {
 
 export function ResumeFileUploader({
   candidateId,
+  currentResumeFileId,
   disabled = false,
   onUploaded,
   onUploadingChange,
@@ -72,6 +74,7 @@ export function ResumeFileUploader({
         fileName: selectedFile.name,
         mimeType: selectedFile.type,
         fileBase64,
+        previousResumeFileId: currentResumeFileId,
       });
 
       setResumeFileName(uploadedResume.resumeFileName);
