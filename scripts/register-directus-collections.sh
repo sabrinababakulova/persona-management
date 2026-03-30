@@ -45,4 +45,31 @@ for TABLE in $TABLES; do
 done
 
 echo ""
+echo "Configuring Directus field metadata..."
+
+echo -n "Configuring 'user.password' as hash field... "
+PASSWORD_FIELD_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+  "$DIRECTUS_URL/fields/user/password" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "hash",
+    "meta": {
+      "interface": "input-hash",
+      "options": {
+        "masked": true
+      },
+      "hidden": false,
+      "readonly": false,
+      "note": "Хэшируется Directus при сохранении"
+    }
+  }')
+
+if [ "$PASSWORD_FIELD_RESPONSE" = "200" ]; then
+  echo "OK"
+else
+  echo "HTTP $PASSWORD_FIELD_RESPONSE"
+fi
+
+echo ""
 echo "Done! All tables should now be visible at $DIRECTUS_URL/admin/content"
