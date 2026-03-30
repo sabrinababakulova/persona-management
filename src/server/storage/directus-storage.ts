@@ -11,7 +11,7 @@ import { env } from "~/env";
 
 const directusInternalUrl = env.DIRECTUS_INTERNAL_URL ?? env.DIRECTUS_URL;
 const directusPublicUrl = env.DIRECTUS_PUBLIC_URL ?? env.DIRECTUS_URL;
-const directusStorageToken = env.DIRECTUS_STORAGE_TOKEN ?? env.DIRECTUS_TOKEN;
+const directusStorageToken = env.DIRECTUS_TOKEN;
 
 const directus = createDirectus(directusInternalUrl)
   .with(staticToken(directusStorageToken))
@@ -108,7 +108,7 @@ function toDirectusStorageError(error: unknown, fallbackMessage: string) {
 
   if (isDirectusAuthenticationError(error)) {
     return new DirectusStorageError(
-      "Не удалось авторизоваться в Directus. Проверьте DIRECTUS_STORAGE_TOKEN или DIRECTUS_TOKEN.",
+      "Не удалось авторизоваться в Directus. Проверьте DIRECTUS_TOKEN.",
       "AUTHENTICATION_FAILED",
       { cause: error, status },
     );

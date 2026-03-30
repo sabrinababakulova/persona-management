@@ -201,7 +201,6 @@ Defined and validated in `src/env.js`:
 | `RESUME_STORAGE_PATH` | No | Local path for resume file storage |
 | `DIRECTUS_INTERNAL_URL` | No | Internal Directus URL (defaults to `DIRECTUS_URL`) |
 | `DIRECTUS_PUBLIC_URL` | No | Public Directus URL for file access (defaults to `DIRECTUS_URL`) |
-| `DIRECTUS_STORAGE_TOKEN` | No | Directus storage-specific token (defaults to `DIRECTUS_TOKEN`) |
 | `DIRECTUS_FOLDER` | No | Directus folder ID for uploaded files |
 | `AUTH_URL` | No | NextAuth base URL override |
 | `VERCEL_URL` | No | Auto-set by Vercel deployment |
