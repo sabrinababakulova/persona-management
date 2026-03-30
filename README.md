@@ -44,7 +44,19 @@ The server-side deploy script:
 - fast-forwards the target branch
 - runs `bun install --frozen-lockfile`
 - runs `bun run build`
-- restarts `yeshunt.service`
+- restarts the `yeshunt` PM2 process
+
+## Server Setup
+
+For a fresh server or local bootstrap, run:
+
+```sh
+./scripts/setup.sh
+```
+
+This setup flow also applies required Directus admin metadata, including the
+`directus_users.password` override so the password field uses the hashed input
+widget with the lock icon instead of a plain text input.
 
 Required GitHub repository secrets:
 

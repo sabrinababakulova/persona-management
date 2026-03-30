@@ -6,14 +6,6 @@ DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_REPOSITORY="${DEPLOY_REPOSITORY:-origin}"
 APP_NAME="${APP_NAME:-yeshunt}"
 
-run_as_root() {
-  if [ "$(id -u)" -eq 0 ]; then
-    "$@"
-  else
-    sudo -n "$@"
-  fi
-}
-
 ensure_bun() {
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
@@ -59,8 +51,8 @@ if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
   pm2 restart "$APP_NAME"
   echo "Restarted '$APP_NAME' with pm2"
 else
-  pm2 start bun --name "$APP_NAME" -- run start
-  echo "Started '$APP_NAME' with pm2"
+  pm2 start ./scripts/ecosystem.config.cjs --only "$APP_NAME"
+  echo "Started '$APP_NAME' with pm2 ecosystem config"
 fi
 
 pm2 save
