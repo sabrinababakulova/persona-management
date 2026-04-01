@@ -9,8 +9,8 @@ import {
 
 import { env } from "~/env";
 
+const DIRECTUS_ASSET_PROXY_BASE_PATH = "/api/directus/assets";
 const directusInternalUrl = env.DIRECTUS_INTERNAL_URL ?? env.DIRECTUS_URL;
-const directusPublicUrl = env.DIRECTUS_PUBLIC_URL ?? env.DIRECTUS_URL;
 const directusStorageToken = env.DIRECTUS_TOKEN;
 
 const directus = createDirectus(directusInternalUrl)
@@ -121,7 +121,7 @@ function toDirectusStorageError(error: unknown, fallbackMessage: string) {
 }
 
 export function buildDirectusAssetUrl(fileId: string) {
-  return `${directusPublicUrl}/assets/${fileId}`;
+  return `${DIRECTUS_ASSET_PROXY_BASE_PATH}/${fileId}`;
 }
 
 export function getDirectusAssetUrl(fileId?: string | null) {
@@ -196,5 +196,33 @@ export async function readDirectusAssetArrayBuffer(fileId: string) {
     return await directus.request(readAssetArrayBuffer(fileId));
   } catch (error) {
     throw toDirectusStorageError(error, "Не удалось скачать файл из Directus.");
+  }
+}
+
+export async function fetchDirectusAsset(fileId: string) {
+  try {
+    const response = await fetch(
+      `${directusInternalUrl}/assets/${encodeURIComponent(fileId)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${directusStorageToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw {
+        message: `Directus asset request failed with status ${response.status}`,
+        response: { status: response.status },
+        status: response.status,
+      };
+    }
+
+    return response;
+  } catch (error) {
+    throw toDirectusStorageError(
+      error,
+      "Не удалось получить файл из Directus.",
+    );
   }
 }
