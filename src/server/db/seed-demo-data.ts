@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 
 import { sql } from "drizzle-orm";
 import * as schema from "~/server/db/schema";
-import { DEFAULT_COMPANY_ID, runSeedScript, type SeedDb } from "./seed-utils";
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
+import { runSeedScript, type SeedDb } from "./seed-utils";
 
 type LookupOption = { value: string; label: string };
 type SeedRow = LookupOption & { sortOrder: number; isActive: boolean };

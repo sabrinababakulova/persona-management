@@ -9,7 +9,15 @@ import { MyProfileClient } from "./my-profile-client";
 const DEFAULT_AVATAR_SRC =
   "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim";
 
-export default async function MyProfilePage() {
+type MyProfilePageProps = {
+  searchParams?: Promise<{
+    section?: string;
+  }>;
+};
+
+export default async function MyProfilePage({
+  searchParams,
+}: MyProfilePageProps) {
   const session = await auth();
 
   if (!session?.user) {
@@ -39,6 +47,12 @@ export default async function MyProfilePage() {
     companyName = companyRows[0]?.name ?? "";
   }
 
+  const resolvedSearchParams = await searchParams;
+  const initialSection =
+    resolvedSearchParams?.section === "company-settings"
+      ? "company-settings"
+      : "my-profile";
+
   return (
     <MyProfileClient
       avatarSrc={
@@ -47,6 +61,7 @@ export default async function MyProfilePage() {
         DEFAULT_AVATAR_SRC
       }
       companyName={companyName}
+      initialSection={initialSection}
       userCity="Ташкент"
       userEmail={session.user.email ?? ""}
       userFullName={session.user.name ?? ""}

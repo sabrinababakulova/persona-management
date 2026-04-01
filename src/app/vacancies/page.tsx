@@ -85,7 +85,9 @@ export default function VacanciesPage() {
       if (status) {
         utils.vacancies.getAllVacancies.setData(undefined, (existing = []) =>
           existing.map((vacancy) =>
-            vacancy.id === id ? { ...vacancy, status } : vacancy,
+            vacancy.source === "local" && vacancy.id === id
+              ? { ...vacancy, status }
+              : vacancy,
           ),
         );
       }
@@ -150,7 +152,8 @@ export default function VacanciesPage() {
 
   const filteredVacancies = vacancies.filter((vacancy) => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    const combinedValue = `${vacancy.title} ${vacancy.level}`.toLowerCase();
+    const combinedValue =
+      `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.source}`.toLowerCase();
 
     return combinedValue.includes(normalizedQuery);
   });
@@ -246,7 +249,9 @@ export default function VacanciesPage() {
                   const statusTone =
                     vacancyStatusTone[vacancy.status] ??
                     vacancyStatusTone.active;
+                  const isHhVacancy = vacancy.source === "hh.uz";
                   const isStatusPending =
+                    !isHhVacancy &&
                     updateVacancyStatus.isPending &&
                     updateVacancyStatus.variables?.id === vacancy.id;
 
@@ -263,44 +268,72 @@ export default function VacanciesPage() {
                           onChange={() => toggleSelection(vacancy.id)}
                         />
                         <div className="min-w-0">
-                          <Link
-                            className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
-                            href={`/vacancies/${vacancy.id}`}
-                          >
-                            {vacancy.title}
-                          </Link>
+                          {vacancy.source === "local" ? (
+                            <Link
+                              className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                              href={`/vacancies/${vacancy.id}`}
+                            >
+                              {vacancy.title}
+                            </Link>
+                          ) : vacancy.externalUrl ? (
+                            <a
+                              className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                              href={vacancy.externalUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {vacancy.title}
+                            </a>
+                          ) : (
+                            <span className="truncate font-medium text-[14px] text-text-heading leading-none">
+                              {vacancy.title}
+                            </span>
+                          )}
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {vacancy.level}
                           </div>
+                          {isHhVacancy && (
+                            <span className="mt-2 inline-flex items-center rounded-full bg-[#fff1f3] px-2.5 py-1 font-semibold text-[#d6336c] text-[11px] leading-none">
+                              hh.uz
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                        <div
-                          className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                        >
-                          <select
-                            aria-label={`Статус вакансии ${vacancy.title}`}
-                            className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                            disabled={isStatusPending}
-                            onChange={(event) => {
-                              handleStatusChange(
-                                vacancy.id,
-                                event.target.value,
-                              );
-                            }}
-                            value={vacancy.status}
+                        {isHhVacancy ? (
+                          <span
+                            className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
                           >
-                            {VACANCY_STATUS_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDownIcon
-                            className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                          />
-                        </div>
+                            Активна
+                          </span>
+                        ) : (
+                          <div
+                            className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
+                          >
+                            <select
+                              aria-label={`Статус вакансии ${vacancy.title}`}
+                              className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
+                              disabled={isStatusPending}
+                              onChange={(event) => {
+                                handleStatusChange(
+                                  vacancy.id,
+                                  event.target.value,
+                                );
+                              }}
+                              value={vacancy.status}
+                            >
+                              {VACANCY_STATUS_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDownIcon
+                              className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
@@ -308,7 +341,7 @@ export default function VacanciesPage() {
                       </div>
 
                       <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                        {vacancy.responses}
+                        {isHhVacancy ? "-" : vacancy.responses}
                       </div>
 
                       <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
@@ -333,7 +366,9 @@ export default function VacanciesPage() {
 
                       <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
                         <span>Город: {vacancy.city || "-"}</span>
-                        <span>Отклики: {vacancy.responses}</span>
+                        <span>
+                          Отклики: {isHhVacancy ? "-" : vacancy.responses}
+                        </span>
                         <span>Тип работы: {vacancy.workType || "-"}</span>
                       </div>
                     </div>

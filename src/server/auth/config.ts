@@ -45,6 +45,7 @@ import {
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 class AuthFlowError extends CredentialsSignin {
   constructor(code: string) {
@@ -54,7 +55,6 @@ class AuthFlowError extends CredentialsSignin {
 }
 
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
-const DEFAULT_COMPANY_ID = "00000000-0000-0000-0000-000000000001";
 
 function getClientIp(request: Request) {
   // Prefer x-real-ip set by the reverse proxy (most reliable)

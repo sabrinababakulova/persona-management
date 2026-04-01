@@ -1,10 +1,9 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-
 import * as schema from "~/server/db/schema";
 
-export const DEFAULT_COMPANY_ID = "00000000-0000-0000-0000-000000000001";
+export { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 export type SeedDb = PostgresJsDatabase<typeof schema>;
 

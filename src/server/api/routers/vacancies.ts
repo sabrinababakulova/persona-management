@@ -1,17 +1,25 @@
-import { desc, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  companyHhAccounts,
   companyTelegramChannels,
   recentActivityLogs,
   users,
   vacancies,
 } from "~/server/db/schema";
 import {
+  fetchCompanyHhVacancies,
+  isHhConfigured,
+  refreshHhAccessToken,
+  resolveHhEmployerFromAccessToken,
+} from "~/server/services/hh";
+import {
   isTelegramConfigured,
   sendTelegramMessage,
 } from "~/server/services/telegram";
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
@@ -57,6 +65,34 @@ function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
     team: vacancy.team ?? "",
     companyDescription: vacancy.companyDescription ?? "",
     companyId: vacancy.companyId ?? undefined,
+    source: "local" as const,
+    externalUrl: undefined,
+  };
+}
+
+function formatHhVacancy(
+  vacancy: Awaited<ReturnType<typeof fetchCompanyHhVacancies>>[number],
+  companyId: string,
+) {
+  return {
+    id: `hh:${vacancy.id}`,
+    title: vacancy.title,
+    level: vacancy.level,
+    status: vacancy.status,
+    city: vacancy.city,
+    responses: 0,
+    workType: vacancy.workType,
+    salaryExpectation: undefined,
+    salaryCurrency: "UZS" as const,
+    workScheduleStart: undefined,
+    workScheduleEnd: undefined,
+    comments: "",
+    tasks: "",
+    team: "",
+    companyDescription: "",
+    companyId,
+    source: "hh.uz" as const,
+    externalUrl: vacancy.externalUrl,
   };
 }
 
@@ -74,14 +110,127 @@ export const vacanciesRouter = createTRPCRouter({
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
 
+      let userCompanyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        userCompanyId = userRows[0]?.companyId ?? null;
+      }
+
       const rows = await ctx.db
         .select()
         .from(vacancies)
+        .where(
+          userCompanyId ? eq(vacancies.companyId, userCompanyId) : undefined,
+        )
         .orderBy(desc(vacancies.createdAt))
         .limit(limit)
         .offset(offset);
 
-      return rows.map(formatVacancy);
+      const localVacancies = rows.map(formatVacancy);
+
+      if (userCompanyId !== DEFAULT_COMPANY_ID) {
+        return localVacancies;
+      }
+
+      const hhAccountRows = await ctx.db
+        .select({
+          accessToken: companyHhAccounts.accessToken,
+          employerId: companyHhAccounts.employerId,
+          id: companyHhAccounts.id,
+          refreshToken: companyHhAccounts.refreshToken,
+        })
+        .from(companyHhAccounts)
+        .where(eq(companyHhAccounts.companyId, userCompanyId))
+        .limit(1);
+
+      const hhAccount = hhAccountRows[0];
+      const hasHhOAuth = Boolean(
+        hhAccount?.accessToken || hhAccount?.refreshToken,
+      );
+      if (!hasHhOAuth) {
+        return localVacancies;
+      }
+
+      let employerId = hhAccount?.employerId?.trim();
+
+      if (!employerId && hhAccount?.accessToken && isHhConfigured()) {
+        try {
+          const resolvedAccount = await resolveHhEmployerFromAccessToken(
+            hhAccount.accessToken,
+          );
+          employerId = resolvedAccount.employerId;
+
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              email: resolvedAccount.email,
+              employerId: resolvedAccount.employerId,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+        } catch (resolveError) {
+          if (hhAccount.refreshToken) {
+            try {
+              const refreshedTokens = await refreshHhAccessToken(
+                hhAccount.refreshToken,
+              );
+              const resolvedAccount = await resolveHhEmployerFromAccessToken(
+                refreshedTokens.accessToken,
+              );
+              employerId = resolvedAccount.employerId;
+
+              await ctx.db
+                .update(companyHhAccounts)
+                .set({
+                  accessToken: refreshedTokens.accessToken,
+                  email: resolvedAccount.email,
+                  employerId: resolvedAccount.employerId,
+                  refreshToken: refreshedTokens.refreshToken,
+                })
+                .where(eq(companyHhAccounts.id, hhAccount.id));
+            } catch (refreshError) {
+              console.error(
+                "Failed to refresh HH account before vacancy sync",
+                {
+                  companyId: userCompanyId,
+                  error: refreshError,
+                },
+              );
+            }
+          } else {
+            console.error("Failed to resolve HH employer ID for company", {
+              companyId: userCompanyId,
+              error: resolveError,
+            });
+          }
+        }
+      }
+
+      if (!employerId) {
+        return localVacancies;
+      }
+
+      try {
+        const hhVacancies = await fetchCompanyHhVacancies(employerId);
+
+        return [
+          ...localVacancies,
+          ...hhVacancies.map((vacancy) =>
+            formatHhVacancy(vacancy, userCompanyId),
+          ),
+        ];
+      } catch (error) {
+        console.error("Failed to fetch hh.uz vacancies for company", {
+          companyId: userCompanyId,
+          employerId,
+          error,
+        });
+
+        return localVacancies;
+      }
     }),
 
   getVacancyById: protectedProcedure
@@ -105,13 +254,36 @@ export const vacanciesRouter = createTRPCRouter({
     .input(z.object({ query: z.string().max(255) }))
     .query(async ({ ctx, input }) => {
       const search = input.query.trim();
+
+      let userCompanyId: string | null = null;
+      if (ctx.session?.user?.id) {
+        const userRows = await ctx.db
+          .select({ companyId: users.companyId })
+          .from(users)
+          .where(eq(users.id, ctx.session.user.id))
+          .limit(1);
+        userCompanyId = userRows[0]?.companyId ?? null;
+      }
+
+      const conditions = [];
+      if (userCompanyId) {
+        conditions.push(eq(vacancies.companyId, userCompanyId));
+      }
+      if (search) {
+        conditions.push(ilike(vacancies.title, `%${escapeLike(search)}%`));
+      }
+
       const rows = search
         ? await ctx.db
             .select()
             .from(vacancies)
-            .where(ilike(vacancies.title, `%${escapeLike(search)}%`))
+            .where(conditions.length > 0 ? and(...conditions) : undefined)
             .limit(50)
-        : await ctx.db.select().from(vacancies).limit(50);
+        : await ctx.db
+            .select()
+            .from(vacancies)
+            .where(conditions.length > 0 ? and(...conditions) : undefined)
+            .limit(50);
 
       return rows.map(formatVacancy);
     }),

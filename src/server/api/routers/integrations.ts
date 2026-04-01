@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { db } from "~/server/db";
 import {
@@ -115,6 +116,7 @@ export const integrationsRouter = createTRPCRouter({
       employerId: account.employerId,
       email: account.email,
       hasTokens: !!(account.accessToken && account.refreshToken),
+      isConfigured: Boolean(env.HH_CLIENT_ID) && Boolean(env.HH_CLIENT_SECRET),
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
     };

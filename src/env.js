@@ -26,6 +26,9 @@ export const env = createEnv({
     AUTH_URL: z.string().url().optional(),
     VERCEL_URL: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+    HH_CLIENT_ID: z.string().min(1).optional(),
+    HH_CLIENT_SECRET: z.string().min(1).optional(),
+    HH_REDIRECT_URI: z.string().url().optional(),
   },
 
   /**
@@ -59,6 +62,9 @@ export const env = createEnv({
     AUTH_URL: process.env.AUTH_URL,
     VERCEL_URL: process.env.VERCEL_URL,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    HH_CLIENT_ID: process.env.HH_CLIENT_ID,
+    HH_CLIENT_SECRET: process.env.HH_CLIENT_SECRET,
+    HH_REDIRECT_URI: process.env.HH_REDIRECT_URI,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

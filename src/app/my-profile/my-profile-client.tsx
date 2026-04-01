@@ -19,6 +19,7 @@ const PROFILE_MENU_ITEMS = [
 type MyProfileClientProps = {
   avatarSrc: string;
   companyName: string;
+  initialSection: "my-profile" | "company-settings";
   userCity: string;
   userEmail: string;
   userFullName: string;
@@ -27,14 +28,14 @@ type MyProfileClientProps = {
 export function MyProfileClient({
   avatarSrc,
   companyName,
+  initialSection,
   userCity,
   userEmail,
   userFullName,
 }: MyProfileClientProps) {
   const router = useRouter();
-  const [activeSectionId, setActiveSectionId] = useState<string>(
-    PROFILE_MENU_ITEMS[0].id,
-  );
+  const [activeSectionId, setActiveSectionId] =
+    useState<string>(initialSection);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
