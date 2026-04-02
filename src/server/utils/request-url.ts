@@ -30,28 +30,20 @@ function getConfiguredOrigin(): string | null {
 }
 
 export function getAppOrigin(request: Request): string {
+  const configuredOrigin = getConfiguredOrigin();
+  if (configuredOrigin) {
+    return configuredOrigin;
+  }
+
   const forwardedHost = getHeaderValue(request.headers, "x-forwarded-host");
   const forwardedProto = getHeaderValue(request.headers, "x-forwarded-proto");
-  const forwardedPort = getHeaderValue(request.headers, "x-forwarded-port");
 
   if (
     forwardedHost &&
     forwardedProto === "https" &&
     !isLocalHost(forwardedHost.split(":")[0] ?? "")
   ) {
-    const host =
-      forwardedPort &&
-      !forwardedHost.includes(":") &&
-      forwardedPort !== "443"
-        ? `${forwardedHost}:${forwardedPort}`
-        : forwardedHost;
-
-    return `https://${host}`;
-  }
-
-  const configuredOrigin = getConfiguredOrigin();
-  if (configuredOrigin) {
-    return configuredOrigin;
+    return `https://${forwardedHost}`;
   }
 
   const requestOrigin = new URL(request.url);

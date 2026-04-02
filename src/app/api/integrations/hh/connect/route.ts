@@ -12,6 +12,7 @@ import { buildAppUrl } from "~/server/utils/request-url";
 
 export async function GET(request: Request) {
   if (!isHhConfigured()) {
+    console.info("[hh.uz] connect skipped because HH env is not configured");
     return NextResponse.redirect(
       buildAppUrl("/my-profile?section=company-settings", request),
     );
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
 
   const session = await auth();
   if (!session?.user?.id) {
+    console.info("[hh.uz] connect skipped because user session is missing");
     return NextResponse.redirect(buildAppUrl("/login", request));
   }
 
@@ -30,6 +32,9 @@ export async function GET(request: Request) {
 
   const companyId = userRows[0]?.companyId;
   if (!companyId) {
+    console.info("[hh.uz] connect skipped because user companyId is missing", {
+      userId: session.user.id,
+    });
     return NextResponse.redirect(
       buildAppUrl("/my-profile?section=company-settings", request),
     );
