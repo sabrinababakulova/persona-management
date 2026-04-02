@@ -2,12 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { companyHhAccounts, users } from "~/server/db/schema";
+import { companyHhAccounts } from "~/server/db/schema";
 import {
   exchangeHhAuthorizationCode,
   parseHhConnectState,
   resolveHhEmployerFromAccessToken,
 } from "~/server/services/hh";
+import { ensureUserCompanyId } from "~/server/utils/ensure-user-company";
 import { buildAppUrl } from "~/server/utils/request-url";
 
 function redirectToCompanySettings(request: Request) {
@@ -19,6 +20,7 @@ function redirectToCompanySettings(request: Request) {
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
+    console.info("[hh.uz] callback skipped because user session is missing");
     return NextResponse.redirect(buildAppUrl("/login", request));
   }
 
@@ -28,22 +30,31 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
 
   if (error || !code || !state) {
+    console.info("[hh.uz] callback missing required params", {
+      error,
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+    });
     return redirectToCompanySettings(request);
   }
 
   const parsedState = parseHhConnectState(state);
   if (!parsedState || parsedState.userId !== session.user.id) {
+    console.info("[hh.uz] callback state validation failed", {
+      hasParsedState: Boolean(parsedState),
+      sessionUserId: session.user.id,
+      stateUserId: parsedState?.userId,
+    });
     return redirectToCompanySettings(request);
   }
 
-  const userRows = await db
-    .select({ companyId: users.companyId })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-
-  const companyId = userRows[0]?.companyId;
+  const companyId = await ensureUserCompanyId(session.user.id);
   if (!companyId || companyId !== parsedState.companyId) {
+    console.info("[hh.uz] callback company validation failed", {
+      sessionUserId: session.user.id,
+      companyId,
+      stateCompanyId: parsedState.companyId,
+    });
     return redirectToCompanySettings(request);
   }
 
