@@ -8,17 +8,18 @@ import {
   parseHhConnectState,
   resolveHhEmployerFromAccessToken,
 } from "~/server/services/hh";
+import { buildAppUrl } from "~/server/utils/request-url";
 
 function redirectToCompanySettings(request: Request) {
   return NextResponse.redirect(
-    new URL("/my-profile?section=company-settings", request.url),
+    buildAppUrl("/my-profile?section=company-settings", request),
   );
 }
 
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(buildAppUrl("/login", request));
   }
 
   const url = new URL(request.url);

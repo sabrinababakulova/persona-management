@@ -8,17 +8,18 @@ import {
   buildHhConnectState,
   isHhConfigured,
 } from "~/server/services/hh";
+import { buildAppUrl } from "~/server/utils/request-url";
 
 export async function GET(request: Request) {
   if (!isHhConfigured()) {
     return NextResponse.redirect(
-      new URL("/my-profile?section=company-settings", request.url),
+      buildAppUrl("/my-profile?section=company-settings", request),
     );
   }
 
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(buildAppUrl("/login", request));
   }
 
   const userRows = await db
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
   const companyId = userRows[0]?.companyId;
   if (!companyId) {
     return NextResponse.redirect(
-      new URL("/my-profile?section=company-settings", request.url),
+      buildAppUrl("/my-profile?section=company-settings", request),
     );
   }
 

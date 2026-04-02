@@ -133,6 +133,11 @@ export const vacanciesRouter = createTRPCRouter({
       const localVacancies = rows.map(formatVacancy);
 
       if (userCompanyId !== DEFAULT_COMPANY_ID) {
+        console.info("[hh.uz] skipping vacancy sync for non-default company", {
+          userCompanyId,
+          defaultCompanyId: DEFAULT_COMPANY_ID,
+          localVacancies: localVacancies.length,
+        });
         return localVacancies;
       }
 
@@ -152,6 +157,10 @@ export const vacanciesRouter = createTRPCRouter({
         hhAccount?.accessToken || hhAccount?.refreshToken,
       );
       if (!hasHhOAuth) {
+        console.info("[hh.uz] skipping vacancy sync because OAuth is missing", {
+          companyId: userCompanyId,
+          localVacancies: localVacancies.length,
+        });
         return localVacancies;
       }
 
@@ -210,11 +219,22 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       if (!employerId) {
+        console.info("[hh.uz] skipping vacancy sync because employerId is missing", {
+          companyId: userCompanyId,
+          localVacancies: localVacancies.length,
+        });
         return localVacancies;
       }
 
       try {
         const hhVacancies = await fetchCompanyHhVacancies(employerId);
+
+        console.info("[hh.uz] merging vacancies into response", {
+          companyId: userCompanyId,
+          employerId,
+          localVacancies: localVacancies.length,
+          hhVacancies: hhVacancies.length,
+        });
 
         return [
           ...localVacancies,

@@ -96,6 +96,18 @@ function toHhVacancy(item: HhVacancyItem): HhVacancy {
   };
 }
 
+function toHhVacancyLogEntry(item: HhVacancyItem) {
+  return {
+    id: item.id,
+    title: item.name?.trim() || "Вакансия с hh.uz",
+    archived: Boolean(item.archived),
+    city: item.area?.name?.trim() || "",
+    level: item.experience?.name?.trim() || "",
+    workType: toWorkType(item),
+    externalUrl: item.alternate_url?.trim() || undefined,
+  };
+}
+
 function toRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
@@ -176,24 +188,6 @@ export function isHhConfigured(): boolean {
   return !!(env.HH_CLIENT_ID && env.HH_CLIENT_SECRET);
 }
 
-export function buildHhRedirectUri(requestUrl?: string): string {
-  if (env.HH_REDIRECT_URI) {
-    return env.HH_REDIRECT_URI;
-  }
-
-  if (env.AUTH_URL) {
-    return new URL("/api/integrations/hh/callback", env.AUTH_URL).toString();
-  }
-
-  if (requestUrl) {
-    return new URL("/api/integrations/hh/callback", requestUrl).toString();
-  }
-
-  throw new Error(
-    "HH redirect URI is not configured. Set HH_REDIRECT_URI or AUTH_URL.",
-  );
-}
-
 export function buildHhConnectState(input: {
   companyId: string;
   userId: string;
@@ -222,7 +216,7 @@ export function buildHhAuthorizeUrl(input: {
   state: string;
 }): string {
   const { clientId } = getHhClientCredentials();
-  const redirectUri = buildHhRedirectUri(input.requestUrl);
+  const redirectUri = env.HH_REDIRECT_URI ?? "";
 
   const searchParams = new URLSearchParams({
     client_id: clientId,
@@ -239,7 +233,7 @@ export async function exchangeHhAuthorizationCode(input: {
   requestUrl?: string;
 }): Promise<{ accessToken: string; refreshToken: string | null }> {
   const { clientId, clientSecret } = getHhClientCredentials();
-  const redirectUri = buildHhRedirectUri(input.requestUrl);
+  const redirectUri = env.HH_REDIRECT_URI ?? "";
 
   const payload = new URLSearchParams({
     client_id: clientId,
@@ -380,6 +374,14 @@ export async function fetchCompanyHhVacancies(
 
     const items = payload.items ?? [];
 
+    console.info("[hh.uz] vacancies page fetched", {
+      employerId,
+      page,
+      totalPages: Math.max(payload.pages ?? 0, 1),
+      received: items.length,
+      vacancies: items.map(toHhVacancyLogEntry),
+    });
+
     vacancies.push(
       ...items
         .filter((item) => !item.archived)
@@ -393,6 +395,12 @@ export async function fetchCompanyHhVacancies(
       break;
     }
   }
+
+  console.info("[hh.uz] active vacancies mapped for UI", {
+    employerId,
+    total: vacancies.length,
+    vacancies,
+  });
 
   return vacancies;
 }

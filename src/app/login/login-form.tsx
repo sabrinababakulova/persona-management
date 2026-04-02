@@ -6,6 +6,25 @@ import { useRouter } from "next/navigation";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
+function getLoginErrorMessage(code?: string | null) {
+  switch (code) {
+    case "missing_credentials":
+      return "Введите почту и пароль.";
+    case "rate_limited":
+      return "Слишком много попыток входа. Попробуйте позже.";
+    case "user_not_found":
+      return "Пользователь с такой почтой не найден.";
+    case "password_incorrect":
+      return "Неверный пароль. Попробуйте еще раз.";
+    case "email_not_verified":
+      return "Подтвердите почту перед входом в аккаунт.";
+    case "password_sign_in_unavailable":
+      return "Для этого аккаунта вход по паролю недоступен.";
+    default:
+      return "Не удалось войти. Проверьте введенные данные.";
+  }
+}
+
 export default function LoginForm() {
   const router = useRouter();
   const { status } = useSession();
@@ -49,15 +68,9 @@ export default function LoginForm() {
         redirect: false,
       });
 
-      if (result?.code === "rate_limited") {
-        setErrorMessage("Слишком много попыток входа. Попробуйте позже.");
-        setPassword("");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (result?.error) {
-        setErrorMessage("Неверная почта или пароль.");
+      const authCode = result?.code ?? result?.error;
+      if (authCode) {
+        setErrorMessage(getLoginErrorMessage(authCode));
         setPassword("");
         setIsSubmitting(false);
         return;

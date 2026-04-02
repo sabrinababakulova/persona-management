@@ -11,6 +11,19 @@ const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
 const FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function getRegisterErrorMessage(code?: string | null) {
+  switch (code) {
+    case "rate_limited":
+      return "Слишком много попыток. Попробуйте позже.";
+    case "invalid_data":
+      return "Проверьте корректность введенных данных.";
+    case "registration_failed":
+      return "Не удалось создать аккаунт. Возможно, он уже существует.";
+    default:
+      return "Не удалось создать аккаунт. Проверьте введенные данные.";
+  }
+}
+
 export default function RegisterPage() {
   return (
     <Suspense>
@@ -97,9 +110,7 @@ function RegisterPageContent() {
 
       const responseCode = result?.code ?? "";
       if (!responseCode.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)) {
-        setErrorMessage(
-          "Не удалось создать аккаунт. Проверьте введенные данные.",
-        );
+        setErrorMessage(getRegisterErrorMessage(responseCode || result?.error));
         setIsSubmitting(false);
         return;
       }

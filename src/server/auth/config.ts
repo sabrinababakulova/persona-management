@@ -446,7 +446,7 @@ const providers: NextAuthConfig["providers"] = [
       const password = credentials?.password?.toString();
 
       if (!rawEmail || !password) {
-        return null;
+        throw new AuthFlowError("missing_credentials");
       }
 
       const email = normalizeEmail(rawEmail);
@@ -484,7 +484,7 @@ const providers: NextAuthConfig["providers"] = [
         .where(eq(users.email, email))
         .limit(1);
 
-      if (!user?.password || !user.emailVerified) {
+      if (!user) {
         // Hash a dummy password to prevent timing-based user enumeration
         await bcrypt.hash(password, 12);
         await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
@@ -492,7 +492,27 @@ const providers: NextAuthConfig["providers"] = [
           loginRateByIpIdentifier,
           LOGIN_RATE_LIMIT_WINDOW_MS,
         );
-        return null;
+        throw new AuthFlowError("user_not_found");
+      }
+
+      if (!user.password) {
+        await bcrypt.hash(password, 12);
+        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        await recordAttempt(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        );
+        throw new AuthFlowError("password_sign_in_unavailable");
+      }
+
+      if (!user.emailVerified) {
+        await bcrypt.hash(password, 12);
+        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        await recordAttempt(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        );
+        throw new AuthFlowError("email_not_verified");
       }
 
       const isArgon2 = user.password.startsWith("$argon2");
@@ -505,7 +525,7 @@ const providers: NextAuthConfig["providers"] = [
           loginRateByIpIdentifier,
           LOGIN_RATE_LIMIT_WINDOW_MS,
         );
-        return null;
+        throw new AuthFlowError("password_incorrect");
       }
 
       await Promise.all([
