@@ -7,9 +7,8 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
-import { Header } from "./_components/header";
+import { AppShell } from "./_components/app-shell";
 import { Providers } from "./_components/providers";
-import { Sidebar } from "./_components/sidebar";
 
 export const metadata: Metadata = {
   title: "Persona Management",
@@ -51,16 +50,12 @@ export default async function RootLayout({
     <html className={`${geist.variable}`} lang="ru">
       <body>
         <Providers>
-          <div className="relative flex min-h-screen bg-bg-light">
-            <Sidebar />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Header
-                avatarAlt={session?.user?.name ?? "Profile"}
-                avatarSrc={avatarSrc}
-              />
-              <div className="min-h-0 flex-1">{children}</div>
-            </div>
-          </div>
+          <AppShell
+            avatarAlt={session?.user?.name ?? "Profile"}
+            avatarSrc={avatarSrc}
+          >
+            {children}
+          </AppShell>
         </Providers>
       </body>
     </html>

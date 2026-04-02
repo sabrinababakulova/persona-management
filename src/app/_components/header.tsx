@@ -6,6 +6,7 @@ import {
   BellIcon,
   ChevronDownIcon,
   GlobeIcon,
+  MenuIcon,
   SearchIcon,
 } from "~/app/_components/icons";
 import type { HeaderProps } from "~/types/components/header-props";
@@ -19,6 +20,8 @@ export function Header({
   searchPlaceholder = "Что вы хотите найти?",
   avatarSrc = DEFAULT_AVATAR_SRC,
   avatarAlt = "Profile",
+  isSidebarOpen = true,
+  onSidebarToggle,
 }: HeaderProps) {
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const currentQuery = searchQuery ?? internalSearchQuery;
@@ -33,15 +36,29 @@ export function Header({
   return (
     <header className="sticky top-0 z-10 w-full border-header-border border-b bg-white px-4 py-3 lg:px-8">
       <div className="flex w-full items-center justify-between gap-4">
-        <div className="relative w-full max-w-[367px]">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#616C81]" />
-          <input
-            className="h-10 w-full rounded-[8px] bg-[#F1F4F8] py-3 pr-4 pl-9 text-[#616C81] text-[16px] tracking-[-0.32px] placeholder:text-[#616C81] focus:outline-none"
-            onChange={(event) => handleSearchChange(event.target.value)}
-            placeholder={searchPlaceholder}
-            type="text"
-            value={currentQuery}
-          />
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <button
+            aria-expanded={isSidebarOpen}
+            aria-label={
+              isSidebarOpen ? "Свернуть боковое меню" : "Открыть боковое меню"
+            }
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border border-[#E2E8F0] text-[#616C81] transition-colors hover:bg-[#F1F4F8]"
+            onClick={onSidebarToggle}
+            type="button"
+          >
+            <MenuIcon className="h-5 w-5" />
+          </button>
+
+          <div className="relative w-full max-w-[367px]">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#616C81]" />
+            <input
+              className="h-10 w-full rounded-[8px] bg-[#F1F4F8] py-3 pr-4 pl-9 text-[#616C81] text-[16px] tracking-[-0.32px] placeholder:text-[#616C81] focus:outline-none"
+              onChange={(event) => handleSearchChange(event.target.value)}
+              placeholder={searchPlaceholder}
+              type="text"
+              value={currentQuery}
+            />
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-4">

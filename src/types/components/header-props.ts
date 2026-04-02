@@ -4,4 +4,6 @@ export type HeaderProps = {
   searchPlaceholder?: string;
   avatarSrc?: string;
   avatarAlt?: string;
+  isSidebarOpen?: boolean;
+  onSidebarToggle?: () => void;
 };

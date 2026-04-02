@@ -14,6 +14,7 @@ export { FunnelIcon } from "./FunnelIcon";
 export { GlobeIcon } from "./GlobeIcon";
 export { LogoutIcon } from "./LogoutIcon";
 export { MailIcon } from "./MailIcon";
+export { MenuIcon } from "./MenuIcon";
 export { MoreIcon } from "./MoreIcon";
 export { NoCandidates } from "./NoCandidates";
 export { NoVacancies } from "./NoVacancies";

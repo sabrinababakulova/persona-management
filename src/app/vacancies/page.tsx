@@ -270,7 +270,7 @@ export default function VacanciesPage() {
                         <div className="min-w-0">
                           {vacancy.source === "local" ? (
                             <Link
-                              className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
                               href={`/vacancies/${vacancy.id}`}
                               title={vacancy.title}
                             >
@@ -284,7 +284,7 @@ export default function VacanciesPage() {
                                 </span>
                               )}
                               <a
-                                className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                                className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
                                 href={vacancy.externalUrl}
                                 rel="noreferrer"
                                 target="_blank"
@@ -295,7 +295,7 @@ export default function VacanciesPage() {
                             </div>
                           ) : (
                             <span
-                              className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none"
+                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none lg:max-w-[180px]"
                               title={vacancy.title}
                             >
                               {vacancy.title}
