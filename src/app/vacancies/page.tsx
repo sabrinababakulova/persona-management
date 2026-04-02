@@ -270,33 +270,40 @@ export default function VacanciesPage() {
                         <div className="min-w-0">
                           {vacancy.source === "local" ? (
                             <Link
-                              className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                              className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
                               href={`/vacancies/${vacancy.id}`}
+                              title={vacancy.title}
                             >
                               {vacancy.title}
                             </Link>
                           ) : vacancy.externalUrl ? (
-                            <a
-                              className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
-                              href={vacancy.externalUrl}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              {vacancy.title}
-                            </a>
+                            <div className="flex items-center gap-2">
+                              {isHhVacancy && (
+                                <span className="inline-flex items-center rounded-full bg-[#fff1f3] px-2.5 py-1 font-semibold text-[#d6336c] text-[11px] leading-none">
+                                  hh.uz
+                                </span>
+                              )}
+                              <a
+                                className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline"
+                                href={vacancy.externalUrl}
+                                rel="noreferrer"
+                                target="_blank"
+                                title={vacancy.title}
+                              >
+                                {vacancy.title}
+                              </a>
+                            </div>
                           ) : (
-                            <span className="truncate font-medium text-[14px] text-text-heading leading-none">
+                            <span
+                              className="block max-w-full truncate font-medium text-[14px] text-text-heading leading-none"
+                              title={vacancy.title}
+                            >
                               {vacancy.title}
                             </span>
                           )}
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {vacancy.level}
                           </div>
-                          {isHhVacancy && (
-                            <span className="mt-2 inline-flex items-center rounded-full bg-[#fff1f3] px-2.5 py-1 font-semibold text-[#d6336c] text-[11px] leading-none">
-                              hh.uz
-                            </span>
-                          )}
                         </div>
                       </div>
 
