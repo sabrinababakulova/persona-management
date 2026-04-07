@@ -1,7 +1,4 @@
-import { eq } from "drizzle-orm";
 import { auth } from "~/server/auth";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
 import {
   DirectusStorageError,
   uploadFileToDirectus,
@@ -37,15 +34,9 @@ export async function POST(req: Request) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const key = getUserAvatarStorageKey(session.user.id);
-  const [user] = await db
-    .select({ avatarFileId: users.avatarFileId })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
 
   try {
     const result = await uploadFileToDirectus({
-      existingFileId: user?.avatarFileId ?? null,
       fileBuffer: buffer,
       fileName: file.name,
       mimeType: file.type || "application/octet-stream",

@@ -37,7 +37,11 @@ import {
 } from "~/server/auth/rate-limit";
 import { users, verificationTokens } from "~/server/db/schema";
 import { sendPasswordResetCode } from "~/server/mail/send-password-reset-code";
-import { buildDirectusAssetUrl } from "~/server/storage/directus-storage";
+import {
+  buildDirectusAssetUrl,
+  deleteDirectusFileById,
+  isDirectusNotFoundError,
+} from "~/server/storage/directus-storage";
 
 const CHANGE_PASSWORD_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -360,10 +364,49 @@ export const profileRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(users)
-        .set({ avatarFileId: input.avatarFileId })
-        .where(eq(users.id, ctx.session.user.id));
+      const [currentUser] = await ctx.db
+        .select({
+          avatarFileId: users.avatarFileId,
+        })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+
+      const previousAvatarFileId = currentUser?.avatarFileId ?? null;
+
+      try {
+        await ctx.db
+          .update(users)
+          .set({ avatarFileId: input.avatarFileId })
+          .where(eq(users.id, ctx.session.user.id));
+      } catch (error) {
+        try {
+          await deleteDirectusFileById(input.avatarFileId);
+        } catch (cleanupError) {
+          if (!isDirectusNotFoundError(cleanupError)) {
+            console.error(
+              "Failed to clean up uploaded avatar after database update error",
+              cleanupError,
+            );
+          }
+        }
+
+        throw error;
+      }
+
+      if (previousAvatarFileId && previousAvatarFileId !== input.avatarFileId) {
+        try {
+          await deleteDirectusFileById(previousAvatarFileId);
+        } catch (error) {
+          if (!isDirectusNotFoundError(error)) {
+            console.error("Failed to delete previous avatar from Directus", {
+              error,
+              previousAvatarFileId,
+              userId: ctx.session.user.id,
+            });
+          }
+        }
+      }
 
       return {
         success: true,
