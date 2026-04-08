@@ -432,10 +432,12 @@ export function VacancyDescription({
         </ClosableSection>
 
         <ClosableSection title="Описание">
-          <Input
+          <Textarea
             disabled={isReadOnly}
+            id="vacancy-tasks"
             label="Задачи"
             onChange={(event) => handleInputChange("tasks", event.target.value)}
+            placeholder="Опишите ключевые задачи вакансии"
             value={formState.tasks}
           />
           <Input
