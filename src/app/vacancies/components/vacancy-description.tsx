@@ -46,6 +46,7 @@ type VacancyDescriptionProps = {
   status: Vacancy["status"];
   vacancyId: string;
   vacancyLookups: VacancyLookups;
+  isReadOnly?: boolean;
 };
 
 function isVacancyStatus(value: string): value is Vacancy["status"] {
@@ -104,6 +105,7 @@ export function VacancyDescription({
   status,
   vacancyId,
   vacancyLookups,
+  isReadOnly = false,
 }: VacancyDescriptionProps) {
   const utils = api.useUtils();
   const [formState, setFormState] = useState<VacancyFormState>({
@@ -221,6 +223,10 @@ export function VacancyDescription({
   };
 
   const handleStatusChange = (value: string) => {
+    if (isReadOnly) {
+      return;
+    }
+
     if (!isVacancyStatus(value) || value === formState.status) {
       return;
     }
@@ -238,6 +244,10 @@ export function VacancyDescription({
   };
 
   const handleSave = () => {
+    if (isReadOnly) {
+      return;
+    }
+
     const trimmedTitle = formState.title.trim();
     if (!trimmedTitle) {
       setFormMessage(null);
@@ -287,6 +297,7 @@ export function VacancyDescription({
 
           <div className="w-[140px] shrink-0">
             <Dropdown
+              disabled={isReadOnly}
               fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
               hideLabel
               iconClassName="right-2 h-4 w-4 text-text-placeholder"
@@ -302,23 +313,27 @@ export function VacancyDescription({
       <div className="mt-8 flex flex-col gap-10 space-y-6">
         <ClosableSection title="Основная информация">
           <Input
+            disabled={isReadOnly}
             label="Должность"
             onChange={(event) => handleInputChange("title", event.target.value)}
             value={formState.title}
           />
           <Input
+            disabled={isReadOnly}
             label="Отдел"
             onChange={(event) => handleInputChange("level", event.target.value)}
             value={formState.level}
           />
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Dropdown
+              disabled={isReadOnly}
               label="Город"
               onChange={handleCityChange}
               options={cityOptions}
               value={formState.city}
             />
             <Dropdown
+              disabled={isReadOnly}
               label="Формат работы"
               onChange={(value) => handleInputChange("workType", value)}
               options={workTypeOptions}
@@ -330,6 +345,7 @@ export function VacancyDescription({
 
         <ClosableSection title="Условия">
           <Input
+            disabled={isReadOnly}
             endAdornment={
               <div className="flex overflow-hidden rounded-md border border-border-input">
                 <button
@@ -338,7 +354,8 @@ export function VacancyDescription({
                     formState.salaryCurrency === "UZS"
                       ? "bg-primary-blue-light text-primary-blue"
                       : "bg-white text-text-disabled"
-                  }`}
+                  } ${isReadOnly ? "cursor-not-allowed opacity-70" : ""}`}
+                  disabled={isReadOnly}
                   onClick={() => handleInputChange("salaryCurrency", "UZS")}
                   type="button"
                 >
@@ -350,7 +367,8 @@ export function VacancyDescription({
                     formState.salaryCurrency === "USD"
                       ? "bg-primary-blue-light text-primary-blue"
                       : "bg-white text-text-disabled"
-                  }`}
+                  } ${isReadOnly ? "cursor-not-allowed opacity-70" : ""}`}
+                  disabled={isReadOnly}
                   onClick={() => handleInputChange("salaryCurrency", "USD")}
                   type="button"
                 >
@@ -379,6 +397,7 @@ export function VacancyDescription({
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Dropdown
+                disabled={isReadOnly}
                 hideLabel
                 label="Время начала"
                 onChange={(value) =>
@@ -388,6 +407,7 @@ export function VacancyDescription({
                 value={formState.workScheduleStart}
               />
               <Dropdown
+                disabled={isReadOnly}
                 hideLabel
                 label="Время окончания"
                 onChange={(value) =>
@@ -400,6 +420,7 @@ export function VacancyDescription({
           </div>
 
           <Textarea
+            disabled={isReadOnly}
             id="vacancy-comments"
             label="Комментарии"
             onChange={(event) =>
@@ -412,16 +433,19 @@ export function VacancyDescription({
 
         <ClosableSection title="Описание">
           <Input
+            disabled={isReadOnly}
             label="Задачи"
             onChange={(event) => handleInputChange("tasks", event.target.value)}
             value={formState.tasks}
           />
           <Input
+            disabled={isReadOnly}
             label="Команда"
             onChange={(event) => handleInputChange("team", event.target.value)}
             value={formState.team}
           />
           <Textarea
+            disabled={isReadOnly}
             id="vacancy-company-description"
             label="Описание компании"
             onChange={(event) =>
@@ -432,32 +456,34 @@ export function VacancyDescription({
         </ClosableSection>
       </div>
 
-      <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-[rgba(255,255,255,0.9)] py-4 backdrop-blur-[10px]">
-        <div className="flex w-full max-w-[560px] justify-end">
-          <div className="flex flex-col items-end gap-2">
-            {formError && (
-              <p className="text-[13px] text-danger-red leading-[1.4]">
-                {formError}
-              </p>
-            )}
-            {formMessage && (
-              <p className="text-[13px] text-success-green leading-[1.4]">
-                {formMessage}
-              </p>
-            )}
-            <button
-              className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={updateVacancy.isPending}
-              onClick={handleSave}
-              type="button"
-            >
-              {updateVacancy.isPending
-                ? "Сохранение..."
-                : "Сохранить изменения"}
-            </button>
+      {!isReadOnly && (
+        <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-[rgba(255,255,255,0.9)] py-4 backdrop-blur-[10px]">
+          <div className="flex w-full max-w-[560px] justify-end">
+            <div className="flex flex-col items-end gap-2">
+              {formError && (
+                <p className="text-[13px] text-danger-red leading-[1.4]">
+                  {formError}
+                </p>
+              )}
+              {formMessage && (
+                <p className="text-[13px] text-success-green leading-[1.4]">
+                  {formMessage}
+                </p>
+              )}
+              <button
+                className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={updateVacancy.isPending}
+                onClick={handleSave}
+                type="button"
+              >
+                {updateVacancy.isPending
+                  ? "Сохранение..."
+                  : "Сохранить изменения"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

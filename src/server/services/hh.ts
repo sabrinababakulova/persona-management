@@ -26,6 +26,21 @@ type HhVacancyItem = {
   work_format?: Array<{
     name?: string | null;
   }> | null;
+  salary?: {
+    from?: number | null;
+    to?: number | null;
+    currency?: string | null;
+  } | null;
+  employment?: {
+    name?: string | null;
+  } | null;
+  schedule?: {
+    name?: string | null;
+  } | null;
+  description?: string | null;
+  employer?: {
+    name?: string | null;
+  } | null;
 };
 
 type HhTokenResponse = {
@@ -88,7 +103,35 @@ function toWorkType(item: HhVacancyItem): string {
       ?.map((option) => option.name?.trim())
       .filter((name): name is string => Boolean(name)) ?? [];
 
-  return names.join(", ");
+  if (names.length > 0) {
+    return names.join(", ");
+  }
+
+  const fallbackNames = [
+    item.schedule?.name?.trim(),
+    item.employment?.name?.trim(),
+  ].filter((name): name is string => Boolean(name));
+
+  return fallbackNames.join(", ");
+}
+
+function stripHtml(value?: string | null): string {
+  if (!value) {
+    return "";
+  }
+
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<li>/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function toHhVacancyStatus(item: HhVacancyItem): HhVacancy["status"] {
@@ -99,11 +142,32 @@ function toHhResponses(item: HhVacancyItem): number {
   return item.counters?.responses ?? item.counters?.total_responses ?? 0;
 }
 
+function toHhSalaryExpectation(item: HhVacancyItem): number | undefined {
+  return item.salary?.from ?? item.salary?.to ?? undefined;
+}
+
+function toHhSalaryCurrency(
+  item: HhVacancyItem,
+): "UZS" | "USD" | undefined {
+  switch (item.salary?.currency) {
+    case "USD":
+      return "USD";
+    case "UZS":
+      return "UZS";
+    default:
+      return undefined;
+  }
+}
+
+function toHhCity(item: HhVacancyItem): string {
+  return item.area?.name?.trim() || "";
+}
+
 function toHhVacancy(item: HhVacancyItem): HhVacancy {
   return {
     id: item.id,
     title: item.name?.trim() || "Вакансия с hh.uz",
-    city: item.area?.name?.trim() || "",
+    city: toHhCity(item),
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
     status: toHhVacancyStatus(item),
@@ -120,10 +184,62 @@ function toHhVacancyLogEntry(item: HhVacancyItem) {
     status: toHhVacancyStatus(item),
     responses: toHhResponses(item),
     publishedAt: item.published_at?.trim() || undefined,
-    city: item.area?.name?.trim() || "",
+    city: toHhCity(item),
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
     externalUrl: item.alternate_url?.trim() || undefined,
+  };
+}
+
+export async function fetchHhVacancyById(
+  vacancyId: string,
+  accessToken?: string,
+): Promise<{
+  id: string;
+  title: string;
+  level: string;
+  status: "active" | "archive";
+  city: string;
+  responses: number;
+  workType: string;
+  salaryExpectation?: number;
+  salaryCurrency?: "UZS" | "USD";
+  workScheduleStart?: string;
+  workScheduleEnd?: string;
+  comments?: string;
+  tasks?: string;
+  team?: string;
+  companyDescription?: string;
+  publishedAt?: string;
+  externalUrl?: string;
+}> {
+  const searchParams = new URLSearchParams({
+    host: "hh.uz",
+  });
+
+  const vacancy = await fetchHhJson<HhVacancyItem>(
+    `${HH_API_BASE_URL}/vacancies/${vacancyId}?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        ...(accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {}),
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  return {
+    ...toHhVacancy(vacancy),
+    salaryExpectation: toHhSalaryExpectation(vacancy),
+    salaryCurrency: toHhSalaryCurrency(vacancy),
+    workScheduleStart: undefined,
+    workScheduleEnd: undefined,
+    comments: "",
+    tasks: stripHtml(vacancy.description),
+    team: "",
+    companyDescription: "",
   };
 }
 

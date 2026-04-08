@@ -11,6 +11,7 @@ import {
 } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
+  fetchHhVacancyById,
   isHhConfigured,
   refreshHhAccessToken,
   resolveHhEmployerFromAccessToken,
@@ -96,6 +97,10 @@ function formatHhVacancy(
     source: "hh.uz" as const,
     externalUrl: vacancy.externalUrl,
   };
+}
+
+function isHhVacancyId(value: string): boolean {
+  return value.startsWith("hh:");
 }
 
 export const vacanciesRouter = createTRPCRouter({
@@ -258,6 +263,66 @@ export const vacanciesRouter = createTRPCRouter({
   getVacancyById: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .query(async ({ ctx, input }) => {
+      if (isHhVacancyId(input.id)) {
+        const hhVacancyId = input.id.slice(3);
+
+        let userCompanyId: string | null = null;
+        if (ctx.session?.user?.id) {
+          const userRows = await ctx.db
+            .select({ companyId: users.companyId })
+            .from(users)
+            .where(eq(users.id, ctx.session.user.id))
+            .limit(1);
+          userCompanyId = userRows[0]?.companyId ?? null;
+        }
+
+        let accessToken: string | undefined;
+        if (userCompanyId) {
+          const hhAccountRows = await ctx.db
+            .select({
+              accessToken: companyHhAccounts.accessToken,
+            })
+            .from(companyHhAccounts)
+            .where(eq(companyHhAccounts.companyId, userCompanyId))
+            .limit(1);
+          accessToken = hhAccountRows[0]?.accessToken ?? undefined;
+        }
+
+        try {
+          const hhVacancy = await fetchHhVacancyById(hhVacancyId, accessToken);
+
+          return {
+            id: input.id,
+            title: hhVacancy.title,
+            level: hhVacancy.level,
+            status: hhVacancy.status,
+            city: hhVacancy.city,
+            responses: hhVacancy.responses,
+            workType: hhVacancy.workType,
+            salaryExpectation: hhVacancy.salaryExpectation,
+            salaryCurrency: hhVacancy.salaryCurrency ?? "UZS",
+            workScheduleStart: hhVacancy.workScheduleStart,
+            workScheduleEnd: hhVacancy.workScheduleEnd,
+            comments: hhVacancy.comments ?? "",
+            tasks: hhVacancy.tasks ?? "",
+            team: hhVacancy.team ?? "",
+            companyDescription: hhVacancy.companyDescription ?? "",
+            companyId: userCompanyId ?? undefined,
+            publishedAt: hhVacancy.publishedAt,
+            source: "hh.uz" as const,
+            externalUrl: hhVacancy.externalUrl,
+          };
+        } catch (error) {
+          console.error("Failed to fetch HH vacancy by id", {
+            hhVacancyId,
+            companyId: userCompanyId,
+            error,
+          });
+
+          return null;
+        }
+      }
+
       const rows = await ctx.db
         .select()
         .from(vacancies)

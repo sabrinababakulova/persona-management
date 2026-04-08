@@ -88,23 +88,33 @@ export default function VacancyDetailPage() {
             />
 
             {activeSectionId === "description" ? (
-              <VacancyDescription
-                city={vacancy.city}
-                comments={vacancy.comments}
-                companyDescription={vacancy.companyDescription}
-                level={vacancy.level}
-                salaryCurrency={vacancy.salaryCurrency}
-                salaryExpectation={vacancy.salaryExpectation}
-                status={vacancy.status}
-                tasks={vacancy.tasks}
-                team={vacancy.team}
-                title={vacancy.title}
-                vacancyId={vacancyId}
-                vacancyLookups={vacancyLookups}
-                workScheduleEnd={vacancy.workScheduleEnd}
-                workScheduleStart={vacancy.workScheduleStart}
-                workType={vacancy.workType}
-              />
+              <>
+                {vacancy.source === "hh.uz" && (
+                  <div className="mt-6 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary">
+                    Данные загружены из hh.uz. Редактирование на этой странице
+                    недоступно.
+                  </div>
+                )}
+
+                <VacancyDescription
+                  city={vacancy.city}
+                  comments={vacancy.comments}
+                  companyDescription={vacancy.companyDescription}
+                  isReadOnly={vacancy.source === "hh.uz"}
+                  level={vacancy.level}
+                  salaryCurrency={vacancy.salaryCurrency}
+                  salaryExpectation={vacancy.salaryExpectation}
+                  status={vacancy.status}
+                  tasks={vacancy.tasks}
+                  team={vacancy.team}
+                  title={vacancy.title}
+                  vacancyId={vacancyId}
+                  vacancyLookups={vacancyLookups}
+                  workScheduleEnd={vacancy.workScheduleEnd}
+                  workScheduleStart={vacancy.workScheduleStart}
+                  workType={vacancy.workType}
+                />
+              </>
             ) : (
               <div className="mt-12 rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
                 Секция "{activeSection?.label}" будет доступна позже.

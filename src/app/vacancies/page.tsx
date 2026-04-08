@@ -302,6 +302,29 @@ export default function VacanciesPage() {
                   const publishedAtLabel = formatVacancyPublishedAt(
                     vacancy.publishedAt,
                   );
+                  const titleNode =
+                    vacancy.source === "local" ? (
+                      <Link
+                        className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
+                        href={`/vacancies/${vacancy.id}`}
+                        title={vacancy.title}
+                      >
+                        {vacancy.title}
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-[#fff1f3] px-2.5 py-1 font-semibold text-[#d6336c] text-[11px] leading-none">
+                          hh.uz
+                        </span>
+                        <Link
+                          className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
+                          href={`/vacancies/${vacancy.id}`}
+                          title={vacancy.title}
+                        >
+                          {vacancy.title}
+                        </Link>
+                      </div>
+                    );
 
                   return (
                     <div
@@ -316,39 +339,7 @@ export default function VacanciesPage() {
                           onChange={() => toggleSelection(vacancy.id)}
                         />
                         <div className="min-w-0">
-                          {vacancy.source === "local" ? (
-                            <Link
-                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                              href={`/vacancies/${vacancy.id}`}
-                              title={vacancy.title}
-                            >
-                              {vacancy.title}
-                            </Link>
-                          ) : vacancy.externalUrl ? (
-                            <div className="flex items-center gap-2">
-                              {isHhVacancy && (
-                                <span className="inline-flex items-center rounded-full bg-[#fff1f3] px-2.5 py-1 font-semibold text-[#d6336c] text-[11px] leading-none">
-                                  hh.uz
-                                </span>
-                              )}
-                              <a
-                                className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                                href={vacancy.externalUrl}
-                                rel="noreferrer"
-                                target="_blank"
-                                title={vacancy.title}
-                              >
-                                {vacancy.title}
-                              </a>
-                            </div>
-                          ) : (
-                            <span
-                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none lg:max-w-[180px]"
-                              title={vacancy.title}
-                            >
-                              {vacancy.title}
-                            </span>
-                          )}
+                          {titleNode}
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {vacancy.level}
                           </div>

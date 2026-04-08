@@ -12,6 +12,7 @@ export function Dropdown({
   className,
   fieldClassName,
   iconClassName,
+  disabled = false,
 }: DropdownProps) {
   const selectId = id ?? label;
 
@@ -32,7 +33,8 @@ export function Dropdown({
           <select
             className={`h-12 w-full appearance-none rounded-[6px] border border-border-input bg-bg-input px-3 pr-10 text-[16px] leading-[1.4] tracking-[-0.32px] focus:border-primary-blue focus:outline-none ${
               value ? "text-text-heading" : "text-text-placeholder"
-            } ${fieldClassName ?? ""}`}
+            } ${fieldClassName ?? ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+            disabled={disabled}
             id={selectId}
             onChange={(event) => onChange(event.target.value)}
             value={value}

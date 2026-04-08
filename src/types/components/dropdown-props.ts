@@ -11,4 +11,5 @@ export type DropdownProps = {
   className?: string;
   fieldClassName?: string;
   iconClassName?: string;
+  disabled?: boolean;
 };
