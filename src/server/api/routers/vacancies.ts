@@ -100,7 +100,15 @@ function formatHhVacancy(
 }
 
 function isHhVacancyId(value: string): boolean {
-  return value.startsWith("hh:");
+  return value.startsWith("hh:") || value.startsWith("hh__");
+}
+
+function normalizeHhVacancyId(value: string): string {
+  if (value.startsWith("hh__")) {
+    return `hh:${value.slice(4)}`;
+  }
+
+  return value;
 }
 
 export const vacanciesRouter = createTRPCRouter({
@@ -263,8 +271,10 @@ export const vacanciesRouter = createTRPCRouter({
   getVacancyById: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .query(async ({ ctx, input }) => {
-      if (isHhVacancyId(input.id)) {
-        const hhVacancyId = input.id.slice(3);
+      const normalizedId = normalizeHhVacancyId(input.id);
+
+      if (isHhVacancyId(normalizedId)) {
+        const hhVacancyId = normalizedId.slice(3);
 
         let userCompanyId: string | null = null;
         if (ctx.session?.user?.id) {
@@ -292,7 +302,7 @@ export const vacanciesRouter = createTRPCRouter({
           const hhVacancy = await fetchHhVacancyById(hhVacancyId, accessToken);
 
           return {
-            id: input.id,
+            id: normalizedId,
             title: hhVacancy.title,
             level: hhVacancy.level,
             status: hhVacancy.status,
@@ -326,7 +336,7 @@ export const vacanciesRouter = createTRPCRouter({
       const rows = await ctx.db
         .select()
         .from(vacancies)
-        .where(eq(vacancies.id, input.id))
+        .where(eq(vacancies.id, normalizedId))
         .limit(1);
 
       const vacancy = rows[0];

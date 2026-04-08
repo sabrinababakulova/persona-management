@@ -84,6 +84,14 @@ function formatVacancyPublishedAt(value?: string): string | null {
   }).format(parsedDate);
 }
 
+function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
+  if (vacancy.source === "hh.uz") {
+    return `/vacancies/hh__${vacancy.id.replace(/^hh:/, "")}`;
+  }
+
+  return `/vacancies/${vacancy.id}`;
+}
+
 export default function VacanciesPage() {
   const utils = api.useUtils();
   const { data: vacanciesData, isLoading } =
@@ -306,7 +314,7 @@ export default function VacanciesPage() {
                     vacancy.source === "local" ? (
                       <Link
                         className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                        href={`/vacancies/${vacancy.id}`}
+                        href={toVacancyDetailPath(vacancy)}
                         title={vacancy.title}
                       >
                         {vacancy.title}
@@ -318,7 +326,7 @@ export default function VacanciesPage() {
                         </span>
                         <Link
                           className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                          href={`/vacancies/${vacancy.id}`}
+                          href={toVacancyDetailPath(vacancy)}
                           title={vacancy.title}
                         >
                           {vacancy.title}
