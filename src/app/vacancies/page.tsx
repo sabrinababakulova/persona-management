@@ -85,10 +85,6 @@ function formatVacancyPublishedAt(value?: string): string | null {
 }
 
 function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
-  if (vacancy.source === "hh.uz") {
-    return `/vacancies/hh__${vacancy.id.replace(/^hh:/, "")}`;
-  }
-
   return `/vacancies/${vacancy.id}`;
 }
 

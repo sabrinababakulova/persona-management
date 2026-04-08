@@ -13,13 +13,8 @@ const SIDE_MENU_ITEMS = [
   { id: "preview", label: "Предпросмотр" },
 ] as const;
 
-function normalizeVacancyId(routeId: string): string {
-  return routeId.startsWith("hh__") ? `hh:${routeId.slice(4)}` : routeId;
-}
-
 export default function VacancyDetailPage() {
-  const { id: routeVacancyId } = useParams() as { id: string };
-  const vacancyId = normalizeVacancyId(routeVacancyId);
+  const { id: vacancyId } = useParams() as { id: string };
   const [activeSectionId, setActiveSectionId] = useState<string>(
     SIDE_MENU_ITEMS[0].id,
   );

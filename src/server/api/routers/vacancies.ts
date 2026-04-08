@@ -77,7 +77,7 @@ function formatHhVacancy(
   companyId: string,
 ) {
   return {
-    id: `hh:${vacancy.id}`,
+    id: `hh_${vacancy.id}`,
     title: vacancy.title,
     level: vacancy.level,
     status: vacancy.status,
@@ -100,12 +100,12 @@ function formatHhVacancy(
 }
 
 function isHhVacancyId(value: string): boolean {
-  return value.startsWith("hh:") || value.startsWith("hh__");
+  return value.startsWith("hh_");
 }
 
 function normalizeHhVacancyId(value: string): string {
-  if (value.startsWith("hh__")) {
-    return `hh:${value.slice(4)}`;
+  if (value.startsWith("hh_")) {
+    return value;
   }
 
   return value;
