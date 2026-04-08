@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 import { Checkbox } from "../_components/checkbox";
@@ -17,6 +17,7 @@ import {
 } from "../_components/icons";
 
 type VacancyStatus = Vacancy["status"];
+const PAGE_SIZE_OPTIONS = [10, 15, 20] as const;
 
 const VACANCY_STATUS_OPTIONS: Array<{ value: VacancyStatus; label: string }> = [
   { value: "active", label: "Активна" },
@@ -89,6 +90,9 @@ export default function VacanciesPage() {
     api.vacancies.getAllVacancies.useQuery();
   const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +103,10 @@ export default function VacanciesPage() {
     const timeout = window.setTimeout(() => setToastMessage(null), 3500);
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, []);
 
   const updateVacancyStatus = api.vacancies.updateVacancy.useMutation({
     onMutate: async ({ id, status }) => {
@@ -181,6 +189,19 @@ export default function VacanciesPage() {
 
     return combinedValue.includes(normalizedQuery);
   });
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredVacancies.length / itemsPerPage),
+  );
+  const paginatedVacancies = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredVacancies.slice(startIndex, startIndex + itemsPerPage);
+  }, [currentPage, filteredVacancies, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
   const hasVacancies = vacancies.length > 0;
 
   if (isLoading) {
@@ -203,7 +224,7 @@ export default function VacanciesPage() {
       )}
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 lg:p-8">
+        <div className="p-4 pb-10 lg:p-8 lg:pb-10">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="font-bold text-2xl text-gray-900 lg:text-3xl">
               Вакансии
@@ -269,7 +290,7 @@ export default function VacanciesPage() {
                   <div className="col-span-1" />
                 </div>
 
-                {filteredVacancies.map((vacancy, index) => {
+                {paginatedVacancies.map((vacancy, index) => {
                   const statusTone =
                     vacancyStatusTone[vacancy.status] ??
                     vacancyStatusTone.active;
@@ -418,14 +439,63 @@ export default function VacanciesPage() {
                   </div>
                 )}
 
-                <div className="flex justify-end border-border-input border-t bg-white px-4 py-3">
-                  <button
-                    className="flex w-[116px] items-center justify-between rounded-[6px] border border-border-input px-3 py-2.5 text-[14px] text-text-secondary"
-                    type="button"
-                  >
-                    <span>Действия</span>
-                    <ChevronDownIcon className="h-3.5 w-3.5" />
-                  </button>
+                <div className="flex flex-col gap-3 border-border-input border-t bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-[13px] text-text-placeholder">
+                    {filteredVacancies.length > 0
+                      ? `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(
+                          currentPage * itemsPerPage,
+                          filteredVacancies.length,
+                        )} из ${filteredVacancies.length}`
+                      : "0 из 0"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="cursor-pointer rounded-[6px] border border-border-input px-3 py-2 text-[14px] text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={currentPage === 1}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      type="button"
+                    >
+                      Назад
+                    </button>
+                    <span className="min-w-[72px] text-center text-[14px] text-text-secondary">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      className="cursor-pointer rounded-[6px] border border-border-input px-3 py-2 text-[14px] text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={currentPage === totalPages}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      type="button"
+                    >
+                      Вперед
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-3 text-[14px] text-text-secondary">
+                    <span>Количество</span>
+                    <div className="relative">
+                      <select
+                        className="h-[40px] min-w-[88px] cursor-pointer appearance-none rounded-[6px] border border-border-input bg-white px-3 pr-9 text-[14px] text-text-secondary"
+                        onChange={(event) => {
+                          setItemsPerPage(
+                            Number(
+                              event.target.value,
+                            ) as (typeof PAGE_SIZE_OPTIONS)[number],
+                          );
+                        }}
+                        value={itemsPerPage}
+                      >
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
+                    </div>
+                  </label>
                 </div>
               </div>
             </>
