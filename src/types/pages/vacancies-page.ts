@@ -15,6 +15,7 @@ export interface Vacancy {
   team?: string;
   companyDescription?: string;
   companyId?: string;
+  publishedAt?: string;
   source: "local" | "hh.uz";
   externalUrl?: string;
   selected?: boolean;

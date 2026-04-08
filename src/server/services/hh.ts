@@ -12,6 +12,11 @@ type HhVacancyItem = {
   name?: string | null;
   alternate_url?: string | null;
   archived?: boolean | null;
+  published_at?: string | null;
+  counters?: {
+    responses?: number | null;
+    total_responses?: number | null;
+  } | null;
   area?: {
     name?: string | null;
   } | null;
@@ -43,7 +48,9 @@ export type HhVacancy = {
   city: string;
   level: string;
   workType: string;
-  status: "active";
+  status: "active" | "archive";
+  responses: number;
+  publishedAt?: string;
   externalUrl?: string;
 };
 
@@ -84,6 +91,14 @@ function toWorkType(item: HhVacancyItem): string {
   return names.join(", ");
 }
 
+function toHhVacancyStatus(item: HhVacancyItem): HhVacancy["status"] {
+  return item.archived ? "archive" : "active";
+}
+
+function toHhResponses(item: HhVacancyItem): number {
+  return item.counters?.responses ?? item.counters?.total_responses ?? 0;
+}
+
 function toHhVacancy(item: HhVacancyItem): HhVacancy {
   return {
     id: item.id,
@@ -91,7 +106,9 @@ function toHhVacancy(item: HhVacancyItem): HhVacancy {
     city: item.area?.name?.trim() || "",
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
-    status: "active",
+    status: toHhVacancyStatus(item),
+    responses: toHhResponses(item),
+    publishedAt: item.published_at?.trim() || undefined,
     externalUrl: item.alternate_url?.trim() || undefined,
   };
 }
@@ -100,7 +117,9 @@ function toHhVacancyLogEntry(item: HhVacancyItem) {
   return {
     id: item.id,
     title: item.name?.trim() || "Вакансия с hh.uz",
-    archived: Boolean(item.archived),
+    status: toHhVacancyStatus(item),
+    responses: toHhResponses(item),
+    publishedAt: item.published_at?.trim() || undefined,
     city: item.area?.name?.trim() || "",
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
@@ -383,9 +402,7 @@ export async function fetchCompanyHhVacancies(
     });
 
     vacancies.push(
-      ...items
-        .filter((item) => !item.archived)
-        .map((item) => toHhVacancy(item)),
+      ...items.map((item) => toHhVacancy(item)),
     );
 
     totalPages = Math.max(payload.pages ?? 0, 1);
@@ -396,7 +413,7 @@ export async function fetchCompanyHhVacancies(
     }
   }
 
-  console.info("[hh.uz] active vacancies mapped for UI", {
+  console.info("[hh.uz] vacancies mapped for UI", {
     employerId,
     total: vacancies.length,
     vacancies,

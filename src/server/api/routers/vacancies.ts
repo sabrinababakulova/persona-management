@@ -65,6 +65,7 @@ function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
     team: vacancy.team ?? "",
     companyDescription: vacancy.companyDescription ?? "",
     companyId: vacancy.companyId ?? undefined,
+    publishedAt: undefined,
     source: "local" as const,
     externalUrl: undefined,
   };
@@ -80,7 +81,7 @@ function formatHhVacancy(
     level: vacancy.level,
     status: vacancy.status,
     city: vacancy.city,
-    responses: 0,
+    responses: vacancy.responses,
     workType: vacancy.workType,
     salaryExpectation: undefined,
     salaryCurrency: "UZS" as const,
@@ -91,6 +92,7 @@ function formatHhVacancy(
     team: "",
     companyDescription: "",
     companyId,
+    publishedAt: vacancy.publishedAt,
     source: "hh.uz" as const,
     externalUrl: vacancy.externalUrl,
   };

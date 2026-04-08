@@ -59,6 +59,30 @@ function isVacancyStatus(value: string): value is VacancyStatus {
   return ["active", "draft", "paused", "closed", "archive"].includes(value);
 }
 
+function getVacancyStatusLabel(status: VacancyStatus): string {
+  return (
+    VACANCY_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+    "Активна"
+  );
+}
+
+function formatVacancyPublishedAt(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
 export default function VacanciesPage() {
   const utils = api.useUtils();
   const { data: vacanciesData, isLoading } =
@@ -254,6 +278,9 @@ export default function VacanciesPage() {
                     !isHhVacancy &&
                     updateVacancyStatus.isPending &&
                     updateVacancyStatus.variables?.id === vacancy.id;
+                  const publishedAtLabel = formatVacancyPublishedAt(
+                    vacancy.publishedAt,
+                  );
 
                   return (
                     <div
@@ -304,6 +331,11 @@ export default function VacanciesPage() {
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {vacancy.level}
                           </div>
+                          {publishedAtLabel && (
+                            <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                              Опубликовано: {publishedAtLabel}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -312,7 +344,7 @@ export default function VacanciesPage() {
                           <span
                             className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
                           >
-                            Активна
+                            {getVacancyStatusLabel(vacancy.status)}
                           </span>
                         ) : (
                           <div
@@ -348,7 +380,7 @@ export default function VacanciesPage() {
                       </div>
 
                       <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                        {isHhVacancy ? "-" : vacancy.responses}
+                        {vacancy.responses}
                       </div>
 
                       <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
@@ -373,9 +405,7 @@ export default function VacanciesPage() {
 
                       <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
                         <span>Город: {vacancy.city || "-"}</span>
-                        <span>
-                          Отклики: {isHhVacancy ? "-" : vacancy.responses}
-                        </span>
+                        <span>Отклики: {vacancy.responses}</span>
                         <span>Тип работы: {vacancy.workType || "-"}</span>
                       </div>
                     </div>
