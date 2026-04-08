@@ -43,6 +43,13 @@
       "when": 1774817312769,
       "tag": "0005_far_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775646036121,
+      "tag": "0006_foamy_martin_li",
+      "breakpoints": true
     }
   ]
 }

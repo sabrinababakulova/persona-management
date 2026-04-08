@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  candidates,
+  candidateVacancies,
   companyHhAccounts,
   companyTelegramChannels,
   recentActivityLogs,
@@ -109,6 +111,23 @@ function normalizeHhVacancyId(value: string): string {
   }
 
   return value;
+}
+
+async function getCurrentUserCompanyId(
+  db: typeof import("~/server/db").db,
+  userId: string | undefined,
+) {
+  if (!userId) {
+    return null;
+  }
+
+  const userRows = await db
+    .select({ companyId: users.companyId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return userRows[0]?.companyId ?? null;
 }
 
 export const vacanciesRouter = createTRPCRouter({
@@ -234,10 +253,13 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       if (!employerId) {
-        console.info("[hh.uz] skipping vacancy sync because employerId is missing", {
-          companyId: userCompanyId,
-          localVacancies: localVacancies.length,
-        });
+        console.info(
+          "[hh.uz] skipping vacancy sync because employerId is missing",
+          {
+            companyId: userCompanyId,
+            localVacancies: localVacancies.length,
+          },
+        );
         return localVacancies;
       }
 
@@ -321,6 +343,11 @@ export const vacanciesRouter = createTRPCRouter({
             publishedAt: hhVacancy.publishedAt,
             source: "hh.uz" as const,
             externalUrl: hhVacancy.externalUrl,
+            relatedCandidates: [] as {
+              id: string;
+              fullName: string;
+              status: string | null;
+            }[],
           };
         } catch (error) {
           console.error("Failed to fetch HH vacancy by id", {
@@ -344,7 +371,24 @@ export const vacanciesRouter = createTRPCRouter({
         return null;
       }
 
-      return formatVacancy(vacancy);
+      const relatedCandidateRows = await ctx.db
+        .select({
+          id: candidates.id,
+          fullName: candidates.fullName,
+          status: candidates.status,
+        })
+        .from(candidateVacancies)
+        .innerJoin(
+          candidates,
+          eq(candidateVacancies.candidateId, candidates.id),
+        )
+        .where(eq(candidateVacancies.vacancyId, vacancy.id))
+        .orderBy(desc(candidateVacancies.createdAt));
+
+      return {
+        ...formatVacancy(vacancy),
+        relatedCandidates: relatedCandidateRows,
+      };
     }),
 
   searchVacancies: protectedProcedure
@@ -763,5 +807,142 @@ export const vacanciesRouter = createTRPCRouter({
         sentTo: channels.length - errors.length,
         errors: errors.length > 0 ? errors : undefined,
       };
+    }),
+
+  linkCandidateToVacancy: protectedProcedure
+    .input(
+      z.object({
+        candidateId: z.string().min(1).max(255),
+        vacancyId: z.string().min(1).max(255),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      const [candidateRow, vacancyRow] = await Promise.all([
+        ctx.db
+          .select({
+            id: candidates.id,
+            companyId: candidates.companyId,
+          })
+          .from(candidates)
+          .where(eq(candidates.id, input.candidateId))
+          .limit(1),
+        ctx.db
+          .select({
+            id: vacancies.id,
+            companyId: vacancies.companyId,
+          })
+          .from(vacancies)
+          .where(eq(vacancies.id, input.vacancyId))
+          .limit(1),
+      ]);
+
+      const candidate = candidateRow[0];
+      if (!candidate) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Кандидат не найден",
+        });
+      }
+
+      const vacancy = vacancyRow[0];
+      if (!vacancy) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
+      }
+
+      if (!candidate.companyId || !vacancy.companyId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Кандидат или вакансия не привязаны к компании",
+        });
+      }
+
+      if (candidate.companyId !== vacancy.companyId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Кандидат и вакансия должны принадлежать одной компании",
+        });
+      }
+
+      if (userCompanyId && candidate.companyId !== userCompanyId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
+      }
+
+      const existingLink = await ctx.db
+        .select({ candidateId: candidateVacancies.candidateId })
+        .from(candidateVacancies)
+        .where(
+          and(
+            eq(candidateVacancies.candidateId, input.candidateId),
+            eq(candidateVacancies.vacancyId, input.vacancyId),
+          ),
+        )
+        .limit(1);
+
+      if (existingLink[0]) {
+        return { success: true, alreadyLinked: true };
+      }
+
+      await ctx.db.insert(candidateVacancies).values({
+        candidateId: input.candidateId,
+        vacancyId: input.vacancyId,
+      });
+
+      return { success: true, alreadyLinked: false };
+    }),
+
+  unlinkCandidateFromVacancy: protectedProcedure
+    .input(
+      z.object({
+        candidateId: z.string().min(1).max(255),
+        vacancyId: z.string().min(1).max(255),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      if (userCompanyId) {
+        const vacancyRow = await ctx.db
+          .select({
+            companyId: vacancies.companyId,
+          })
+          .from(vacancies)
+          .where(eq(vacancies.id, input.vacancyId))
+          .limit(1);
+
+        if (vacancyRow[0]?.companyId !== userCompanyId) {
+          const { TRPCError } = await import("@trpc/server");
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Вакансия не найдена",
+          });
+        }
+      }
+
+      await ctx.db
+        .delete(candidateVacancies)
+        .where(
+          and(
+            eq(candidateVacancies.candidateId, input.candidateId),
+            eq(candidateVacancies.vacancyId, input.vacancyId),
+          ),
+        );
+
+      return { success: true };
     }),
 });

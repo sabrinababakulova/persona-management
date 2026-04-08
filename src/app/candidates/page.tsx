@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
@@ -499,14 +500,12 @@ export default function CandidatesPage() {
                       </div>
 
                       <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                        <button
+                        <Link
                           className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
-                          onClick={() => openQuickOverview(candidate.id)}
-                          type="button"
+                          href={`/candidates/${candidate.id}`}
                         >
-                          <FunnelIcon className="h-3.5 w-3.5" />
-                          <span className="hidden xl:inline">Воронка</span>
-                        </button>
+                          <span className="hidden xl:inline">детали</span>
+                        </Link>
                         <button
                           className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
                           type="button"

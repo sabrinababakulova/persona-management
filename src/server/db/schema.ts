@@ -252,6 +252,30 @@ export const vacancies = createTable(
   ],
 );
 
+export const candidateVacancies = createTable(
+  "candidate_vacancy",
+  (d) => ({
+    candidateId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    vacancyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.candidateId, t.vacancyId] }),
+    index("candidate_vacancy_candidate_id_idx").on(t.candidateId),
+    index("candidate_vacancy_vacancy_id_idx").on(t.vacancyId),
+    index("candidate_vacancy_created_at_idx").on(t.createdAt),
+  ],
+);
+
 // Activity log table for dashboard "Recent actions" feed
 export const recentActivityLogs = createTable(
   "recent_activity_log",
