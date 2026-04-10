@@ -201,7 +201,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
         id="app-sidebar"
       >
         <aside
-          className={`sticky top-0 flex h-screen w-80 flex-col bg-sidebar-bg px-4 py-8 transition-transform duration-300 ${
+          className={`fixed top-0 flex h-screen w-80 flex-col bg-sidebar-bg px-4 py-8 transition-transform duration-300 ${
             desktopIsOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
