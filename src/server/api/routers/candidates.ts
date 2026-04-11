@@ -470,6 +470,98 @@ export const candidatesRouter = createTRPCRouter({
       };
     }),
 
+  addCandidateNote: protectedProcedure
+    .input(
+      z.object({
+        candidateId: z.string().min(1).max(255),
+        content: z
+          .string()
+          .trim()
+          .min(1, "Текст заметки обязателен")
+          .max(2000, "Заметка не должна превышать 2000 символов"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { TRPCError } = await import("@trpc/server");
+
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      const candidateRows = await ctx.db
+        .select({
+          id: candidates.id,
+          fullName: candidates.fullName,
+          companyId: candidates.companyId,
+          notes: candidates.notes,
+        })
+        .from(candidates)
+        .where(eq(candidates.id, input.candidateId))
+        .limit(1);
+
+      const candidate = candidateRows[0];
+      if (!candidate) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Кандидат не найден",
+        });
+      }
+
+      if (
+        userCompanyId &&
+        candidate.companyId &&
+        candidate.companyId !== userCompanyId
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Кандидат не найден",
+        });
+      }
+
+      const authorName =
+        ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+      const newNote = {
+        id: crypto.randomUUID(),
+        content: input.content,
+        author: authorName,
+        createdAt: new Date().toISOString(),
+      };
+      const existingNotes = (candidate.notes ?? []) as {
+        id: string;
+        content: string;
+        author: string;
+        createdAt: string;
+      }[];
+      const updatedNotes = [newNote, ...existingNotes];
+
+      await ctx.db
+        .update(candidates)
+        .set({
+          notes: updatedNotes,
+        })
+        .where(eq(candidates.id, input.candidateId));
+
+      try {
+        await ctx.db.insert(recentActivityLogs).values({
+          entityType: "candidate",
+          entityId: input.candidateId,
+          actorUserId: ctx.session?.user?.id ?? null,
+          actorName: authorName,
+          action: "Добавил(а) заметку о кандидате",
+          targetName: candidate.fullName,
+          targetStatus: "Заметка добавлена",
+        });
+      } catch (error) {
+        console.error(
+          "Failed to write recent activity log for candidate note",
+          error,
+        );
+      }
+
+      return newNote;
+    }),
+
   createCandidate: protectedProcedure
     .input(
       z.object({

@@ -3,6 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
+import { Modal } from "~/app/_components/modal";
+import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
 import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summary-card";
 import { api } from "~/trpc/react";
@@ -90,9 +93,49 @@ function ArrowLeftIcon({ className }: { className?: string }) {
 export default function CandidateDetailPage() {
   const params = useParams();
   const candidateId = typeof params.id === "string" ? params.id : "";
+  const utils = api.useUtils();
+  const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState("");
+  const [noteError, setNoteError] = useState<string | null>(null);
 
   const { data: candidate, isLoading } =
     api.candidates.getCandidateById.useQuery({ id: candidateId });
+  const addCandidateNote = api.candidates.addCandidateNote.useMutation({
+    onSuccess: async () => {
+      setNoteContent("");
+      setNoteError(null);
+      setIsAddNoteModalOpen(false);
+      await utils.candidates.getCandidateById.invalidate({ id: candidateId });
+    },
+    onError: (error) => {
+      setNoteError(error.message || "Не удалось сохранить заметку");
+    },
+  });
+
+  const closeAddNoteModal = () => {
+    if (addCandidateNote.isPending) {
+      return;
+    }
+
+    setIsAddNoteModalOpen(false);
+    setNoteContent("");
+    setNoteError(null);
+  };
+
+  const handleSaveNote = () => {
+    const trimmedContent = noteContent.trim();
+
+    if (!trimmedContent) {
+      setNoteError("Введите комментарий");
+      return;
+    }
+
+    setNoteError(null);
+    addCandidateNote.mutate({
+      candidateId,
+      content: trimmedContent,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -171,6 +214,7 @@ export default function CandidateDetailPage() {
                     </h3>
                     <button
                       className="text-primary-blue hover:text-primary-blue-dark"
+                      onClick={() => setIsAddNoteModalOpen(true)}
                       type="button"
                     >
                       <PlusIcon className="h-5 w-5" />
@@ -273,6 +317,55 @@ export default function CandidateDetailPage() {
           </div>
         </div>
       </main>
+
+      <Modal
+        description="Добавьте комментарий о кандидате. Автор заметки будет определен автоматически."
+        isOpen={isAddNoteModalOpen}
+        maxWidthClassName="max-w-[520px]"
+        onClose={closeAddNoteModal}
+        title="Новая заметка"
+      >
+        <div className="flex flex-col gap-4">
+          <Textarea
+            hideLabel
+            label="Комментарий"
+            onChange={(event) => {
+              setNoteContent(event.target.value);
+              if (noteError) {
+                setNoteError(null);
+              }
+            }}
+            placeholder="Оставьте комментарий о кандидате"
+            textareaClassName="min-h-[140px]"
+            value={noteContent}
+          />
+
+          {noteError && (
+            <div className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+              {noteError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={addCandidateNote.isPending}
+              onClick={closeAddNoteModal}
+              type="button"
+            >
+              Отмена
+            </button>
+            <button
+              className="rounded-[8px] bg-primary-blue px-5 py-2.5 font-medium text-[14px] text-white transition-colors hover:bg-primary-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={addCandidateNote.isPending}
+              onClick={handleSaveNote}
+              type="button"
+            >
+              {addCandidateNote.isPending ? "Сохранение..." : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
