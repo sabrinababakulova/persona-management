@@ -39,6 +39,7 @@ export const candidateFormSchema = z.object({
   languages: z.array(candidateLanguageSchema).default([]),
   workExperience: z.array(candidateWorkExperienceSchema).default([]),
   education: z.array(candidateEducationSchema).default([]),
+  vacancyId: z.string().uuid().optional(),
   status: z.string().default("new"),
   aiAnalysis: z.string().max(5000).optional(),
   resumeFileId: z.string().optional(),

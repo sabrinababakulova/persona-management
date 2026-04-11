@@ -720,6 +720,7 @@ export const candidatesRouter = createTRPCRouter({
           )
           .max(20)
           .default([]),
+        vacancyId: z.string().uuid().optional(),
         status: z.string().max(50).default("new"),
         aiAnalysis: z.string().max(5000).optional(),
         resumeFileId: z.string().max(255).optional(),
@@ -847,31 +848,72 @@ export const candidatesRouter = createTRPCRouter({
         companyId = userRows[0]?.companyId ?? null;
       }
 
-      const newCandidate = await ctx.db
-        .insert(candidates)
-        .values({
-          ...(input.id ? { id: input.id } : {}),
-          fullName: input.fullName,
-          city: input.city,
-          contacts: input.contacts,
-          source: input.source ?? null,
-          salaryExpectation: input.salaryExpectation ?? null,
-          salaryCurrency: input.salaryCurrency,
-          currentPosition: input.currentPosition ?? null,
-          skills: input.skills,
-          languages: input.languages,
-          workExperience: input.workExperience,
-          education: input.education,
-          status: input.status,
-          aiAnalysis: input.aiAnalysis?.trim() || null,
-          resumeFileId: input.resumeFileId ?? null,
-          resumeFileName: input.resumeFileName ?? null,
-          resumeFileSize: input.resumeFileSize ?? null,
-          companyId,
-        })
-        .returning();
+      if (input.vacancyId) {
+        const vacancyRows = await ctx.db
+          .select({
+            companyId: vacancies.companyId,
+            id: vacancies.id,
+          })
+          .from(vacancies)
+          .where(eq(vacancies.id, input.vacancyId))
+          .limit(1);
 
-      const created = newCandidate[0];
+        const selectedVacancy = vacancyRows[0];
+        if (!selectedVacancy) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Вакансия не найдена",
+          });
+        }
+
+        if (companyId && selectedVacancy.companyId !== companyId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Кандидат и вакансия должны принадлежать одной компании",
+          });
+        }
+      }
+
+      const created = await ctx.db.transaction(async (tx) => {
+        const newCandidate = await tx
+          .insert(candidates)
+          .values({
+            ...(input.id ? { id: input.id } : {}),
+            fullName: input.fullName,
+            city: input.city,
+            contacts: input.contacts,
+            source: input.source ?? null,
+            salaryExpectation: input.salaryExpectation ?? null,
+            salaryCurrency: input.salaryCurrency,
+            currentPosition: input.currentPosition ?? null,
+            skills: input.skills,
+            languages: input.languages,
+            workExperience: input.workExperience,
+            education: input.education,
+            status: input.status,
+            aiAnalysis: input.aiAnalysis?.trim() || null,
+            resumeFileId: input.resumeFileId ?? null,
+            resumeFileName: input.resumeFileName ?? null,
+            resumeFileSize: input.resumeFileSize ?? null,
+            companyId,
+          })
+          .returning();
+
+        const insertedCandidate = newCandidate[0];
+        if (!insertedCandidate) {
+          return null;
+        }
+
+        if (input.vacancyId) {
+          await tx.insert(candidateVacancies).values({
+            candidateId: insertedCandidate.id,
+            vacancyId: input.vacancyId,
+          });
+        }
+
+        return insertedCandidate;
+      });
+
       if (!created) {
         return null;
       }

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -530,19 +530,22 @@ export const vacanciesRouter = createTRPCRouter({
     }),
 
   searchVacancies: protectedProcedure
-    .input(z.object({ query: z.string().max(255) }))
+    .input(
+      z.object({
+        query: z.string().max(255),
+        limit: z.number().min(1).max(50).optional(),
+        offset: z.number().min(0).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const search = input.query.trim();
+      const limit = input.limit ?? 8;
+      const offset = input.offset ?? 0;
 
-      let userCompanyId: string | null = null;
-      if (ctx.session?.user?.id) {
-        const userRows = await ctx.db
-          .select({ companyId: users.companyId })
-          .from(users)
-          .where(eq(users.id, ctx.session.user.id))
-          .limit(1);
-        userCompanyId = userRows[0]?.companyId ?? null;
-      }
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
 
       const conditions = [];
       if (userCompanyId) {
@@ -552,19 +555,24 @@ export const vacanciesRouter = createTRPCRouter({
         conditions.push(ilike(vacancies.title, `%${escapeLike(search)}%`));
       }
 
-      const rows = search
-        ? await ctx.db
-            .select()
-            .from(vacancies)
-            .where(conditions.length > 0 ? and(...conditions) : undefined)
-            .limit(50)
-        : await ctx.db
-            .select()
-            .from(vacancies)
-            .where(conditions.length > 0 ? and(...conditions) : undefined)
-            .limit(50);
+      const whereClause =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
-      return rows.map(formatVacancy);
+      const [rows, totalRows] = await Promise.all([
+        ctx.db
+          .select()
+          .from(vacancies)
+          .where(whereClause)
+          .orderBy(desc(vacancies.createdAt))
+          .limit(limit)
+          .offset(offset),
+        ctx.db.select({ total: count() }).from(vacancies).where(whereClause),
+      ]);
+
+      return {
+        items: rows.map(formatVacancy),
+        total: totalRows[0]?.total ?? 0,
+      };
     }),
 
   createVacancy: protectedProcedure

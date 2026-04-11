@@ -46,6 +46,7 @@ export function CreateCandidateForm() {
   const [backgroundOpen, setBackgroundOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [isResumeUploading, setIsResumeUploading] = useState(false);
+  const [selectedVacancyLabel, setSelectedVacancyLabel] = useState("");
 
   // Use non-suspense query so the page doesn't 500 if lookups fail.
   const {
@@ -68,6 +69,7 @@ export function CreateCandidateForm() {
     languages: [{ name: "", level: "" }],
     workExperience: [],
     education: [],
+    vacancyId: "",
     status: "",
     aiAnalysis: "",
     resumeFileId: "",
@@ -341,6 +343,11 @@ export function CreateCandidateForm() {
     }));
   };
 
+  const handleVacancyChange = (value: { id: string; label: string } | null) => {
+    handleInputChange("vacancyId", value?.id ?? "");
+    setSelectedVacancyLabel(value?.label ?? "");
+  };
+
   const removeSkill = (skill: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -418,6 +425,7 @@ export function CreateCandidateForm() {
 
     createCandidate.mutate({
       ...cleanedData,
+      vacancyId: cleanedData.vacancyId || undefined,
       id: candidateDraftId,
     });
   };
@@ -564,9 +572,12 @@ export function CreateCandidateForm() {
           onInputChange={(field, value) => handleInputChange(field, value)}
           onRemoveContact={removeContact}
           onToggle={() => setBasicInfoOpen(!basicInfoOpen)}
+          onVacancyChange={handleVacancyChange}
           positions={candidateLookups.positions}
+          selectedVacancyLabel={selectedVacancyLabel}
           source={formData.source ?? ""}
           sources={candidateLookups.sources}
+          vacancyId={formData.vacancyId}
         />
 
         <ConditionsSection
