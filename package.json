@@ -10,6 +10,7 @@
     "check:write": "biome check --write .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate-custom": "bun run src/server/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "bun run src/server/db/seed-demo-data.ts",
     "db:studio": "drizzle-kit studio",
