@@ -88,16 +88,13 @@ export function FilterModal({
           </div>
           <div className="flex flex-col gap-2.5">
             {statusOptions.map((option) => (
-              <div
-                className="flex cursor-pointer items-center gap-3"
-                key={option.value}
-              >
+              <div className="flex items-center gap-3" key={option.value}>
                 <Checkbox
                   checked={draft.statuses.includes(option.value)}
                   onChange={() => toggleStatus(option.value)}
                 />
                 <button
-                  className="text-[14px] text-text-heading"
+                  className="text-left text-[14px] text-text-heading"
                   onClick={() => toggleStatus(option.value)}
                   type="button"
                 >
@@ -134,16 +131,13 @@ export function FilterModal({
               </div>
               <div className="flex flex-col gap-2.5">
                 {sourceOptions.map((option) => (
-                  <div
-                    className="flex cursor-pointer items-center gap-3"
-                    key={option.value}
-                  >
+                  <div className="flex items-center gap-3" key={option.value}>
                     <Checkbox
                       checked={draft.sources.includes(option.value)}
                       onChange={() => toggleSource(option.value)}
                     />
                     <button
-                      className="text-[14px] text-text-heading"
+                      className="text-left text-[14px] text-text-heading"
                       onClick={() => toggleSource(option.value)}
                       type="button"
                     >
