@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
+import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {
   AIGenerationIcon,
@@ -385,6 +387,7 @@ function VacancyStageCandidateCard({
 function VacancyStageSection({
   candidates,
   label,
+  onAddCandidate,
 }: {
   candidates: {
     id: string;
@@ -410,6 +413,7 @@ function VacancyStageSection({
     relatedVacancies: { id: string; title: string }[];
   }[];
   label: string;
+  onAddCandidate: () => void;
 }) {
   return (
     <section className="w-full shrink-0 rounded-[8px] border border-border-input bg-bg-input p-4 lg:w-[325px]">
@@ -422,6 +426,7 @@ function VacancyStageSection({
           <button
             aria-label={`Добавить кандидата в этап ${label}`}
             className="inline-flex h-5 w-5 items-center justify-center text-primary-blue transition-colors hover:text-primary-blue-hover"
+            onClick={onAddCandidate}
             type="button"
           >
             <PlusIcon className="h-5 w-5" />
@@ -456,10 +461,38 @@ function VacancyStageSection({
 
 export default function VacancyFunnelPage() {
   const { id } = useParams() as { id: string };
+  const utils = api.useUtils();
+  const [assignmentStage, setAssignmentStage] = useState<{
+    label: string;
+    value: string;
+  } | null>(null);
   const { data, isLoading } = api.vacancies.getVacancyFunnel.useQuery(
     { id },
     { enabled: Boolean(id) },
   );
+  const assignCandidateToVacancy =
+    api.vacancies.assignCandidateToVacancy.useMutation({
+      onSuccess: async () => {
+        await Promise.all([
+          utils.vacancies.getVacancyFunnel.invalidate({ id }),
+          utils.vacancies.searchAvailableCandidatesForVacancy.invalidate({
+            vacancyId: id,
+            limit: 8,
+            offset: 0,
+            query: "",
+          }),
+        ]);
+        setAssignmentStage(null);
+      },
+    });
+
+  const handleCloseAssignmentModal = () => {
+    if (assignCandidateToVacancy.isPending) {
+      return;
+    }
+
+    setAssignmentStage(null);
+  };
 
   if (isLoading) {
     return (
@@ -499,10 +532,36 @@ export default function VacancyFunnelPage() {
               candidates={stage.candidates}
               key={stage.value}
               label={stage.label}
+              onAddCandidate={() =>
+                setAssignmentStage({
+                  label: stage.label,
+                  value: stage.value,
+                })
+              }
             />
           ))}
         </div>
       </div>
+
+      <AssignCandidateToVacancyModal
+        errorMessage={assignCandidateToVacancy.error?.message}
+        isAssigning={assignCandidateToVacancy.isPending}
+        isOpen={assignmentStage !== null}
+        onAssignCandidate={(candidateId) => {
+          if (!assignmentStage) {
+            return;
+          }
+
+          assignCandidateToVacancy.mutate({
+            candidateId,
+            status: assignmentStage.value,
+            vacancyId: id,
+          });
+        }}
+        onClose={handleCloseAssignmentModal}
+        stageLabel={assignmentStage?.label ?? ""}
+        vacancyId={id}
+      />
     </main>
   );
 }
