@@ -52,7 +52,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Загрузка...</div>
+        <div className="text-text-secondary">Загрузка...</div>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
             <p className="mb-2 font-medium text-sm text-text-muted uppercase tracking-wider">
               {currentDate}
             </p>
-            <h1 className="font-bold text-3xl text-gray-900">
+            <h1 className="font-bold text-3xl text-text-heading">
               Добро пожаловать, {userName}!
             </h1>
           </div>
@@ -90,9 +90,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
           </div>
 
           {/* Recent Vacancies */}
-          <div className="mb-8 rounded-2xl border border-border-light bg-white">
+          <div className="mb-8 rounded-2xl border border-border-light bg-bg-light">
             <div className="flex items-center justify-between border-border-light border-b px-6 py-4">
-              <h2 className="font-semibold text-gray-900 text-lg">
+              <h2 className="font-semibold text-lg text-text-heading">
                 Последние вакансии
               </h2>
               <Link
@@ -144,7 +144,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
           {/* Candidates Section */}
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 text-lg">Кандидаты</h2>
+              <h2 className="font-semibold text-lg text-text-heading">
+                Кандидаты
+              </h2>
               <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
                 href="/candidates"

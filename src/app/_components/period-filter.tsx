@@ -26,7 +26,7 @@ export function PeriodFilter({
     <div className="relative self-start sm:self-auto">
       <select
         aria-label={ariaLabel}
-        className="h-[42px] appearance-none rounded-lg border border-border-light bg-white py-2 pr-10 pl-4 text-[14px] text-gray-700 outline-none transition-colors hover:bg-bg-light focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
+        className="h-[42px] appearance-none rounded-lg border border-border-light bg-bg-light py-2 pr-10 pl-4 text-[14px] text-text-secondary outline-none transition-colors hover:bg-bg-input focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
         onChange={(event) => onChange(event.target.value as PeriodFilterValue)}
         value={value}
       >

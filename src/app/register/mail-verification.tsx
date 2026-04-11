@@ -111,7 +111,7 @@ export default function MailVerificationPage({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-white">
+    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
       <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
         <Image
           alt="Logo"
@@ -156,7 +156,7 @@ export default function MailVerificationPage({
           </div>
 
           {errorMessage && (
-            <div className="mt-6 rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+            <div className="mt-6 rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
               {errorMessage}
             </div>
           )}
@@ -171,7 +171,7 @@ export default function MailVerificationPage({
             </button>
 
             <button
-              className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!isCodeComplete || isSubmitting}
               onClick={handleSubmit}
               type="button"

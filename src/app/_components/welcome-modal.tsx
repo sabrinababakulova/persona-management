@@ -34,7 +34,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
       </div>
 
       <button
-        className="h-10 w-full rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:ring-offset-2"
+        className="h-10 w-full rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:ring-offset-2"
         onClick={onClose}
         type="button"
       >

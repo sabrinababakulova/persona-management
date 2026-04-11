@@ -165,13 +165,13 @@ export function QuickOverview({
     >
       <button
         aria-label="Закрыть окно быстрого обзора кандидата"
-        className="absolute inset-0 bg-black/20"
+        className="absolute inset-0 bg-text-heading/20"
         onClick={onClose}
         type="button"
       />
 
       <div
-        className="relative flex w-full max-w-[500px] flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-white p-4 text-text-heading shadow-[6px_6px_26.2px_0px_rgba(43,48,66,0.10)]"
+        className="relative flex w-full max-w-[500px] flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4 text-text-heading shadow-toast"
         ref={dialogPanelRef}
         tabIndex={-1}
       >
@@ -205,7 +205,7 @@ export function QuickOverview({
                 </h2>
               </div>
 
-              <div className="w-full rounded-[5px] bg-[rgba(151,71,255,0.07)] p-2 text-[#9747ff]">
+              <div className="w-full rounded-[5px] bg-chart-purple/10 p-2 text-chart-purple">
                 <div className="mb-[9px] flex items-center gap-1.5">
                   <AIGenerationIcon />
                   <span className="font-bold text-[12px] leading-none tracking-[-0.24px]">
@@ -272,10 +272,7 @@ export function QuickOverview({
 
             <div className="flex flex-wrap items-start gap-[6px]">
               {candidate.tags.slice(0, 3).map((tag) => (
-                <div
-                  className="rounded-[6px] bg-[rgba(242,51,115,0.1)] p-2"
-                  key={tag}
-                >
+                <div className="rounded-[6px] bg-danger-red-bg p-2" key={tag}>
                   <p className="font-semibold text-[12px] text-accent-red uppercase leading-none tracking-[-0.24px] line-through">
                     {tag}
                   </p>
@@ -299,7 +296,7 @@ export function QuickOverview({
               </div>
 
               <button
-                className="h-11 w-[182px] rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[14px] text-white leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:bg-primary-blue/50"
+                className="h-11 w-[182px] rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[14px] text-bg-light leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:bg-primary-blue/50"
                 disabled={!candidate.resumeFile.url}
                 onClick={() => {
                   if (candidate.resumeFile.url) {

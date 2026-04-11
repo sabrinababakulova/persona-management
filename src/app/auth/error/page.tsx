@@ -42,8 +42,8 @@ export default async function AuthErrorPage({
     : DEFAULT_AUTH_ERROR_CONTENT;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-6">
-      <div className="w-full max-w-[480px] rounded-[12px] border border-border-input bg-white p-8 shadow-[0_20px_50px_rgba(16,24,40,0.08)]">
+    <div className="flex min-h-screen items-center justify-center bg-bg-light px-6">
+      <div className="w-full max-w-[480px] rounded-[12px] border border-border-input bg-bg-light p-8 shadow-toast">
         <h1 className="font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
           {content.title}
         </h1>
@@ -52,7 +52,7 @@ export default async function AuthErrorPage({
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
-            className="flex h-12 flex-1 items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+            className="flex h-12 flex-1 items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
             href="/login"
           >
             Вернуться ко входу

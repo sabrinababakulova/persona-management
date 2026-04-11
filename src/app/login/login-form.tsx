@@ -95,7 +95,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-white">
+    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
       {/* Left Sidebar with Logo */}
       <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
         <Image
@@ -117,7 +117,7 @@ export default function LoginForm() {
           {isGoogleAvailable && (
             <>
               <button
-                className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-white font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
+                className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-bg-light font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isGoogleSubmitting || isSubmitting}
                 onClick={() => void handleGoogleSignIn()}
                 type="button"
@@ -187,7 +187,7 @@ export default function LoginForm() {
 
             {/* Buttons */}
             {errorMessage && (
-              <div className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+              <div className="rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
                 {errorMessage}
               </div>
             )}
@@ -200,7 +200,7 @@ export default function LoginForm() {
                 Создать аккаунт
               </Link>
               <button
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-white tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
                 disabled={isSubmitting}
                 type="submit"
               >

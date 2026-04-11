@@ -43,7 +43,7 @@ export function BasicInfoSection({
         <div className="flex flex-col gap-6 pt-2">
           <div className="flex flex-col gap-2">
             <Input
-              className={errors.fullName ? "border-red-500" : undefined}
+              className={errors.fullName ? "border-danger-red" : undefined}
               id="fullName"
               label="Ф.И.О"
               onChange={(e) => onInputChange("fullName", e.target.value)}
@@ -52,14 +52,14 @@ export function BasicInfoSection({
               value={fullName}
             />
             {errors.fullName && (
-              <p className="text-[12px] text-red-500">{errors.fullName}</p>
+              <p className="text-[12px] text-danger-red">{errors.fullName}</p>
             )}
           </div>
 
           <div className="flex gap-6">
             <div className="flex flex-1 flex-col gap-2">
               <Input
-                className={errors.city ? "border-red-500" : undefined}
+                className={errors.city ? "border-danger-red" : undefined}
                 id="city"
                 label="Город"
                 onChange={(e) => onInputChange("city", e.target.value)}
@@ -68,7 +68,7 @@ export function BasicInfoSection({
                 value={city}
               />
               {errors.city && (
-                <p className="text-[12px] text-red-500">{errors.city}</p>
+                <p className="text-[12px] text-danger-red">{errors.city}</p>
               )}
             </div>
 

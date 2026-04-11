@@ -50,7 +50,7 @@ export function ConditionsSection({
                   className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                     salaryCurrency === "UZS"
                       ? "bg-primary-blue-light text-primary-blue"
-                      : "bg-white text-text-disabled"
+                      : "bg-bg-light text-text-disabled"
                   }`}
                   onClick={() => onCurrencyChange("UZS")}
                   type="button"
@@ -62,7 +62,7 @@ export function ConditionsSection({
                   className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                     salaryCurrency === "USD"
                       ? "bg-primary-blue-light text-primary-blue"
-                      : "bg-white text-text-disabled"
+                      : "bg-bg-light text-text-disabled"
                   }`}
                   onClick={() => onCurrencyChange("USD")}
                   type="button"

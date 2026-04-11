@@ -66,7 +66,7 @@ export function TelegramChannelsSection() {
                 )}
               </div>
               <button
-                className="ml-3 shrink-0 rounded px-2 py-1 text-[13px] text-danger-red transition-colors hover:bg-red-50 disabled:opacity-50"
+                className="ml-3 shrink-0 rounded px-2 py-1 text-[13px] text-danger-red transition-colors hover:bg-danger-red-bg disabled:opacity-50"
                 disabled={removeChannel.isPending}
                 onClick={() => removeChannel.mutate({ id: ch.id })}
                 type="button"

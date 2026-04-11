@@ -265,7 +265,7 @@ export function QuickAddCandidateModal({
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
-          <p className="flex gap-1 font-medium text-[#9747FF] text-[12px] leading-[1.4] tracking-[-0.24px]">
+          <p className="flex gap-1 font-medium text-[12px] text-t3-accent leading-[1.4] tracking-[-0.24px]">
             <span className="flex font-bold">
               <AIGenerationIcon />
               AI
@@ -289,7 +289,7 @@ export function QuickAddCandidateModal({
             Добавить больше данных
           </Link>
           <button
-            className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-white leading-none tracking-[-0.32px] disabled:opacity-60"
+            className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-bg-light leading-none tracking-[-0.32px] disabled:opacity-60"
             disabled={isSaving || isResumeUploading}
             onClick={handleSave}
             type="button"

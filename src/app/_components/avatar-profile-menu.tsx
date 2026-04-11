@@ -91,7 +91,7 @@ export function AvatarProfileMenu({
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label="Профиль"
-        className="h-10 w-10 overflow-hidden rounded-[40px] bg-[#CEDBF5] outline-none ring-primary-blue focus-visible:ring-2"
+        className="h-10 w-10 overflow-hidden rounded-[40px] bg-primary-blue-light outline-none ring-primary-blue focus-visible:ring-2"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
@@ -106,28 +106,28 @@ export function AvatarProfileMenu({
 
       {isOpen && (
         <div
-          className="absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] overflow-hidden rounded-[6px] border border-[#D8DEE8] bg-white shadow-[0_8px_20px_rgba(27,39,94,0.08)]"
+          className="absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] overflow-hidden rounded-[6px] border border-border-light bg-bg-light shadow-toast"
           role="menu"
         >
           <Link
-            className="flex h-10 items-center gap-2 px-3 text-[#3A465D] transition-colors hover:bg-[#F8FAFC]"
+            className="flex h-10 items-center gap-2 px-3 text-text-secondary transition-colors hover:bg-bg-light"
             href="/my-profile"
             onClick={() => setIsOpen(false)}
             role="menuitem"
           >
-            <ProfileOutlineIcon className="h-4 w-4 shrink-0 text-[#707A8D]" />
+            <ProfileOutlineIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
             <span className="text-[14px] leading-none tracking-[-0.28px]">
               Мой профиль
             </span>
           </Link>
           <button
-            className="flex h-10 w-full items-center gap-2 border-[#D8DEE8] border-t px-3 text-left text-[#3A465D] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-colors hover:bg-bg-light disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isLoggingOut}
             onClick={handleLogout}
             role="menuitem"
             type="button"
           >
-            <LogoutIcon className="h-4 w-4 shrink-0 text-[#707A8D]" />
+            <LogoutIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
             <span className="text-[14px] leading-none tracking-[-0.28px]">
               {isLoggingOut ? "Выход..." : "Выйти"}
             </span>

@@ -21,7 +21,7 @@ export function StatsCard({
   };
 
   return (
-    <div className="rounded-2xl border border-border-light bg-white p-6">
+    <div className="rounded-2xl border border-border-light bg-bg-light p-6">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-text-muted">{title}</span>
         <button
@@ -32,7 +32,7 @@ export function StatsCard({
         </button>
       </div>
       <div className="flex items-end gap-4">
-        <span className="font-bold text-5xl text-gray-900">{value}</span>
+        <span className="font-bold text-5xl text-text-heading">{value}</span>
         {change && changeType && (
           <span
             className={`flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-sm ${changeColors[changeType]}`}

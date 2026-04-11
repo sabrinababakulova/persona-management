@@ -2,7 +2,7 @@ import type { StatusStatisticsProps } from "~/types/components/status-statistics
 
 export function StatusStatistics({ statusStats = [] }: StatusStatisticsProps) {
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-white p-4">
+    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
           Статистика по статусу
@@ -22,7 +22,7 @@ export function StatusStatistics({ statusStats = [] }: StatusStatisticsProps) {
 
               <div className="min-w-0 flex-1">
                 <div
-                  className="h-3 rounded-[4px] bg-[#ffc466] transition-[width] duration-500"
+                  className="h-3 rounded-[4px] bg-warning-yellow transition-[width] duration-500"
                   style={{ width: `${percentage}%` }}
                 />
               </div>

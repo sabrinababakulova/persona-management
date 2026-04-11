@@ -275,7 +275,7 @@ export function VacancyDescription({
 
   return (
     <>
-      <div className="w-full bg-white pt-8 pb-6">
+      <div className="w-full bg-bg-light pt-8 pb-6">
         <div className="flex w-full items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col items-start justify-center gap-2.5">
             <p className="truncate font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
@@ -353,7 +353,7 @@ export function VacancyDescription({
                   className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                     formState.salaryCurrency === "UZS"
                       ? "bg-primary-blue-light text-primary-blue"
-                      : "bg-white text-text-disabled"
+                      : "bg-bg-light text-text-disabled"
                   } ${isReadOnly ? "cursor-not-allowed opacity-70" : ""}`}
                   disabled={isReadOnly}
                   onClick={() => handleInputChange("salaryCurrency", "UZS")}
@@ -366,7 +366,7 @@ export function VacancyDescription({
                   className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                     formState.salaryCurrency === "USD"
                       ? "bg-primary-blue-light text-primary-blue"
-                      : "bg-white text-text-disabled"
+                      : "bg-bg-light text-text-disabled"
                   } ${isReadOnly ? "cursor-not-allowed opacity-70" : ""}`}
                   disabled={isReadOnly}
                   onClick={() => handleInputChange("salaryCurrency", "USD")}
@@ -459,7 +459,7 @@ export function VacancyDescription({
       </div>
 
       {!isReadOnly && (
-        <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-[rgba(255,255,255,0.9)] py-4 backdrop-blur-[10px]">
+        <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
           <div className="flex w-full max-w-[560px] justify-end">
             <div className="flex flex-col items-end gap-2">
               {formError && (

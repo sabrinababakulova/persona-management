@@ -403,12 +403,12 @@ export function CreateCandidateForm() {
 
   if (isLookupsError || !candidateLookups) {
     return (
-      <div className="mx-auto mt-16 w-full max-w-[758px] rounded-[8px] border border-red-200 bg-red-50 p-6 text-red-700">
+      <div className="mx-auto mt-16 w-full max-w-[758px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-6 text-danger-red">
         <p className="mb-4 text-[14px]">
           Не удалось загрузить справочники из базы данных.
         </p>
         <button
-          className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+          className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
           onClick={() => void refetchLookups()}
           type="button"
         >
@@ -503,7 +503,7 @@ export function CreateCandidateForm() {
               Резюме
             </h2>
             <button
-              className="h-8 rounded-[6px] bg-[#9747ff]/30 px-4 font-semibold text-[14px] text-white tracking-[-0.28px]"
+              className="h-8 rounded-[6px] bg-chart-purple/30 px-4 font-semibold text-[14px] text-bg-light tracking-[-0.28px]"
               type="button"
             >
               Заполнить поля
@@ -516,7 +516,7 @@ export function CreateCandidateForm() {
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
-          <p className="flex items-center gap-1 font-medium text-[#9747FF] text-[14px] tracking-[-0.28px]">
+          <p className="flex items-center gap-1 font-medium text-[14px] text-chart-purple tracking-[-0.28px]">
             <AIGenerationIcon className="h-4 w-4" />
             AI Мы проанализируем резюме и автозаполним поля
           </p>
@@ -579,12 +579,12 @@ export function CreateCandidateForm() {
 
         <div className="mt-8">
           {errors._form && (
-            <div className="mb-4 rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+            <div className="mb-4 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
               {errors._form}
             </div>
           )}
           <button
-            className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-white tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
+            className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-bg-light tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
             disabled={createCandidate.isPending || isResumeUploading}
             onClick={handleSubmit}
             type="button"

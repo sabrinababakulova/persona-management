@@ -49,7 +49,7 @@ export function Dropdown({
             ))}
           </select>
           <ChevronDownIcon
-            className={`pointer-events-none absolute top-1/2 right-3 h-6 w-6 -translate-y-1/2 text-[#697077] ${iconClassName ?? ""}`}
+            className={`pointer-events-none absolute top-1/2 right-3 h-6 w-6 -translate-y-1/2 text-text-secondary ${iconClassName ?? ""}`}
           />
         </div>
       </div>

@@ -241,7 +241,7 @@ export function CreateVacancyForm() {
 
   if (isLookupsLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-bg-light">
         <div className="text-text-secondary">Загрузка справочников...</div>
       </div>
     );
@@ -249,13 +249,13 @@ export function CreateVacancyForm() {
 
   if (isLookupsError || !vacancyLookups) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
           <p className="mb-4 text-[14px]">
             Не удалось загрузить справочники из базы данных.
           </p>
           <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
             onClick={() => void refetchLookups()}
             type="button"
           >
@@ -300,7 +300,7 @@ export function CreateVacancyForm() {
         <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
           <div className="min-w-0 flex-1 space-y-8">
             <div
-              className="scroll-mt-24 rounded-[8px] border border-border-input bg-white p-4 lg:p-6"
+              className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
               id="basic-information"
             >
               <ClosableSection title="Основная информация">
@@ -374,7 +374,7 @@ export function CreateVacancyForm() {
             </div>
 
             <div
-              className="scroll-mt-24 rounded-[8px] border border-border-input bg-white p-4 lg:p-6"
+              className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
               id="conditions"
             >
               <ClosableSection title="Условия">
@@ -386,7 +386,7 @@ export function CreateVacancyForm() {
                         className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                           formData.salaryCurrency === "UZS"
                             ? "bg-primary-blue-light text-primary-blue"
-                            : "bg-white text-text-disabled"
+                            : "bg-bg-light text-text-disabled"
                         }`}
                         onClick={() =>
                           handleFieldChange("salaryCurrency", "UZS")
@@ -400,7 +400,7 @@ export function CreateVacancyForm() {
                         className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
                           formData.salaryCurrency === "USD"
                             ? "bg-primary-blue-light text-primary-blue"
-                            : "bg-white text-text-disabled"
+                            : "bg-bg-light text-text-disabled"
                         }`}
                         onClick={() =>
                           handleFieldChange("salaryCurrency", "USD")
@@ -471,7 +471,7 @@ export function CreateVacancyForm() {
             </div>
 
             <div
-              className="scroll-mt-24 rounded-[8px] border border-border-input bg-white p-4 lg:p-6"
+              className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
               id="description"
             >
               <ClosableSection title="Описание">
@@ -513,7 +513,7 @@ export function CreateVacancyForm() {
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-[rgba(255,255,255,0.9)] py-4 backdrop-blur-[10px]">
+        <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-h-[20px]">
               {errors._form && (
@@ -552,7 +552,7 @@ export function CreateVacancyForm() {
       >
         <div className="flex flex-wrap items-center gap-3">
           <button
-            className="rounded-[8px] bg-[#0088cc] px-5 py-2.5 font-medium text-[14px] text-white transition-colors hover:bg-[#006da3] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-[8px] bg-primary-blue-dark px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
             disabled={postToTelegram.isPending || telegramStatus === "sent"}
             onClick={() => {
               if (!savedVacancyId) {
@@ -571,7 +571,7 @@ export function CreateVacancyForm() {
                 : "Telegram"}
           </button>
           <button
-            className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-gray-50"
+            className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
             onClick={() => router.push("/vacancies")}
             type="button"
           >
@@ -579,12 +579,12 @@ export function CreateVacancyForm() {
           </button>
         </div>
         {telegramStatus === "error" && (
-          <div className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+          <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
             Не удалось отправить в Telegram. Попробуйте ещё раз.
           </div>
         )}
         {telegramStatus === "sent" && (
-          <div className="rounded-[6px] border border-green-200 bg-green-50 px-3 py-2 text-[14px] text-green-700">
+          <div className="rounded-[6px] border border-success-green-bg bg-success-green-bg px-3 py-2 text-[14px] text-success-green">
             Вакансия опубликована в Telegram-канал.
           </div>
         )}

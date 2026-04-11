@@ -165,7 +165,7 @@ export function CandidateSummaryCard({
   ]);
 
   return (
-    <aside className="rounded-[8px] border border-border-input bg-white p-5">
+    <aside className="rounded-[8px] border border-border-input bg-bg-light p-5">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="font-semibold text-[24px] text-text-heading leading-[1.1] tracking-[-0.48px]">
@@ -207,7 +207,7 @@ export function CandidateSummaryCard({
             </div>
           </div>
 
-          <div className="rounded-[5px] bg-[#9747ff]/7 p-3 text-[#9747ff]">
+          <div className="rounded-[5px] bg-chart-purple/10 p-3 text-chart-purple">
             <div className="mb-[9px] flex items-center gap-[6px]">
               <div className="flex items-center gap-1">
                 <AIGenerationIcon className="h-4 w-4" />
@@ -229,7 +229,7 @@ export function CandidateSummaryCard({
             <div className="flex flex-wrap items-start gap-[6px]">
               {tags.map((tag) => (
                 <div
-                  className="rounded-[6px] bg-[rgba(242,51,115,0.1)] px-2 py-2"
+                  className="rounded-[6px] bg-danger-red-bg px-2 py-2"
                   key={tag}
                 >
                   <p className="font-semibold text-[14px] text-accent-red uppercase leading-none tracking-[-0.28px] line-through">

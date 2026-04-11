@@ -34,7 +34,7 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-10 w-full border-header-border border-b bg-white px-4 py-3 lg:px-8">
+    <header className="sticky top-0 z-10 w-full border-header-border border-b bg-bg-light px-4 py-3 lg:px-8">
       <div className="flex w-full items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
@@ -42,7 +42,7 @@ export function Header({
             aria-label={
               isSidebarOpen ? "Свернуть боковое меню" : "Открыть боковое меню"
             }
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border border-[#E2E8F0] text-[#616C81] transition-colors hover:bg-[#F1F4F8]"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border border-border-light text-text-secondary transition-colors hover:bg-bg-hover"
             onClick={onSidebarToggle}
             type="button"
           >
@@ -50,9 +50,9 @@ export function Header({
           </button>
 
           <div className="relative w-full max-w-[367px]">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#616C81]" />
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-secondary" />
             <input
-              className="h-10 w-full rounded-[8px] bg-[#F1F4F8] py-3 pr-4 pl-9 text-[#616C81] text-[16px] tracking-[-0.32px] placeholder:text-[#616C81] focus:outline-none"
+              className="h-10 w-full rounded-[8px] bg-bg-hover py-3 pr-4 pl-9 text-[16px] text-text-secondary tracking-[-0.32px] placeholder:text-text-secondary focus:outline-none"
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
               type="text"
@@ -63,7 +63,7 @@ export function Header({
 
         <div className="flex shrink-0 items-center gap-4">
           <button
-            className="flex h-10 items-center gap-1 rounded-[6px] px-1 py-3 text-[#707A8D]"
+            className="flex h-10 items-center gap-1 rounded-[6px] px-1 py-3 text-text-placeholder"
             type="button"
           >
             <GlobeIcon className="h-4 w-4" />

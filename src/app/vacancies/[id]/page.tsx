@@ -38,7 +38,7 @@ export default function VacancyDetailPage() {
   if (isLoading || isLookupsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Загрузка...</div>
+        <div className="text-text-secondary">Загрузка...</div>
       </div>
     );
   }
@@ -46,12 +46,12 @@ export default function VacancyDetailPage() {
   if (isLookupsError || !vacancyLookups) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
           <p className="mb-4 text-[14px]">
             Не удалось загрузить справочники из базы данных.
           </p>
           <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
             onClick={() => void refetchLookups()}
             type="button"
           >
@@ -65,13 +65,13 @@ export default function VacancyDetailPage() {
   if (!vacancy) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Вакансия не найдена</div>
+        <div className="text-text-secondary">Вакансия не найдена</div>
       </div>
     );
   }
 
   return (
-    <main className="h-full bg-white">
+    <main className="h-full bg-bg-light">
       <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
         <SideMenu
           activeId={activeSectionId}

@@ -84,7 +84,7 @@ export function AssignCandidateToVacancyModal({
             Отмена
           </button>
           <button
-            className="h-10 rounded-[6px] bg-primary-blue px-4 font-semibold text-[16px] text-white leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 rounded-[6px] bg-primary-blue px-4 font-semibold text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isAssigning}
             onClick={handleAssign}
             type="button"

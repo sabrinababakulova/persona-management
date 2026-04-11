@@ -5,11 +5,26 @@ import type {
 
 const CHANNEL_ORDER = ["hh.uz", "telegram", "rabota.uz", "Другие"] as const;
 
-const CHANNEL_COLORS: Record<(typeof CHANNEL_ORDER)[number], string> = {
-  "hh.uz": "#FF558E",
-  telegram: "#9747FF",
-  "rabota.uz": "#FFC466",
-  Другие: "#4C91F6",
+const CHANNEL_COLORS: Record<
+  (typeof CHANNEL_ORDER)[number],
+  { strokeClassName: string; fillClassName: string }
+> = {
+  "hh.uz": {
+    strokeClassName: "stroke-chart-pink",
+    fillClassName: "bg-chart-pink",
+  },
+  telegram: {
+    strokeClassName: "stroke-chart-purple",
+    fillClassName: "bg-chart-purple",
+  },
+  "rabota.uz": {
+    strokeClassName: "stroke-chart-orange",
+    fillClassName: "bg-chart-orange",
+  },
+  Другие: {
+    strokeClassName: "stroke-chart-blue",
+    fillClassName: "bg-chart-blue",
+  },
 };
 
 function normalizeChannelName(value: string) {
@@ -41,7 +56,7 @@ function buildNormalizedStats(channelStats: ChannelStat[]) {
   return CHANNEL_ORDER.map((name) => ({
     name,
     percentage: Math.max(0, Math.round(totals.get(name) ?? 0)),
-    color: CHANNEL_COLORS[name],
+    colorClasses: CHANNEL_COLORS[name],
   }));
 }
 
@@ -56,7 +71,7 @@ export function ChannelStatistics({
   let dashOffset = 0;
 
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-white p-4">
+    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
           Статистика по каналам
@@ -75,12 +90,12 @@ export function ChannelStatistics({
               const segment = (item.percentage / safeTotal) * circumference;
               const circle = (
                 <circle
+                  className={item.colorClasses.strokeClassName}
                   cx="70"
                   cy="69"
                   fill="none"
                   key={item.name}
                   r={radius}
-                  stroke={item.color}
                   strokeDasharray={`${segment} ${circumference - segment}`}
                   strokeDashoffset={-dashOffset}
                   strokeLinecap="butt"
@@ -98,8 +113,7 @@ export function ChannelStatistics({
             <div className="flex items-center justify-between" key={item.name}>
               <div className="flex items-center gap-[10px]">
                 <span
-                  className="size-4 shrink-0 rounded-[4px]"
-                  style={{ backgroundColor: item.color }}
+                  className={`size-4 shrink-0 rounded-[4px] ${item.colorClasses.fillClassName}`}
                 />
                 <p className="font-semibold text-[14px] text-text-heading leading-none tracking-[-0.28px]">
                   {item.name}

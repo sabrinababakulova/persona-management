@@ -155,10 +155,10 @@ export function MyProfileClient({
 
     return {
       checks,
-      fillClassName: "bg-[#DD8D0C]",
+      fillClassName: "bg-warning-yellow",
       fillWidth: `${Math.max(score * 100, 15)}%`,
       strengthLabel: "Слабый пароль",
-      strengthLabelClassName: "text-[#DD8D0C]",
+      strengthLabelClassName: "text-warning-yellow",
     };
   }, [newPassword]);
 
@@ -192,7 +192,7 @@ export function MyProfileClient({
   };
 
   return (
-    <main className="h-full bg-white">
+    <main className="h-full bg-bg-light">
       <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
         <SideMenu
           activeId={activeSectionId}
@@ -210,7 +210,7 @@ export function MyProfileClient({
 
             <div className="mt-6 flex items-center gap-6">
               <button
-                className="group relative h-[72px] w-[72px] overflow-hidden rounded-full bg-[#CEDBF5] focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="group relative h-[72px] w-[72px] overflow-hidden rounded-full bg-bg-active-menu focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={avatarUploading}
                 onClick={() => avatarInputRef.current?.click()}
                 title="Изменить аватар"
@@ -223,8 +223,8 @@ export function MyProfileClient({
                   src={currentAvatarSrc}
                   width={72}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
-                  <PencilIcon className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                <div className="absolute inset-0 flex items-center justify-center bg-text-heading/0 transition-colors group-hover:bg-text-heading/40">
+                  <PencilIcon className="h-6 w-6 text-bg-light opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
                 <input
                   accept="image/jpeg,image/png,image/webp,image/gif"
@@ -318,7 +318,7 @@ export function MyProfileClient({
             )}
           </div>
 
-          <div className="sticky bottom-0 z-10 mt-12 border-border-input border-t bg-[rgba(255,255,255,0.9)] py-4 backdrop-blur-[10px]">
+          <div className="sticky bottom-0 z-10 mt-12 border-border-input border-t bg-bg-light/90 py-4 backdrop-blur-[10px]">
             <div className="flex w-full max-w-[558px] justify-end">
               {isProfileSectionActive && (
                 <div className="flex flex-col items-end gap-2">

@@ -68,7 +68,7 @@ export function TablePagination({
     totalItems > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
 
   return (
-    <div className="flex flex-col gap-3 border-border-input border-t bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-[13px] text-text-placeholder">
         {rangeStart}-{rangeEnd} из {totalItems}
       </div>
@@ -99,7 +99,7 @@ export function TablePagination({
         <span>Количество</span>
         <div className="relative">
           <select
-            className="h-[40px] min-w-[88px] cursor-pointer appearance-none rounded-[6px] border border-border-input bg-white px-3 pr-9 text-[14px] text-text-secondary"
+            className="h-[40px] min-w-[88px] cursor-pointer appearance-none rounded-[6px] border border-border-input bg-bg-light px-3 pr-9 text-[14px] text-text-secondary"
             onChange={(event) =>
               onItemsPerPageChange(Number(event.target.value))
             }

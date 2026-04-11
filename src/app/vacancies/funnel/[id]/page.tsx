@@ -137,7 +137,7 @@ function VacancyFunnelHeader({
 
       <div className="flex items-center gap-2 self-start md:self-end">
         <Link
-          className="inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-[6px] bg-primary-blue px-3 text-[16px] text-white leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover sm:w-[195px]"
+          className="inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-[6px] bg-primary-blue px-3 text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover sm:w-[195px]"
           href={`/vacancies/${id}`}
         >
           <span className="font-medium">Больше о вакансии</span>
@@ -205,7 +205,7 @@ function VacancyStageCandidateCard({
   ]);
 
   return (
-    <article className="flex w-full flex-col gap-6 rounded-[8px] border border-border-input bg-white p-4 md:w-[293px]">
+    <article className="flex w-full flex-col gap-6 rounded-[8px] border border-border-input bg-bg-light p-4 md:w-[293px]">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-4">
@@ -238,7 +238,7 @@ function VacancyStageCandidateCard({
           </h3>
         </div>
 
-        <div className="rounded-[5px] bg-[#9747ff]/7 p-2 text-[#9747ff]">
+        <div className="rounded-[5px] bg-status-offer-bg p-2 text-status-offer">
           <div className="mb-[9px] flex items-center gap-1.5">
             <div className="flex items-center gap-1">
               <AIGenerationIcon className="h-3 w-3" />
@@ -340,10 +340,7 @@ function VacancyStageCandidateCard({
       {candidate.tags.length > 0 ? (
         <div className="flex flex-wrap items-start gap-[6px]">
           {candidate.tags.slice(0, 3).map((tag) => (
-            <div
-              className="rounded-[6px] bg-[rgba(242,51,115,0.1)] p-2"
-              key={tag}
-            >
+            <div className="rounded-[6px] bg-status-danger-soft p-2" key={tag}>
               <p className="font-semibold text-[12px] text-accent-red uppercase leading-none tracking-[-0.24px] line-through">
                 {tag}
               </p>
@@ -368,7 +365,7 @@ function VacancyStageCandidateCard({
         </div>
 
         <button
-          className="inline-flex h-[34px] items-center justify-center rounded-[6px] bg-primary-blue-light px-3 font-medium text-[14px] text-primary-blue leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:text-primary-blue/50"
+          className="inline-flex h-[34px] items-center justify-center rounded-[6px] bg-primary-blue-light px-3 font-medium text-[14px] text-primary-blue leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:text-text-disabled"
           disabled={!candidate.resumeUrl}
           onClick={() => {
             if (candidate.resumeUrl) {
@@ -443,7 +440,7 @@ function VacancyStageSection({
 
       <div className="mt-4 flex flex-col gap-4">
         {candidates.length === 0 ? (
-          <div className="rounded-[8px] border border-border-input bg-white px-4 py-6 text-[14px] text-text-secondary">
+          <div className="rounded-[8px] border border-border-input bg-bg-light px-4 py-6 text-[14px] text-text-secondary">
             На этом этапе пока нет кандидатов.
           </div>
         ) : (
@@ -497,7 +494,7 @@ export default function VacancyFunnelPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Загрузка...</div>
+        <div className="text-text-secondary">Загрузка...</div>
       </div>
     );
   }
@@ -505,13 +502,13 @@ export default function VacancyFunnelPage() {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Воронка вакансии не найдена</div>
+        <div className="text-text-secondary">Воронка вакансии не найдена</div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-white px-6 pt-8 pb-8">
+    <main className="min-h-screen bg-bg-light px-6 pt-8 pb-8">
       <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-6">
         <Breadcrumbs
           label={`${data.title} / Воронка`}

@@ -66,7 +66,7 @@ export default function CandidateDetailPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Загрузка...</div>
+        <div className="text-text-secondary">Загрузка...</div>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function CandidateDetailPage() {
   if (!candidate) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-gray-600">Кандидат не найден</div>
+        <div className="text-text-secondary">Кандидат не найден</div>
       </div>
     );
   }
@@ -87,7 +87,7 @@ export default function CandidateDetailPage() {
         <div className="p-4 lg:p-8">
           {/* Back Link */}
           <Link
-            className="mb-4 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            className="mb-4 inline-flex items-center gap-2 text-text-secondary hover:text-text-heading"
             href="/candidates"
           >
             <ArrowLeftIcon className="h-4 w-4" />
@@ -95,7 +95,7 @@ export default function CandidateDetailPage() {
           </Link>
 
           {/* Page Title */}
-          <h1 className="mb-6 font-bold text-2xl text-gray-900 lg:text-3xl">
+          <h1 className="mb-6 font-bold text-2xl text-text-heading lg:text-3xl">
             Профиль кандидата
           </h1>
 
@@ -133,9 +133,9 @@ export default function CandidateDetailPage() {
             <div className="lg:col-span-4">
               <div className="space-y-6">
                 {/* Recruiter Notes */}
-                <div className="rounded-2xl border border-border-light bg-white p-6">
+                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900 text-lg">
+                    <h3 className="font-bold text-lg text-text-heading">
                       Заметки рекрутера
                     </h3>
                     <button
@@ -153,7 +153,7 @@ export default function CandidateDetailPage() {
                         className="rounded-xl border border-border-light bg-bg-light p-4"
                         key={note.id}
                       >
-                        <p className="mb-3 text-gray-700 text-sm">
+                        <p className="mb-3 text-sm text-text-label">
                           {note.content}
                         </p>
                         <div className="flex items-center justify-between">
@@ -168,7 +168,7 @@ export default function CandidateDetailPage() {
                               <PencilIcon className="h-4 w-4" />
                             </button>
                             <button
-                              className="text-red-500 hover:text-red-600"
+                              className="text-danger-red hover:text-accent-red"
                               type="button"
                             >
                               <TrashIcon className="h-4 w-4" />
@@ -181,15 +181,15 @@ export default function CandidateDetailPage() {
                 </div>
 
                 {/* Recent Activities */}
-                <div className="rounded-2xl border border-border-light bg-white p-6">
-                  <h3 className="mb-4 font-bold text-gray-900 text-lg">
+                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
+                  <h3 className="mb-4 font-bold text-lg text-text-heading">
                     Последние действия
                   </h3>
 
                   <div className="space-y-4">
                     {candidate.activities.map((activity) => (
                       <div className="flex gap-3" key={activity.id}>
-                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gray-200">
+                        <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-border-light">
                           {activity.userAvatar ? (
                             <Image
                               alt={activity.userName}
@@ -199,24 +199,24 @@ export default function CandidateDetailPage() {
                               width={32}
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-primary-blue font-medium text-white text-xs">
+                            <div className="flex h-full w-full items-center justify-center bg-primary-blue font-medium text-bg-light text-xs">
                               {activity.userName.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div className="flex-1">
                           <div className="mb-1 flex items-center justify-between">
-                            <span className="font-medium text-gray-900 text-sm">
+                            <span className="font-medium text-sm text-text-heading">
                               {activity.userName}
                             </span>
                             <span className="flex items-center gap-1 text-text-muted text-xs">
                               {activity.timeAgo === "Только что" && (
-                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                <span className="h-2 w-2 rounded-full bg-danger-red" />
                               )}
                               {activity.timeAgo}
                             </span>
                           </div>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-sm text-text-secondary">
                             {activity.action}{" "}
                             <span className="text-primary-blue">
                               {activity.targetName}
@@ -230,8 +230,8 @@ export default function CandidateDetailPage() {
                 </div>
 
                 {/* Communication */}
-                <div className="rounded-2xl border border-border-light bg-white p-6">
-                  <h3 className="font-bold text-gray-900 text-lg">
+                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
+                  <h3 className="font-bold text-lg text-text-heading">
                     Коммуникация
                   </h3>
                   <div className="mt-4 text-sm text-text-muted">
@@ -267,14 +267,14 @@ export default function CandidateDetailPage() {
           />
 
           {noteError && (
-            <div className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
+            <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
               {noteError}
             </div>
           )}
 
           <div className="flex justify-end gap-3">
             <button
-              className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-bg-light disabled:cursor-not-allowed disabled:opacity-60"
               disabled={addCandidateNote.isPending}
               onClick={closeAddNoteModal}
               type="button"
@@ -282,7 +282,7 @@ export default function CandidateDetailPage() {
               Отмена
             </button>
             <button
-              className="rounded-[8px] bg-primary-blue px-5 py-2.5 font-medium text-[14px] text-white transition-colors hover:bg-primary-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-[8px] bg-primary-blue px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
               disabled={addCandidateNote.isPending}
               onClick={handleSaveNote}
               type="button"

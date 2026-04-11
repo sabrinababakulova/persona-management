@@ -12,7 +12,7 @@ export function HeaderSummary({
   progress,
 }: HeaderSummaryProps) {
   return (
-    <div className="sticky top-0 z-10 bg-white pt-4 pb-6">
+    <div className="sticky top-0 z-10 bg-bg-light pt-4 pb-6">
       <div className="max-w-[640px]">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-2">

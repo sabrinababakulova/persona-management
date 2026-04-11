@@ -51,7 +51,7 @@ const statusToneConfig: Record<
   }
 > = {
   new: {
-    containerClassName: "border border-status-outline-border bg-white",
+    containerClassName: "border border-status-outline-border bg-bg-light",
     textClassName: "text-text-placeholder",
   },
   screening: {
@@ -331,12 +331,12 @@ export default function CandidatesPage() {
   if (isLookupsError && !isLookupsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-red-200 bg-red-50 p-5 text-red-700">
+        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
           <p className="mb-4 text-[14px]">
             Не удалось загрузить справочники из базы данных.
           </p>
           <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-white hover:bg-primary-blue-hover"
+            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
             onClick={() => void refetchLookups()}
             type="button"
           >
@@ -384,7 +384,7 @@ export default function CandidatesPage() {
       {toastMessage && (
         <output
           aria-live="polite"
-          className="fixed top-6 right-6 z-70 rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-white shadow-toast"
+          className="fixed top-6 right-6 z-70 rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-bg-light shadow-toast"
         >
           {toastMessage}
         </output>
@@ -393,7 +393,7 @@ export default function CandidatesPage() {
       <main className="flex-1 overflow-auto">
         <div className="p-4 pb-10 lg:p-8 lg:pb-10">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-bold text-2xl text-gray-900 lg:text-3xl">
+            <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
               Кандидаты
             </h1>
             {(showCandidatesTable || isAnyCandidatesLoading) && (
@@ -412,9 +412,9 @@ export default function CandidatesPage() {
             <>
               <div className="mb-6 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
                   <input
-                    className="w-full rounded-xl border border-border-light bg-white py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                    className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-text-label placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setCurrentPage(1);
@@ -425,10 +425,10 @@ export default function CandidatesPage() {
                   />
                 </div>
                 <button
-                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-gray-700 transition-colors hover:bg-bg-light ${
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-text-label transition-colors hover:bg-bg-light ${
                     activeFilterCount > 0
                       ? "border-primary-blue bg-primary-blue/5"
-                      : "border-border-light bg-white"
+                      : "border-border-light bg-bg-light"
                   }`}
                   onClick={() => setIsFilterModalOpen(true)}
                   type="button"
@@ -438,8 +438,8 @@ export default function CandidatesPage() {
                   <span
                     className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
                       activeFilterCount > 0
-                        ? "bg-primary-blue text-white"
-                        : "bg-gray-200 text-gray-700"
+                        ? "bg-primary-blue text-bg-light"
+                        : "bg-border-light text-text-label"
                     }`}
                   >
                     {activeFilterCount > 0 ? activeFilterCount : "+"}
@@ -447,7 +447,7 @@ export default function CandidatesPage() {
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-[8px] border border-border-input bg-white">
+              <div className="overflow-hidden rounded-[8px] border border-border-input bg-bg-light">
                 <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-[14px] lg:grid">
                   <div className="col-span-3 flex items-center gap-1 text-[14px] text-text-placeholder">
                     <span>Название</span>
@@ -490,7 +490,7 @@ export default function CandidatesPage() {
                       return (
                         <div
                           className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
-                            index % 2 === 0 ? "bg-white" : "bg-bg-input"
+                            index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
                           }`}
                           key={candidate.id}
                         >
@@ -606,7 +606,7 @@ export default function CandidatesPage() {
               <div className="flex w-full max-w-[240px] flex-col items-center gap-10">
                 <NoCandidates className="h-[190px] w-[240px] opacity-70" />
                 <button
-                  className="flex h-[40px] w-[190px] items-center justify-center rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-white leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                  className="flex h-[40px] w-[190px] items-center justify-center rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
                   onClick={() => setIsQuickAddModalOpen(true)}
                   type="button"
                 >
@@ -620,7 +620,7 @@ export default function CandidatesPage() {
 
       <button
         aria-label="Быстро добавить кандидата"
-        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-white shadow-lg transition-colors hover:bg-primary-blue-hover"
+        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-bg-light shadow-lg transition-colors hover:bg-primary-blue-hover"
         onClick={() => setIsQuickAddModalOpen(true)}
         type="button"
       >

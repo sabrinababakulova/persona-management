@@ -125,7 +125,7 @@ export function VacancySelector({
 
           {isOpen && (
             <div
-              className="absolute top-[calc(100%+8px)] left-0 z-50 w-full rounded-[8px] border border-border-input bg-white shadow-lg"
+              className="absolute top-[calc(100%+8px)] left-0 z-50 w-full rounded-[8px] border border-border-input bg-bg-light shadow-toast"
               id={`${selectId}-panel`}
             >
               <div className="border-border-input border-b p-3">

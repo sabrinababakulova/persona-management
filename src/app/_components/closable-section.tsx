@@ -18,7 +18,7 @@ export const ClosableSection = ({
         <button
           aria-expanded={isSectionOpen}
           aria-label={`Свернуть или развернуть ${title}`}
-          className="rounded p-1 text-[#65748A] transition-colors hover:bg-bg-hover"
+          className="rounded p-1 text-text-secondary transition-colors hover:bg-bg-hover"
           onClick={() => setIsSectionOpen((prev) => !prev)}
           type="button"
         >

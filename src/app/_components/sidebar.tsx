@@ -107,7 +107,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
               <span className="flex-1">{item.label}</span>
 
               {item.badge && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-badge-red font-semibold text-white text-xs">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-badge-red font-semibold text-bg-light text-xs">
                   {item.badge}
                 </span>
               )}
@@ -137,7 +137,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
       <div
         aria-hidden={!mobileIsOpen}
-        className={`fixed inset-0 z-40 bg-black/35 transition-opacity duration-300 lg:hidden ${
+        className={`fixed inset-0 z-40 bg-text-heading/35 transition-opacity duration-300 lg:hidden ${
           mobileIsOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
@@ -145,7 +145,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
       <aside
         aria-hidden={!mobileIsOpen}
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-80 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-8 shadow-2xl transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-80 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-8 shadow-toast transition-transform duration-300 lg:hidden ${
           mobileIsOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

@@ -168,14 +168,14 @@ export function FilterModal({
 
         <div className="flex gap-3 pt-1">
           <button
-            className="flex-1 rounded-[6px] border border-border-input bg-white py-2.5 font-medium text-[14px] text-text-heading transition-colors hover:bg-bg-light"
+            className="flex-1 rounded-[6px] border border-border-input bg-bg-light py-2.5 font-medium text-[14px] text-text-heading transition-colors hover:bg-bg-input"
             onClick={() => onApply(EMPTY_FILTER_MODAL_FILTERS)}
             type="button"
           >
             Сбросить
           </button>
           <button
-            className="flex-1 rounded-[6px] bg-primary-blue py-2.5 font-medium text-[14px] text-white transition-colors hover:bg-primary-blue-hover"
+            className="flex-1 rounded-[6px] bg-primary-blue py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover"
             onClick={() => onApply(draft)}
             type="button"
           >

@@ -77,7 +77,7 @@ function WorkExperienceEntry({
   return (
     <div className="flex flex-col gap-[10px]">
       <div className="flex w-full items-start gap-[14px]">
-        <div className="flex shrink-0 items-center rounded-[6px] bg-[#fff4e3] p-2 text-[#dd8d0c]">
+        <div className="flex shrink-0 items-center rounded-[6px] bg-status-neutral-bg p-2 text-status-neutral">
           <PackageIcon className="h-6 w-6" />
         </div>
 
@@ -187,7 +187,7 @@ export function CandidateBackgroundCard({
   );
 
   return (
-    <section className="flex w-full flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-white p-5">
+    <section className="flex w-full flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-5">
       <div className="flex flex-col gap-5">
         <SectionHeader
           isExpanded={isExperienceExpanded}

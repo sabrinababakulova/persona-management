@@ -14,28 +14,28 @@ export function PeopleIcon({ className, ...props }: IconProps) {
     >
       <path
         d="M128.696 209C184.15 209 229.107 164.115 229.107 108.553C229.107 52.9914 183.952 8.10681 128.696 8.10681C73.2422 8.10681 28.2852 52.9914 28.2852 108.553C28.2852 164.115 73.2422 209 128.696 209Z"
-        fill="#EAEEF9"
+        fill="var(--color-illustration-surface)"
       />
       <path
         d="M222.571 42.7095C227.056 42.7095 230.691 39.08 230.691 34.6026C230.691 30.1253 227.056 26.4957 222.571 26.4957C218.087 26.4957 214.451 30.1253 214.451 34.6026C214.451 39.08 218.087 42.7095 222.571 42.7095Z"
-        fill="#EAEEF9"
+        fill="var(--color-illustration-surface)"
       />
       <path
         d="M234.455 11.0728C237.517 11.0728 240 8.59411 240 5.53642C240 2.47874 237.517 0 234.455 0C231.392 0 228.909 2.47874 228.909 5.53642C228.909 8.59411 231.392 11.0728 234.455 11.0728Z"
-        fill="#EAEEF9"
+        fill="var(--color-illustration-surface)"
       />
       <path
         d="M33.6323 42.5119C36.6949 42.5119 39.1776 40.0332 39.1776 36.9755C39.1776 33.9178 36.6949 31.4391 33.6323 31.4391C30.5697 31.4391 28.0869 33.9178 28.0869 36.9755C28.0869 40.0332 30.5697 42.5119 33.6323 42.5119Z"
-        fill="#EAEEF9"
+        fill="var(--color-illustration-surface)"
       />
       <path
         d="M10.2985 162.194C15.9863 162.194 20.5971 157.59 20.5971 151.912C20.5971 146.233 15.9863 141.63 10.2985 141.63C4.61081 141.63 0 146.233 0 151.912C0 157.59 4.61081 162.194 10.2985 162.194Z"
-        fill="#EAEEF9"
+        fill="var(--color-illustration-surface)"
       />
       <g filter="url(#filter0_d_429_2608)">
         <path
           d="M235.559 153.298H205.096C203.656 153.298 202.421 152.373 202.009 151.14C199.025 142.304 192.438 140.146 176.487 133.879C175.56 133.468 175.458 132.235 176.384 131.721C181.015 129.461 180.192 127.508 180.192 113.946C179.986 113.74 179.78 113.432 179.677 113.227C178.648 111.685 177.927 109.836 177.722 107.986L176.693 107.473C173.605 108.192 173.811 104.904 172.988 98.5338C172.679 95.8624 173.091 95.3487 174.223 94.9377L175.252 93.602C169.18 80.0394 172.267 71.5114 178.236 68.429C176.281 64.1137 176.178 62.5724 176.178 62.5724C176.178 62.5724 188.836 64.7301 193.159 63.8054C198.716 62.6752 207.155 64.0109 210.345 71.3059C215.594 73.3609 217.652 76.7515 218.166 80.2449C218.887 85.9987 215.696 92.2662 215.079 94.7322C215.182 94.8349 215.182 94.9377 215.285 95.0404C216.108 95.4514 216.417 96.1706 216.108 98.431C215.388 104.493 215.491 108.295 212.403 107.37L209.625 112.199C209.522 112.816 209.419 113.021 209.419 113.329C209.316 114.254 209.316 116.001 209.316 126.07C209.316 127.303 209.625 128.433 210.242 129.358C210.86 130.488 211.889 131.31 213.124 131.824H213.227C220.43 134.803 225.576 136.756 229.384 138.297C237.823 141.687 239.263 142.612 239.984 148.263C240.19 151.037 238.234 153.298 235.559 153.298Z"
-          fill="white"
+          fill="var(--color-white)"
         />
       </g>
       <path
@@ -44,7 +44,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <path
         d="M232.367 153.296C235.557 148.365 234.322 143.741 229.177 138.295C237.616 141.686 239.056 142.611 239.777 148.262C240.188 150.83 238.13 153.194 235.454 153.194H232.367V153.296Z"
-        fill="#9AA2B2"
+        fill="var(--color-illustration-muted)"
         opacity="0.1"
       />
       <path
@@ -54,7 +54,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       <g filter="url(#filter1_d_429_2608)">
         <path
           d="M78.1013 130.384C73.1615 130.281 72.6469 129.356 72.6469 129.356V121.137C77.8955 116.821 82.3207 111.787 83.5557 105.211C86.8489 104.492 88.9072 101.512 88.5984 98.2242C88.4955 96.7857 87.5693 95.45 87.4664 93.9088C87.4664 93.1896 87.4664 92.4703 87.4664 91.7511C87.4664 91.2374 87.4664 90.8264 87.3635 90.3127C87.3635 89.7989 87.2605 89.2852 87.2605 88.7715C86.9518 86.3055 86.3343 83.7369 84.6877 80.7572C80.5712 73.0512 72.4411 67.9139 63.2819 67.9139C61.4295 67.9139 59.577 68.1194 57.8275 68.5304C54.5343 69.2496 51.5499 70.688 48.8741 72.743C48.3596 73.154 47.845 73.5649 47.3304 73.9759C47.2275 74.0787 47.1246 74.1814 46.9188 74.2842C44.0372 76.9556 41.7732 80.3462 40.5382 84.1479C39.3033 87.9495 38.9945 91.8539 39.5091 95.7582C39.5091 95.861 39.5091 95.9637 39.5091 96.0665C39.5091 96.1692 39.5091 96.272 39.5091 96.3747C39.612 97.0939 39.8178 96.9912 39.3033 97.6077C39.2003 97.8132 38.9945 98.0187 38.8916 98.3269C38.2741 99.4571 37.7596 100.998 38.48 102.848C39.7149 106.341 42.1848 105.827 44.4489 107.78C44.346 107.882 44.1401 107.985 44.0372 107.985H43.9343L41.3615 108.807C25.9246 113.636 24.1751 129.973 40.0236 132.953C38.8916 133.055 37.8625 133.672 37.1421 134.185C32.0994 138.09 28.9091 144.049 28.0858 149.906C27.777 151.652 29.2178 153.296 31.0702 153.296H55.5634C56.078 153.296 56.5926 152.885 56.7984 152.372C59.0625 144.152 64.2081 141.275 74.911 136.96L81.0858 134.494C82.1149 134.083 83.247 133.672 84.4819 133.158C85.6139 132.747 85.511 131.103 84.2761 130.795C83.0411 130.487 81.8062 130.384 80.5712 130.281C79.5421 130.384 78.7188 130.384 78.1013 130.384ZM46.713 119.904C46.713 118.876 47.4334 117.746 48.977 116.513C49.5945 117.335 50.4178 118.26 51.344 119.082C52.0644 119.698 52.7848 120.315 53.6081 120.931C54.1227 121.239 54.6372 121.65 55.1518 122.061C55.2547 122.164 55.3576 122.267 55.4605 122.267C55.5635 122.37 55.7693 122.472 55.8722 122.575V127.61C55.7693 127.507 55.6664 127.404 55.5634 127.404C55.0489 126.993 54.6372 126.582 54.2256 126.274C53.5052 125.76 52.7848 125.349 52.0644 124.938C51.7557 124.733 51.5499 124.63 51.344 124.425C48.977 122.883 46.8159 121.445 46.713 119.904Z"
-          fill="white"
+          fill="var(--color-white)"
         />
       </g>
       <path
@@ -67,7 +67,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <path
         d="M49.2852 116.821C49.9026 117.643 50.623 118.362 51.2405 118.979C50.5201 118.362 49.7997 117.643 49.2852 116.821Z"
-        fill="#3973F4"
+        fill="var(--color-illustration-accent-blue)"
       />
       <path
         d="M58.9585 142.816C57.0032 145.282 53.2984 145.385 50.211 145.282C53.5042 142.097 51.6517 131.72 40.1255 132.953H40.0226C24.1741 129.973 25.9236 113.636 41.2576 108.807L43.8304 107.985C44.0362 108.088 44.1391 108.191 44.242 108.396C45.477 111.581 47.1236 114.253 48.8731 116.41C42.5954 121.65 51.343 123.294 55.5624 127.301C59.2673 129.459 62.3547 138.501 58.9585 142.816Z"
@@ -75,12 +75,12 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <path
         d="M49.1815 116.821C49.079 116.718 48.9766 116.616 48.9766 116.513C48.9766 116.513 49.079 116.718 49.1815 116.821Z"
-        fill="#3973F4"
+        fill="var(--color-illustration-accent-blue)"
       />
       <g filter="url(#filter2_d_429_2608)">
         <path
           d="M196.143 158.023C196.657 161.824 193.673 165.318 189.762 165.318H69.1484C65.2377 165.318 62.2532 161.824 62.7678 158.023C63.8998 150.111 65.6493 148.467 77.3814 143.741L80.2629 142.611C85.7173 140.453 92.8183 137.782 102.389 133.774C104.55 132.85 106.3 131.206 107.226 129.048C107.741 127.918 108.049 126.582 108.049 125.247V107.266C107.741 106.855 107.432 106.547 107.226 106.136C105.682 103.875 104.653 101.204 104.344 98.3269L102.801 97.6077C98.1697 98.7379 98.5814 93.806 97.3464 84.3533C96.8319 80.449 97.4493 79.627 99.1989 79.0105L100.64 77.0583C91.7891 57.0227 96.2144 44.4876 104.962 40.0695C102.286 33.6992 102.08 31.4388 102.08 31.4388C102.08 31.4388 120.708 34.5212 127.088 33.2882C135.218 31.6443 147.774 33.5965 152.405 44.3849C160.123 47.4673 163.108 52.2964 163.828 57.6392C164.96 66.0644 160.123 75.3116 159.197 78.9078C159.3 79.1132 159.3 79.216 159.403 79.3187C160.638 79.9352 161.049 80.9627 160.638 84.3533C159.506 93.2923 159.814 98.8406 155.183 97.6077L151.067 104.8C150.861 105.622 150.861 105.93 150.758 106.547C150.552 107.882 150.655 110.554 150.655 125.247C150.655 126.993 151.17 128.74 152.096 130.076C153.125 131.617 154.566 132.953 156.315 133.672C156.418 133.672 156.418 133.672 156.521 133.774C167.121 138.193 174.737 141.07 180.294 143.227C192.952 148.159 194.908 149.7 196.143 158.023Z"
-          fill="white"
+          fill="var(--color-white)"
         />
       </g>
       <path
@@ -89,7 +89,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <path
         d="M185.235 165.215C189.969 158.023 188.117 151.242 180.501 143.227C192.953 148.159 195.012 149.7 196.144 157.92C196.658 161.722 193.674 165.215 189.763 165.215H185.235Z"
-        fill="#9AA2B2"
+        fill="var(--color-illustration-muted)"
         opacity="0.1"
       />
       <path
@@ -102,7 +102,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <path
         d="M119.5 178.099L128.687 188.99L148.208 169.5"
-        stroke="white"
+        stroke="var(--color-white)"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="5"
@@ -126,20 +126,12 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feColorMatrix
-            type="matrix"
-            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
-          />
-          <feBlend
-            in2="BackgroundImageFix"
-            mode="normal"
-            result="effect1_dropShadow_429_2608"
-          />
-          <feBlend
-            in="SourceGraphic"
-            in2="effect1_dropShadow_429_2608"
-            mode="normal"
-            result="shape"
+          <feDropShadow
+            dx="0"
+            dy="11"
+            floodColor="var(--color-shadow-illustration)"
+            floodOpacity="0.27"
+            stdDeviation="11"
           />
         </filter>
         <filter
@@ -160,20 +152,12 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feColorMatrix
-            type="matrix"
-            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
-          />
-          <feBlend
-            in2="BackgroundImageFix"
-            mode="normal"
-            result="effect1_dropShadow_429_2608"
-          />
-          <feBlend
-            in="SourceGraphic"
-            in2="effect1_dropShadow_429_2608"
-            mode="normal"
-            result="shape"
+          <feDropShadow
+            dx="0"
+            dy="11"
+            floodColor="var(--color-shadow-illustration)"
+            floodOpacity="0.27"
+            stdDeviation="11"
           />
         </filter>
         <filter
@@ -194,20 +178,12 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feColorMatrix
-            type="matrix"
-            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
-          />
-          <feBlend
-            in2="BackgroundImageFix"
-            mode="normal"
-            result="effect1_dropShadow_429_2608"
-          />
-          <feBlend
-            in="SourceGraphic"
-            in2="effect1_dropShadow_429_2608"
-            mode="normal"
-            result="shape"
+          <feDropShadow
+            dx="0"
+            dy="11"
+            floodColor="var(--color-shadow-illustration)"
+            floodOpacity="0.27"
+            stdDeviation="11"
           />
         </filter>
         <linearGradient
@@ -218,8 +194,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="78.5516"
           y2="78.5516"
         >
-          <stop stopColor="#B0BACC" />
-          <stop offset="1" stopColor="#969EAE" />
+          <stop stopColor="var(--color-illustration-metal)" />
+          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -229,8 +205,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="131.94"
           y2="121.298"
         >
-          <stop stopColor="white" />
-          <stop offset="1" stopColor="#E2E5EC" />
+          <stop stopColor="var(--color-white)" />
+          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -240,8 +216,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="135.299"
           y2="127.488"
         >
-          <stop stopColor="white" />
-          <stop offset="1" stopColor="#E2E5EC" />
+          <stop stopColor="var(--color-white)" />
+          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -251,8 +227,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="82.0445"
           y2="82.0445"
         >
-          <stop stopColor="#B0BACC" />
-          <stop offset="1" stopColor="#969EAE" />
+          <stop stopColor="var(--color-illustration-metal)" />
+          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -262,8 +238,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="126.65"
           y2="126.65"
         >
-          <stop stopColor="#B0BACC" />
-          <stop offset="1" stopColor="#969EAE" />
+          <stop stopColor="var(--color-illustration-metal)" />
+          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -273,8 +249,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="55.1784"
           y2="55.1784"
         >
-          <stop stopColor="#B0BACC" />
-          <stop offset="1" stopColor="#969EAE" />
+          <stop stopColor="var(--color-illustration-metal)" />
+          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -284,8 +260,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="133.742"
           y2="118.063"
         >
-          <stop stopColor="white" />
-          <stop offset="1" stopColor="#E2E5EC" />
+          <stop stopColor="var(--color-white)" />
+          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -295,8 +271,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="177.699"
           y2="177.699"
         >
-          <stop stopColor="#B0BACC" />
-          <stop offset="1" stopColor="#969EAE" />
+          <stop stopColor="var(--color-illustration-metal)" />
+          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
         </linearGradient>
       </defs>
     </svg>

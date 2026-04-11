@@ -61,7 +61,7 @@ export function HhAccountSection() {
 
         {account && (
           <button
-            className="h-10 rounded-[6px] border border-danger-red px-4 font-semibold text-[14px] text-danger-red leading-none tracking-[-0.28px] transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 rounded-[6px] border border-danger-red px-4 font-semibold text-[14px] text-danger-red leading-none tracking-[-0.28px] transition-colors hover:bg-danger-red-bg disabled:cursor-not-allowed disabled:opacity-60"
             disabled={removeAccount.isPending}
             onClick={() => {
               removeAccount.mutate();

@@ -10,10 +10,10 @@ export function BrandLogoIcon({ className, ...props }: IconProps) {
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <circle className="fill-icon-blue" cx="24" cy="24" r="24" />
+      <circle cx="24" cy="24" fill="var(--color-icon-blue)" r="24" />
       <path
         d="M14 20 L34 20 L24 32 L34 20"
-        stroke="white"
+        stroke="var(--color-white)"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="3"

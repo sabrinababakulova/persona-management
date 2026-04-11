@@ -121,13 +121,13 @@ export function Modal({
     >
       <button
         aria-label={closeButtonLabel}
-        className={`absolute inset-0 bg-black/20 ${overlayClassName ?? ""}`}
+        className={`absolute inset-0 bg-text-heading/20 ${overlayClassName ?? ""}`}
         onClick={closeOnBackdropClick ? onClose : undefined}
         type="button"
       />
 
       <div
-        className={`relative w-full rounded-[8px] border border-border-input bg-white p-5 shadow-[6px_6px_26.2px_0px_rgba(43,48,66,0.10)] ${maxWidthClassName} ${panelClassName ?? ""}`}
+        className={`relative w-full rounded-[8px] border border-border-input bg-bg-light p-5 shadow-toast ${maxWidthClassName} ${panelClassName ?? ""}`}
         ref={dialogPanelRef}
         tabIndex={-1}
       >

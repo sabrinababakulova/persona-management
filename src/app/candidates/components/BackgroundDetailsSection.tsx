@@ -87,7 +87,7 @@ export function BackgroundDetailsSection({
                             errors,
                             `workExperience.${index}.company`,
                           )
-                            ? "border-red-500"
+                            ? "border-danger-red"
                             : undefined
                         }
                         label="Компания"
@@ -106,7 +106,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `workExperience.${index}.company`,
                       ) && (
-                        <p className="text-[12px] text-red-500">
+                        <p className="text-[12px] text-danger-red">
                           {getFieldError(
                             errors,
                             `workExperience.${index}.company`,
@@ -122,7 +122,7 @@ export function BackgroundDetailsSection({
                             errors,
                             `workExperience.${index}.position`,
                           )
-                            ? "border-red-500"
+                            ? "border-danger-red"
                             : undefined
                         }
                         label="Должность"
@@ -141,7 +141,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `workExperience.${index}.position`,
                       ) && (
-                        <p className="text-[12px] text-red-500">
+                        <p className="text-[12px] text-danger-red">
                           {getFieldError(
                             errors,
                             `workExperience.${index}.position`,
@@ -155,7 +155,7 @@ export function BackgroundDetailsSection({
                     <Input
                       className={
                         getFieldError(errors, `workExperience.${index}.period`)
-                          ? "border-red-500"
+                          ? "border-danger-red"
                           : undefined
                       }
                       label="Период"
@@ -174,7 +174,7 @@ export function BackgroundDetailsSection({
                       errors,
                       `workExperience.${index}.period`,
                     ) && (
-                      <p className="text-[12px] text-red-500">
+                      <p className="text-[12px] text-danger-red">
                         {getFieldError(
                           errors,
                           `workExperience.${index}.period`,
@@ -190,7 +190,7 @@ export function BackgroundDetailsSection({
                           errors,
                           `workExperience.${index}.description`,
                         )
-                          ? "border-red-500"
+                          ? "border-danger-red"
                           : undefined
                       }
                       label="Описание обязанностей"
@@ -210,7 +210,7 @@ export function BackgroundDetailsSection({
                       errors,
                       `workExperience.${index}.description`,
                     ) && (
-                      <p className="text-[12px] text-red-500">
+                      <p className="text-[12px] text-danger-red">
                         {getFieldError(
                           errors,
                           `workExperience.${index}.description`,
@@ -266,7 +266,7 @@ export function BackgroundDetailsSection({
                             errors,
                             `education.${index}.institution`,
                           )
-                            ? "border-red-500"
+                            ? "border-danger-red"
                             : undefined
                         }
                         label="Учебное заведение"
@@ -285,7 +285,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `education.${index}.institution`,
                       ) && (
-                        <p className="text-[12px] text-red-500">
+                        <p className="text-[12px] text-danger-red">
                           {getFieldError(
                             errors,
                             `education.${index}.institution`,
@@ -298,7 +298,7 @@ export function BackgroundDetailsSection({
                       <Input
                         className={
                           getFieldError(errors, `education.${index}.gpa`)
-                            ? "border-red-500"
+                            ? "border-danger-red"
                             : undefined
                         }
                         label="GPA / оценка"
@@ -310,7 +310,7 @@ export function BackgroundDetailsSection({
                         value={item.gpa}
                       />
                       {getFieldError(errors, `education.${index}.gpa`) && (
-                        <p className="text-[12px] text-red-500">
+                        <p className="text-[12px] text-danger-red">
                           {getFieldError(errors, `education.${index}.gpa`)}
                         </p>
                       )}
@@ -320,7 +320,7 @@ export function BackgroundDetailsSection({
                       <Input
                         className={
                           getFieldError(errors, `education.${index}.period`)
-                            ? "border-red-500"
+                            ? "border-danger-red"
                             : undefined
                         }
                         label="Период обучения"
@@ -336,7 +336,7 @@ export function BackgroundDetailsSection({
                         value={item.period}
                       />
                       {getFieldError(errors, `education.${index}.period`) && (
-                        <p className="text-[12px] text-red-500">
+                        <p className="text-[12px] text-danger-red">
                           {getFieldError(errors, `education.${index}.period`)}
                         </p>
                       )}

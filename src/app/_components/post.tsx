@@ -31,14 +31,14 @@ export function LatestPost() {
         }}
       >
         <input
-          className="w-full rounded-full bg-white/10 px-4 py-2 text-white"
+          className="w-full rounded-full bg-bg-light/10 px-4 py-2 text-bg-light"
           onChange={(e) => setName(e.target.value)}
           placeholder="Title"
           type="text"
           value={name}
         />
         <button
-          className="rounded-full bg-white/10 px-10 py-3 font-semibold transition hover:bg-white/20"
+          className="rounded-full bg-bg-light/10 px-10 py-3 font-semibold transition hover:bg-bg-light/20"
           disabled={createPost.isPending}
           type="submit"
         >

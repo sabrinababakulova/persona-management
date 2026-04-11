@@ -5,12 +5,24 @@
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
+  /* Base */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
   /* Brand / Primary */
   --color-primary-blue: #237af8;
   --color-primary-blue-dark: #3b82f6;
   --color-primary-blue-hover: #1a6ae0;
   --color-primary-blue-light: rgba(68, 145, 255, 0.16);
   --color-primary-blue-light-hover: rgba(68, 145, 255, 0.24);
+  --color-primary-blue-accent: #3973f4;
+  --color-primary-blue-soft: #4c91f6;
+  --color-telegram-blue: #0088cc;
+  --color-telegram-blue-hover: #006da3;
+  --color-ai-violet: #9747ff;
+  --color-ai-violet-soft: rgba(151, 71, 255, 0.07);
+  --color-accent-pink: #ff558e;
+  --color-accent-orange: #ffc466;
 
   /* Text */
   --color-text-heading: #1c1c1e;
@@ -20,11 +32,16 @@
   --color-text-placeholder-hover: #8a94a8;
   --color-text-disabled: #c1c8d4;
   --color-text-muted: #6b7280;
+  --color-text-menu: #3a465d;
+  --color-text-icon: #697077;
+  --color-text-icon-subtle: #65748a;
 
   /* Borders */
   --color-border-input: #e5e9f2;
   --color-border-light: #e5e7eb;
   --color-header-border: #e5e7eb;
+  --color-border-control: #e2e8f0;
+  --color-border-menu: #d8dee8;
 
   /* Backgrounds */
   --color-bg-input: #fafbfc;
@@ -32,6 +49,13 @@
   --color-bg-light: #f9fafb;
   --color-bg-active-menu: #e6efff;
   --color-table-header-bg: #f9fafb;
+  --color-bg-avatar: #cedbf5;
+  --color-bg-panel-hover: #f8fafc;
+  --color-bg-frosted: rgba(255, 255, 255, 0.9);
+  --color-bg-overlay-soft: rgba(0, 0, 0, 0.2);
+  --color-bg-overlay-medium: rgba(0, 0, 0, 0.35);
+  --color-bg-overlay-strong: rgba(0, 0, 0, 0.4);
+  --color-bg-overlay-none: rgba(0, 0, 0, 0);
 
   /* Sidebar */
   --color-sidebar-bg: #1a1a1a;
@@ -43,6 +67,9 @@
   --color-badge-red: #ef4444;
   --color-icon-blue: #3b82f6;
   --color-checkbox-blue: #3b82f6;
+  --color-accent-red-soft: rgba(242, 51, 115, 0.1);
+  --color-warning-orange-bg: #fff4e3;
+  --color-danger-pink-bg: #fff1f3;
 
   /* Status */
   --color-success-green: #22c55e;
@@ -72,8 +99,29 @@
   --color-status-danger-soft: #fce8ef;
   --color-status-draft-soft: #e9edf3;
 
+  /* Utility Scale */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+  --color-red-50: #fef2f2;
+  --color-red-200: #fecaca;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-green-50: #f0fdf4;
+  --color-green-200: #bbf7d0;
+  --color-green-700: #15803d;
+
   /* Shadows */
   --shadow-toast: 0 8px 24px rgba(43, 48, 66, 0.2);
+  --shadow-menu: 0 8px 20px rgba(27, 39, 94, 0.08);
+  --shadow-card-lg: 0 20px 50px rgba(16, 24, 40, 0.08);
+  --shadow-modal: 6px 6px 26.2px 0 rgba(43, 48, 66, 0.1);
 
   /* Charts */
   --color-chart-pink: #f472b6;
@@ -81,6 +129,21 @@
   --color-chart-orange: #fb923c;
   --color-chart-blue: #60a5fa;
   --color-progress-orange: #fb923c;
+
+  /* Illustration */
+  --color-illustration-surface: #eaeef9;
+  --color-illustration-muted: #9aa2b2;
+  --color-illustration-accent-blue: #3973f4;
+  --color-illustration-metal: #b0bacc;
+  --color-illustration-metal-strong: #969eae;
+  --color-illustration-highlight: #e2e5ec;
+  --color-illustration-gradient-start: #b0bacc;
+  --color-illustration-gradient-end: #969eae;
+  --color-illustration-gradient-soft-end: #e2e5ec;
+  --color-illustration-paper-start: #fdfeff;
+  --color-illustration-paper-end: #ecf0f5;
+  --color-shadow-illustration: #657a92;
+  --color-accent-ai: #9747ff;
 
   /* T3 Template (landing page) */
   --color-t3-gradient-start: #2e026d;

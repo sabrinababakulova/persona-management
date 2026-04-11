@@ -4,7 +4,7 @@ export const RecentActions = ({
   recentActivities = [],
 }: RecentActionsProps) => {
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-white p-4">
+    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
       <div className="flex items-center justify-between">
         <h3 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
           Последние действия
@@ -19,7 +19,7 @@ export const RecentActions = ({
             <div className="flex flex-col gap-2" key={activity.id}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#cedbf5] font-semibold text-[9px] text-primary-blue leading-none tracking-[-0.18px]">
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary-blue-light font-semibold text-[9px] text-primary-blue leading-none tracking-[-0.18px]">
                     {activity.candidateInitials.slice(0, 2)}
                   </div>
                   <p className="truncate font-medium text-[14px] text-text-heading leading-none tracking-[-0.28px]">

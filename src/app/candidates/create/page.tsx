@@ -7,7 +7,7 @@ export default async function CreateCandidatePage() {
 
   return (
     <HydrateClient>
-      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-white">
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-bg-light">
         <CreateCandidateForm />
       </main>
     </HydrateClient>
