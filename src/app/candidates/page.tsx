@@ -8,6 +8,12 @@ import type { Candidate, CandidateStatus } from "~/types/pages/candidates-page";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 import { Checkbox } from "../_components/checkbox";
 import {
+  countActiveFilters,
+  EMPTY_FILTER_MODAL_FILTERS,
+  FilterModal,
+  type FilterModalFilters,
+} from "../_components/filter-modal";
+import {
   ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
@@ -107,6 +113,10 @@ export default function CandidatesPage() {
     null,
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
+    EMPTY_FILTER_MODAL_FILTERS,
+  );
 
   const statusOptions = useMemo(
     () => mapStatusOptions(lookups?.statusOptions ?? []),
@@ -237,12 +247,41 @@ export default function CandidatesPage() {
     });
   };
 
+  const handleApplyFilters = (filters: FilterModalFilters) => {
+    setAppliedFilters(filters);
+    setIsFilterModalOpen(false);
+  };
+
+  const activeFilterCount = countActiveFilters(appliedFilters);
+
   const filteredCandidates = candidates.filter((candidate: Candidate) => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const fullName = `${candidate.name} ${candidate.patronymic}`.toLowerCase();
 
-    return fullName.includes(normalizedQuery);
+    if (!fullName.includes(normalizedQuery)) return false;
+    if (
+      appliedFilters.statuses.length > 0 &&
+      !appliedFilters.statuses.includes(candidate.status)
+    ) {
+      return false;
+    }
+    if (
+      appliedFilters.city.trim() &&
+      !candidate.city
+        ?.toLowerCase()
+        .includes(appliedFilters.city.trim().toLowerCase())
+    ) {
+      return false;
+    }
+    if (
+      appliedFilters.sources.length > 0 &&
+      !appliedFilters.sources.includes(candidate.source)
+    ) {
+      return false;
+    }
+    return true;
   });
+
   const {
     currentPage,
     itemsPerPage,
@@ -252,7 +291,7 @@ export default function CandidatesPage() {
     totalPages,
   } = useTablePagination({
     items: filteredCandidates,
-    resetKey: `${searchQuery}:${selectedPeriod}`,
+    resetKey: `${searchQuery}:${selectedPeriod}:${appliedFilters.statuses.join(",")}:${appliedFilters.city}:${appliedFilters.sources.join(",")}`,
   });
 
   const hasCandidates = hasAnyCandidates;
@@ -365,6 +404,15 @@ export default function CandidatesPage() {
         onClose={() => setIsQuickOverviewOpen(false)}
       />
 
+      <FilterModal
+        initialFilters={appliedFilters}
+        isOpen={isFilterModalOpen}
+        onApply={handleApplyFilters}
+        onClose={() => setIsFilterModalOpen(false)}
+        sourceOptions={lookups?.sources}
+        statusOptions={statusOptions}
+      />
+
       {toastMessage && (
         <output
           aria-live="polite"
@@ -403,13 +451,24 @@ export default function CandidatesPage() {
                   />
                 </div>
                 <button
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border-light bg-white px-4 py-3 text-gray-700 hover:bg-bg-light"
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-gray-700 transition-colors hover:bg-bg-light ${
+                    activeFilterCount > 0
+                      ? "border-primary-blue bg-primary-blue/5"
+                      : "border-border-light bg-white"
+                  }`}
+                  onClick={() => setIsFilterModalOpen(true)}
                   type="button"
                 >
                   <FilterIcon className="h-5 w-5" />
                   <span>Добавить фильтры</span>
-                  <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs">
-                    +
+                  <span
+                    className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                      activeFilterCount > 0
+                        ? "bg-primary-blue text-white"
+                        : "bg-gray-200 text-gray-700"
+                    }`}
+                  >
+                    {activeFilterCount > 0 ? activeFilterCount : "+"}
                   </span>
                 </button>
               </div>

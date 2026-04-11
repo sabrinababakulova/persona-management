@@ -6,6 +6,12 @@ import { api } from "~/trpc/react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 import { Checkbox } from "../_components/checkbox";
 import {
+  countActiveFilters,
+  EMPTY_FILTER_MODAL_FILTERS,
+  FilterModal,
+  type FilterModalFilters,
+} from "../_components/filter-modal";
+import {
   ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
@@ -32,6 +38,11 @@ const VACANCY_STATUS_OPTIONS: Array<{ value: VacancyStatus; label: string }> = [
   { value: "paused", label: "Приостановлена" },
   { value: "closed", label: "Закрыта" },
   { value: "archive", label: "Архив" },
+];
+
+const VACANCY_SOURCE_OPTIONS = [
+  { value: "local", label: "Локальная" },
+  { value: "hh.uz", label: "hh.uz" },
 ];
 
 const vacancyStatusTone: Record<
@@ -110,6 +121,10 @@ export default function VacanciesPage() {
   const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
+    EMPTY_FILTER_MODAL_FILTERS,
+  );
 
   useEffect(() => {
     if (!toastMessage) {
@@ -197,13 +212,44 @@ export default function VacanciesPage() {
     updateVacancyStatus.mutate({ id: vacancyId, status: nextStatus });
   };
 
+  const handleApplyFilters = (filters: FilterModalFilters) => {
+    setAppliedFilters(filters);
+    setIsFilterModalOpen(false);
+  };
+
+  const activeFilterCount = countActiveFilters(appliedFilters);
+
   const filteredVacancies = vacancies.filter((vacancy) => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const combinedValue =
       `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.source}`.toLowerCase();
 
-    return combinedValue.includes(normalizedQuery);
+    if (normalizedQuery && !combinedValue.includes(normalizedQuery)) {
+      return false;
+    }
+    if (
+      appliedFilters.statuses.length > 0 &&
+      !appliedFilters.statuses.includes(vacancy.status)
+    ) {
+      return false;
+    }
+    if (
+      appliedFilters.city.trim() &&
+      !vacancy.city
+        ?.toLowerCase()
+        .includes(appliedFilters.city.trim().toLowerCase())
+    ) {
+      return false;
+    }
+    if (
+      appliedFilters.sources.length > 0 &&
+      !appliedFilters.sources.includes(vacancy.source)
+    ) {
+      return false;
+    }
+    return true;
   });
+
   const {
     currentPage,
     itemsPerPage,
@@ -213,7 +259,7 @@ export default function VacanciesPage() {
     totalPages,
   } = useTablePagination({
     items: filteredVacancies,
-    resetKey: `${searchQuery}:${selectedPeriod}`,
+    resetKey: `${searchQuery}:${selectedPeriod}:${appliedFilters.statuses.join(",")}:${appliedFilters.city}:${appliedFilters.sources.join(",")}`,
   });
 
   const hasVacancies = hasAnyVacancies;
@@ -229,6 +275,15 @@ export default function VacanciesPage() {
           {toastMessage}
         </output>
       )}
+
+      <FilterModal
+        initialFilters={appliedFilters}
+        isOpen={isFilterModalOpen}
+        onApply={handleApplyFilters}
+        onClose={() => setIsFilterModalOpen(false)}
+        sourceOptions={VACANCY_SOURCE_OPTIONS}
+        statusOptions={VACANCY_STATUS_OPTIONS}
+      />
 
       <main className="flex-1 overflow-auto">
         <div className="p-4 pb-10 lg:p-8 lg:pb-10">
@@ -259,13 +314,24 @@ export default function VacanciesPage() {
                   />
                 </div>
                 <button
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border-light bg-white px-4 py-3 text-gray-700 hover:bg-bg-light"
+                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-gray-700 transition-colors hover:bg-bg-light ${
+                    activeFilterCount > 0
+                      ? "border-primary-blue bg-primary-blue/5"
+                      : "border-border-light bg-white"
+                  }`}
+                  onClick={() => setIsFilterModalOpen(true)}
                   type="button"
                 >
                   <FilterIcon className="h-5 w-5" />
                   <span>Добавить фильтры</span>
-                  <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs">
-                    +
+                  <span
+                    className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                      activeFilterCount > 0
+                        ? "bg-primary-blue text-white"
+                        : "bg-gray-200 text-gray-700"
+                    }`}
+                  >
+                    {activeFilterCount > 0 ? activeFilterCount : "+"}
                   </span>
                 </button>
               </div>
