@@ -105,6 +105,8 @@ export default function CandidatesPage() {
     isLoading: isLookupsLoading,
     refetch: refetchLookups,
   } = api.lookups.getCandidateCreateOptions.useQuery();
+  const { data: vacancyLookups } =
+    api.lookups.getVacancyCreateOptions.useQuery();
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
@@ -267,9 +269,8 @@ export default function CandidatesPage() {
     }
     if (
       appliedFilters.city.trim() &&
-      !candidate.city
-        ?.toLowerCase()
-        .includes(appliedFilters.city.trim().toLowerCase())
+      candidate.city?.trim().toLowerCase() !==
+        appliedFilters.city.trim().toLowerCase()
     ) {
       return false;
     }
@@ -405,6 +406,7 @@ export default function CandidatesPage() {
       />
 
       <FilterModal
+        cityOptions={vacancyLookups?.cities}
         initialFilters={appliedFilters}
         isOpen={isFilterModalOpen}
         onApply={handleApplyFilters}

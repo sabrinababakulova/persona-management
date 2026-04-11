@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 import { Checkbox } from "./checkbox";
+import { Dropdown } from "./dropdown";
 import { Input } from "./input";
 import { Modal } from "./modal";
 
@@ -32,6 +33,7 @@ type FilterModalProps = {
   onApply: (filters: FilterModalFilters) => void;
   initialFilters: FilterModalFilters;
   statusOptions: LookupOption[];
+  cityOptions?: LookupOption[];
   sourceOptions?: LookupOption[];
 };
 
@@ -41,6 +43,7 @@ export function FilterModal({
   onApply,
   initialFilters,
   statusOptions,
+  cityOptions,
   sourceOptions,
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterModalFilters>(initialFilters);
@@ -111,15 +114,28 @@ export function FilterModal({
           <div className="mb-3 font-medium text-[14px] text-text-secondary">
             Город
           </div>
-          <Input
-            hideLabel
-            label="Город"
-            onChange={(e) =>
-              setDraft((prev) => ({ ...prev, city: e.target.value }))
-            }
-            placeholder="Введите город"
-            value={draft.city}
-          />
+          {cityOptions && cityOptions.length > 0 ? (
+            <Dropdown
+              hideLabel
+              label="Город"
+              onChange={(value) =>
+                setDraft((prev) => ({ ...prev, city: value }))
+              }
+              options={cityOptions}
+              placeholder="Выберите город"
+              value={draft.city}
+            />
+          ) : (
+            <Input
+              hideLabel
+              label="Город"
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, city: e.target.value }))
+              }
+              placeholder="Введите город"
+              value={draft.city}
+            />
+          )}
         </div>
 
         {sourceOptions && sourceOptions.length > 0 && (

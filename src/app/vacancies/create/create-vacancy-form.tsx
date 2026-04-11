@@ -327,15 +327,25 @@ export function CreateVacancyForm() {
                     placeholder="Выберите уровень"
                     value={formData.level}
                   />
-                  <Input
-                    label="Город"
-                    maxLength={255}
-                    onChange={(event) =>
-                      handleFieldChange("city", event.target.value)
-                    }
-                    placeholder="Например, Ташкент"
-                    value={formData.city}
-                  />
+                  {vacancyLookups.cities.length > 0 ? (
+                    <Dropdown
+                      label="Город"
+                      onChange={(value) => handleFieldChange("city", value)}
+                      options={vacancyLookups.cities}
+                      placeholder="Выберите город"
+                      value={formData.city}
+                    />
+                  ) : (
+                    <Input
+                      label="Город"
+                      maxLength={255}
+                      onChange={(event) =>
+                        handleFieldChange("city", event.target.value)
+                      }
+                      placeholder="Введите город"
+                      value={formData.city}
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

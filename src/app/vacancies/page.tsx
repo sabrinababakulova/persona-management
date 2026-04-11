@@ -118,6 +118,8 @@ export default function VacanciesPage() {
     api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
   const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
     api.vacancies.hasVacancies.useQuery();
+  const { data: vacancyLookups } =
+    api.lookups.getVacancyCreateOptions.useQuery();
   const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -235,9 +237,8 @@ export default function VacanciesPage() {
     }
     if (
       appliedFilters.city.trim() &&
-      !vacancy.city
-        ?.toLowerCase()
-        .includes(appliedFilters.city.trim().toLowerCase())
+      vacancy.city?.trim().toLowerCase() !==
+        appliedFilters.city.trim().toLowerCase()
     ) {
       return false;
     }
@@ -277,6 +278,7 @@ export default function VacanciesPage() {
       )}
 
       <FilterModal
+        cityOptions={vacancyLookups?.cities}
         initialFilters={appliedFilters}
         isOpen={isFilterModalOpen}
         onApply={handleApplyFilters}

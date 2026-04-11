@@ -13,6 +13,7 @@ import {
   vacancyStatusOptions,
   vacancyWorkTypes,
 } from "~/server/db/schema";
+import { getVacancyCityOptions } from "~/server/services/countries-now";
 
 export const lookupsRouter = createTRPCRouter({
   getCandidateCreateOptions: protectedProcedure.query(async ({ ctx }) => {
@@ -110,7 +111,7 @@ export const lookupsRouter = createTRPCRouter({
   }),
 
   getVacancyCreateOptions: protectedProcedure.query(async ({ ctx }) => {
-    const [levels, workTypes, statusOptions] = await Promise.all([
+    const [levels, workTypes, statusOptions, cities] = await Promise.all([
       ctx.db
         .select({
           value: vacancyLevels.value,
@@ -138,9 +139,11 @@ export const lookupsRouter = createTRPCRouter({
           asc(vacancyStatusOptions.sortOrder),
           asc(vacancyStatusOptions.label),
         ),
+      getVacancyCityOptions().catch(() => []),
     ]);
 
     return {
+      cities,
       levels,
       workTypes,
       statusOptions,
