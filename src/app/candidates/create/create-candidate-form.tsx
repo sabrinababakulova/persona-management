@@ -19,7 +19,6 @@ import type {
   LanguageItem,
   WorkExperienceFormItem,
 } from "~/types/candidates/components";
-import type { CandidateStatus } from "~/types/server/candidates";
 import { calculateCandidateFormProgress } from "~/utils/candidate-form-progress";
 import { BackgroundDetailsSection } from "../components/BackgroundDetailsSection";
 import { BasicInfoSection } from "../components/BasicInfoSection";
@@ -138,34 +137,6 @@ export function CreateCandidateForm() {
         return;
       }
 
-      const parts = createdCandidate.fullName.split(" ");
-      utils.candidates.getAllCandidates.setData(
-        { period: "week" },
-        (existing = []) => [
-          {
-            id: createdCandidate.id,
-            name: parts.slice(0, 2).join(" "),
-            patronymic: parts.slice(2).join(" "),
-            city: createdCandidate.city ?? "",
-            status: (createdCandidate.status ?? "new") as CandidateStatus,
-            createdAt: createdCandidate.createdAt
-              ? new Date(createdCandidate.createdAt).toLocaleDateString(
-                  "ru-RU",
-                  {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  },
-                )
-              : "",
-            createdAtValue: createdCandidate.createdAt
-              ? new Date(createdCandidate.createdAt).toISOString()
-              : "",
-            source: createdCandidate.source ?? "",
-          },
-          ...existing,
-        ],
-      );
       void utils.candidates.getAllCandidates.invalidate();
       void utils.candidates.hasCandidates.invalidate();
 

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, ilike, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -314,6 +314,10 @@ export const vacanciesRouter = createTRPCRouter({
       z
         .object({
           period: vacancyPeriodSchema.optional().default("week"),
+          search: z.string().max(255).optional(),
+          statuses: z.array(z.string().max(50)).optional(),
+          city: z.string().max(255).optional(),
+          sources: z.array(z.string().max(255)).optional(),
           limit: z.number().min(1).max(100).optional(),
           offset: z.number().min(0).optional(),
         })
@@ -321,6 +325,13 @@ export const vacanciesRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const period = input?.period ?? "week";
+      const search = input?.search?.trim();
+      const shouldApplyPeriod = !search;
+      const normalizedSearch = search?.toLowerCase() ?? "";
+      const statuses = input?.statuses?.filter(Boolean) ?? [];
+      const city = input?.city?.trim();
+      const normalizedCity = city?.toLowerCase() ?? "";
+      const sources = input?.sources?.filter(Boolean) ?? [];
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
       const createdAtCutoff = getVacancyDateCutoff(period);
@@ -330,29 +341,56 @@ export const vacanciesRouter = createTRPCRouter({
       );
 
       if (!userCompanyId) {
-        return [];
+        return { items: [], total: 0 };
       }
 
-      const rows = await ctx.db
-        .select()
-        .from(vacancies)
-        .where(
-          and(
-            eq(vacancies.companyId, userCompanyId),
-            gte(vacancies.createdAt, createdAtCutoff),
-          ),
-        )
-        .orderBy(desc(vacancies.createdAt))
-        .limit(limit)
-        .offset(offset);
+      const includeLocal = sources.length === 0 || sources.includes("local");
+      const includeHh = sources.length === 0 || sources.includes("hh.uz");
 
-      const responseCounts = await getVacancyResponseCounts(
-        ctx.db,
-        rows.map((row) => row.id),
-      );
-      const localVacancies = rows.map((row) =>
-        formatVacancy(row, responseCounts.get(row.id) ?? 0),
-      );
+      let localVacancies: ReturnType<typeof formatVacancy>[] = [];
+
+      if (includeLocal) {
+        const localConditions = [eq(vacancies.companyId, userCompanyId)];
+
+        if (shouldApplyPeriod) {
+          localConditions.push(gte(vacancies.createdAt, createdAtCutoff));
+        }
+
+        if (search) {
+          const searchCondition = or(
+            ilike(vacancies.title, `%${escapeLike(search)}%`),
+            ilike(vacancies.level, `%${escapeLike(search)}%`),
+            ilike(vacancies.city, `%${escapeLike(search)}%`),
+            ilike(vacancies.workType, `%${escapeLike(search)}%`),
+          );
+
+          if (searchCondition) {
+            localConditions.push(searchCondition);
+          }
+        }
+
+        if (statuses.length > 0) {
+          localConditions.push(inArray(vacancies.status, statuses));
+        }
+
+        if (city) {
+          localConditions.push(eq(vacancies.city, city));
+        }
+
+        const rows = await ctx.db
+          .select()
+          .from(vacancies)
+          .where(and(...localConditions))
+          .orderBy(desc(vacancies.createdAt));
+
+        const responseCounts = await getVacancyResponseCounts(
+          ctx.db,
+          rows.map((row) => row.id),
+        );
+        localVacancies = rows.map((row) =>
+          formatVacancy(row, responseCounts.get(row.id) ?? 0),
+        );
+      }
 
       if (userCompanyId !== DEFAULT_COMPANY_ID) {
         console.info("[hh.uz] skipping vacancy sync for non-default company", {
@@ -360,7 +398,10 @@ export const vacanciesRouter = createTRPCRouter({
           defaultCompanyId: DEFAULT_COMPANY_ID,
           localVacancies: localVacancies.length,
         });
-        return localVacancies;
+        return {
+          items: localVacancies.slice(offset, offset + limit),
+          total: localVacancies.length,
+        };
       }
 
       const hhAccountRows = await ctx.db
@@ -378,12 +419,15 @@ export const vacanciesRouter = createTRPCRouter({
       const hasHhOAuth = Boolean(
         hhAccount?.accessToken || hhAccount?.refreshToken,
       );
-      if (!hasHhOAuth) {
+      if (!hasHhOAuth || !includeHh) {
         console.info("[hh.uz] skipping vacancy sync because OAuth is missing", {
           companyId: userCompanyId,
           localVacancies: localVacancies.length,
         });
-        return localVacancies;
+        return {
+          items: localVacancies.slice(offset, offset + limit),
+          total: localVacancies.length,
+        };
       }
 
       let employerId = hhAccount?.employerId?.trim();
@@ -448,29 +492,56 @@ export const vacanciesRouter = createTRPCRouter({
             localVacancies: localVacancies.length,
           },
         );
-        return localVacancies;
+        return {
+          items: localVacancies.slice(offset, offset + limit),
+          total: localVacancies.length,
+        };
       }
 
       try {
         const hhVacancies = await fetchCompanyHhVacancies(employerId);
+        const filteredHhVacancies = hhVacancies
+          .map((vacancy) => formatHhVacancy(vacancy, userCompanyId))
+          .filter((vacancy) =>
+            shouldApplyPeriod
+              ? isDateWithinPeriod(vacancy.publishedAt, createdAtCutoff)
+              : true,
+          )
+          .filter((vacancy) => {
+            if (statuses.length > 0 && !statuses.includes(vacancy.status)) {
+              return false;
+            }
+
+            if (
+              normalizedCity &&
+              vacancy.city.trim().toLowerCase() !== normalizedCity
+            ) {
+              return false;
+            }
+
+            if (!normalizedSearch) {
+              return true;
+            }
+
+            const combinedValue =
+              `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.source} ${vacancy.workType}`.toLowerCase();
+
+            return combinedValue.includes(normalizedSearch);
+          });
 
         console.info("[hh.uz] merging vacancies into response", {
           companyId: userCompanyId,
           employerId,
           localVacancies: localVacancies.length,
-          hhVacancies: hhVacancies.length,
+          hhVacancies: filteredHhVacancies.length,
         });
 
-        return [
-          ...localVacancies,
-          ...hhVacancies.map((vacancy) =>
-            formatHhVacancy(vacancy, userCompanyId),
-          ),
-        ].filter((vacancy) =>
-          vacancy.source === "hh.uz"
-            ? isDateWithinPeriod(vacancy.publishedAt, createdAtCutoff)
-            : true,
-        );
+        const items = [...localVacancies, ...filteredHhVacancies];
+
+        return {
+          items: items.slice(offset, offset + limit),
+          total: items.length,
+        };
       } catch (error) {
         console.error("Failed to fetch hh.uz vacancies for company", {
           companyId: userCompanyId,
@@ -478,7 +549,10 @@ export const vacanciesRouter = createTRPCRouter({
           error,
         });
 
-        return localVacancies;
+        return {
+          items: localVacancies.slice(offset, offset + limit),
+          total: localVacancies.length,
+        };
       }
     }),
 

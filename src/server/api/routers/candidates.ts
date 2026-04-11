@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -420,6 +420,9 @@ export const candidatesRouter = createTRPCRouter({
         .object({
           period: candidatePeriodSchema.optional().default("week"),
           search: z.string().max(255).optional(),
+          statuses: z.array(z.string().max(50)).optional(),
+          city: z.string().max(255).optional(),
+          sources: z.array(z.string().max(255)).optional(),
           limit: z.number().min(1).max(100).optional(),
           offset: z.number().min(0).optional(),
         })
@@ -428,6 +431,10 @@ export const candidatesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const period = input?.period ?? "week";
       const search = input?.search?.trim();
+      const shouldApplyPeriod = !search;
+      const statuses = input?.statuses?.filter(Boolean) ?? [];
+      const city = input?.city?.trim();
+      const sources = input?.sources?.filter(Boolean) ?? [];
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
       const createdAtCutoff = getCandidateCreatedAtCutoff(period);
@@ -438,48 +445,68 @@ export const candidatesRouter = createTRPCRouter({
       );
 
       if (!userCompanyId) {
-        return [];
+        return { items: [], total: 0 };
       }
 
       const conditions = [];
       conditions.push(eq(candidates.companyId, userCompanyId));
-      conditions.push(gte(candidates.createdAt, createdAtCutoff));
+      if (shouldApplyPeriod) {
+        conditions.push(gte(candidates.createdAt, createdAtCutoff));
+      }
       if (search) {
         conditions.push(ilike(candidates.fullName, `%${escapeLike(search)}%`));
       }
+      if (statuses.length > 0) {
+        conditions.push(inArray(candidates.status, statuses));
+      }
+      if (city) {
+        conditions.push(eq(candidates.city, city));
+      }
+      if (sources.length > 0) {
+        conditions.push(inArray(candidates.source, sources));
+      }
 
-      const rows = await ctx.db
-        .select()
-        .from(candidates)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(candidates.createdAt))
-        .limit(limit)
-        .offset(offset);
+      const whereClause =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
-      return rows.map((c) => {
-        const parts = c.fullName.split(" ");
-        const name = parts.slice(0, 2).join(" ");
-        const patronymic = parts.slice(2).join(" ");
+      const [rows, totalRows] = await Promise.all([
+        ctx.db
+          .select()
+          .from(candidates)
+          .where(whereClause)
+          .orderBy(desc(candidates.createdAt))
+          .limit(limit)
+          .offset(offset),
+        ctx.db.select({ total: count() }).from(candidates).where(whereClause),
+      ]);
 
-        return {
-          id: c.id,
-          name,
-          patronymic,
-          city: c.city ?? "",
-          status: (c.status ?? "new") as CandidateStatus,
-          createdAt: c.createdAt
-            ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-            : "",
-          createdAtValue: c.createdAt
-            ? new Date(c.createdAt).toISOString()
-            : "",
-          source: c.source ?? "",
-        };
-      });
+      return {
+        items: rows.map((c) => {
+          const parts = c.fullName.split(" ");
+          const name = parts.slice(0, 2).join(" ");
+          const patronymic = parts.slice(2).join(" ");
+
+          return {
+            id: c.id,
+            name,
+            patronymic,
+            city: c.city ?? "",
+            status: (c.status ?? "new") as CandidateStatus,
+            createdAt: c.createdAt
+              ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
+              : "",
+            createdAtValue: c.createdAt
+              ? new Date(c.createdAt).toISOString()
+              : "",
+            source: c.source ?? "",
+          };
+        }),
+        total: totalRows[0]?.total ?? 0,
+      };
     }),
 
   getCandidateById: protectedProcedure

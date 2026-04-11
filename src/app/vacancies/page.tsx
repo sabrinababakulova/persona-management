@@ -25,10 +25,8 @@ import {
   PeriodFilter,
   type PeriodFilterValue,
 } from "../_components/period-filter";
-import {
-  TablePagination,
-  useTablePagination,
-} from "../_components/table-pagination";
+import { TablePagination } from "../_components/table-pagination";
+import { useDebouncedValue } from "../_components/use-debounced-value";
 
 type VacancyStatus = Vacancy["status"];
 
@@ -114,23 +112,44 @@ export default function VacanciesPage() {
   const utils = api.useUtils();
   const [selectedPeriod, setSelectedPeriod] =
     useState<PeriodFilterValue>("week");
-  const vacancyQueryInput = useMemo(
-    () => ({ period: selectedPeriod }),
-    [selectedPeriod],
-  );
-  const { data: vacanciesData, isLoading } =
-    api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
-  const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
-    api.vacancies.hasVacancies.useQuery();
-  const { data: vacancyLookups } =
-    api.lookups.getVacancyCreateOptions.useQuery();
-  const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 300);
+  const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
   );
+  const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
+    api.vacancies.hasVacancies.useQuery();
+  const { data: vacancyLookups } =
+    api.lookups.getVacancyCreateOptions.useQuery();
+  const vacancyQueryInput = useMemo(
+    () => ({
+      period: selectedPeriod,
+      search: debouncedSearchQuery || undefined,
+      statuses: appliedFilters.statuses,
+      city: appliedFilters.city.trim() || undefined,
+      sources: appliedFilters.sources,
+      limit: itemsPerPage,
+      offset: (currentPage - 1) * itemsPerPage,
+    }),
+    [
+      appliedFilters.city,
+      appliedFilters.sources,
+      appliedFilters.statuses,
+      currentPage,
+      debouncedSearchQuery,
+      itemsPerPage,
+      selectedPeriod,
+    ],
+  );
+  const { data: vacanciesData, isLoading } =
+    api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
+  const totalItems = vacanciesData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
   useEffect(() => {
     if (!toastMessage) {
@@ -140,6 +159,10 @@ export default function VacanciesPage() {
     const timeout = window.setTimeout(() => setToastMessage(null), 3500);
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
 
   const updateVacancyStatus = api.vacancies.updateVacancy.useMutation({
     onMutate: async ({ id, status }) => {
@@ -151,12 +174,17 @@ export default function VacanciesPage() {
       if (status) {
         utils.vacancies.getAllVacancies.setData(
           vacancyQueryInput,
-          (existing = []) =>
-            existing.map((vacancy) =>
-              vacancy.source === "local" && vacancy.id === id
-                ? { ...vacancy, status }
-                : vacancy,
-            ),
+          (existing) =>
+            existing
+              ? {
+                  ...existing,
+                  items: existing.items.map((vacancy) =>
+                    vacancy.source === "local" && vacancy.id === id
+                      ? { ...vacancy, status }
+                      : vacancy,
+                  ),
+                }
+              : existing,
         );
       }
 
@@ -181,7 +209,7 @@ export default function VacanciesPage() {
 
   // Merge server data with local selection state
   const vacancies =
-    vacanciesData?.map((vacancy) => ({
+    vacanciesData?.items.map((vacancy) => ({
       ...vacancy,
       selected:
         localVacancies.find((localVacancy) => localVacancy.id === vacancy.id)
@@ -220,52 +248,11 @@ export default function VacanciesPage() {
 
   const handleApplyFilters = (filters: FilterModalFilters) => {
     setAppliedFilters(filters);
+    setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
   const activeFilterCount = countActiveFilters(appliedFilters);
-
-  const filteredVacancies = vacancies.filter((vacancy) => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const combinedValue =
-      `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.source}`.toLowerCase();
-
-    if (normalizedQuery && !combinedValue.includes(normalizedQuery)) {
-      return false;
-    }
-    if (
-      appliedFilters.statuses.length > 0 &&
-      !appliedFilters.statuses.includes(vacancy.status)
-    ) {
-      return false;
-    }
-    if (
-      appliedFilters.city.trim() &&
-      vacancy.city?.trim().toLowerCase() !==
-        appliedFilters.city.trim().toLowerCase()
-    ) {
-      return false;
-    }
-    if (
-      appliedFilters.sources.length > 0 &&
-      !appliedFilters.sources.includes(vacancy.source)
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedItems: paginatedVacancies,
-    setCurrentPage,
-    setItemsPerPage,
-    totalPages,
-  } = useTablePagination({
-    items: filteredVacancies,
-    resetKey: `${searchQuery}:${selectedPeriod}:${appliedFilters.statuses.join(",")}:${appliedFilters.city}:${appliedFilters.sources.join(",")}`,
-  });
 
   const hasVacancies = hasAnyVacancies;
   const showVacanciesTable = hasVacancies || isLoading;
@@ -300,7 +287,10 @@ export default function VacanciesPage() {
             {(showVacanciesTable || isAnyVacanciesLoading) && (
               <PeriodFilter
                 ariaLabel="Фильтр периода вакансий"
-                onChange={setSelectedPeriod}
+                onChange={(value) => {
+                  setSelectedPeriod(value);
+                  setCurrentPage(1);
+                }}
                 value={selectedPeriod}
               />
             )}
@@ -313,7 +303,10 @@ export default function VacanciesPage() {
                   <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
                     className="w-full rounded-xl border border-border-light bg-white py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setCurrentPage(1);
+                    }}
                     placeholder="Поиск вакансий"
                     type="text"
                     value={searchQuery}
@@ -374,7 +367,7 @@ export default function VacanciesPage() {
                   </div>
                 ) : (
                   <>
-                    {paginatedVacancies.map((vacancy, index) => {
+                    {vacancies.map((vacancy, index) => {
                       const statusTone =
                         vacancyStatusTone[vacancy.status] ??
                         vacancyStatusTone.active;
@@ -522,7 +515,7 @@ export default function VacanciesPage() {
                       );
                     })}
 
-                    {filteredVacancies.length === 0 && (
+                    {vacancies.length === 0 && (
                       <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
                         Вакансии не найдены
                       </div>
@@ -531,9 +524,12 @@ export default function VacanciesPage() {
                     <TablePagination
                       currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
-                      onItemsPerPageChange={setItemsPerPage}
+                      onItemsPerPageChange={(value) => {
+                        setItemsPerPage(value);
+                        setCurrentPage(1);
+                      }}
                       onPageChange={setCurrentPage}
-                      totalItems={filteredVacancies.length}
+                      totalItems={totalItems}
                       totalPages={totalPages}
                     />
                   </>

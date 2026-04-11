@@ -27,10 +27,8 @@ import {
   type PeriodFilterValue,
 } from "../_components/period-filter";
 import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
-import {
-  TablePagination,
-  useTablePagination,
-} from "../_components/table-pagination";
+import { TablePagination } from "../_components/table-pagination";
+import { useDebouncedValue } from "../_components/use-debounced-value";
 import { QuickOverview } from "./components/quickOverview";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
@@ -91,12 +89,20 @@ export default function CandidatesPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilterValue>(
     DEFAULT_CANDIDATE_PERIOD,
   );
-  const candidateQueryInput = useMemo(
-    () => ({ period: selectedPeriod }),
-    [selectedPeriod],
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 300);
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [isQuickOverviewOpen, setIsQuickOverviewOpen] = useState(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
+    null,
   );
-  const { data: candidatesData, isLoading } =
-    api.candidates.getAllCandidates.useQuery(candidateQueryInput);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
+    EMPTY_FILTER_MODAL_FILTERS,
+  );
   const { data: hasAnyCandidates = false, isLoading: isAnyCandidatesLoading } =
     api.candidates.hasCandidates.useQuery();
   const {
@@ -108,23 +114,36 @@ export default function CandidatesPage() {
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
   const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
-  const [isQuickOverviewOpen, setIsQuickOverviewOpen] = useState(false);
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(
-    null,
-  );
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
-    EMPTY_FILTER_MODAL_FILTERS,
-  );
 
   const statusOptions = useMemo(
     () => mapStatusOptions(lookups?.statusOptions ?? []),
     [lookups?.statusOptions],
   );
   const defaultStatus = statusOptions[0]?.value;
+  const candidateQueryInput = useMemo(
+    () => ({
+      period: selectedPeriod,
+      search: debouncedSearchQuery || undefined,
+      statuses: appliedFilters.statuses,
+      city: appliedFilters.city.trim() || undefined,
+      sources: appliedFilters.sources,
+      limit: itemsPerPage,
+      offset: (currentPage - 1) * itemsPerPage,
+    }),
+    [
+      appliedFilters.city,
+      appliedFilters.sources,
+      appliedFilters.statuses,
+      currentPage,
+      debouncedSearchQuery,
+      itemsPerPage,
+      selectedPeriod,
+    ],
+  );
+  const { data: candidatesData, isLoading } =
+    api.candidates.getAllCandidates.useQuery(candidateQueryInput);
+  const totalItems = candidatesData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -147,6 +166,10 @@ export default function CandidatesPage() {
     return () => window.clearTimeout(timeout);
   }, [toastMessage]);
 
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
   const createQuickCandidate = api.candidates.createCandidate.useMutation({
     onSuccess: (createdCandidate) => {
       if (!createdCandidate) {
@@ -155,30 +178,6 @@ export default function CandidatesPage() {
         return;
       }
 
-      const parts = createdCandidate.fullName.split(" ");
-      const mappedCandidate: Candidate = {
-        id: createdCandidate.id,
-        name: parts.slice(0, 2).join(" "),
-        patronymic: parts.slice(2).join(" "),
-        city: createdCandidate.city ?? "",
-        status: (createdCandidate.status as CandidateStatus) ?? "new",
-        createdAt: createdCandidate.createdAt
-          ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-          : "",
-        createdAtValue: createdCandidate.createdAt
-          ? new Date(createdCandidate.createdAt).toISOString()
-          : "",
-        source: createdCandidate.source ?? "",
-      };
-
-      utils.candidates.getAllCandidates.setData(
-        candidateQueryInput,
-        (existing = []) => [mappedCandidate, ...existing],
-      );
       void utils.candidates.getAllCandidates.invalidate();
       void utils.candidates.hasCandidates.invalidate();
 
@@ -200,12 +199,17 @@ export default function CandidatesPage() {
       if (status && isCandidateStatus(status)) {
         utils.candidates.getAllCandidates.setData(
           candidateQueryInput,
-          (existing = []) =>
-            existing.map((candidate) =>
-              candidate.id === id
-                ? { ...candidate, status: status as CandidateStatus }
-                : candidate,
-            ),
+          (existing) =>
+            existing
+              ? {
+                  ...existing,
+                  items: existing.items.map((candidate) =>
+                    candidate.id === id
+                      ? { ...candidate, status: status as CandidateStatus }
+                      : candidate,
+                  ),
+                }
+              : existing,
         );
       }
 
@@ -230,7 +234,7 @@ export default function CandidatesPage() {
 
   // Merge server data with local selection state
   const candidates =
-    candidatesData?.map((c: Candidate) => ({
+    candidatesData?.items.map((c: Candidate) => ({
       ...c,
       selected: localCandidates.find((lc) => lc.id === c.id)?.selected ?? false,
     })) ?? [];
@@ -251,49 +255,11 @@ export default function CandidatesPage() {
 
   const handleApplyFilters = (filters: FilterModalFilters) => {
     setAppliedFilters(filters);
+    setCurrentPage(1);
     setIsFilterModalOpen(false);
   };
 
   const activeFilterCount = countActiveFilters(appliedFilters);
-
-  const filteredCandidates = candidates.filter((candidate: Candidate) => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const fullName = `${candidate.name} ${candidate.patronymic}`.toLowerCase();
-
-    if (!fullName.includes(normalizedQuery)) return false;
-    if (
-      appliedFilters.statuses.length > 0 &&
-      !appliedFilters.statuses.includes(candidate.status)
-    ) {
-      return false;
-    }
-    if (
-      appliedFilters.city.trim() &&
-      candidate.city?.trim().toLowerCase() !==
-        appliedFilters.city.trim().toLowerCase()
-    ) {
-      return false;
-    }
-    if (
-      appliedFilters.sources.length > 0 &&
-      !appliedFilters.sources.includes(candidate.source)
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedItems: paginatedCandidates,
-    setCurrentPage,
-    setItemsPerPage,
-    totalPages,
-  } = useTablePagination({
-    items: filteredCandidates,
-    resetKey: `${searchQuery}:${selectedPeriod}:${appliedFilters.statuses.join(",")}:${appliedFilters.city}:${appliedFilters.sources.join(",")}`,
-  });
 
   const hasCandidates = hasAnyCandidates;
   const showCandidatesTable = hasCandidates || isLoading;
@@ -433,7 +399,10 @@ export default function CandidatesPage() {
             {(showCandidatesTable || isAnyCandidatesLoading) && (
               <PeriodFilter
                 ariaLabel="Фильтр периода кандидатов"
-                onChange={setSelectedPeriod}
+                onChange={(value) => {
+                  setSelectedPeriod(value);
+                  setCurrentPage(1);
+                }}
                 value={selectedPeriod}
               />
             )}
@@ -446,7 +415,10 @@ export default function CandidatesPage() {
                   <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
                     className="w-full rounded-xl border border-border-light bg-white py-3 pr-4 pl-12 text-gray-700 placeholder-gray-400 focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setCurrentPage(1);
+                    }}
                     placeholder="Поиск кандидатов"
                     type="text"
                     value={searchQuery}
@@ -507,7 +479,7 @@ export default function CandidatesPage() {
                   </div>
                 ) : (
                   <>
-                    {paginatedCandidates.map((candidate: Candidate, index) => {
+                    {candidates.map((candidate: Candidate, index) => {
                       const statusTone =
                         statusToneConfig[candidate.status] ??
                         statusToneConfig.new;
@@ -608,7 +580,7 @@ export default function CandidatesPage() {
                       );
                     })}
 
-                    {filteredCandidates.length === 0 && (
+                    {candidates.length === 0 && (
                       <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
                         Кандидаты не найдены
                       </div>
@@ -617,9 +589,12 @@ export default function CandidatesPage() {
                     <TablePagination
                       currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
-                      onItemsPerPageChange={setItemsPerPage}
+                      onItemsPerPageChange={(value) => {
+                        setItemsPerPage(value);
+                        setCurrentPage(1);
+                      }}
                       onPageChange={setCurrentPage}
-                      totalItems={filteredCandidates.length}
+                      totalItems={totalItems}
                       totalPages={totalPages}
                     />
                   </>
