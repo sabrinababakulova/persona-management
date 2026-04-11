@@ -37,6 +37,44 @@ function escapeLike(value: string) {
   return value.replace(/[%_\\]/g, "\\$&");
 }
 
+function formatCandidateActivityTime(date: Date) {
+  const diffMs = Date.now() - date.getTime();
+  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+
+  if (diffSeconds < 60) {
+    return "Только что";
+  }
+
+  const minutes = Math.floor(diffSeconds / 60);
+  if (minutes < 60) {
+    return "Сегодня";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} ч назад`;
+  }
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) {
+    return "Вчера";
+  }
+
+  if (days < 7) {
+    return `${days} дн назад`;
+  }
+
+  return date.toLocaleDateString("ru-RU");
+}
+
+function buildActivityStatusPreview(value: string, maxLength = 255) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
 async function getCurrentUserCompanyId(
   db: typeof import("~/server/db").db,
   userId: string | undefined,
@@ -415,6 +453,26 @@ export const candidatesRouter = createTRPCRouter({
         .innerJoin(vacancies, eq(candidateVacancies.vacancyId, vacancies.id))
         .where(eq(candidateVacancies.candidateId, c.id))
         .orderBy(desc(candidateVacancies.createdAt));
+      const activityRows = await ctx.db
+        .select({
+          id: recentActivityLogs.id,
+          actorName: recentActivityLogs.actorName,
+          createdAt: recentActivityLogs.createdAt,
+          action: recentActivityLogs.action,
+          targetName: recentActivityLogs.targetName,
+          targetStatus: recentActivityLogs.targetStatus,
+          userAvatar: users.image,
+        })
+        .from(recentActivityLogs)
+        .leftJoin(users, eq(recentActivityLogs.actorUserId, users.id))
+        .where(
+          and(
+            eq(recentActivityLogs.entityType, "candidate"),
+            eq(recentActivityLogs.entityId, c.id),
+          ),
+        )
+        .orderBy(desc(recentActivityLogs.createdAt))
+        .limit(10);
 
       return {
         id: c.id,
@@ -458,15 +516,17 @@ export const candidatesRouter = createTRPCRouter({
           author: string;
           createdAt: string;
         }[],
-        activities: (c.activities ?? []) as {
-          id: string;
-          userName: string;
-          userAvatar: string;
-          action: string;
-          targetName: string;
-          targetStatus: string;
-          timeAgo: string;
-        }[],
+        activities: activityRows.map((activity) => ({
+          id: activity.id,
+          userName: activity.actorName,
+          userAvatar: activity.userAvatar ?? "",
+          action: activity.action,
+          targetName: activity.targetName,
+          targetStatus: activity.targetStatus,
+          timeAgo: formatCandidateActivityTime(
+            activity.createdAt ? new Date(activity.createdAt) : new Date(),
+          ),
+        })),
       };
     }),
 
@@ -548,9 +608,9 @@ export const candidatesRouter = createTRPCRouter({
           entityId: input.candidateId,
           actorUserId: ctx.session?.user?.id ?? null,
           actorName: authorName,
-          action: "Добавил(а) заметку о кандидате",
+          action: "Сохранил(а) заметку",
           targetName: candidate.fullName,
-          targetStatus: "Заметка добавлена",
+          targetStatus: buildActivityStatusPreview(input.content),
         });
       } catch (error) {
         console.error(
