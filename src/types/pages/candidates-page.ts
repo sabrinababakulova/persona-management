@@ -9,6 +9,7 @@ export interface Candidate {
   city: string;
   status: CandidateStatus;
   createdAt: string;
+  createdAtValue: string;
   source: string;
   selected?: boolean;
 }

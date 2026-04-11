@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, gte, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -113,6 +113,42 @@ function normalizeHhVacancyId(value: string): string {
   return value;
 }
 
+const vacancyPeriodSchema = z.enum(["day", "week", "month", "year"]);
+
+function getVacancyDateCutoff(period: z.infer<typeof vacancyPeriodSchema>) {
+  const cutoff = new Date();
+
+  switch (period) {
+    case "day":
+      cutoff.setDate(cutoff.getDate() - 1);
+      break;
+    case "week":
+      cutoff.setDate(cutoff.getDate() - 7);
+      break;
+    case "month":
+      cutoff.setMonth(cutoff.getMonth() - 1);
+      break;
+    case "year":
+      cutoff.setFullYear(cutoff.getFullYear() - 1);
+      break;
+  }
+
+  return cutoff;
+}
+
+function isDateWithinPeriod(value: string | undefined, cutoff: Date) {
+  if (!value) {
+    return false;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  return parsedDate >= cutoff;
+}
+
 async function getCurrentUserCompanyId(
   db: typeof import("~/server/db").db,
   userId: string | undefined,
@@ -131,34 +167,132 @@ async function getCurrentUserCompanyId(
 }
 
 export const vacanciesRouter = createTRPCRouter({
+  hasVacancies: protectedProcedure.query(async ({ ctx }) => {
+    const userCompanyId = await getCurrentUserCompanyId(
+      ctx.db,
+      ctx.session?.user?.id,
+    );
+
+    const localRows = await ctx.db
+      .select({ id: vacancies.id })
+      .from(vacancies)
+      .where(userCompanyId ? eq(vacancies.companyId, userCompanyId) : undefined)
+      .limit(1);
+
+    if (localRows.length > 0) {
+      return true;
+    }
+
+    if (userCompanyId !== DEFAULT_COMPANY_ID) {
+      return false;
+    }
+
+    const hhAccountRows = await ctx.db
+      .select({
+        accessToken: companyHhAccounts.accessToken,
+        employerId: companyHhAccounts.employerId,
+        id: companyHhAccounts.id,
+        refreshToken: companyHhAccounts.refreshToken,
+      })
+      .from(companyHhAccounts)
+      .where(eq(companyHhAccounts.companyId, userCompanyId))
+      .limit(1);
+
+    const hhAccount = hhAccountRows[0];
+    const hasHhOAuth = Boolean(
+      hhAccount?.accessToken || hhAccount?.refreshToken,
+    );
+    if (!hasHhOAuth) {
+      return false;
+    }
+
+    let employerId = hhAccount?.employerId?.trim();
+
+    if (!employerId && hhAccount?.accessToken && isHhConfigured()) {
+      try {
+        const resolvedAccount = await resolveHhEmployerFromAccessToken(
+          hhAccount.accessToken,
+        );
+        employerId = resolvedAccount.employerId;
+
+        await ctx.db
+          .update(companyHhAccounts)
+          .set({
+            email: resolvedAccount.email,
+            employerId: resolvedAccount.employerId,
+          })
+          .where(eq(companyHhAccounts.id, hhAccount.id));
+      } catch (_resolveError) {
+        if (hhAccount.refreshToken) {
+          try {
+            const refreshedTokens = await refreshHhAccessToken(
+              hhAccount.refreshToken,
+            );
+            const resolvedAccount = await resolveHhEmployerFromAccessToken(
+              refreshedTokens.accessToken,
+            );
+            employerId = resolvedAccount.employerId;
+
+            await ctx.db
+              .update(companyHhAccounts)
+              .set({
+                accessToken: refreshedTokens.accessToken,
+                email: resolvedAccount.email,
+                employerId: resolvedAccount.employerId,
+                refreshToken: refreshedTokens.refreshToken,
+              })
+              .where(eq(companyHhAccounts.id, hhAccount.id));
+          } catch {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+
+    if (!employerId) {
+      return false;
+    }
+
+    try {
+      const hhVacancies = await fetchCompanyHhVacancies(employerId);
+      return hhVacancies.length > 0;
+    } catch {
+      return false;
+    }
+  }),
+
   getAllVacancies: protectedProcedure
     .input(
       z
         .object({
+          period: vacancyPeriodSchema.optional().default("week"),
           limit: z.number().min(1).max(100).optional(),
           offset: z.number().min(0).optional(),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
+      const period = input?.period ?? "week";
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
-
-      let userCompanyId: string | null = null;
-      if (ctx.session?.user?.id) {
-        const userRows = await ctx.db
-          .select({ companyId: users.companyId })
-          .from(users)
-          .where(eq(users.id, ctx.session.user.id))
-          .limit(1);
-        userCompanyId = userRows[0]?.companyId ?? null;
-      }
+      const createdAtCutoff = getVacancyDateCutoff(period);
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
 
       const rows = await ctx.db
         .select()
         .from(vacancies)
         .where(
-          userCompanyId ? eq(vacancies.companyId, userCompanyId) : undefined,
+          userCompanyId
+            ? and(
+                eq(vacancies.companyId, userCompanyId),
+                gte(vacancies.createdAt, createdAtCutoff),
+              )
+            : gte(vacancies.createdAt, createdAtCutoff),
         )
         .orderBy(desc(vacancies.createdAt))
         .limit(limit)
@@ -278,7 +412,11 @@ export const vacanciesRouter = createTRPCRouter({
           ...hhVacancies.map((vacancy) =>
             formatHhVacancy(vacancy, userCompanyId),
           ),
-        ];
+        ].filter((vacancy) =>
+          vacancy.source === "hh.uz"
+            ? isDateWithinPeriod(vacancy.publishedAt, createdAtCutoff)
+            : true,
+        );
       } catch (error) {
         console.error("Failed to fetch hh.uz vacancies for company", {
           companyId: userCompanyId,

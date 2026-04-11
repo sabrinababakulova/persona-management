@@ -11,12 +11,15 @@ import {
   ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
-  FunnelIcon,
   MoreIcon,
   NoCandidates,
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
+import {
+  PeriodFilter,
+  type PeriodFilterValue,
+} from "../_components/period-filter";
 import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 import {
   TablePagination,
@@ -25,6 +28,7 @@ import {
 import { QuickOverview } from "./components/quickOverview";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
+const DEFAULT_CANDIDATE_PERIOD = "week" as const;
 
 const CANDIDATE_STATUS_VALUES: CandidateStatus[] = [
   "new",
@@ -78,8 +82,17 @@ function mapStatusOptions(options: LookupOption[]): LookupOption[] {
 
 export default function CandidatesPage() {
   const utils = api.useUtils();
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilterValue>(
+    DEFAULT_CANDIDATE_PERIOD,
+  );
+  const candidateQueryInput = useMemo(
+    () => ({ period: selectedPeriod }),
+    [selectedPeriod],
+  );
   const { data: candidatesData, isLoading } =
-    api.candidates.getAllCandidates.useQuery();
+    api.candidates.getAllCandidates.useQuery(candidateQueryInput);
+  const { data: hasAnyCandidates = false, isLoading: isAnyCandidatesLoading } =
+    api.candidates.hasCandidates.useQuery();
   const {
     data: lookups,
     isError: isLookupsError,
@@ -144,14 +157,18 @@ export default function CandidatesPage() {
               year: "numeric",
             })
           : "",
+        createdAtValue: createdCandidate.createdAt
+          ? new Date(createdCandidate.createdAt).toISOString()
+          : "",
         source: createdCandidate.source ?? "",
       };
 
-      utils.candidates.getAllCandidates.setData(undefined, (existing = []) => [
-        mappedCandidate,
-        ...existing,
-      ]);
+      utils.candidates.getAllCandidates.setData(
+        candidateQueryInput,
+        (existing = []) => [mappedCandidate, ...existing],
+      );
       void utils.candidates.getAllCandidates.invalidate();
+      void utils.candidates.hasCandidates.invalidate();
 
       setToastMessage("Кандидат успешно добавлен");
       setIsQuickAddModalOpen(false);
@@ -163,17 +180,20 @@ export default function CandidatesPage() {
 
   const updateCandidateStatus = api.candidates.updateCandidate.useMutation({
     onMutate: async ({ id, status }) => {
-      await utils.candidates.getAllCandidates.cancel();
+      await utils.candidates.getAllCandidates.cancel(candidateQueryInput);
 
-      const previousCandidates = utils.candidates.getAllCandidates.getData();
+      const previousCandidates =
+        utils.candidates.getAllCandidates.getData(candidateQueryInput);
 
       if (status && isCandidateStatus(status)) {
-        utils.candidates.getAllCandidates.setData(undefined, (existing = []) =>
-          existing.map((candidate) =>
-            candidate.id === id
-              ? { ...candidate, status: status as CandidateStatus }
-              : candidate,
-          ),
+        utils.candidates.getAllCandidates.setData(
+          candidateQueryInput,
+          (existing = []) =>
+            existing.map((candidate) =>
+              candidate.id === id
+                ? { ...candidate, status: status as CandidateStatus }
+                : candidate,
+            ),
         );
       }
 
@@ -182,7 +202,7 @@ export default function CandidatesPage() {
     onError: (_error, _variables, context) => {
       if (context?.previousCandidates) {
         utils.candidates.getAllCandidates.setData(
-          undefined,
+          candidateQueryInput,
           context.previousCandidates,
         );
       }
@@ -232,10 +252,10 @@ export default function CandidatesPage() {
     totalPages,
   } = useTablePagination({
     items: filteredCandidates,
-    resetKey: searchQuery,
+    resetKey: `${searchQuery}:${selectedPeriod}`,
   });
 
-  const hasCandidates = candidates.length > 0;
+  const hasCandidates = hasAnyCandidates;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {
@@ -365,14 +385,12 @@ export default function CandidatesPage() {
             <h1 className="font-bold text-2xl text-gray-900 lg:text-3xl">
               Кандидаты
             </h1>
-            {hasCandidates && (
-              <button
-                className="flex items-center gap-2 self-start rounded-lg border border-border-light bg-white px-4 py-2 text-gray-700 hover:bg-bg-light sm:self-auto"
-                type="button"
-              >
-                Последние 7 дней
-                <ChevronDownIcon className="h-4 w-4" />
-              </button>
+            {(hasCandidates || isAnyCandidatesLoading) && (
+              <PeriodFilter
+                ariaLabel="Фильтр периода кандидатов"
+                onChange={setSelectedPeriod}
+                value={selectedPeriod}
+              />
             )}
           </div>
 

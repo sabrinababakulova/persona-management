@@ -2,10 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  TablePagination,
-  useTablePagination,
-} from "../_components/table-pagination";
 import { api } from "~/trpc/react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 import { Checkbox } from "../_components/checkbox";
@@ -19,6 +15,14 @@ import {
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
+import {
+  PeriodFilter,
+  type PeriodFilterValue,
+} from "../_components/period-filter";
+import {
+  TablePagination,
+  useTablePagination,
+} from "../_components/table-pagination";
 
 type VacancyStatus = Vacancy["status"];
 
@@ -93,8 +97,16 @@ function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
 
 export default function VacanciesPage() {
   const utils = api.useUtils();
+  const [selectedPeriod, setSelectedPeriod] =
+    useState<PeriodFilterValue>("week");
+  const vacancyQueryInput = useMemo(
+    () => ({ period: selectedPeriod }),
+    [selectedPeriod],
+  );
   const { data: vacanciesData, isLoading } =
-    api.vacancies.getAllVacancies.useQuery();
+    api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
+  const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
+    api.vacancies.hasVacancies.useQuery();
   const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -110,17 +122,20 @@ export default function VacanciesPage() {
 
   const updateVacancyStatus = api.vacancies.updateVacancy.useMutation({
     onMutate: async ({ id, status }) => {
-      await utils.vacancies.getAllVacancies.cancel();
+      await utils.vacancies.getAllVacancies.cancel(vacancyQueryInput);
 
-      const previousVacancies = utils.vacancies.getAllVacancies.getData();
+      const previousVacancies =
+        utils.vacancies.getAllVacancies.getData(vacancyQueryInput);
 
       if (status) {
-        utils.vacancies.getAllVacancies.setData(undefined, (existing = []) =>
-          existing.map((vacancy) =>
-            vacancy.source === "local" && vacancy.id === id
-              ? { ...vacancy, status }
-              : vacancy,
-          ),
+        utils.vacancies.getAllVacancies.setData(
+          vacancyQueryInput,
+          (existing = []) =>
+            existing.map((vacancy) =>
+              vacancy.source === "local" && vacancy.id === id
+                ? { ...vacancy, status }
+                : vacancy,
+            ),
         );
       }
 
@@ -129,7 +144,7 @@ export default function VacanciesPage() {
     onError: (_error, _variables, context) => {
       if (context?.previousVacancies) {
         utils.vacancies.getAllVacancies.setData(
-          undefined,
+          vacancyQueryInput,
           context.previousVacancies,
         );
       }
@@ -198,10 +213,10 @@ export default function VacanciesPage() {
     totalPages,
   } = useTablePagination({
     items: filteredVacancies,
-    resetKey: searchQuery,
+    resetKey: `${searchQuery}:${selectedPeriod}`,
   });
 
-  const hasVacancies = vacancies.length > 0;
+  const hasVacancies = hasAnyVacancies;
 
   if (isLoading) {
     return (
@@ -228,14 +243,12 @@ export default function VacanciesPage() {
             <h1 className="font-bold text-2xl text-gray-900 lg:text-3xl">
               Вакансии
             </h1>
-            {hasVacancies && (
-              <button
-                className="flex items-center gap-2 self-start rounded-lg border border-border-light bg-white px-4 py-2 text-gray-700 hover:bg-bg-light sm:self-auto"
-                type="button"
-              >
-                Последние 7 дней
-                <ChevronDownIcon className="h-4 w-4" />
-              </button>
+            {(hasVacancies || isAnyVacanciesLoading) && (
+              <PeriodFilter
+                ariaLabel="Фильтр периода вакансий"
+                onChange={setSelectedPeriod}
+                value={selectedPeriod}
+              />
             )}
           </div>
 

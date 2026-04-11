@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -75,6 +75,31 @@ function buildActivityStatusPreview(value: string, maxLength = 255) {
   return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
+const candidatePeriodSchema = z.enum(["day", "week", "month", "year"]);
+
+function getCandidateCreatedAtCutoff(
+  period: z.infer<typeof candidatePeriodSchema>,
+) {
+  const cutoff = new Date();
+
+  switch (period) {
+    case "day":
+      cutoff.setDate(cutoff.getDate() - 1);
+      break;
+    case "week":
+      cutoff.setDate(cutoff.getDate() - 7);
+      break;
+    case "month":
+      cutoff.setMonth(cutoff.getMonth() - 1);
+      break;
+    case "year":
+      cutoff.setFullYear(cutoff.getFullYear() - 1);
+      break;
+  }
+
+  return cutoff;
+}
+
 async function getCurrentUserCompanyId(
   db: typeof import("~/server/db").db,
   userId: string | undefined,
@@ -93,6 +118,23 @@ async function getCurrentUserCompanyId(
 }
 
 export const candidatesRouter = createTRPCRouter({
+  hasCandidates: protectedProcedure.query(async ({ ctx }) => {
+    const userCompanyId = await getCurrentUserCompanyId(
+      ctx.db,
+      ctx.session?.user?.id,
+    );
+
+    const rows = await ctx.db
+      .select({ id: candidates.id })
+      .from(candidates)
+      .where(
+        userCompanyId ? eq(candidates.companyId, userCompanyId) : undefined,
+      )
+      .limit(1);
+
+    return rows.length > 0;
+  }),
+
   uploadResume: protectedProcedure
     .input(
       z.object({
@@ -360,6 +402,7 @@ export const candidatesRouter = createTRPCRouter({
     .input(
       z
         .object({
+          period: candidatePeriodSchema.optional().default("week"),
           search: z.string().max(255).optional(),
           limit: z.number().min(1).max(100).optional(),
           offset: z.number().min(0).optional(),
@@ -367,25 +410,22 @@ export const candidatesRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
+      const period = input?.period ?? "week";
       const search = input?.search?.trim();
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
+      const createdAtCutoff = getCandidateCreatedAtCutoff(period);
 
-      // Get the user's companyId to filter candidates
-      let userCompanyId: string | null = null;
-      if (ctx.session?.user?.id) {
-        const userRows = await ctx.db
-          .select({ companyId: users.companyId })
-          .from(users)
-          .where(eq(users.id, ctx.session.user.id))
-          .limit(1);
-        userCompanyId = userRows[0]?.companyId ?? null;
-      }
+      const userCompanyId = await getCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
 
       const conditions = [];
       if (userCompanyId) {
         conditions.push(eq(candidates.companyId, userCompanyId));
       }
+      conditions.push(gte(candidates.createdAt, createdAtCutoff));
       if (search) {
         conditions.push(ilike(candidates.fullName, `%${escapeLike(search)}%`));
       }
@@ -415,6 +455,9 @@ export const candidatesRouter = createTRPCRouter({
                 month: "2-digit",
                 year: "numeric",
               })
+            : "",
+          createdAtValue: c.createdAt
+            ? new Date(c.createdAt).toISOString()
             : "",
           source: c.source ?? "",
         };

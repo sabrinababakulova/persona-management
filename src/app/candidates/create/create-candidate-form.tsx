@@ -139,25 +139,35 @@ export function CreateCandidateForm() {
       }
 
       const parts = createdCandidate.fullName.split(" ");
-      utils.candidates.getAllCandidates.setData(undefined, (existing = []) => [
-        {
-          id: createdCandidate.id,
-          name: parts.slice(0, 2).join(" "),
-          patronymic: parts.slice(2).join(" "),
-          city: createdCandidate.city ?? "",
-          status: (createdCandidate.status ?? "new") as CandidateStatus,
-          createdAt: createdCandidate.createdAt
-            ? new Date(createdCandidate.createdAt).toLocaleDateString("ru-RU", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
-            : "",
-          source: createdCandidate.source ?? "",
-        },
-        ...existing,
-      ]);
+      utils.candidates.getAllCandidates.setData(
+        { period: "week" },
+        (existing = []) => [
+          {
+            id: createdCandidate.id,
+            name: parts.slice(0, 2).join(" "),
+            patronymic: parts.slice(2).join(" "),
+            city: createdCandidate.city ?? "",
+            status: (createdCandidate.status ?? "new") as CandidateStatus,
+            createdAt: createdCandidate.createdAt
+              ? new Date(createdCandidate.createdAt).toLocaleDateString(
+                  "ru-RU",
+                  {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  },
+                )
+              : "",
+            createdAtValue: createdCandidate.createdAt
+              ? new Date(createdCandidate.createdAt).toISOString()
+              : "",
+            source: createdCandidate.source ?? "",
+          },
+          ...existing,
+        ],
+      );
       void utils.candidates.getAllCandidates.invalidate();
+      void utils.candidates.hasCandidates.invalidate();
 
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(
