@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, ilike } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -66,21 +66,44 @@ async function getVacancyRelatedCandidates(
         eq(candidates.companyId, companyId),
       ),
     )
-    .orderBy(desc(candidateVacancies.createdAt));
+    .orderBy(desc(candidateVacancies.id));
+}
+
+async function getVacancyResponseCounts(
+  db: typeof import("~/server/db").db,
+  vacancyIds: string[],
+) {
+  if (vacancyIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const rows = await db
+    .select({
+      vacancyId: candidateVacancies.vacancyId,
+      total: count(candidateVacancies.id),
+    })
+    .from(candidateVacancies)
+    .where(inArray(candidateVacancies.vacancyId, vacancyIds))
+    .groupBy(candidateVacancies.vacancyId);
+
+  return new Map(rows.map((row) => [row.vacancyId, row.total]));
 }
 
 function toSalaryCurrency(value: string | null): SalaryCurrency {
   return value === "USD" ? "USD" : "UZS";
 }
 
-function formatVacancy(vacancy: typeof vacancies.$inferSelect) {
+function formatVacancy(
+  vacancy: typeof vacancies.$inferSelect,
+  responses = vacancy.responses ?? 0,
+) {
   return {
     id: vacancy.id,
     title: vacancy.title,
     level: vacancy.level ?? "",
     status: toVacancyStatus(vacancy.status),
     city: vacancy.city ?? "",
-    responses: vacancy.responses ?? 0,
+    responses,
     workType: vacancy.workType ?? "",
     salaryExpectation: vacancy.salaryExpectation ?? undefined,
     salaryCurrency: toSalaryCurrency(vacancy.salaryCurrency),
@@ -323,7 +346,13 @@ export const vacanciesRouter = createTRPCRouter({
         .limit(limit)
         .offset(offset);
 
-      const localVacancies = rows.map(formatVacancy);
+      const responseCounts = await getVacancyResponseCounts(
+        ctx.db,
+        rows.map((row) => row.id),
+      );
+      const localVacancies = rows.map((row) =>
+        formatVacancy(row, responseCounts.get(row.id) ?? 0),
+      );
 
       if (userCompanyId !== DEFAULT_COMPANY_ID) {
         console.info("[hh.uz] skipping vacancy sync for non-default company", {
@@ -539,7 +568,7 @@ export const vacanciesRouter = createTRPCRouter({
       );
 
       return {
-        ...formatVacancy(vacancy),
+        ...formatVacancy(vacancy, relatedCandidateRows.length),
         relatedCandidates: relatedCandidateRows,
       };
     }),
@@ -630,8 +659,15 @@ export const vacanciesRouter = createTRPCRouter({
         ctx.db.select({ total: count() }).from(vacancies).where(whereClause),
       ]);
 
+      const responseCounts = await getVacancyResponseCounts(
+        ctx.db,
+        rows.map((row) => row.id),
+      );
+
       return {
-        items: rows.map(formatVacancy),
+        items: rows.map((row) =>
+          formatVacancy(row, responseCounts.get(row.id)),
+        ),
         total: totalRows[0]?.total ?? 0,
       };
     }),
@@ -1022,145 +1058,5 @@ export const vacanciesRouter = createTRPCRouter({
         sentTo: channels.length - errors.length,
         errors: errors.length > 0 ? errors : undefined,
       };
-    }),
-
-  linkCandidateToVacancy: protectedProcedure
-    .input(
-      z.object({
-        candidateId: z.string().min(1).max(255),
-        vacancyId: z.string().min(1).max(255),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const userCompanyId = await requireCurrentUserCompanyId(
-        ctx.db,
-        ctx.session?.user?.id,
-      );
-
-      const [candidateRow, vacancyRow] = await Promise.all([
-        ctx.db
-          .select({
-            id: candidates.id,
-            companyId: candidates.companyId,
-          })
-          .from(candidates)
-          .where(
-            and(
-              eq(candidates.id, input.candidateId),
-              eq(candidates.companyId, userCompanyId),
-            ),
-          )
-          .limit(1),
-        ctx.db
-          .select({
-            id: vacancies.id,
-            companyId: vacancies.companyId,
-          })
-          .from(vacancies)
-          .where(
-            and(
-              eq(vacancies.id, input.vacancyId),
-              eq(vacancies.companyId, userCompanyId),
-            ),
-          )
-          .limit(1),
-      ]);
-
-      const candidate = candidateRow[0];
-      if (!candidate) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Кандидат не найден",
-        });
-      }
-
-      const vacancy = vacancyRow[0];
-      if (!vacancy) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Вакансия не найдена",
-        });
-      }
-
-      if (!candidate.companyId || !vacancy.companyId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Кандидат или вакансия не привязаны к компании",
-        });
-      }
-
-      if (candidate.companyId !== vacancy.companyId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Кандидат и вакансия должны принадлежать одной компании",
-        });
-      }
-
-      const existingLink = await ctx.db
-        .select({ candidateId: candidateVacancies.candidateId })
-        .from(candidateVacancies)
-        .where(
-          and(
-            eq(candidateVacancies.candidateId, input.candidateId),
-            eq(candidateVacancies.vacancyId, input.vacancyId),
-          ),
-        )
-        .limit(1);
-
-      if (existingLink[0]) {
-        return { success: true, alreadyLinked: true };
-      }
-
-      await ctx.db.insert(candidateVacancies).values({
-        candidateId: input.candidateId,
-        vacancyId: input.vacancyId,
-      });
-
-      return { success: true, alreadyLinked: false };
-    }),
-
-  unlinkCandidateFromVacancy: protectedProcedure
-    .input(
-      z.object({
-        candidateId: z.string().min(1).max(255),
-        vacancyId: z.string().min(1).max(255),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const userCompanyId = await requireCurrentUserCompanyId(
-        ctx.db,
-        ctx.session?.user?.id,
-      );
-
-      const vacancyRow = await ctx.db
-        .select({
-          companyId: vacancies.companyId,
-        })
-        .from(vacancies)
-        .where(
-          and(
-            eq(vacancies.id, input.vacancyId),
-            eq(vacancies.companyId, userCompanyId),
-          ),
-        )
-        .limit(1);
-
-      if (!vacancyRow[0]) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Вакансия не найдена",
-        });
-      }
-
-      await ctx.db
-        .delete(candidateVacancies)
-        .where(
-          and(
-            eq(candidateVacancies.candidateId, input.candidateId),
-            eq(candidateVacancies.vacancyId, input.vacancyId),
-          ),
-        );
-
-      return { success: true };
     }),
 });

@@ -253,26 +253,21 @@ export const vacancies = createTable(
 );
 
 export const candidateVacancies = createTable(
-  "candidate_vacancy",
+  "candidate_vacancy_1",
   (d) => ({
+    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
     candidateId: d
-      .varchar({ length: 255 })
+      .varchar("candidate_id", { length: 255 })
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
     vacancyId: d
-      .varchar({ length: 255 })
+      .varchar("vacancy_id", { length: 255 })
       .notNull()
       .references(() => vacancies.id, { onDelete: "cascade" }),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
   }),
   (t) => [
-    primaryKey({ columns: [t.candidateId, t.vacancyId] }),
-    index("candidate_vacancy_candidate_id_idx").on(t.candidateId),
-    index("candidate_vacancy_vacancy_id_idx").on(t.vacancyId),
-    index("candidate_vacancy_created_at_idx").on(t.createdAt),
+    index("candidate_vacancy_1_candidate_id_idx").on(t.candidateId),
+    index("candidate_vacancy_1_vacancy_id_idx").on(t.vacancyId),
   ],
 );
 

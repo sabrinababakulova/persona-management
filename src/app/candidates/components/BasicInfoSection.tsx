@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "~/app/_components/icons";
-import { VacancySelector } from "~/app/_components/vacancy-selector";
 import type { BasicInfoSectionProps } from "~/types/candidates/basic-info-section";
 import { Dropdown } from "../../_components/dropdown";
 import { Input } from "../../_components/input";
@@ -14,14 +13,11 @@ export function BasicInfoSection({
   city,
   currentPosition,
   source,
-  vacancyId,
-  selectedVacancyLabel,
   contacts,
   contactSources,
   positions,
   sources,
   onInputChange,
-  onVacancyChange,
   onAddContact,
   onRemoveContact,
   onContactChange,
@@ -87,13 +83,6 @@ export function BasicInfoSection({
               />
             </div>
           </div>
-
-          <VacancySelector
-            label="Вакансия"
-            onChange={onVacancyChange}
-            selectedVacancyId={vacancyId}
-            selectedVacancyLabel={selectedVacancyLabel}
-          />
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">

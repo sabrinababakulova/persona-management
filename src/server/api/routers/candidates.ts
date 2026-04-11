@@ -528,7 +528,7 @@ export const candidatesRouter = createTRPCRouter({
             eq(vacancies.companyId, userCompanyId),
           ),
         )
-        .orderBy(desc(candidateVacancies.createdAt));
+        .orderBy(desc(candidateVacancies.id));
       const activityRows = await ctx.db
         .select({
           id: recentActivityLogs.id,
@@ -752,7 +752,6 @@ export const candidatesRouter = createTRPCRouter({
           )
           .max(20)
           .default([]),
-        vacancyId: z.string().uuid().optional(),
         status: z.string().max(50).default("new"),
         aiAnalysis: z.string().max(5000).optional(),
         resumeFileId: z.string().max(255).optional(),
@@ -872,37 +871,6 @@ export const candidatesRouter = createTRPCRouter({
         ctx.session?.user?.id,
       );
 
-      if (input.vacancyId) {
-        const vacancyRows = await ctx.db
-          .select({
-            companyId: vacancies.companyId,
-            id: vacancies.id,
-          })
-          .from(vacancies)
-          .where(
-            and(
-              eq(vacancies.id, input.vacancyId),
-              eq(vacancies.companyId, companyId),
-            ),
-          )
-          .limit(1);
-
-        const selectedVacancy = vacancyRows[0];
-        if (!selectedVacancy) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Вакансия не найдена",
-          });
-        }
-
-        if (selectedVacancy.companyId !== companyId) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "Кандидат и вакансия должны принадлежать одной компании",
-          });
-        }
-      }
-
       const created = await ctx.db.transaction(async (tx) => {
         const newCandidate = await tx
           .insert(candidates)
@@ -931,13 +899,6 @@ export const candidatesRouter = createTRPCRouter({
         const insertedCandidate = newCandidate[0];
         if (!insertedCandidate) {
           return null;
-        }
-
-        if (input.vacancyId) {
-          await tx.insert(candidateVacancies).values({
-            candidateId: insertedCandidate.id,
-            vacancyId: input.vacancyId,
-          });
         }
 
         return insertedCandidate;
@@ -1089,145 +1050,5 @@ export const candidatesRouter = createTRPCRouter({
       }
 
       return updated;
-    }),
-
-  linkCandidateToVacancy: protectedProcedure
-    .input(
-      z.object({
-        candidateId: z.string().min(1).max(255),
-        vacancyId: z.string().min(1).max(255),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const userCompanyId = await requireCurrentUserCompanyId(
-        ctx.db,
-        ctx.session?.user?.id,
-      );
-
-      const [candidateRow, vacancyRow] = await Promise.all([
-        ctx.db
-          .select({
-            id: candidates.id,
-            companyId: candidates.companyId,
-          })
-          .from(candidates)
-          .where(
-            and(
-              eq(candidates.id, input.candidateId),
-              eq(candidates.companyId, userCompanyId),
-            ),
-          )
-          .limit(1),
-        ctx.db
-          .select({
-            id: vacancies.id,
-            companyId: vacancies.companyId,
-          })
-          .from(vacancies)
-          .where(
-            and(
-              eq(vacancies.id, input.vacancyId),
-              eq(vacancies.companyId, userCompanyId),
-            ),
-          )
-          .limit(1),
-      ]);
-
-      const candidate = candidateRow[0];
-      if (!candidate) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Кандидат не найден",
-        });
-      }
-
-      const vacancy = vacancyRow[0];
-      if (!vacancy) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Вакансия не найдена",
-        });
-      }
-
-      if (!candidate.companyId || !vacancy.companyId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Кандидат или вакансия не привязаны к компании",
-        });
-      }
-
-      if (candidate.companyId !== vacancy.companyId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Кандидат и вакансия должны принадлежать одной компании",
-        });
-      }
-
-      const existingLink = await ctx.db
-        .select({ candidateId: candidateVacancies.candidateId })
-        .from(candidateVacancies)
-        .where(
-          and(
-            eq(candidateVacancies.candidateId, input.candidateId),
-            eq(candidateVacancies.vacancyId, input.vacancyId),
-          ),
-        )
-        .limit(1);
-
-      if (existingLink[0]) {
-        return { success: true, alreadyLinked: true };
-      }
-
-      await ctx.db.insert(candidateVacancies).values({
-        candidateId: input.candidateId,
-        vacancyId: input.vacancyId,
-      });
-
-      return { success: true, alreadyLinked: false };
-    }),
-
-  unlinkCandidateFromVacancy: protectedProcedure
-    .input(
-      z.object({
-        candidateId: z.string().min(1).max(255),
-        vacancyId: z.string().min(1).max(255),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const userCompanyId = await requireCurrentUserCompanyId(
-        ctx.db,
-        ctx.session?.user?.id,
-      );
-
-      const candidateRow = await ctx.db
-        .select({
-          companyId: candidates.companyId,
-        })
-        .from(candidates)
-        .where(
-          and(
-            eq(candidates.id, input.candidateId),
-            eq(candidates.companyId, userCompanyId),
-          ),
-        )
-        .limit(1);
-
-      if (!candidateRow[0]) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Кандидат не найден",
-        });
-      }
-
-      await ctx.db
-        .delete(candidateVacancies)
-        .where(
-          and(
-            eq(candidateVacancies.candidateId, input.candidateId),
-            eq(candidateVacancies.vacancyId, input.vacancyId),
-          ),
-        );
-
-      return { success: true };
     }),
 });

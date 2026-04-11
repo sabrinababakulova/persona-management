@@ -21,7 +21,6 @@ export type CandidateFormData = {
     period: string;
     isCurrent?: boolean;
   }[];
-  vacancyId?: string;
   status: string;
   aiAnalysis?: string;
   resumeFileId?: string;

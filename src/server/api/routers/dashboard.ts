@@ -1,8 +1,9 @@
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidates,
+  candidateVacancies,
   recentActivityLogs,
   users,
   vacancies,
@@ -244,9 +245,33 @@ export const dashboardRouter = createTRPCRouter({
       subtitle: "Название",
       status: (v.status ?? "active").toUpperCase(),
       city: v.city ?? "",
-      responses: v.responses ?? 0,
+      responses: 0,
       workType: v.workType ?? "",
     }));
+
+    if (recentVacancyRows.length > 0) {
+      const responseRows = await ctx.db
+        .select({
+          vacancyId: candidateVacancies.vacancyId,
+          total: count(candidateVacancies.id),
+        })
+        .from(candidateVacancies)
+        .where(
+          inArray(
+            candidateVacancies.vacancyId,
+            recentVacancyRows.map((vacancy) => vacancy.id),
+          ),
+        )
+        .groupBy(candidateVacancies.vacancyId);
+
+      const responseCounts = new Map(
+        responseRows.map((row) => [row.vacancyId, row.total]),
+      );
+
+      for (const vacancy of recentVacancies) {
+        vacancy.responses = responseCounts.get(vacancy.id) ?? 0;
+      }
+    }
 
     // Build recent activities for dashboard "Последние действия"
     const recentActivities: {
