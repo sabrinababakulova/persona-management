@@ -4,91 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import {
+  ArrowLeftIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+} from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
 import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summary-card";
 import { api } from "~/trpc/react";
-
-function EditIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <title>Edit</title>
-      <path
-        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <title>Delete</title>
-      <path
-        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <title>Add</title>
-      <path
-        d="M12 4v16m8-8H4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <title>Back</title>
-      <path
-        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
-    </svg>
-  );
-}
 
 export default function CandidateDetailPage() {
   const params = useParams();
@@ -239,7 +165,7 @@ export default function CandidateDetailPage() {
                               className="text-primary-blue hover:text-primary-blue-dark"
                               type="button"
                             >
-                              <EditIcon className="h-4 w-4" />
+                              <PencilIcon className="h-4 w-4" />
                             </button>
                             <button
                               className="text-red-500 hover:text-red-600"

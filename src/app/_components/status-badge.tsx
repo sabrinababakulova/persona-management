@@ -1,4 +1,5 @@
 import type { StatusBadgeProps } from "~/types/components/status-badge-props";
+import { CheckIcon, ChevronDownIcon } from "./icons";
 
 const statusConfig = {
   active: {
@@ -31,37 +32,9 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium text-xs ${config.className}`}
     >
       {config.label}
-      {status === "active" && (
-        <svg
-          aria-hidden="true"
-          className="h-3 w-3"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M5 13l4 4L19 7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={3}
-          />
-        </svg>
-      )}
+      {status === "active" && <CheckIcon className="h-3 w-3" strokeWidth={3} />}
       {status !== "active" && status !== "archive" && (
-        <svg
-          aria-hidden="true"
-          className="h-3 w-3"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M19 9l-7 7-7-7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-          />
-        </svg>
+        <ChevronDownIcon className="h-3 w-3" />
       )}
     </span>
   );

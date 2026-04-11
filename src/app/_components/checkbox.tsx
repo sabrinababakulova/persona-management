@@ -1,4 +1,5 @@
 import type { CheckboxProps } from "~/types/components/checkbox-props";
+import { CheckIcon } from "./icons";
 
 export function Checkbox({ checked, onChange }: CheckboxProps) {
   return (
@@ -11,22 +12,7 @@ export function Checkbox({ checked, onChange }: CheckboxProps) {
       onClick={onChange}
       type="button"
     >
-      {checked && (
-        <svg
-          aria-hidden="true"
-          className="h-3.5 w-3.5 text-white"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M5 13l4 4L19 7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={3}
-          />
-        </svg>
-      )}
+      {checked && <CheckIcon className="h-3.5 w-3.5 text-white" />}
     </button>
   );
 }

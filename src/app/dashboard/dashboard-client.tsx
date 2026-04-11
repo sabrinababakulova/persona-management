@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import { ChevronRightIcon, SortIcon } from "../_components/icons";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyRow } from "../_components/vacancy-row";
 import { WelcomeModal } from "../_components/welcome-modal";
@@ -99,114 +100,30 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 href="/vacancies"
               >
                 Смотреть все
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Arrow Right</title>
-                  <path
-                    d="M9 5l7 7-7 7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-4 border-border-light border-b bg-bg-light px-6 py-3 font-medium text-sm text-text-muted">
               <div className="col-span-3 flex items-center gap-1">
                 Название
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Sort</title>
-                  <path
-                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <SortIcon className="h-4 w-4" />
               </div>
               <div className="col-span-2 flex items-center gap-1">
                 Статус
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Sort</title>
-                  <path
-                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <SortIcon className="h-4 w-4" />
               </div>
               <div className="col-span-2 flex items-center gap-1">
                 Город
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Sort</title>
-                  <path
-                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <SortIcon className="h-4 w-4" />
               </div>
               <div className="col-span-2 flex items-center gap-1">
                 Отклики
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Sort</title>
-                  <path
-                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <SortIcon className="h-4 w-4" />
               </div>
               <div className="col-span-2 flex items-center gap-1">
                 Тип работы
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Sort</title>
-                  <path
-                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <SortIcon className="h-4 w-4" />
               </div>
               <div className="col-span-1" />
             </div>
@@ -233,21 +150,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 href="/candidates"
               >
                 Смотреть все
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>Arrow Right</title>
-                  <path
-                    d="M9 5l7 7-7 7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                  />
-                </svg>
+                <ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>
 

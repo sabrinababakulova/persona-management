@@ -1,4 +1,5 @@
 import type { StatsCardProps } from "~/types/components/stats-card-props";
+import { TrendDownIcon, TrendUpIcon } from "./icons";
 
 export function StatsCard({
   title,
@@ -14,57 +15,9 @@ export function StatsCard({
   };
 
   const changeIcons = {
-    positive: (
-      <svg
-        aria-hidden="true"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <title>Positive Trend</title>
-        <path
-          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-        />
-      </svg>
-    ),
-    negative: (
-      <svg
-        aria-hidden="true"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <title>Negative Trend</title>
-        <path
-          d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-        />
-      </svg>
-    ),
-    neutral: (
-      <svg
-        aria-hidden="true"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <title>Neutral Trend</title>
-        <path
-          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-        />
-      </svg>
-    ),
+    positive: <TrendUpIcon className="h-4 w-4" />,
+    negative: <TrendDownIcon className="h-4 w-4" />,
+    neutral: <TrendUpIcon className="h-4 w-4" />,
   };
 
   return (
