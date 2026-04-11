@@ -34,7 +34,7 @@ fi
 echo "=== Repairing drizzle migration tracking ==="
 echo ""
 
-psql "$DATABASE_URL" <<'SQL'
+psql -v ON_ERROR_STOP=1 "$DATABASE_URL" <<'SQL'
 BEGIN;
 
 -- === Ensure 0006 schema parts exist (candidate_vacancy) ===
@@ -60,8 +60,8 @@ CREATE INDEX IF NOT EXISTS "candidate_vacancy_vacancy_id_idx"   ON "candidate_va
 CREATE INDEX IF NOT EXISTS "candidate_vacancy_created_at_idx"   ON "candidate_vacancy" ("createdAt");
 
 -- === Ensure 0007 data + schema parts exist (tenant activity logs) ===
-INSERT INTO "company" ("id", "name")
-VALUES ('00000000-0000-0000-0000-000000000001', 'Default Company')
+INSERT INTO "company" ("id", "name", "createdAt")
+VALUES ('00000000-0000-0000-0000-000000000001', 'Default Company', NOW())
 ON CONFLICT ("id") DO NOTHING;
 
 UPDATE "user"      SET "companyId" = '00000000-0000-0000-0000-000000000001' WHERE "companyId" IS NULL;
