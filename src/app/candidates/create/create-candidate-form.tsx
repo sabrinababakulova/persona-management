@@ -14,11 +14,14 @@ import { api } from "~/trpc/react";
 import type { CandidateFormData } from "~/types/candidates/candidate-form-data";
 import type {
   ContactItem,
+  EducationFormItem,
   Errors,
   LanguageItem,
+  WorkExperienceFormItem,
 } from "~/types/candidates/components";
 import type { CandidateStatus } from "~/types/server/candidates";
 import { calculateCandidateFormProgress } from "~/utils/candidate-form-progress";
+import { BackgroundDetailsSection } from "../components/BackgroundDetailsSection";
 import { BasicInfoSection } from "../components/BasicInfoSection";
 import { ConditionsSection } from "../components/ConditionsSection";
 
@@ -40,6 +43,7 @@ export function CreateCandidateForm() {
   const [candidateDraftId] = useState(() => crypto.randomUUID());
   const [basicInfoOpen, setBasicInfoOpen] = useState(true);
   const [requirementsOpen, setRequirementsOpen] = useState(true);
+  const [backgroundOpen, setBackgroundOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [isResumeUploading, setIsResumeUploading] = useState(false);
 
@@ -62,6 +66,8 @@ export function CreateCandidateForm() {
     currentPosition: "",
     skills: [],
     languages: [{ name: "", level: "" }],
+    workExperience: [],
+    education: [],
     status: "",
     aiAnalysis: "",
     resumeFileId: "",
@@ -76,6 +82,25 @@ export function CreateCandidateForm() {
 
   const [languages, setLanguages] = useState<LanguageItem[]>([
     { id: generateId(), name: "", level: "" },
+  ]);
+  const [workExperience, setWorkExperience] = useState<
+    WorkExperienceFormItem[]
+  >([
+    {
+      id: generateId(),
+      company: "",
+      position: "",
+      period: "",
+      description: "",
+    },
+  ]);
+  const [education, setEducation] = useState<EducationFormItem[]>([
+    {
+      id: generateId(),
+      institution: "",
+      gpa: "",
+      period: "",
+    },
   ]);
 
   const progress = calculateCandidateFormProgress(formData, REQUIRED_FIELDS);
@@ -152,18 +177,24 @@ export function CreateCandidateForm() {
   });
 
   // Form handlers
+  const clearError = (path: string) => {
+    setErrors((prev) => {
+      if (!prev[path]) {
+        return prev;
+      }
+
+      const nextErrors = { ...prev };
+      delete nextErrors[path];
+      return nextErrors;
+    });
+  };
+
   const handleInputChange = (
     field: keyof CandidateFormData,
     value: unknown,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+    clearError(field);
   };
 
   const handleContactChange = (
@@ -171,11 +202,15 @@ export function CreateCandidateForm() {
     field: "type" | "value",
     value: string,
   ) => {
+    const contactIndex = contacts.findIndex((contact) => contact.id === id);
     setContacts((prev) =>
       prev.map((contact) =>
         contact.id === id ? { ...contact, [field]: value } : contact,
       ),
     );
+    if (contactIndex >= 0) {
+      clearError(`contacts.${contactIndex}.${field}`);
+    }
   };
 
   const addContact = () => {
@@ -198,11 +233,15 @@ export function CreateCandidateForm() {
     field: "name" | "level",
     value: string,
   ) => {
+    const languageIndex = languages.findIndex((language) => language.id === id);
     setLanguages((prev) =>
       prev.map((language) =>
         language.id === id ? { ...language, [field]: value } : language,
       ),
     );
+    if (languageIndex >= 0) {
+      clearError(`languages.${languageIndex}.${field}`);
+    }
   };
 
   const addLanguage = () => {
@@ -213,6 +252,73 @@ export function CreateCandidateForm() {
   const removeLanguage = (id: string) => {
     if (languages.length > 1) {
       setLanguages((prev) => prev.filter((l) => l.id !== id));
+    }
+  };
+
+  const handleWorkExperienceChange = (
+    id: string,
+    field: "company" | "position" | "period" | "description",
+    value: string,
+  ) => {
+    const workExperienceIndex = workExperience.findIndex(
+      (item) => item.id === id,
+    );
+    setWorkExperience((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    );
+    if (workExperienceIndex >= 0) {
+      clearError(`workExperience.${workExperienceIndex}.${field}`);
+    }
+  };
+
+  const addWorkExperience = () => {
+    setWorkExperience((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        company: "",
+        position: "",
+        period: "",
+        description: "",
+      },
+    ]);
+  };
+
+  const removeWorkExperience = (id: string) => {
+    if (workExperience.length > 1) {
+      setWorkExperience((prev) => prev.filter((item) => item.id !== id));
+    }
+  };
+
+  const handleEducationChange = (
+    id: string,
+    field: "institution" | "gpa" | "period",
+    value: string,
+  ) => {
+    const educationIndex = education.findIndex((item) => item.id === id);
+    setEducation((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    );
+    if (educationIndex >= 0) {
+      clearError(`education.${educationIndex}.${field}`);
+    }
+  };
+
+  const addEducation = () => {
+    setEducation((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        institution: "",
+        gpa: "",
+        period: "",
+      },
+    ]);
+  };
+
+  const removeEducation = (id: string) => {
+    if (education.length > 1) {
+      setEducation((prev) => prev.filter((item) => item.id !== id));
     }
   };
 
@@ -233,10 +339,38 @@ export function CreateCandidateForm() {
   };
 
   const handleSubmit = () => {
+    const normalizedWorkExperience = workExperience
+      .map((item) => ({
+        company: item.company.trim(),
+        position: item.position.trim(),
+        period: item.period.trim(),
+        description: item.description
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
+      }))
+      .filter(
+        (item) =>
+          item.company ||
+          item.position ||
+          item.period ||
+          item.description.length > 0,
+      );
+
+    const normalizedEducation = education
+      .map((item) => ({
+        institution: item.institution.trim(),
+        gpa: item.gpa.trim(),
+        period: item.period.trim(),
+      }))
+      .filter((item) => item.institution || item.gpa || item.period);
+
     const dataToValidate = {
       ...formData,
       contacts: contacts.map((c) => ({ type: c.type, value: c.value })),
       languages: languages.map((l) => ({ name: l.name, level: l.level })),
+      workExperience: normalizedWorkExperience,
+      education: normalizedEducation,
     };
 
     const result = candidateFormSchema.safeParse(dataToValidate);
@@ -256,6 +390,19 @@ export function CreateCandidateForm() {
       contacts: result.data.contacts.filter((c) => c.value.trim() !== ""),
       languages: result.data.languages.filter(
         (l) => l.name.trim() !== "" && l.level.trim() !== "",
+      ),
+      workExperience: result.data.workExperience.filter(
+        (item) =>
+          item.company.trim() !== "" ||
+          item.position.trim() !== "" ||
+          item.period.trim() !== "" ||
+          item.description.length > 0,
+      ),
+      education: result.data.education.filter(
+        (item) =>
+          item.institution.trim() !== "" ||
+          item.gpa.trim() !== "" ||
+          item.period.trim() !== "",
       ),
     };
 
@@ -433,6 +580,20 @@ export function CreateCandidateForm() {
           salaryExpectation={formData.salaryExpectation}
           skills={formData.skills}
           skillsOptions={candidateLookups.skills.map((s) => s.label)}
+        />
+
+        <BackgroundDetailsSection
+          education={education}
+          errors={errors}
+          isOpen={backgroundOpen}
+          onAddEducation={addEducation}
+          onAddWorkExperience={addWorkExperience}
+          onEducationChange={handleEducationChange}
+          onRemoveEducation={removeEducation}
+          onRemoveWorkExperience={removeWorkExperience}
+          onToggle={() => setBackgroundOpen(!backgroundOpen)}
+          onWorkExperienceChange={handleWorkExperienceChange}
+          workExperience={workExperience}
         />
 
         <div className="mt-8">

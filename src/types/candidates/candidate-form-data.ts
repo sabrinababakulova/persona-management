@@ -8,6 +8,19 @@ export type CandidateFormData = {
   currentPosition?: string;
   skills: string[];
   languages: { name: string; level: string }[];
+  workExperience: {
+    company: string;
+    position: string;
+    period: string;
+    isCurrent?: boolean;
+    description: string[];
+  }[];
+  education: {
+    institution: string;
+    gpa: string;
+    period: string;
+    isCurrent?: boolean;
+  }[];
   status: string;
   aiAnalysis?: string;
   resumeFileId?: string;

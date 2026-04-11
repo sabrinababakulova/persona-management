@@ -119,11 +119,84 @@ const DEMO_CANDIDATES: DemoCandidate[] = [
     source: "linkedin",
     salaryExpectation: 2800,
     salaryCurrency: "USD",
-    currentPosition: "frontend_developer",
+    currentPosition: "Tech Solutions Inc. | Frontend Developer",
+    experience: "5+ лет",
+    matchScore: 92,
     skills: ["React", "TypeScript", "JavaScript", "Figma"],
     languages: [
       { name: "Русский", level: "C2" },
       { name: "Английский", level: "B2" },
+    ],
+    tags: ["English C1", "Senior", "Возраст 25+"],
+    workExperience: [
+      {
+        company: "Tech Solutions Inc.",
+        position: "Network Engineer",
+        period: "Январь 2024 - Сейчас",
+        description: [
+          "Мы занимаемся разработкой и поддержкой веб-приложений, активно участвуем в командных проектах.",
+          "Тщательная отладка кода, чтобы обеспечить высокое качество и надежность программного обеспечения.",
+        ],
+      },
+      {
+        company: "Globex International",
+        position: "Senior Systems Architect",
+        period: "Февраль 2022 - Январь 2023",
+        description: [
+          "Участвую в проектировании и развертывании облачных инфраструктур, обеспечивая их масштабируемость и безопасность.",
+          "Занимаюсь автоматизацией процессов разработки и внедрения, используя современные инструменты и практики DevOps.",
+        ],
+      },
+    ],
+    education: [
+      {
+        institution: "Inha University in Tashkent",
+        gpa: "GPA 4.5",
+        period: "Сентябрь 2016 - Июнь 2020",
+      },
+      {
+        institution: "Frontend Masters",
+        gpa: "Сертификат",
+        period: "Март 2023 - Июнь 2023",
+      },
+    ],
+    resumeFileName: "anna-karimova-cv.pdf",
+    resumeFileSize: "12MB",
+    notes: [
+      {
+        id: "note-anna-1",
+        content:
+          "Уверенно отвечает на вопросы по React-архитектуре и хорошо объясняет решения по типизации.",
+        author: "Сабрина Бабакулова",
+        createdAt: "2026-04-08T10:00:00.000Z",
+      },
+      {
+        id: "note-anna-2",
+        content:
+          "Рекомендуется на следующий технический этап для продуктовой frontend-команды.",
+        author: "Демо система",
+        createdAt: "2026-04-09T14:30:00.000Z",
+      },
+    ],
+    activities: [
+      {
+        id: "activity-anna-1",
+        userName: "Сабрина Бабакулова",
+        userAvatar: "",
+        action: "Перевел(а) кандидата",
+        targetName: "Анна Каримова",
+        targetStatus: "Скрининг",
+        timeAgo: "2 ч назад",
+      },
+      {
+        id: "activity-anna-2",
+        userName: "Демо система",
+        userAvatar: "",
+        action: "Обновил(а) AI-анализ",
+        targetName: "Анна Каримова",
+        targetStatus: "Готово",
+        timeAgo: "Вчера",
+      },
     ],
     status: "screening",
     aiAnalysis:
@@ -141,11 +214,84 @@ const DEMO_CANDIDATES: DemoCandidate[] = [
     source: "hh.uz",
     salaryExpectation: 3200,
     salaryCurrency: "USD",
-    currentPosition: "backend_developer",
+    currentPosition: "Apex Banking Systems | Backend Developer",
+    experience: "6+ лет",
+    matchScore: 88,
     skills: ["Node.js", "TypeScript", "JavaScript", "Python"],
     languages: [
       { name: "Русский", level: "C2" },
       { name: "Английский", level: "B1" },
+    ],
+    tags: ["Node.js", "API", "PostgreSQL"],
+    workExperience: [
+      {
+        company: "Apex Banking Systems",
+        position: "Backend Developer",
+        period: "Май 2022 - Сейчас",
+        description: [
+          "Разрабатывает внутренние API и интеграции для финансовых сервисов с акцентом на надежность.",
+          "Оптимизировал производительность сервисов и сократил среднее время ответа ключевых эндпоинтов.",
+        ],
+      },
+      {
+        company: "Data River",
+        position: "Python Engineer",
+        period: "Июнь 2020 - Апрель 2022",
+        description: [
+          "Поддерживал ETL-пайплайны и сервисы обработки данных для аналитической платформы.",
+          "Внедрил автоматизированный мониторинг фоновых задач и алерты для команды поддержки.",
+        ],
+      },
+    ],
+    education: [
+      {
+        institution: "ТУИТ",
+        gpa: "GPA 4.3",
+        period: "Сентябрь 2014 - Июнь 2018",
+      },
+      {
+        institution: "Yandex Practicum",
+        gpa: "Backend Track",
+        period: "Январь 2021 - Август 2021",
+      },
+    ],
+    resumeFileName: "ilya-petrov-backend.pdf",
+    resumeFileSize: "9MB",
+    notes: [
+      {
+        id: "note-ilya-1",
+        content:
+          "Сильный по серверной архитектуре, особенно в интеграциях и проектировании REST API.",
+        author: "Демо система",
+        createdAt: "2026-04-07T09:15:00.000Z",
+      },
+      {
+        id: "note-ilya-2",
+        content:
+          "Есть релевантный опыт для high-load сценариев, стоит обсудить лидерские ожидания.",
+        author: "Алина HR",
+        createdAt: "2026-04-09T11:45:00.000Z",
+      },
+    ],
+    activities: [
+      {
+        id: "activity-ilya-1",
+        userName: "Алина HR",
+        userAvatar: "",
+        action: "Закрыл(а) кандидата на найм",
+        targetName: "Илья Петров",
+        targetStatus: "Нанят",
+        timeAgo: "Только что",
+      },
+      {
+        id: "activity-ilya-2",
+        userName: "Демо система",
+        userAvatar: "",
+        action: "Добавил(а) комментарий",
+        targetName: "Илья Петров",
+        targetStatus: "Финальное интервью",
+        timeAgo: "3 ч назад",
+      },
     ],
     status: "hired",
     aiAnalysis:
@@ -163,12 +309,85 @@ const DEMO_CANDIDATES: DemoCandidate[] = [
     source: "telegram",
     salaryExpectation: 2200,
     salaryCurrency: "USD",
-    currentPosition: "product_designer",
+    currentPosition: "Design Orbit | Product Designer",
+    experience: "4+ года",
+    matchScore: 84,
     skills: ["Figma", "Adobe Photoshop", "Adobe Illustrator", "Креативность"],
     languages: [
       { name: "Русский", level: "C2" },
       { name: "Английский", level: "B2" },
       { name: "Узбекский", level: "B2" },
+    ],
+    tags: ["Figma", "UX", "Research"],
+    workExperience: [
+      {
+        company: "Design Orbit",
+        position: "Product Designer",
+        period: "Апрель 2023 - Сейчас",
+        description: [
+          "Проектирует интерфейсы для внутренних HR-инструментов и тесно работает с PM и разработкой.",
+          "Проводит UX-исследования и защищает дизайн-решения на продуктовых ревью.",
+        ],
+      },
+      {
+        company: "Pixel Lab",
+        position: "Graphic Designer",
+        period: "Январь 2021 - Март 2023",
+        description: [
+          "Создавала брендовые и маркетинговые материалы для digital-кампаний.",
+          "Собирала интерактивные прототипы и передавала макеты в разработку.",
+        ],
+      },
+    ],
+    education: [
+      {
+        institution: "Westminster International University in Tashkent",
+        gpa: "GPA 4.4",
+        period: "Сентябрь 2017 - Июнь 2021",
+      },
+      {
+        institution: "Google UX Design Certificate",
+        gpa: "Сертификат",
+        period: "Май 2022 - Октябрь 2022",
+      },
+    ],
+    resumeFileName: "diana-khasanova-portfolio.pdf",
+    resumeFileSize: "11MB",
+    notes: [
+      {
+        id: "note-diana-1",
+        content:
+          "Есть сильные кейсы по мобильным и веб-продуктам, особенно в сценариях онбординга.",
+        author: "Сабрина Бабакулова",
+        createdAt: "2026-04-08T13:00:00.000Z",
+      },
+      {
+        id: "note-diana-2",
+        content:
+          "На интервью хорошо аргументировала решения и уверенно говорит про дизайн-системы.",
+        author: "Демо система",
+        createdAt: "2026-04-10T08:40:00.000Z",
+      },
+    ],
+    activities: [
+      {
+        id: "activity-diana-1",
+        userName: "Сабрина Бабакулова",
+        userAvatar: "",
+        action: "Перевел(а) кандидата",
+        targetName: "Диана Хасанова",
+        targetStatus: "Интервью",
+        timeAgo: "1 ч назад",
+      },
+      {
+        id: "activity-diana-2",
+        userName: "Демо система",
+        userAvatar: "",
+        action: "Сохранил(а) заметку",
+        targetName: "Диана Хасанова",
+        targetStatus: "Портфолио reviewed",
+        timeAgo: "Сегодня",
+      },
     ],
     status: "interview",
     aiAnalysis:
@@ -186,259 +405,88 @@ const DEMO_CANDIDATES: DemoCandidate[] = [
     source: "referral",
     salaryExpectation: 1800,
     salaryCurrency: "USD",
-    currentPosition: "project_manager",
+    currentPosition: "Ops Bridge | Project Manager",
+    experience: "3+ года",
+    matchScore: 79,
     skills: ["Управление проектами", "Аналитика", "Коммуникабельность"],
     languages: [
       { name: "Русский", level: "C1" },
       { name: "Узбекский", level: "C2" },
+    ],
+    tags: ["Scrum", "Delivery", "Stakeholders"],
+    workExperience: [
+      {
+        company: "Ops Bridge",
+        position: "Project Manager",
+        period: "Август 2023 - Сейчас",
+        description: [
+          "Ведет delivery нескольких внутренних инициатив и синхронизирует команды разработки, дизайна и бизнеса.",
+          "Отслеживает сроки, риски и загрузку команды, готовит регулярные статусы для руководства.",
+        ],
+      },
+      {
+        company: "Regional Telecom",
+        position: "Coordinator",
+        period: "Февраль 2021 - Июль 2023",
+        description: [
+          "Координировал запуск сервисных задач между региональными офисами и центральной командой.",
+          "Помогал стандартизировать процессы постановки задач и отчетности.",
+        ],
+      },
+    ],
+    education: [
+      {
+        institution: "Самаркандский государственный университет",
+        gpa: "GPA 4.1",
+        period: "Сентябрь 2015 - Июнь 2019",
+      },
+      {
+        institution: "PMI Fundamentals",
+        gpa: "Сертификат",
+        period: "Февраль 2024 - Апрель 2024",
+      },
+    ],
+    resumeFileName: "timur-rakhimov-pm.pdf",
+    resumeFileSize: "8MB",
+    notes: [
+      {
+        id: "note-timur-1",
+        content:
+          "Подходит на координационные роли, особенно там, где важна дисциплина по процессам и коммуникации.",
+        author: "Алина HR",
+        createdAt: "2026-04-06T15:00:00.000Z",
+      },
+      {
+        id: "note-timur-2",
+        content:
+          "Нужно дополнительно проверить английский для международных созвонов.",
+        author: "Демо система",
+        createdAt: "2026-04-10T12:10:00.000Z",
+      },
+    ],
+    activities: [
+      {
+        id: "activity-timur-1",
+        userName: "Алина HR",
+        userAvatar: "",
+        action: "Добавил(а) нового кандидата",
+        targetName: "Тимур Рахимов",
+        targetStatus: "Новый",
+        timeAgo: "4 ч назад",
+      },
+      {
+        id: "activity-timur-2",
+        userName: "Демо система",
+        userAvatar: "",
+        action: "Подготовил(а) профиль",
+        targetName: "Тимур Рахимов",
+        targetStatus: "К первичному звонку",
+        timeAgo: "Вчера",
+      },
     ],
     status: "new",
     aiAnalysis:
       "Project manager с опытом координации небольших продуктовых команд. Подходит для роли с акцентом на процессы и коммуникацию.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "55555555-5555-4555-8555-555555555555",
-    fullName: "Малика Саидова",
-    city: "Ташкент",
-    contacts: [
-      { type: "telegram", value: "@malika_hr" },
-      { type: "phone", value: "+998977771122" },
-    ],
-    source: "other",
-    salaryExpectation: 15000000,
-    salaryCurrency: "UZS",
-    currentPosition: "hr_manager",
-    skills: ["Коммуникабельность", "Аналитика"],
-    languages: [
-      { name: "Русский", level: "C2" },
-      { name: "Английский", level: "B1" },
-    ],
-    status: "offer",
-    aiAnalysis:
-      "HR-специалист с опытом закрытия массовых и точечных вакансий. Сильна в интервьюировании и ведении кандидатов по воронке.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "66666666-6666-4666-8666-666666666666",
-    fullName: "Шахзод Мирзаев",
-    city: "Ташкент",
-    contacts: [
-      { type: "telegram", value: "@shahzod_fullstack" },
-      { type: "email", value: "shahzod.mirzaev@example.com" },
-    ],
-    source: "hh.uz",
-    salaryExpectation: 2600,
-    salaryCurrency: "USD",
-    currentPosition: "fullstack_developer",
-    skills: ["React", "Node.js", "TypeScript", "JavaScript"],
-    languages: [
-      { name: "Русский", level: "C1" },
-      { name: "Английский", level: "B2" },
-    ],
-    status: "screening",
-    aiAnalysis:
-      "Fullstack-разработчик с практическим опытом в React и Node.js. Подходит для команд, где важна универсальность и быстрый запуск новых функций.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "77777777-7777-4777-8777-777777777777",
-    fullName: "Нигина Абдуллаева",
-    city: "Фергана",
-    contacts: [
-      { type: "phone", value: "+998907001122" },
-      { type: "email", value: "nigina.abdullaeva@example.com" },
-    ],
-    source: "telegram",
-    salaryExpectation: 17000000,
-    salaryCurrency: "UZS",
-    currentPosition: "marketing_manager",
-    skills: ["Аналитика", "Креативность", "Коммуникабельность"],
-    languages: [
-      { name: "Русский", level: "C1" },
-      { name: "Узбекский", level: "C2" },
-    ],
-    status: "new",
-    aiAnalysis:
-      "Маркетолог с опытом digital-кампаний и работы с аналитикой. Полезна для роста трафика и тестирования новых каналов привлечения.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "88888888-8888-4888-8888-888888888888",
-    fullName: "Бехруз Норматов",
-    city: "Наманган",
-    contacts: [
-      { type: "telegram", value: "@bekhruz_pm" },
-      { type: "phone", value: "+998931234567" },
-    ],
-    source: "referral",
-    salaryExpectation: 2100,
-    salaryCurrency: "USD",
-    currentPosition: "project_manager",
-    skills: ["Управление проектами", "Аналитика", "Коммуникабельность"],
-    languages: [
-      { name: "Русский", level: "B2" },
-      { name: "Узбекский", level: "C2" },
-      { name: "Английский", level: "B1" },
-    ],
-    status: "interview",
-    aiAnalysis:
-      "Менеджер проектов с уверенным опытом координации кросс-функциональных команд. Подходит для роли с плотной коммуникацией между бизнесом и разработкой.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "99999999-9999-4999-8999-999999999999",
-    fullName: "Севинч Юлдашева",
-    city: "Ташкент",
-    contacts: [
-      { type: "telegram", value: "@sevinch_design" },
-      { type: "email", value: "sevinch.yuldasheva@example.com" },
-    ],
-    source: "linkedin",
-    salaryExpectation: 2500,
-    salaryCurrency: "USD",
-    currentPosition: "graphic_designer",
-    skills: ["Figma", "Adobe Photoshop", "Adobe Illustrator", "Креативность"],
-    languages: [
-      { name: "Русский", level: "C2" },
-      { name: "Английский", level: "B1" },
-    ],
-    status: "offer",
-    aiAnalysis:
-      "Дизайнер с сильной визуальной базой и хорошей скоростью подготовки маркетинговых материалов. Подходит для брендовых и продуктовых задач.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "12121212-1212-4212-8212-121212121212",
-    fullName: "Азизбек Ибрагимов",
-    city: "Андижан",
-    contacts: [
-      { type: "phone", value: "+998991112244" },
-      { type: "email", value: "azizbek.ibra@example.com" },
-    ],
-    source: "other",
-    salaryExpectation: 2900,
-    salaryCurrency: "USD",
-    currentPosition: "backend_developer",
-    skills: ["Node.js", "Python", "TypeScript", "Аналитика"],
-    languages: [
-      { name: "Русский", level: "B2" },
-      { name: "Английский", level: "B2" },
-    ],
-    status: "screening",
-    aiAnalysis:
-      "Backend-инженер с хорошей базой по API и интеграциям. Может усилить команду, где важны надежность сервисов и системное мышление.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "13131313-1313-4313-8313-131313131313",
-    fullName: "Сардор Туляганов",
-    city: "Ташкент",
-    contacts: [
-      { type: "telegram", value: "@sardor_front" },
-      { type: "phone", value: "+998935551199" },
-    ],
-    source: "hh.uz",
-    salaryExpectation: 2300,
-    salaryCurrency: "USD",
-    currentPosition: "frontend_developer",
-    skills: ["React", "JavaScript", "TypeScript", "Коммуникабельность"],
-    languages: [
-      { name: "Русский", level: "C1" },
-      { name: "Узбекский", level: "C2" },
-    ],
-    status: "rejected",
-    aiAnalysis:
-      "Frontend-кандидат с хорошей базой по React и TypeScript. Подходит на растущие продуктовые команды, но требует проверки по архитектурным решениям.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "14141414-1414-4414-8414-141414141414",
-    fullName: "Камола Рустамова",
-    city: "Самарканд",
-    contacts: [
-      { type: "telegram", value: "@kamola_hr" },
-      { type: "email", value: "kamola.rustamova@example.com" },
-    ],
-    source: "referral",
-    salaryExpectation: 16000000,
-    salaryCurrency: "UZS",
-    currentPosition: "hr_manager",
-    skills: ["Коммуникабельность", "Аналитика", "Управление проектами"],
-    languages: [
-      { name: "Русский", level: "C2" },
-      { name: "Английский", level: "B1" },
-      { name: "Узбекский", level: "C2" },
-    ],
-    status: "hired",
-    aiAnalysis:
-      "HR-менеджер с фокусом на подбор и выстраивание коммуникации с менеджерами найма. Хорошо подходит для активного роста команды.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "15151515-1515-4515-8515-151515151515",
-    fullName: "Жасур Ходжаев",
-    city: "Карши",
-    contacts: [
-      { type: "phone", value: "+998909876543" },
-      { type: "email", value: "jasur.khojaev@example.com" },
-    ],
-    source: "telegram",
-    salaryExpectation: 1900,
-    salaryCurrency: "USD",
-    currentPosition: "marketing_manager",
-    skills: ["Аналитика", "Креативность", "Управление проектами"],
-    languages: [
-      { name: "Русский", level: "B2" },
-      { name: "Узбекский", level: "C2" },
-    ],
-    status: "interview",
-    aiAnalysis:
-      "Маркетинг-менеджер с опытом запуска рекламных кампаний и работы с performance-метриками. Может усилить команду роста и продвижения.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "16161616-1616-4616-8616-161616161616",
-    fullName: "Гульноза Исмаилова",
-    city: "Ташкент",
-    contacts: [
-      { type: "telegram", value: "@gulnoza_product" },
-      { type: "email", value: "gulnoza.ismailova@example.com" },
-    ],
-    source: "linkedin",
-    salaryExpectation: 2700,
-    salaryCurrency: "USD",
-    currentPosition: "product_designer",
-    skills: ["Figma", "Adobe Photoshop", "Аналитика", "Коммуникабельность"],
-    languages: [
-      { name: "Русский", level: "C2" },
-      { name: "Английский", level: "B2" },
-    ],
-    status: "new",
-    aiAnalysis:
-      "Продуктовый дизайнер с хорошим сочетанием визуальной и аналитической части. Подходит для роли, где важны исследования и быстрые итерации интерфейсов.",
-    companyId: DEFAULT_COMPANY_ID,
-  },
-  {
-    id: "17171717-1717-4717-8717-171717171717",
-    fullName: "Отабек Султанов",
-    city: "Ургенч",
-    contacts: [
-      { type: "telegram", value: "@otabek_node" },
-      { type: "phone", value: "+998977771144" },
-    ],
-    source: "hh.uz",
-    salaryExpectation: 3100,
-    salaryCurrency: "USD",
-    currentPosition: "backend_developer",
-    skills: ["Node.js", "TypeScript", "Python", "JavaScript"],
-    languages: [
-      { name: "Русский", level: "B2" },
-      { name: "Английский", level: "B1" },
-    ],
-    status: "offer",
-    aiAnalysis:
-      "Backend-разработчик с уверенным опытом в Node.js и интеграциях. Полезен для команд с большой нагрузкой на серверную часть и внешние API.",
     companyId: DEFAULT_COMPANY_ID,
   },
 ];
@@ -560,8 +608,7 @@ const DEMO_VACANCIES: DemoVacancy[] = [
     tasks:
       "Поиск кандидатов, первичный контакт, координация интервью и ведение статусов.",
     team: "HR-функция из 4 человек.",
-    companyDescription:
-      "Внутренняя команда подбора для продуктового бизнеса.",
+    companyDescription: "Внутренняя команда подбора для продуктового бизнеса.",
     companyId: DEFAULT_COMPANY_ID,
   },
   {
@@ -580,8 +627,7 @@ const DEMO_VACANCIES: DemoVacancy[] = [
     tasks:
       "Подготовка визуалов для маркетинга, соцсетей, сайта и рекламных кампаний.",
     team: "Маркетинг и продукт в тесной связке с дизайнером.",
-    companyDescription:
-      "Команда строит узнаваемый бренд в сегменте HR SaaS.",
+    companyDescription: "Команда строит узнаваемый бренд в сегменте HR SaaS.",
     companyId: DEFAULT_COMPANY_ID,
   },
   {
@@ -600,8 +646,7 @@ const DEMO_VACANCIES: DemoVacancy[] = [
     tasks:
       "Планирование спринтов, контроль сроков, фасилитация встреч и синхронизация команд.",
     team: "Команда из PM, дизайнеров, QA и разработчиков.",
-    companyDescription:
-      "Продуктовая компания с быстрыми релизными циклами.",
+    companyDescription: "Продуктовая компания с быстрыми релизными циклами.",
     companyId: DEFAULT_COMPANY_ID,
   },
   {
@@ -620,8 +665,7 @@ const DEMO_VACANCIES: DemoVacancy[] = [
     tasks:
       "Запуск кампаний, аналитика CAC и CPL, работа с контентом и лидогенерацией.",
     team: "Маркетинг-команда из 5 человек.",
-    companyDescription:
-      "B2B компания с фокусом на рост входящего спроса.",
+    companyDescription: "B2B компания с фокусом на рост входящего спроса.",
     companyId: DEFAULT_COMPANY_ID,
   },
   {
@@ -961,12 +1005,12 @@ function getRecentActivityRows() {
     {
       id: "90000000-0000-4000-8000-000000000001",
       entityType: "candidate",
-      entityId: "55555555-5555-4555-8555-555555555555",
+      entityId: "11111111-1111-4111-8111-111111111111",
       actorUserId: null,
       actorName: "Демо система",
-      action: "Подготовил(а) оффер кандидату",
-      targetName: "Малика Саидова",
-      targetStatus: "Оффер",
+      action: "Обновил(а) профиль кандидата",
+      targetName: "Анна Каримова",
+      targetStatus: "Скрининг",
       createdAt: new Date(Date.now() - 1000 * 60 * 20),
     },
     {
@@ -1008,7 +1052,7 @@ function getRecentActivityRows() {
       entityId: "44444444-4444-4444-8444-444444444444",
       actorUserId: null,
       actorName: "Демо система",
-      action: "Добавил(а) нового кандидата",
+      action: "Добавил(а) заметку к кандидату",
       targetName: "Тимур Рахимов",
       targetStatus: "Новый",
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18),

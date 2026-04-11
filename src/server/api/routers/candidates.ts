@@ -499,6 +499,32 @@ export const candidatesRouter = createTRPCRouter({
           )
           .max(20)
           .default([]),
+        workExperience: z
+          .array(
+            z.object({
+              company: z.string().min(1).max(255),
+              position: z.string().min(1).max(255),
+              period: z.string().min(1).max(255),
+              isCurrent: z.boolean().optional(),
+              description: z
+                .array(z.string().min(1).max(1000))
+                .max(20)
+                .default([]),
+            }),
+          )
+          .max(20)
+          .default([]),
+        education: z
+          .array(
+            z.object({
+              institution: z.string().min(1).max(255),
+              gpa: z.string().min(1).max(50),
+              period: z.string().min(1).max(255),
+              isCurrent: z.boolean().optional(),
+            }),
+          )
+          .max(20)
+          .default([]),
         status: z.string().max(50).default("new"),
         aiAnalysis: z.string().max(5000).optional(),
         resumeFileId: z.string().max(255).optional(),
@@ -639,6 +665,8 @@ export const candidatesRouter = createTRPCRouter({
           currentPosition: input.currentPosition ?? null,
           skills: input.skills,
           languages: input.languages,
+          workExperience: input.workExperience,
+          education: input.education,
           status: input.status,
           aiAnalysis: input.aiAnalysis?.trim() || null,
           resumeFileId: input.resumeFileId ?? null,
