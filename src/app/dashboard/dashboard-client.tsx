@@ -67,36 +67,13 @@ export default function DashboardClient({ userName }: { userName: string }) {
         {/* Dashboard Content */}
         <div className="p-8">
           {/* Welcome Section */}
-          <div className="mb-8 flex items-start justify-between">
-            <div>
-              <p className="mb-2 font-medium text-sm text-text-muted uppercase tracking-wider">
-                {currentDate}
-              </p>
-              <h1 className="font-bold text-3xl text-gray-900">
-                Добро пожаловать, {userName}!
-              </h1>
-            </div>
-            <button
-              className="flex items-center gap-2 rounded-lg border border-border-light bg-white px-4 py-2 text-gray-700 hover:bg-bg-light"
-              type="button"
-            >
-              Последние 7 дней
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Chevron Down</title>
-                <path
-                  d="M19 9l-7 7-7-7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                />
-              </svg>
-            </button>
+          <div className="mb-8">
+            <p className="mb-2 font-medium text-sm text-text-muted uppercase tracking-wider">
+              {currentDate}
+            </p>
+            <h1 className="font-bold text-3xl text-gray-900">
+              Добро пожаловать, {userName}!
+            </h1>
           </div>
 
           {/* Stats Cards */}
