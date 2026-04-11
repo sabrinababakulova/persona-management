@@ -50,6 +50,13 @@
       "when": 1775646036121,
       "tag": "0006_foamy_martin_li",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775860800000,
+      "tag": "0007_tenant_activity_logs",
+      "breakpoints": true
     }
   ]
 }

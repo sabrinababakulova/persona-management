@@ -1,4 +1,4 @@
-import { count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -7,6 +7,7 @@ import {
   users,
   vacancies,
 } from "~/server/db/schema";
+import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 
 const RECENT_ACTIVITIES_LIMIT = 5;
 
@@ -62,6 +63,37 @@ function getInitials(value: string) {
     .join("");
 }
 
+function buildEmptyDashboardData() {
+  return {
+    statsCards: [
+      {
+        title: "Новые отклики",
+        value: "0",
+        period: "за последние 7 дней",
+      },
+      {
+        title: "Активные вакансии",
+        value: "0",
+        period: "за последние 7 дней",
+      },
+      {
+        title: "Активные кандидаты",
+        value: "0",
+        period: "за последние 7 дней",
+      },
+      {
+        title: "Нанято",
+        value: "0",
+        period: "за последние 7 дней",
+      },
+    ],
+    recentVacancies: [],
+    recentActivities: [],
+    channelStats: [],
+    statusStats: [],
+  };
+}
+
 export const dashboardRouter = createTRPCRouter({
   getWelcomeModalState: protectedProcedure.query(async ({ ctx }) => {
     const [currentUser] = await ctx.db
@@ -86,6 +118,11 @@ export const dashboardRouter = createTRPCRouter({
 
   getDashboardData: protectedProcedure.query(async ({ ctx }) => {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
+
+    if (!userCompanyId) {
+      return buildEmptyDashboardData();
+    }
 
     // Fetch real counts from the database
     const [
@@ -98,26 +135,49 @@ export const dashboardRouter = createTRPCRouter({
       recentVacancyRows,
       recentActivityRows,
     ] = await Promise.all([
-      ctx.db.select({ count: count() }).from(candidates),
       ctx.db
         .select({ count: count() })
         .from(candidates)
-        .where(eq(candidates.status, "hired")),
+        .where(eq(candidates.companyId, userCompanyId)),
+      ctx.db
+        .select({ count: count() })
+        .from(candidates)
+        .where(
+          and(
+            eq(candidates.companyId, userCompanyId),
+            eq(candidates.status, "hired"),
+          ),
+        ),
       ctx.db
         .select({ count: count() })
         .from(vacancies)
-        .where(eq(vacancies.status, "active")),
+        .where(
+          and(
+            eq(vacancies.companyId, userCompanyId),
+            eq(vacancies.status, "active"),
+          ),
+        ),
       ctx.db
         .select({ count: count() })
         .from(candidates)
-        .where(eq(candidates.status, "new")),
+        .where(
+          and(
+            eq(candidates.companyId, userCompanyId),
+            eq(candidates.status, "new"),
+          ),
+        ),
       // Latest candidates for the past week (used for status statistics)
       ctx.db
         .select({
           status: candidates.status,
         })
         .from(candidates)
-        .where(gte(candidates.createdAt, oneWeekAgo))
+        .where(
+          and(
+            eq(candidates.companyId, userCompanyId),
+            gte(candidates.createdAt, oneWeekAgo),
+          ),
+        )
         .orderBy(desc(candidates.createdAt)),
       // Count by source
       ctx.db
@@ -126,17 +186,25 @@ export const dashboardRouter = createTRPCRouter({
           count: count(),
         })
         .from(candidates)
+        .where(eq(candidates.companyId, userCompanyId))
         .groupBy(candidates.source),
       // Recent vacancies
       ctx.db
         .select()
         .from(vacancies)
-        .where(eq(vacancies.status, "active"))
+        .where(
+          and(
+            eq(vacancies.companyId, userCompanyId),
+            eq(vacancies.status, "active"),
+          ),
+        )
+        .orderBy(desc(vacancies.createdAt))
         .limit(3),
       // Recent activity events from candidate/vacancy updates
       ctx.db
         .select()
         .from(recentActivityLogs)
+        .where(eq(recentActivityLogs.companyId, userCompanyId))
         .orderBy(desc(recentActivityLogs.createdAt))
         .limit(RECENT_ACTIVITIES_LIMIT)
         .catch(() => []),

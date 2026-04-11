@@ -287,6 +287,10 @@ export const recentActivityLogs = createTable(
       .$defaultFn(() => crypto.randomUUID()),
     entityType: d.varchar({ length: 50 }).notNull(), // candidate | vacancy
     entityId: d.varchar({ length: 255 }).notNull(),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id),
     actorUserId: d.varchar({ length: 255 }).references(() => users.id),
     actorName: d.varchar({ length: 255 }).notNull(),
     action: d.varchar({ length: 255 }).notNull(),
@@ -299,6 +303,7 @@ export const recentActivityLogs = createTable(
   }),
   (t) => [
     index("recent_activity_created_at_idx").on(t.createdAt),
+    index("recent_activity_company_id_idx").on(t.companyId),
     index("recent_activity_entity_idx").on(t.entityType, t.entityId),
   ],
 );

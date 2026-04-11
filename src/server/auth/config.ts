@@ -213,6 +213,7 @@ const providers: NextAuthConfig["providers"] = [
                   name: `${firstName} ${lastName}`.trim(),
                   password: hashedPassword,
                   hasSeenWelcomeModal: false,
+                  companyId: DEFAULT_COMPANY_ID,
                 })
                 .returning({ id: users.id })
             )[0]?.id;
@@ -422,6 +423,8 @@ const providers: NextAuthConfig["providers"] = [
           .set({ emailVerified: new Date() })
           .where(eq(users.id, user.id));
 
+        await ensureOAuthUserDefaults(user.id);
+
         await Promise.all([
           clearIdentifier(verificationIdentifier),
           clearIdentifier(verificationFlowIdentifier),
@@ -532,6 +535,8 @@ const providers: NextAuthConfig["providers"] = [
         clearIdentifier(loginRateIdentifier),
         clearIdentifier(loginRateByIpIdentifier),
       ]);
+
+      await ensureOAuthUserDefaults(user.id);
 
       return {
         id: user.id,

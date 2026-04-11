@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gte, ilike } from "drizzle-orm";
 import { z } from "zod";
 
@@ -8,7 +9,6 @@ import {
   companyHhAccounts,
   companyTelegramChannels,
   recentActivityLogs,
-  users,
   vacancies,
 } from "~/server/db/schema";
 import {
@@ -22,6 +22,7 @@ import {
   isTelegramConfigured,
   sendTelegramMessage,
 } from "~/server/services/telegram";
+import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
@@ -149,34 +150,34 @@ function isDateWithinPeriod(value: string | undefined, cutoff: Date) {
   return parsedDate >= cutoff;
 }
 
-async function getCurrentUserCompanyId(
+async function requireCurrentUserCompanyId(
   db: typeof import("~/server/db").db,
   userId: string | undefined,
 ) {
-  if (!userId) {
-    return null;
+  const companyId = await getUserCompanyId(db, userId);
+
+  if (!companyId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "У вас не привязана компания",
+    });
   }
 
-  const userRows = await db
-    .select({ companyId: users.companyId })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  return userRows[0]?.companyId ?? null;
+  return companyId;
 }
 
 export const vacanciesRouter = createTRPCRouter({
   hasVacancies: protectedProcedure.query(async ({ ctx }) => {
-    const userCompanyId = await getCurrentUserCompanyId(
-      ctx.db,
-      ctx.session?.user?.id,
-    );
+    const userCompanyId = await getUserCompanyId(ctx.db, ctx.session?.user?.id);
+
+    if (!userCompanyId) {
+      return false;
+    }
 
     const localRows = await ctx.db
       .select({ id: vacancies.id })
       .from(vacancies)
-      .where(userCompanyId ? eq(vacancies.companyId, userCompanyId) : undefined)
+      .where(eq(vacancies.companyId, userCompanyId))
       .limit(1);
 
     if (localRows.length > 0) {
@@ -278,21 +279,23 @@ export const vacanciesRouter = createTRPCRouter({
       const limit = input?.limit ?? 50;
       const offset = input?.offset ?? 0;
       const createdAtCutoff = getVacancyDateCutoff(period);
-      const userCompanyId = await getCurrentUserCompanyId(
+      const userCompanyId = await getUserCompanyId(
         ctx.db,
         ctx.session?.user?.id,
       );
+
+      if (!userCompanyId) {
+        return [];
+      }
 
       const rows = await ctx.db
         .select()
         .from(vacancies)
         .where(
-          userCompanyId
-            ? and(
-                eq(vacancies.companyId, userCompanyId),
-                gte(vacancies.createdAt, createdAtCutoff),
-              )
-            : gte(vacancies.createdAt, createdAtCutoff),
+          and(
+            eq(vacancies.companyId, userCompanyId),
+            gte(vacancies.createdAt, createdAtCutoff),
+          ),
         )
         .orderBy(desc(vacancies.createdAt))
         .limit(limit)
@@ -432,31 +435,24 @@ export const vacanciesRouter = createTRPCRouter({
     .input(z.object({ id: z.string().min(1).max(255) }))
     .query(async ({ ctx, input }) => {
       const normalizedId = normalizeHhVacancyId(input.id);
+      const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
+
+      if (!userCompanyId) {
+        return null;
+      }
 
       if (isHhVacancyId(normalizedId)) {
         const hhVacancyId = normalizedId.slice(3);
 
-        let userCompanyId: string | null = null;
-        if (ctx.session?.user?.id) {
-          const userRows = await ctx.db
-            .select({ companyId: users.companyId })
-            .from(users)
-            .where(eq(users.id, ctx.session.user.id))
-            .limit(1);
-          userCompanyId = userRows[0]?.companyId ?? null;
-        }
-
         let accessToken: string | undefined;
-        if (userCompanyId) {
-          const hhAccountRows = await ctx.db
-            .select({
-              accessToken: companyHhAccounts.accessToken,
-            })
-            .from(companyHhAccounts)
-            .where(eq(companyHhAccounts.companyId, userCompanyId))
-            .limit(1);
-          accessToken = hhAccountRows[0]?.accessToken ?? undefined;
-        }
+        const hhAccountRows = await ctx.db
+          .select({
+            accessToken: companyHhAccounts.accessToken,
+          })
+          .from(companyHhAccounts)
+          .where(eq(companyHhAccounts.companyId, userCompanyId))
+          .limit(1);
+        accessToken = hhAccountRows[0]?.accessToken ?? undefined;
 
         try {
           const hhVacancy = await fetchHhVacancyById(hhVacancyId, accessToken);
@@ -501,7 +497,12 @@ export const vacanciesRouter = createTRPCRouter({
       const rows = await ctx.db
         .select()
         .from(vacancies)
-        .where(eq(vacancies.id, normalizedId))
+        .where(
+          and(
+            eq(vacancies.id, normalizedId),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
         .limit(1);
 
       const vacancy = rows[0];
@@ -520,7 +521,12 @@ export const vacanciesRouter = createTRPCRouter({
           candidates,
           eq(candidateVacancies.candidateId, candidates.id),
         )
-        .where(eq(candidateVacancies.vacancyId, vacancy.id))
+        .where(
+          and(
+            eq(candidateVacancies.vacancyId, vacancy.id),
+            eq(candidates.companyId, userCompanyId),
+          ),
+        )
         .orderBy(desc(candidateVacancies.createdAt));
 
       return {
@@ -542,15 +548,20 @@ export const vacanciesRouter = createTRPCRouter({
       const limit = input.limit ?? 8;
       const offset = input.offset ?? 0;
 
-      const userCompanyId = await getCurrentUserCompanyId(
+      const userCompanyId = await getUserCompanyId(
         ctx.db,
         ctx.session?.user?.id,
       );
 
-      const conditions = [];
-      if (userCompanyId) {
-        conditions.push(eq(vacancies.companyId, userCompanyId));
+      if (!userCompanyId) {
+        return {
+          items: [],
+          total: 0,
+        };
       }
+
+      const conditions = [];
+      conditions.push(eq(vacancies.companyId, userCompanyId));
       if (search) {
         conditions.push(ilike(vacancies.title, `%${escapeLike(search)}%`));
       }
@@ -602,16 +613,10 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Get the user's companyId
-      let companyId: string | null = null;
-      if (ctx.session?.user?.id) {
-        const userRows = await ctx.db
-          .select({ companyId: users.companyId })
-          .from(users)
-          .where(eq(users.id, ctx.session.user.id))
-          .limit(1);
-        companyId = userRows[0]?.companyId ?? null;
-      }
+      const companyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
 
       const createdRows = await ctx.db
         .insert(vacancies)
@@ -650,6 +655,7 @@ export const vacanciesRouter = createTRPCRouter({
         await ctx.db.insert(recentActivityLogs).values({
           entityType: "vacancy",
           entityId: created.id,
+          companyId,
           actorUserId: ctx.session?.user?.id ?? null,
           actorName,
           action: "Создал(а) вакансию",
@@ -695,12 +701,20 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { TRPCError } = await import("@trpc/server");
+      const userCompanyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
 
       const rows = await ctx.db
         .select()
         .from(vacancies)
-        .where(eq(vacancies.id, input.id))
+        .where(
+          and(
+            eq(vacancies.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
         .limit(1);
 
       const existing = rows[0];
@@ -815,7 +829,12 @@ export const vacanciesRouter = createTRPCRouter({
       const updatedRows = await ctx.db
         .update(vacancies)
         .set(valuesToUpdate)
-        .where(eq(vacancies.id, input.id))
+        .where(
+          and(
+            eq(vacancies.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
         .returning();
 
       const updated = updatedRows[0];
@@ -834,6 +853,7 @@ export const vacanciesRouter = createTRPCRouter({
         await ctx.db.insert(recentActivityLogs).values({
           entityType: "vacancy",
           entityId: updated.id,
+          companyId: userCompanyId,
           actorUserId: ctx.session?.user?.id ?? null,
           actorName,
           action: changedStatus
@@ -855,15 +875,7 @@ export const vacanciesRouter = createTRPCRouter({
     }
 
     // Check if the user's company has at least one Telegram channel
-    let companyId: string | null = null;
-    if (ctx.session?.user?.id) {
-      const userRows = await ctx.db
-        .select({ companyId: users.companyId })
-        .from(users)
-        .where(eq(users.id, ctx.session.user.id))
-        .limit(1);
-      companyId = userRows[0]?.companyId ?? null;
-    }
+    const companyId = await getUserCompanyId(ctx.db, ctx.session?.user?.id);
 
     if (!companyId) {
       return { enabled: false };
@@ -881,8 +893,6 @@ export const vacanciesRouter = createTRPCRouter({
   postVacancyToTelegram: protectedProcedure
     .input(z.object({ vacancyId: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const { TRPCError } = await import("@trpc/server");
-
       if (!isTelegramConfigured()) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -890,10 +900,20 @@ export const vacanciesRouter = createTRPCRouter({
         });
       }
 
+      const companyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
       const rows = await ctx.db
         .select()
         .from(vacancies)
-        .where(eq(vacancies.id, input.vacancyId))
+        .where(
+          and(
+            eq(vacancies.id, input.vacancyId),
+            eq(vacancies.companyId, companyId),
+          ),
+        )
         .limit(1);
 
       const vacancy = rows[0];
@@ -911,11 +931,10 @@ export const vacanciesRouter = createTRPCRouter({
         });
       }
 
-      // Fetch all Telegram channels for this company
       const channels = await ctx.db
         .select()
         .from(companyTelegramChannels)
-        .where(eq(companyTelegramChannels.companyId, vacancy.companyId));
+        .where(eq(companyTelegramChannels.companyId, companyId));
 
       if (channels.length === 0) {
         throw new TRPCError({
@@ -963,9 +982,7 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { TRPCError } = await import("@trpc/server");
-
-      const userCompanyId = await getCurrentUserCompanyId(
+      const userCompanyId = await requireCurrentUserCompanyId(
         ctx.db,
         ctx.session?.user?.id,
       );
@@ -977,7 +994,12 @@ export const vacanciesRouter = createTRPCRouter({
             companyId: candidates.companyId,
           })
           .from(candidates)
-          .where(eq(candidates.id, input.candidateId))
+          .where(
+            and(
+              eq(candidates.id, input.candidateId),
+              eq(candidates.companyId, userCompanyId),
+            ),
+          )
           .limit(1),
         ctx.db
           .select({
@@ -985,7 +1007,12 @@ export const vacanciesRouter = createTRPCRouter({
             companyId: vacancies.companyId,
           })
           .from(vacancies)
-          .where(eq(vacancies.id, input.vacancyId))
+          .where(
+            and(
+              eq(vacancies.id, input.vacancyId),
+              eq(vacancies.companyId, userCompanyId),
+            ),
+          )
           .limit(1),
       ]);
 
@@ -1016,13 +1043,6 @@ export const vacanciesRouter = createTRPCRouter({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Кандидат и вакансия должны принадлежать одной компании",
-        });
-      }
-
-      if (userCompanyId && candidate.companyId !== userCompanyId) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Вакансия не найдена",
         });
       }
 
@@ -1057,27 +1077,29 @@ export const vacanciesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const userCompanyId = await getCurrentUserCompanyId(
+      const userCompanyId = await requireCurrentUserCompanyId(
         ctx.db,
         ctx.session?.user?.id,
       );
 
-      if (userCompanyId) {
-        const vacancyRow = await ctx.db
-          .select({
-            companyId: vacancies.companyId,
-          })
-          .from(vacancies)
-          .where(eq(vacancies.id, input.vacancyId))
-          .limit(1);
+      const vacancyRow = await ctx.db
+        .select({
+          companyId: vacancies.companyId,
+        })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, input.vacancyId),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
 
-        if (vacancyRow[0]?.companyId !== userCompanyId) {
-          const { TRPCError } = await import("@trpc/server");
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Вакансия не найдена",
-          });
-        }
+      if (!vacancyRow[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
       }
 
       await ctx.db

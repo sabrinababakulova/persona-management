@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
@@ -19,6 +19,7 @@ import {
   sanitizeResumeFileName,
   uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
+import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 
 type RouteContext = {
   params: Promise<{ candidateId: string }>;
@@ -39,6 +40,11 @@ export async function POST(request: Request, context: RouteContext) {
     return buildErrorResponse("Не авторизован", 401);
   }
 
+  const companyId = await getUserCompanyId(db, session.user.id);
+  if (!companyId) {
+    return buildErrorResponse("У вас не привязана компания", 412);
+  }
+
   const { candidateId } = await context.params;
 
   const [candidate] = await db
@@ -47,7 +53,9 @@ export async function POST(request: Request, context: RouteContext) {
       resumeFileId: candidates.resumeFileId,
     })
     .from(candidates)
-    .where(eq(candidates.id, candidateId))
+    .where(
+      and(eq(candidates.id, candidateId), eq(candidates.companyId, companyId)),
+    )
     .limit(1);
 
   if (!candidate) {
@@ -142,6 +150,11 @@ export async function GET(_request: Request, context: RouteContext) {
     return buildErrorResponse("Не авторизован", 401);
   }
 
+  const companyId = await getUserCompanyId(db, session.user.id);
+  if (!companyId) {
+    return buildErrorResponse("У вас не привязана компания", 412);
+  }
+
   const { candidateId } = await context.params;
 
   const [candidate] = await db
@@ -151,7 +164,9 @@ export async function GET(_request: Request, context: RouteContext) {
       resumeFileName: candidates.resumeFileName,
     })
     .from(candidates)
-    .where(eq(candidates.id, candidateId))
+    .where(
+      and(eq(candidates.id, candidateId), eq(candidates.companyId, companyId)),
+    )
     .limit(1);
 
   if (!candidate) {
