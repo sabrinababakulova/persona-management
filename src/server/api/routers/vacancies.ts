@@ -47,6 +47,28 @@ function toVacancyStatus(value: string | null): VacancyStatus {
   }
 }
 
+async function getVacancyRelatedCandidates(
+  db: typeof import("~/server/db").db,
+  vacancyId: string,
+  companyId: string,
+) {
+  return db
+    .select({
+      id: candidates.id,
+      fullName: candidates.fullName,
+      status: candidates.status,
+    })
+    .from(candidateVacancies)
+    .innerJoin(candidates, eq(candidateVacancies.candidateId, candidates.id))
+    .where(
+      and(
+        eq(candidateVacancies.vacancyId, vacancyId),
+        eq(candidates.companyId, companyId),
+      ),
+    )
+    .orderBy(desc(candidateVacancies.createdAt));
+}
+
 function toSalaryCurrency(value: string | null): SalaryCurrency {
   return value === "USD" ? "USD" : "UZS";
 }
@@ -510,28 +532,56 @@ export const vacanciesRouter = createTRPCRouter({
         return null;
       }
 
-      const relatedCandidateRows = await ctx.db
-        .select({
-          id: candidates.id,
-          fullName: candidates.fullName,
-          status: candidates.status,
-        })
-        .from(candidateVacancies)
-        .innerJoin(
-          candidates,
-          eq(candidateVacancies.candidateId, candidates.id),
-        )
-        .where(
-          and(
-            eq(candidateVacancies.vacancyId, vacancy.id),
-            eq(candidates.companyId, userCompanyId),
-          ),
-        )
-        .orderBy(desc(candidateVacancies.createdAt));
+      const relatedCandidateRows = await getVacancyRelatedCandidates(
+        ctx.db,
+        vacancy.id,
+        userCompanyId,
+      );
 
       return {
         ...formatVacancy(vacancy),
         relatedCandidates: relatedCandidateRows,
+      };
+    }),
+
+  getVacancyFunnel: protectedProcedure
+    .input(z.object({ id: z.string().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
+
+      if (!userCompanyId || isHhVacancyId(input.id)) {
+        return null;
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: vacancies.id,
+          title: vacancies.title,
+        })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      const vacancy = rows[0];
+      if (!vacancy) {
+        return null;
+      }
+
+      const candidateRows = await getVacancyRelatedCandidates(
+        ctx.db,
+        vacancy.id,
+        userCompanyId,
+      );
+
+      return {
+        id: vacancy.id,
+        title: vacancy.title,
+        candidates: candidateRows,
       };
     }),
 

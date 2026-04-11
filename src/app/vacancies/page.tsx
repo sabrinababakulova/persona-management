@@ -106,6 +106,10 @@ function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
   return `/vacancies/${vacancy.id}`;
 }
 
+function toVacancyFunnelPath(vacancy: Pick<Vacancy, "id">): string {
+  return `/vacancies/funnel/${vacancy.id}`;
+}
+
 export default function VacanciesPage() {
   const utils = api.useUtils();
   const [selectedPeriod, setSelectedPeriod] =
@@ -483,13 +487,24 @@ export default function VacanciesPage() {
                           </div>
 
                           <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                            <button
-                              className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
-                              type="button"
-                            >
-                              <FunnelIcon className="h-3.5 w-3.5" />
-                              <span className="hidden xl:inline">Воронка</span>
-                            </button>
+                            {isHhVacancy ? (
+                              <span className="flex items-center gap-1 text-[14px] text-text-disabled leading-none">
+                                <FunnelIcon className="h-3.5 w-3.5" />
+                                <span className="hidden xl:inline">
+                                  Воронка
+                                </span>
+                              </span>
+                            ) : (
+                              <Link
+                                className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
+                                href={toVacancyFunnelPath(vacancy)}
+                              >
+                                <FunnelIcon className="h-3.5 w-3.5" />
+                                <span className="hidden xl:inline">
+                                  Воронка
+                                </span>
+                              </Link>
+                            )}
                             <button
                               className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
                               type="button"
