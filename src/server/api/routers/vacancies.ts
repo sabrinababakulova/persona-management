@@ -1,9 +1,20 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gte, ilike, inArray, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  or,
+} from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  candidateStatusOptions,
   candidates,
   candidateVacancies,
   companyHhAccounts,
@@ -22,6 +33,7 @@ import {
   isTelegramConfigured,
   sendTelegramMessage,
 } from "~/server/services/telegram";
+import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
@@ -57,6 +69,20 @@ async function getVacancyRelatedCandidates(
       id: candidates.id,
       fullName: candidates.fullName,
       status: candidates.status,
+      city: candidates.city,
+      experience: candidates.experience,
+      matchScore: candidates.matchScore,
+      aiAnalysis: candidates.aiAnalysis,
+      currentPosition: candidates.currentPosition,
+      contacts: candidates.contacts,
+      languages: candidates.languages,
+      skills: candidates.skills,
+      salaryExpectation: candidates.salaryExpectation,
+      salaryCurrency: candidates.salaryCurrency,
+      tags: candidates.tags,
+      source: candidates.source,
+      workExperience: candidates.workExperience,
+      resumeFileId: candidates.resumeFileId,
     })
     .from(candidateVacancies)
     .innerJoin(candidates, eq(candidateVacancies.candidateId, candidates.id))
@@ -660,6 +686,8 @@ export const vacanciesRouter = createTRPCRouter({
         .select({
           id: vacancies.id,
           title: vacancies.title,
+          level: vacancies.level,
+          city: vacancies.city,
         })
         .from(vacancies)
         .where(
@@ -681,10 +709,124 @@ export const vacanciesRouter = createTRPCRouter({
         userCompanyId,
       );
 
+      const relatedVacancyRows =
+        candidateRows.length > 0
+          ? await ctx.db
+              .select({
+                candidateId: candidateVacancies.candidateId,
+                vacancyId: vacancies.id,
+                title: vacancies.title,
+              })
+              .from(candidateVacancies)
+              .innerJoin(
+                vacancies,
+                eq(candidateVacancies.vacancyId, vacancies.id),
+              )
+              .where(
+                and(
+                  inArray(
+                    candidateVacancies.candidateId,
+                    candidateRows.map((candidate) => candidate.id),
+                  ),
+                  eq(vacancies.companyId, userCompanyId),
+                ),
+              )
+              .orderBy(desc(candidateVacancies.id))
+          : [];
+
+      const relatedVacanciesByCandidate = new Map<
+        string,
+        { id: string; title: string }[]
+      >();
+
+      for (const row of relatedVacancyRows) {
+        if (row.vacancyId === vacancy.id) {
+          continue;
+        }
+
+        const existing = relatedVacanciesByCandidate.get(row.candidateId) ?? [];
+        existing.push({ id: row.vacancyId, title: row.title });
+        relatedVacanciesByCandidate.set(row.candidateId, existing);
+      }
+
+      const stageRows = await ctx.db
+        .select({
+          value: candidateStatusOptions.value,
+          label: candidateStatusOptions.label,
+        })
+        .from(candidateStatusOptions)
+        .where(eq(candidateStatusOptions.isActive, true))
+        .orderBy(
+          asc(candidateStatusOptions.sortOrder),
+          asc(candidateStatusOptions.label),
+        );
+
+      const normalizedCandidates = candidateRows.map((candidate) => {
+        const contacts =
+          ((candidate.contacts ?? []) as { type: string; value: string }[]) ??
+          [];
+        const phone =
+          contacts.find((item) => item.type === "phone")?.value ?? "";
+        const telegram =
+          contacts.find((item) => item.type === "telegram")?.value ?? "";
+        const email =
+          contacts.find((item) => item.type === "email")?.value ?? "";
+        const workExperience =
+          ((candidate.workExperience ?? []) as {
+            company: string;
+            position: string;
+            period: string;
+            isCurrent?: boolean;
+            description: string[];
+          }[]) ?? [];
+        const currentWorkplace =
+          workExperience.find((item) => item.isCurrent) ?? workExperience[0];
+
+        return {
+          id: candidate.id,
+          fullName: candidate.fullName,
+          status: candidate.status ?? "new",
+          city: candidate.city ?? "",
+          experience: candidate.experience ?? "",
+          matchScore: candidate.matchScore ?? 0,
+          aiAnalysis: candidate.aiAnalysis ?? "",
+          currentPosition:
+            candidate.currentPosition ?? currentWorkplace?.position ?? "",
+          currentCompany: currentWorkplace?.company ?? "",
+          contacts: {
+            phone,
+            telegram,
+            email,
+          },
+          languages: (candidate.languages ?? []) as {
+            name: string;
+            level: string;
+          }[],
+          skills: (candidate.skills ?? []) as string[],
+          salaryExpectation: candidate.salaryExpectation ?? 0,
+          salaryCurrency: candidate.salaryCurrency ?? "UZS",
+          tags: (candidate.tags ?? []) as string[],
+          source: candidate.source ?? "",
+          resumeUrl: candidate.resumeFileId
+            ? buildCandidateResumeUrl(candidate.id)
+            : "",
+          relatedVacancies: relatedVacanciesByCandidate.get(candidate.id) ?? [],
+        };
+      });
+
       return {
         id: vacancy.id,
         title: vacancy.title,
-        candidates: candidateRows,
+        level: vacancy.level ?? "",
+        city: vacancy.city ?? "",
+        candidates: normalizedCandidates,
+        stages: stageRows.map((stage) => ({
+          value: stage.value,
+          label: stage.label,
+          candidates: normalizedCandidates.filter(
+            (candidate) => candidate.status === stage.value,
+          ),
+        })),
       };
     }),
 
