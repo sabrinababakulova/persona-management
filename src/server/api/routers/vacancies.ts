@@ -25,8 +25,10 @@ import {
 } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
+  fetchCompanyHhVacanciesPage,
   fetchHhVacancyApplicants,
   fetchHhVacancyById,
+  type HhVacancy,
   isHhConfigured,
   refreshHhAccessToken,
   resolveHhEmployerFromAccessToken,
@@ -148,10 +150,7 @@ function formatVacancy(
   };
 }
 
-function formatHhVacancy(
-  vacancy: Awaited<ReturnType<typeof fetchCompanyHhVacancies>>[number],
-  companyId: string,
-) {
+function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
   return {
     id: `hh_${vacancy.id}`,
     title: vacancy.title,
@@ -208,30 +207,6 @@ function getVacancyDateCutoff(period: z.infer<typeof vacancyPeriodSchema>) {
   }
 
   return cutoff;
-}
-
-function isDateWithinPeriod(value: string | undefined, cutoff: Date) {
-  if (!value) {
-    return false;
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return false;
-  }
-
-  return parsedDate >= cutoff;
-}
-
-function shouldIncludeHhVacancyForPeriod(
-  vacancy: ReturnType<typeof formatHhVacancy>,
-  cutoff: Date,
-) {
-  if (vacancy.status === "archive") {
-    return true;
-  }
-
-  return isDateWithinPeriod(vacancy.publishedAt, cutoff);
 }
 
 async function requireCurrentUserCompanyId(
@@ -346,11 +321,13 @@ export const vacanciesRouter = createTRPCRouter({
     }
 
     try {
-      const hhVacancies = await fetchCompanyHhVacancies(
-        employerId,
+      const hhPage = await fetchCompanyHhVacanciesPage({
         accessToken,
-      );
-      return hhVacancies.length > 0;
+        employerId,
+        limit: 1,
+        offset: 0,
+      });
+      return hhPage.total > 0;
     } catch {
       return false;
     }
@@ -553,18 +530,55 @@ export const vacanciesRouter = createTRPCRouter({
         };
       }
 
+      const paginatedLocalVacancies = localVacancies.slice(
+        offset,
+        offset + limit,
+      );
+      const hhOffset = Math.max(0, offset - localVacancies.length);
+      const hhLimit = Math.max(0, limit - paginatedLocalVacancies.length);
+      const shouldUsePaginatedHhFetch = !normalizedSearch && !normalizedCity;
+      const includeActiveHhStatuses =
+        statuses.length === 0 || statuses.includes("active");
+      const includeArchivedHhStatuses =
+        statuses.length === 0 || statuses.includes("archive");
+
       try {
+        if (shouldUsePaginatedHhFetch) {
+          const hhPage = await fetchCompanyHhVacanciesPage({
+            accessToken,
+            employerId,
+            includeActive: includeActiveHhStatuses,
+            includeArchived: includeArchivedHhStatuses,
+            limit: hhLimit,
+            offset: hhOffset,
+          });
+
+          const paginatedHhVacancies = hhPage.items.map((vacancy) =>
+            formatHhVacancy(vacancy, userCompanyId),
+          );
+
+          console.info("[hh.uz] merging paginated vacancies into response", {
+            companyId: userCompanyId,
+            employerId,
+            hhLimit,
+            hhOffset,
+            hhTotal: hhPage.total,
+            localVacancies: localVacancies.length,
+            returnedHhVacancies: paginatedHhVacancies.length,
+          });
+
+          return {
+            items: [...paginatedLocalVacancies, ...paginatedHhVacancies],
+            total: localVacancies.length + hhPage.total,
+          };
+        }
+
         const hhVacancies = await fetchCompanyHhVacancies(
           employerId,
           accessToken,
         );
         const filteredHhVacancies = hhVacancies
           .map((vacancy) => formatHhVacancy(vacancy, userCompanyId))
-          .filter((vacancy) =>
-            shouldApplyPeriod
-              ? shouldIncludeHhVacancyForPeriod(vacancy, createdAtCutoff)
-              : true,
-          )
           .filter((vacancy) => {
             if (statuses.length > 0 && !statuses.includes(vacancy.status)) {
               return false;

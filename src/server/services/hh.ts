@@ -3,7 +3,10 @@ import { createHmac } from "node:crypto";
 import { env } from "~/env";
 
 type HhVacancySearchResponse = {
+  found?: number;
   items?: HhVacancyItem[];
+  page?: number;
+  per_page?: number;
   pages?: number;
 };
 
@@ -83,6 +86,11 @@ export type HhVacancyApplicant = {
   id: string;
   fullName: string;
   status: string | null;
+};
+
+type HhVacancyPage = {
+  items: HhVacancy[];
+  total: number;
 };
 
 const HH_API_BASE_URL = "https://api.hh.ru";
@@ -198,6 +206,21 @@ function toHhVacancyLogEntry(item: HhVacancyItem) {
     workType: toWorkType(item),
     externalUrl: item.alternate_url?.trim() || undefined,
   };
+}
+
+function getTotalFromSearchPayload(payload: HhVacancySearchResponse): number {
+  if (typeof payload.found === "number" && payload.found >= 0) {
+    return payload.found;
+  }
+
+  const perPage = payload.per_page ?? HH_API_PER_PAGE;
+  const pages = payload.pages ?? 0;
+
+  if (pages > 0) {
+    return pages * perPage;
+  }
+
+  return payload.items?.length ?? 0;
 }
 
 export async function fetchHhVacancyById(
@@ -678,6 +701,140 @@ export async function fetchCompanyHhVacancies(
   });
 
   return items;
+}
+
+async function fetchHhVacanciesBatch(input: {
+  accessToken?: string;
+  employerId: string;
+  kind: "active" | "archived";
+  limit: number;
+  offset: number;
+}): Promise<HhVacancyPage> {
+  if (input.limit <= 0) {
+    return { items: [], total: 0 };
+  }
+
+  if (input.kind === "archived" && !input.accessToken) {
+    return { items: [], total: 0 };
+  }
+
+  const items: HhVacancy[] = [];
+  const pageOffset = Math.max(input.offset, 0);
+  let page = Math.floor(pageOffset / HH_API_PER_PAGE);
+  let skip = pageOffset % HH_API_PER_PAGE;
+  let totalPages = page + 1;
+  let total = 0;
+
+  while (items.length < input.limit && page < totalPages) {
+    const searchParams = new URLSearchParams({
+      host: "hh.uz",
+      page: String(page),
+      per_page: String(HH_API_PER_PAGE),
+      ...(input.kind === "active" ? { employer_id: input.employerId } : {}),
+    });
+
+    const payload = await fetchHhJson<HhVacancySearchResponse>(
+      `${HH_API_BASE_URL}${input.kind === "active" ? "/vacancies" : "/vacancies/archived"}?${searchParams}`,
+      {
+        headers: {
+          Accept: "application/json",
+          ...(input.kind === "archived" && input.accessToken
+            ? { Authorization: `Bearer ${input.accessToken}` }
+            : {}),
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    const pageItems = payload.items ?? [];
+    totalPages = Math.max(payload.pages ?? 0, page + 1);
+    total = getTotalFromSearchPayload(payload);
+
+    console.info(`[hh.uz] ${input.kind} vacancies batch fetched`, {
+      employerId: input.employerId,
+      kind: input.kind,
+      limit: input.limit,
+      offset: input.offset,
+      page,
+      received: pageItems.length,
+      total,
+      totalPages,
+      vacancies: pageItems.map(toHhVacancyLogEntry),
+    });
+
+    const slicedItems = pageItems.slice(skip);
+    skip = 0;
+
+    for (const item of slicedItems) {
+      items.push(toHhVacancy(item));
+
+      if (items.length >= input.limit) {
+        break;
+      }
+    }
+
+    page += 1;
+
+    if (pageItems.length === 0) {
+      break;
+    }
+  }
+
+  return {
+    items,
+    total,
+  };
+}
+
+export async function fetchCompanyHhVacanciesPage(input: {
+  accessToken?: string;
+  employerId: string;
+  includeActive?: boolean;
+  includeArchived?: boolean;
+  limit: number;
+  offset: number;
+}): Promise<HhVacancyPage> {
+  const includeActive = input.includeActive ?? true;
+  const includeArchived = input.includeArchived ?? true;
+
+  let activeItems: HhVacancy[] = [];
+  let activeTotal = 0;
+
+  if (includeActive) {
+    const activeBatch = await fetchHhVacanciesBatch({
+      employerId: input.employerId,
+      kind: "active",
+      limit: input.limit,
+      offset: input.offset,
+    });
+
+    activeItems = activeBatch.items;
+    activeTotal = activeBatch.total;
+  }
+
+  let archivedItems: HhVacancy[] = [];
+  let archivedTotal = 0;
+
+  if (includeArchived) {
+    const archivedOffset = Math.max(0, input.offset - activeTotal);
+    const archivedLimit = Math.max(0, input.limit - activeItems.length);
+
+    const archivedBatch = await fetchHhVacanciesBatch({
+      accessToken: input.accessToken,
+      employerId: input.employerId,
+      kind: "archived",
+      limit: archivedLimit,
+      offset: archivedOffset,
+    });
+
+    archivedItems = archivedBatch.items;
+    archivedTotal = archivedBatch.total;
+  }
+
+  return {
+    items: [...activeItems, ...archivedItems],
+    total: activeTotal + archivedTotal,
+  };
 }
 
 export async function fetchHhVacancyApplicants(
