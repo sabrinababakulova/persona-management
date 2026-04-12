@@ -32,7 +32,7 @@ import { useDebouncedValue } from "../_components/use-debounced-value";
 import { QuickOverview } from "./components/quickOverview";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
-const DEFAULT_CANDIDATE_PERIOD = "week" as const;
+const DEFAULT_CANDIDATE_PERIOD = "year" as const;
 
 const CANDIDATE_STATUS_VALUES: CandidateStatus[] = [
   "new",
