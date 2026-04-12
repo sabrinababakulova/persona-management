@@ -95,7 +95,9 @@ type HhVacancyPage = {
 
 const HH_API_BASE_URL = "https://api.hh.ru";
 const HH_AUTH_BASE_URL = "https://hh.ru";
-const HH_API_PER_PAGE = 100;
+const HH_API_ACTIVE_PER_PAGE = 50;
+const HH_API_ARCHIVED_PER_PAGE = 500;
+const HH_API_NEGOTIATIONS_PER_PAGE = 100;
 const HH_CONNECT_STATE_TTL_MS = 10 * 60 * 1000;
 
 function assertHhConfigured() {
@@ -213,7 +215,7 @@ function getTotalFromSearchPayload(payload: HhVacancySearchResponse): number {
     return payload.found;
   }
 
-  const perPage = payload.per_page ?? HH_API_PER_PAGE;
+  const perPage = payload.per_page ?? HH_API_ACTIVE_PER_PAGE;
   const pages = payload.pages ?? 0;
 
   if (pages > 0) {
@@ -584,23 +586,28 @@ export async function fetchCompanyHhVacancies(
 ): Promise<HhVacancy[]> {
   const vacancies = new Map<string, HhVacancy>();
 
-  const fetchPublicVacancies = async () => {
+  const fetchActiveVacancies = async () => {
+    if (!accessToken) {
+      return;
+    }
+
     let page = 0;
     let totalPages = 1;
 
     while (page < totalPages) {
       const searchParams = new URLSearchParams({
-        employer_id: employerId,
         host: "hh.uz",
         page: String(page),
-        per_page: String(HH_API_PER_PAGE),
+        per_page: String(HH_API_ACTIVE_PER_PAGE),
+        all_accessible: "true",
       });
 
       const payload = await fetchHhJson<HhVacancySearchResponse>(
-        `${HH_API_BASE_URL}/vacancies?${searchParams}`,
+        `${HH_API_BASE_URL}/employers/${employerId}/vacancies/active?${searchParams}`,
         {
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
           signal: AbortSignal.timeout(10_000),
         },
@@ -642,11 +649,11 @@ export async function fetchCompanyHhVacancies(
       const searchParams = new URLSearchParams({
         host: "hh.uz",
         page: String(page),
-        per_page: String(HH_API_PER_PAGE),
+        per_page: String(HH_API_ARCHIVED_PER_PAGE),
       });
 
       const payload = await fetchHhJson<HhVacancySearchResponse>(
-        `${HH_API_BASE_URL}/vacancies/archived?${searchParams}`,
+        `${HH_API_BASE_URL}/employers/${employerId}/vacancies/archived?${searchParams}`,
         {
           headers: {
             Accept: "application/json",
@@ -680,7 +687,15 @@ export async function fetchCompanyHhVacancies(
     }
   };
 
-  await fetchPublicVacancies();
+  try {
+    await fetchActiveVacancies();
+  } catch (error) {
+    console.error("Failed to fetch active hh.uz vacancies", {
+      employerId,
+      error,
+      hasAccessToken: Boolean(accessToken),
+    });
+  }
 
   try {
     await fetchArchivedVacancies();
@@ -714,14 +729,19 @@ async function fetchHhVacanciesBatch(input: {
     return { items: [], total: 0 };
   }
 
-  if (input.kind === "archived" && !input.accessToken) {
+  if (!input.accessToken) {
     return { items: [], total: 0 };
   }
 
+  const perPage =
+    input.kind === "active"
+      ? HH_API_ACTIVE_PER_PAGE
+      : HH_API_ARCHIVED_PER_PAGE;
+
   const items: HhVacancy[] = [];
   const pageOffset = Math.max(input.offset, 0);
-  let page = Math.floor(pageOffset / HH_API_PER_PAGE);
-  let skip = pageOffset % HH_API_PER_PAGE;
+  let page = Math.floor(pageOffset / perPage);
+  let skip = pageOffset % perPage;
   let totalPages = page + 1;
   let total = 0;
 
@@ -729,18 +749,16 @@ async function fetchHhVacanciesBatch(input: {
     const searchParams = new URLSearchParams({
       host: "hh.uz",
       page: String(page),
-      per_page: String(HH_API_PER_PAGE),
-      ...(input.kind === "active" ? { employer_id: input.employerId } : {}),
+      per_page: String(perPage),
+      ...(input.kind === "active" ? { all_accessible: "true" } : {}),
     });
 
     const payload = await fetchHhJson<HhVacancySearchResponse>(
-      `${HH_API_BASE_URL}${input.kind === "active" ? "/vacancies" : "/vacancies/archived"}?${searchParams}`,
+      `${HH_API_BASE_URL}/employers/${input.employerId}/vacancies/${input.kind}?${searchParams}`,
       {
         headers: {
           Accept: "application/json",
-          ...(input.kind === "archived" && input.accessToken
-            ? { Authorization: `Bearer ${input.accessToken}` }
-            : {}),
+          Authorization: `Bearer ${input.accessToken}`,
         },
         signal: AbortSignal.timeout(10_000),
       },
@@ -802,6 +820,7 @@ export async function fetchCompanyHhVacanciesPage(input: {
 
   if (includeActive) {
     const activeBatch = await fetchHhVacanciesBatch({
+      accessToken: input.accessToken,
       employerId: input.employerId,
       kind: "active",
       limit: input.limit,
@@ -849,7 +868,7 @@ export async function fetchHhVacancyApplicants(
     const searchParams = new URLSearchParams({
       host: "hh.uz",
       page: String(page),
-      per_page: String(HH_API_PER_PAGE),
+      per_page: String(HH_API_NEGOTIATIONS_PER_PAGE),
       vacancy_id: vacancyId,
     });
 
