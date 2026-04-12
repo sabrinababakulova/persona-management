@@ -557,56 +557,127 @@ export async function resolveHhEmployerFromAccessToken(
 
 export async function fetchCompanyHhVacancies(
   employerId: string,
+  accessToken?: string,
 ): Promise<HhVacancy[]> {
-  const vacancies: HhVacancy[] = [];
-  let page = 0;
-  let totalPages = 1;
+  const vacancies = new Map<string, HhVacancy>();
 
-  while (page < totalPages) {
-    const searchParams = new URLSearchParams({
-      employer_id: employerId,
-      host: "hh.uz",
-      page: String(page),
-      per_page: String(HH_API_PER_PAGE),
-    });
+  const fetchPublicVacancies = async () => {
+    let page = 0;
+    let totalPages = 1;
 
-    const payload = await fetchHhJson<HhVacancySearchResponse>(
-      `${HH_API_BASE_URL}/vacancies?${searchParams}`,
-      {
-        headers: {
-          Accept: "application/json",
+    while (page < totalPages) {
+      const searchParams = new URLSearchParams({
+        employer_id: employerId,
+        host: "hh.uz",
+        page: String(page),
+        per_page: String(HH_API_PER_PAGE),
+      });
+
+      const payload = await fetchHhJson<HhVacancySearchResponse>(
+        `${HH_API_BASE_URL}/vacancies?${searchParams}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(10_000),
         },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
+      );
 
-    const items = payload.items ?? [];
+      const items = payload.items ?? [];
 
-    console.info("[hh.uz] vacancies page fetched", {
-      employerId,
-      page,
-      totalPages: Math.max(payload.pages ?? 0, 1),
-      received: items.length,
-      vacancies: items.map(toHhVacancyLogEntry),
-    });
+      console.info("[hh.uz] active vacancies page fetched", {
+        employerId,
+        page,
+        totalPages: Math.max(payload.pages ?? 0, 1),
+        received: items.length,
+        vacancies: items.map(toHhVacancyLogEntry),
+      });
 
-    vacancies.push(...items.map((item) => toHhVacancy(item)));
+      for (const item of items) {
+        const vacancy = toHhVacancy(item);
+        vacancies.set(vacancy.id, vacancy);
+      }
 
-    totalPages = Math.max(payload.pages ?? 0, 1);
-    page += 1;
+      totalPages = Math.max(payload.pages ?? 0, 1);
+      page += 1;
 
-    if (items.length === 0) {
-      break;
+      if (items.length === 0) {
+        break;
+      }
     }
+  };
+
+  const fetchArchivedVacancies = async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    let page = 0;
+    let totalPages = 1;
+
+    while (page < totalPages) {
+      const searchParams = new URLSearchParams({
+        host: "hh.uz",
+        page: String(page),
+        per_page: String(HH_API_PER_PAGE),
+      });
+
+      const payload = await fetchHhJson<HhVacancySearchResponse>(
+        `${HH_API_BASE_URL}/vacancies/archived?${searchParams}`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+
+      const items = payload.items ?? [];
+
+      console.info("[hh.uz] archived vacancies page fetched", {
+        employerId,
+        page,
+        totalPages: Math.max(payload.pages ?? 0, 1),
+        received: items.length,
+        vacancies: items.map(toHhVacancyLogEntry),
+      });
+
+      for (const item of items) {
+        const vacancy = toHhVacancy(item);
+        vacancies.set(vacancy.id, vacancy);
+      }
+
+      totalPages = Math.max(payload.pages ?? 0, 1);
+      page += 1;
+
+      if (items.length === 0) {
+        break;
+      }
+    }
+  };
+
+  await fetchPublicVacancies();
+
+  try {
+    await fetchArchivedVacancies();
+  } catch (error) {
+    console.error("Failed to fetch archived hh.uz vacancies", {
+      employerId,
+      error,
+      hasAccessToken: Boolean(accessToken),
+    });
   }
+
+  const items = [...vacancies.values()];
 
   console.info("[hh.uz] vacancies mapped for UI", {
     employerId,
-    total: vacancies.length,
-    vacancies,
+    total: items.length,
+    vacancies: items,
   });
 
-  return vacancies;
+  return items;
 }
 
 export async function fetchHhVacancyApplicants(

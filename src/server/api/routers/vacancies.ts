@@ -223,6 +223,17 @@ function isDateWithinPeriod(value: string | undefined, cutoff: Date) {
   return parsedDate >= cutoff;
 }
 
+function shouldIncludeHhVacancyForPeriod(
+  vacancy: ReturnType<typeof formatHhVacancy>,
+  cutoff: Date,
+) {
+  if (vacancy.status === "archive") {
+    return true;
+  }
+
+  return isDateWithinPeriod(vacancy.publishedAt, cutoff);
+}
+
 async function requireCurrentUserCompanyId(
   db: typeof import("~/server/db").db,
   userId: string | undefined,
@@ -280,13 +291,19 @@ export const vacanciesRouter = createTRPCRouter({
       return false;
     }
 
-    let employerId = hhAccount?.employerId?.trim();
+    const hhAccountId = hhAccount?.id;
+    if (!hhAccountId) {
+      return false;
+    }
 
-    if (!employerId && hhAccount?.accessToken && isHhConfigured()) {
+    const refreshToken = hhAccount?.refreshToken ?? undefined;
+    let employerId = hhAccount?.employerId?.trim();
+    let accessToken = hhAccount?.accessToken ?? undefined;
+
+    if (!employerId && accessToken && isHhConfigured()) {
       try {
-        const resolvedAccount = await resolveHhEmployerFromAccessToken(
-          hhAccount.accessToken,
-        );
+        const resolvedAccount =
+          await resolveHhEmployerFromAccessToken(accessToken);
         employerId = resolvedAccount.employerId;
 
         await ctx.db
@@ -295,17 +312,16 @@ export const vacanciesRouter = createTRPCRouter({
             email: resolvedAccount.email,
             employerId: resolvedAccount.employerId,
           })
-          .where(eq(companyHhAccounts.id, hhAccount.id));
+          .where(eq(companyHhAccounts.id, hhAccountId));
       } catch (_resolveError) {
-        if (hhAccount.refreshToken) {
+        if (refreshToken) {
           try {
-            const refreshedTokens = await refreshHhAccessToken(
-              hhAccount.refreshToken,
-            );
+            const refreshedTokens = await refreshHhAccessToken(refreshToken);
             const resolvedAccount = await resolveHhEmployerFromAccessToken(
               refreshedTokens.accessToken,
             );
             employerId = resolvedAccount.employerId;
+            accessToken = refreshedTokens.accessToken;
 
             await ctx.db
               .update(companyHhAccounts)
@@ -315,7 +331,7 @@ export const vacanciesRouter = createTRPCRouter({
                 employerId: resolvedAccount.employerId,
                 refreshToken: refreshedTokens.refreshToken,
               })
-              .where(eq(companyHhAccounts.id, hhAccount.id));
+              .where(eq(companyHhAccounts.id, hhAccountId));
           } catch {
             return false;
           }
@@ -330,7 +346,10 @@ export const vacanciesRouter = createTRPCRouter({
     }
 
     try {
-      const hhVacancies = await fetchCompanyHhVacancies(employerId);
+      const hhVacancies = await fetchCompanyHhVacancies(
+        employerId,
+        accessToken,
+      );
       return hhVacancies.length > 0;
     } catch {
       return false;
@@ -458,13 +477,22 @@ export const vacanciesRouter = createTRPCRouter({
         };
       }
 
-      let employerId = hhAccount?.employerId?.trim();
+      const hhAccountId = hhAccount?.id;
+      if (!hhAccountId) {
+        return {
+          items: localVacancies.slice(offset, offset + limit),
+          total: localVacancies.length,
+        };
+      }
 
-      if (!employerId && hhAccount?.accessToken && isHhConfigured()) {
+      const refreshToken = hhAccount?.refreshToken ?? undefined;
+      let employerId = hhAccount?.employerId?.trim();
+      let accessToken = hhAccount?.accessToken ?? undefined;
+
+      if (!employerId && accessToken && isHhConfigured()) {
         try {
-          const resolvedAccount = await resolveHhEmployerFromAccessToken(
-            hhAccount.accessToken,
-          );
+          const resolvedAccount =
+            await resolveHhEmployerFromAccessToken(accessToken);
           employerId = resolvedAccount.employerId;
 
           await ctx.db
@@ -473,17 +501,16 @@ export const vacanciesRouter = createTRPCRouter({
               email: resolvedAccount.email,
               employerId: resolvedAccount.employerId,
             })
-            .where(eq(companyHhAccounts.id, hhAccount.id));
+            .where(eq(companyHhAccounts.id, hhAccountId));
         } catch (resolveError) {
-          if (hhAccount.refreshToken) {
+          if (refreshToken) {
             try {
-              const refreshedTokens = await refreshHhAccessToken(
-                hhAccount.refreshToken,
-              );
+              const refreshedTokens = await refreshHhAccessToken(refreshToken);
               const resolvedAccount = await resolveHhEmployerFromAccessToken(
                 refreshedTokens.accessToken,
               );
               employerId = resolvedAccount.employerId;
+              accessToken = refreshedTokens.accessToken;
 
               await ctx.db
                 .update(companyHhAccounts)
@@ -493,7 +520,7 @@ export const vacanciesRouter = createTRPCRouter({
                   employerId: resolvedAccount.employerId,
                   refreshToken: refreshedTokens.refreshToken,
                 })
-                .where(eq(companyHhAccounts.id, hhAccount.id));
+                .where(eq(companyHhAccounts.id, hhAccountId));
             } catch (refreshError) {
               console.error(
                 "Failed to refresh HH account before vacancy sync",
@@ -527,12 +554,15 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       try {
-        const hhVacancies = await fetchCompanyHhVacancies(employerId);
+        const hhVacancies = await fetchCompanyHhVacancies(
+          employerId,
+          accessToken,
+        );
         const filteredHhVacancies = hhVacancies
           .map((vacancy) => formatHhVacancy(vacancy, userCompanyId))
           .filter((vacancy) =>
             shouldApplyPeriod
-              ? isDateWithinPeriod(vacancy.publishedAt, createdAtCutoff)
+              ? shouldIncludeHhVacancyForPeriod(vacancy, createdAtCutoff)
               : true,
           )
           .filter((vacancy) => {

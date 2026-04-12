@@ -480,24 +480,17 @@ export default function VacanciesPage() {
                           </div>
 
                           <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                            {isHhVacancy ? (
-                              <span className="flex items-center gap-1 text-[14px] text-text-disabled leading-none">
-                                <FunnelIcon className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">
-                                  Воронка
-                                </span>
-                              </span>
-                            ) : (
-                              <Link
-                                className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
-                                href={toVacancyFunnelPath(vacancy)}
-                              >
-                                <FunnelIcon className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">
-                                  Воронка
-                                </span>
-                              </Link>
-                            )}
+                            <Link
+                              className={`flex items-center gap-1 text-[14px] leading-none ${
+                                isHhVacancy
+                                  ? "text-text-secondary hover:text-text-heading"
+                                  : "text-primary-blue hover:text-primary-blue-hover"
+                              }`}
+                              href={toVacancyFunnelPath(vacancy)}
+                            >
+                              <FunnelIcon className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline">Воронка</span>
+                            </Link>
                             <button
                               className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
                               type="button"
