@@ -25,6 +25,7 @@ import {
 } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
+  fetchHhVacancyApplicants,
   fetchHhVacancyById,
   isHhConfigured,
   refreshHhAccessToken,
@@ -597,17 +598,97 @@ export const vacanciesRouter = createTRPCRouter({
         const hhVacancyId = normalizedId.slice(3);
 
         let accessToken: string | undefined;
+        let refreshToken: string | undefined;
         const hhAccountRows = await ctx.db
           .select({
             accessToken: companyHhAccounts.accessToken,
+            id: companyHhAccounts.id,
+            refreshToken: companyHhAccounts.refreshToken,
           })
           .from(companyHhAccounts)
           .where(eq(companyHhAccounts.companyId, userCompanyId))
           .limit(1);
-        accessToken = hhAccountRows[0]?.accessToken ?? undefined;
+
+        const hhAccount = hhAccountRows[0];
+        accessToken = hhAccount?.accessToken ?? undefined;
+        refreshToken = hhAccount?.refreshToken ?? undefined;
+
+        const refreshAccessTokenIfPossible = async () => {
+          if (!hhAccount?.id || !refreshToken || !isHhConfigured()) {
+            return accessToken;
+          }
+
+          const refreshedTokens = await refreshHhAccessToken(refreshToken);
+          accessToken = refreshedTokens.accessToken;
+          refreshToken = refreshedTokens.refreshToken ?? undefined;
+
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              accessToken: refreshedTokens.accessToken,
+              refreshToken: refreshedTokens.refreshToken,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+
+          return accessToken;
+        };
+
+        if (!accessToken) {
+          try {
+            await refreshAccessTokenIfPossible();
+          } catch (error) {
+            console.error("Failed to refresh HH access token for vacancy", {
+              hhVacancyId,
+              companyId: userCompanyId,
+              error,
+            });
+          }
+        }
 
         try {
           const hhVacancy = await fetchHhVacancyById(hhVacancyId, accessToken);
+          let relatedCandidates: {
+            id: string;
+            fullName: string;
+            status: string | null;
+          }[] = [];
+
+          if (accessToken) {
+            try {
+              relatedCandidates = await fetchHhVacancyApplicants(
+                hhVacancyId,
+                accessToken,
+              );
+            } catch (error) {
+              if (refreshToken) {
+                try {
+                  const refreshedAccessToken =
+                    await refreshAccessTokenIfPossible();
+                  if (refreshedAccessToken) {
+                    relatedCandidates = await fetchHhVacancyApplicants(
+                      hhVacancyId,
+                      refreshedAccessToken,
+                    );
+                  }
+                } catch (refreshError) {
+                  console.error(
+                    "Failed to refresh HH access token before fetching applicants",
+                    {
+                      hhVacancyId,
+                      companyId: userCompanyId,
+                      error: refreshError,
+                    },
+                  );
+                }
+              } else {
+                console.error("Failed to fetch HH vacancy applicants", {
+                  hhVacancyId,
+                  companyId: userCompanyId,
+                  error,
+                });
+              }
+            }
+          }
 
           return {
             id: normalizedId,
@@ -629,11 +710,7 @@ export const vacanciesRouter = createTRPCRouter({
             publishedAt: hhVacancy.publishedAt,
             source: "hh.uz" as const,
             externalUrl: hhVacancy.externalUrl,
-            relatedCandidates: [] as {
-              id: string;
-              fullName: string;
-              status: string | null;
-            }[],
+            relatedCandidates,
           };
         } catch (error) {
           console.error("Failed to fetch HH vacancy by id", {
@@ -679,8 +756,166 @@ export const vacanciesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
 
-      if (!userCompanyId || isHhVacancyId(input.id)) {
+      if (!userCompanyId) {
         return null;
+      }
+
+      if (isHhVacancyId(input.id)) {
+        const hhVacancyId = input.id.slice(3);
+
+        const hhAccountRows = await ctx.db
+          .select({
+            accessToken: companyHhAccounts.accessToken,
+            id: companyHhAccounts.id,
+            refreshToken: companyHhAccounts.refreshToken,
+          })
+          .from(companyHhAccounts)
+          .where(eq(companyHhAccounts.companyId, userCompanyId))
+          .limit(1);
+
+        const hhAccount = hhAccountRows[0];
+        let accessToken = hhAccount?.accessToken ?? undefined;
+        let refreshToken = hhAccount?.refreshToken ?? undefined;
+
+        const refreshAccessTokenIfPossible = async () => {
+          if (!hhAccount?.id || !refreshToken || !isHhConfigured()) {
+            return accessToken;
+          }
+
+          const refreshedTokens = await refreshHhAccessToken(refreshToken);
+          accessToken = refreshedTokens.accessToken;
+          refreshToken = refreshedTokens.refreshToken ?? undefined;
+
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              accessToken: refreshedTokens.accessToken,
+              refreshToken: refreshedTokens.refreshToken,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+
+          return accessToken;
+        };
+
+        if (!accessToken) {
+          try {
+            await refreshAccessTokenIfPossible();
+          } catch (error) {
+            console.error("Failed to refresh HH access token for funnel", {
+              companyId: userCompanyId,
+              error,
+              hhVacancyId,
+            });
+          }
+        }
+
+        try {
+          const hhVacancy = await fetchHhVacancyById(hhVacancyId, accessToken);
+
+          let relatedCandidates: {
+            id: string;
+            fullName: string;
+            status: string | null;
+          }[] = [];
+
+          if (accessToken) {
+            try {
+              relatedCandidates = await fetchHhVacancyApplicants(
+                hhVacancyId,
+                accessToken,
+              );
+            } catch (error) {
+              if (refreshToken) {
+                try {
+                  const refreshedAccessToken =
+                    await refreshAccessTokenIfPossible();
+                  if (refreshedAccessToken) {
+                    relatedCandidates = await fetchHhVacancyApplicants(
+                      hhVacancyId,
+                      refreshedAccessToken,
+                    );
+                  }
+                } catch (refreshError) {
+                  console.error(
+                    "Failed to refresh HH access token before fetching funnel applicants",
+                    {
+                      companyId: userCompanyId,
+                      error: refreshError,
+                      hhVacancyId,
+                    },
+                  );
+                }
+              } else {
+                console.error("Failed to fetch HH funnel applicants", {
+                  companyId: userCompanyId,
+                  error,
+                  hhVacancyId,
+                });
+              }
+            }
+          }
+
+          const normalizedCandidates = relatedCandidates.map((candidate) => ({
+            id: candidate.id,
+            fullName: candidate.fullName,
+            status: candidate.status ?? "Без статуса",
+            city: "",
+            experience: "",
+            matchScore: 0,
+            aiAnalysis: "",
+            currentPosition: "",
+            currentCompany: "",
+            contacts: {
+              email: "",
+              phone: "",
+              telegram: "",
+            },
+            languages: [] as { name: string; level: string }[],
+            relatedVacancies: [] as { id: string; title: string }[],
+            resumeUrl: "",
+            salaryCurrency: "UZS",
+            salaryExpectation: 0,
+            skills: [] as string[],
+            source: "hh.uz",
+            tags: [] as string[],
+          }));
+
+          const stageLabels = Array.from(
+            new Set(
+              normalizedCandidates.map(
+                (candidate) => candidate.status?.trim() || "Без статуса",
+              ),
+            ),
+          );
+
+          return {
+            id: input.id,
+            title: hhVacancy.title,
+            level: hhVacancy.level ?? "",
+            city: hhVacancy.city ?? "",
+            source: "hh.uz" as const,
+            candidates: normalizedCandidates,
+            stages: (stageLabels.length > 0
+              ? stageLabels
+              : ["Отклики hh.uz"]
+            ).map((label) => ({
+              value: label,
+              label,
+              candidates: normalizedCandidates.filter(
+                (candidate) =>
+                  (candidate.status?.trim() || "Без статуса") === label,
+              ),
+            })),
+          };
+        } catch (error) {
+          console.error("Failed to fetch HH vacancy funnel", {
+            companyId: userCompanyId,
+            error,
+            hhVacancyId,
+          });
+
+          return null;
+        }
       }
 
       const rows = await ctx.db
@@ -820,6 +1055,7 @@ export const vacanciesRouter = createTRPCRouter({
         title: vacancy.title,
         level: vacancy.level ?? "",
         city: vacancy.city ?? "",
+        source: "local" as const,
         candidates: normalizedCandidates,
         stages: stageRows.map((stage) => ({
           value: stage.value,

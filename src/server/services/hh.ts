@@ -7,6 +7,11 @@ type HhVacancySearchResponse = {
   pages?: number;
 };
 
+type HhNegotiationCollectionResponse = {
+  items?: unknown[];
+  pages?: number;
+};
+
 type HhVacancyItem = {
   id: string;
   name?: string | null;
@@ -72,6 +77,12 @@ export type HhVacancy = {
 export type HhConnectedAccount = {
   email: string | null;
   employerId: string;
+};
+
+export type HhVacancyApplicant = {
+  id: string;
+  fullName: string;
+  status: string | null;
 };
 
 const HH_API_BASE_URL = "https://api.hh.ru";
@@ -146,9 +157,7 @@ function toHhSalaryExpectation(item: HhVacancyItem): number | undefined {
   return item.salary?.from ?? item.salary?.to ?? undefined;
 }
 
-function toHhSalaryCurrency(
-  item: HhVacancyItem,
-): "UZS" | "USD" | undefined {
+function toHhSalaryCurrency(item: HhVacancyItem): "UZS" | "USD" | undefined {
   switch (item.salary?.currency) {
     case "USD":
       return "USD";
@@ -222,9 +231,7 @@ export async function fetchHhVacancyById(
     {
       headers: {
         Accept: "application/json",
-        ...(accessToken
-          ? { Authorization: `Bearer ${accessToken}` }
-          : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       signal: AbortSignal.timeout(10_000),
     },
@@ -263,6 +270,72 @@ function getNestedString(value: unknown, path: string[]): string | undefined {
   return typeof current === "string" && current.trim()
     ? current.trim()
     : undefined;
+}
+
+function getNestedRecord(
+  value: unknown,
+  path: string[],
+): Record<string, unknown> | null {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    const record = toRecord(current);
+    if (!record) {
+      return null;
+    }
+    current = record[segment];
+  }
+
+  return toRecord(current);
+}
+
+function toHhApplicantFullName(item: unknown): string {
+  const resume =
+    getNestedRecord(item, ["resume"]) ?? getNestedRecord(item, ["applicant"]);
+
+  if (!resume) {
+    return "Неизвестный кандидат";
+  }
+
+  const nameParts = [
+    typeof resume.last_name === "string" ? resume.last_name.trim() : "",
+    typeof resume.first_name === "string" ? resume.first_name.trim() : "",
+    typeof resume.middle_name === "string" ? resume.middle_name.trim() : "",
+  ].filter(Boolean);
+
+  if (nameParts.length > 0) {
+    return nameParts.join(" ");
+  }
+
+  if (typeof resume.title === "string" && resume.title.trim()) {
+    return resume.title.trim();
+  }
+
+  return "Неизвестный кандидат";
+}
+
+function toHhVacancyApplicant(item: unknown): HhVacancyApplicant | null {
+  const record = toRecord(item);
+  if (!record) {
+    return null;
+  }
+
+  const negotiationId =
+    typeof record.id === "string" || typeof record.id === "number"
+      ? String(record.id)
+      : null;
+  const resumeId = getNestedString(record, ["resume", "id"]);
+  const applicantId = getNestedString(record, ["applicant", "id"]);
+  const status =
+    getNestedString(record, ["state", "name"]) ??
+    getNestedString(record, ["state", "id"]) ??
+    null;
+
+  return {
+    id: resumeId ?? applicantId ?? negotiationId ?? "unknown",
+    fullName: toHhApplicantFullName(record),
+    status,
+  };
 }
 
 function signState(encodedPayload: string) {
@@ -517,9 +590,7 @@ export async function fetchCompanyHhVacancies(
       vacancies: items.map(toHhVacancyLogEntry),
     });
 
-    vacancies.push(
-      ...items.map((item) => toHhVacancy(item)),
-    );
+    vacancies.push(...items.map((item) => toHhVacancy(item)));
 
     totalPages = Math.max(payload.pages ?? 0, 1);
     page += 1;
@@ -536,4 +607,55 @@ export async function fetchCompanyHhVacancies(
   });
 
   return vacancies;
+}
+
+export async function fetchHhVacancyApplicants(
+  vacancyId: string,
+  accessToken: string,
+): Promise<HhVacancyApplicant[]> {
+  const applicants: HhVacancyApplicant[] = [];
+  let page = 0;
+  let totalPages = 1;
+
+  while (page < totalPages) {
+    const searchParams = new URLSearchParams({
+      host: "hh.uz",
+      page: String(page),
+      per_page: String(HH_API_PER_PAGE),
+      vacancy_id: vacancyId,
+    });
+
+    const payload = await fetchHhJson<HhNegotiationCollectionResponse>(
+      `${HH_API_BASE_URL}/negotiations/response?${searchParams}`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    const items = payload.items ?? [];
+    applicants.push(
+      ...items
+        .map((item) => toHhVacancyApplicant(item))
+        .filter((item): item is HhVacancyApplicant => item !== null),
+    );
+
+    totalPages = Math.max(payload.pages ?? 0, 1);
+    page += 1;
+
+    if (items.length === 0) {
+      break;
+    }
+  }
+
+  console.info("[hh.uz] vacancy applicants fetched", {
+    vacancyId,
+    total: applicants.length,
+    applicants,
+  });
+
+  return applicants;
 }

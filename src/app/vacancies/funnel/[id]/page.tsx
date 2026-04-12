@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {
@@ -383,6 +383,7 @@ function VacancyStageCandidateCard({
 
 function VacancyStageSection({
   candidates,
+  canAddCandidate,
   label,
   onAddCandidate,
 }: {
@@ -409,6 +410,7 @@ function VacancyStageSection({
     resumeUrl: string;
     relatedVacancies: { id: string; title: string }[];
   }[];
+  canAddCandidate: boolean;
   label: string;
   onAddCandidate: () => void;
 }) {
@@ -420,14 +422,16 @@ function VacancyStageSection({
         </h2>
 
         <div className="flex items-center gap-2">
-          <button
-            aria-label={`Добавить кандидата в этап ${label}`}
-            className="inline-flex h-5 w-5 items-center justify-center text-primary-blue transition-colors hover:text-primary-blue-hover"
-            onClick={onAddCandidate}
-            type="button"
-          >
-            <PlusIcon className="h-5 w-5" />
-          </button>
+          {canAddCandidate ? (
+            <button
+              aria-label={`Добавить кандидата в этап ${label}`}
+              className="inline-flex h-5 w-5 items-center justify-center text-primary-blue transition-colors hover:text-primary-blue-hover"
+              onClick={onAddCandidate}
+              type="button"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+          ) : null}
           <button
             aria-label={`Сортировка кандидатов этапа ${label}`}
             className="inline-flex h-4 w-4 items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
@@ -467,6 +471,7 @@ export default function VacancyFunnelPage() {
     { id },
     { enabled: Boolean(id) },
   );
+  const isHhVacancy = data?.source === "hh.uz";
   const assignCandidateToVacancy =
     api.vacancies.assignCandidateToVacancy.useMutation({
       onSuccess: async () => {
@@ -523,9 +528,17 @@ export default function VacancyFunnelPage() {
           title={data.title}
         />
 
+        {isHhVacancy ? (
+          <div className="rounded-[8px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary">
+            Кандидаты и этапы загружены из hh.uz. Добавление кандидатов в
+            воронку на этой странице недоступно.
+          </div>
+        ) : null}
+
         <div className="flex gap-4 overflow-x-auto pb-2">
           {data.stages.map((stage) => (
             <VacancyStageSection
+              canAddCandidate={!isHhVacancy}
               candidates={stage.candidates}
               key={stage.value}
               label={stage.label}
@@ -543,7 +556,7 @@ export default function VacancyFunnelPage() {
       <AssignCandidateToVacancyModal
         errorMessage={assignCandidateToVacancy.error?.message}
         isAssigning={assignCandidateToVacancy.isPending}
-        isOpen={assignmentStage !== null}
+        isOpen={assignmentStage !== null && !isHhVacancy}
         onAssignCandidate={(candidateId) => {
           if (!assignmentStage) {
             return;
