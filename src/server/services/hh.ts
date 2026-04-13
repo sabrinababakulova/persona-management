@@ -15,6 +15,17 @@ type HhNegotiationCollectionResponse = {
   pages?: number;
 };
 
+type HhNegotiationsCollectionInfo = {
+  id?: string | null;
+  name?: string | null;
+  url?: string | null;
+};
+
+type HhNegotiationsListResponse = {
+  collections?: HhNegotiationsCollectionInfo[];
+  generated_collections?: HhNegotiationsCollectionInfo[];
+};
+
 type HhVacancyItem = {
   id: string;
   name?: string | null;
@@ -97,7 +108,7 @@ const HH_API_BASE_URL = "https://api.hh.ru";
 const HH_AUTH_BASE_URL = "https://hh.ru";
 const HH_API_ACTIVE_PER_PAGE = 50;
 const HH_API_ARCHIVED_PER_PAGE = 500;
-const HH_API_NEGOTIATIONS_PER_PAGE = 100;
+const HH_API_NEGOTIATIONS_PER_PAGE = 50;
 const HH_CONNECT_STATE_TTL_MS = 10 * 60 * 1000;
 
 function assertHhConfigured() {
@@ -339,7 +350,10 @@ function toHhApplicantFullName(item: unknown): string {
   return "Неизвестный кандидат";
 }
 
-function toHhVacancyApplicant(item: unknown): HhVacancyApplicant | null {
+function toHhVacancyApplicant(
+  item: unknown,
+  fallbackStatus?: string | null,
+): HhVacancyApplicant | null {
   const record = toRecord(item);
   if (!record) {
     return null;
@@ -352,8 +366,13 @@ function toHhVacancyApplicant(item: unknown): HhVacancyApplicant | null {
   const resumeId = getNestedString(record, ["resume", "id"]);
   const applicantId = getNestedString(record, ["applicant", "id"]);
   const status =
+    getNestedString(record, ["employer_state", "name"]) ??
+    getNestedString(record, ["employer_state", "id"]) ??
+    getNestedString(record, ["funnel_stage", "state", "name"]) ??
+    getNestedString(record, ["funnel_stage", "state", "id"]) ??
     getNestedString(record, ["state", "name"]) ??
     getNestedString(record, ["state", "id"]) ??
+    fallbackStatus ??
     null;
 
   return {
@@ -615,14 +634,6 @@ export async function fetchCompanyHhVacancies(
 
       const items = payload.items ?? [];
 
-      console.info("[hh.uz] active vacancies page fetched", {
-        employerId,
-        page,
-        totalPages: Math.max(payload.pages ?? 0, 1),
-        received: items.length,
-        vacancies: items.map(toHhVacancyLogEntry),
-      });
-
       for (const item of items) {
         const vacancy = toHhVacancy(item);
         vacancies.set(vacancy.id, vacancy);
@@ -665,14 +676,6 @@ export async function fetchCompanyHhVacancies(
 
       const items = payload.items ?? [];
 
-      console.info("[hh.uz] archived vacancies page fetched", {
-        employerId,
-        page,
-        totalPages: Math.max(payload.pages ?? 0, 1),
-        received: items.length,
-        vacancies: items.map(toHhVacancyLogEntry),
-      });
-
       for (const item of items) {
         const vacancy = toHhVacancy(item);
         vacancies.set(vacancy.id, vacancy);
@@ -708,12 +711,6 @@ export async function fetchCompanyHhVacancies(
   }
 
   const items = [...vacancies.values()];
-
-  console.info("[hh.uz] vacancies mapped for UI", {
-    employerId,
-    total: items.length,
-    vacancies: items,
-  });
 
   return items;
 }
@@ -768,17 +765,6 @@ async function fetchHhVacanciesBatch(input: {
     totalPages = Math.max(payload.pages ?? 0, page + 1);
     total = getTotalFromSearchPayload(payload);
 
-    console.info(`[hh.uz] ${input.kind} vacancies batch fetched`, {
-      employerId: input.employerId,
-      kind: input.kind,
-      limit: input.limit,
-      offset: input.offset,
-      page,
-      received: pageItems.length,
-      total,
-      totalPages,
-      vacancies: pageItems.map(toHhVacancyLogEntry),
-    });
 
     const slicedItems = pageItems.slice(skip);
     skip = 0;
@@ -856,11 +842,46 @@ export async function fetchCompanyHhVacanciesPage(input: {
   };
 }
 
-export async function fetchHhVacancyApplicants(
+async function fetchHhNegotiationCollections(
   vacancyId: string,
   accessToken: string,
-): Promise<HhVacancyApplicant[]> {
-  const applicants: HhVacancyApplicant[] = [];
+): Promise<HhNegotiationsCollectionInfo[]> {
+  const searchParams = new URLSearchParams({
+    host: "hh.uz",
+    vacancy_id: vacancyId,
+    with_generated_collections: "true",
+  });
+
+  const payload = await fetchHhJson<HhNegotiationsListResponse>(
+    `${HH_API_BASE_URL}/negotiations?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  const collections = [
+    ...(payload.collections ?? []),
+    ...(payload.generated_collections ?? []),
+  ].filter(
+    (collection): collection is HhNegotiationsCollectionInfo =>
+      Boolean(collection?.id),
+  );
+
+  return collections;
+}
+
+async function fetchHhNegotiationCollectionItems(input: {
+  accessToken: string;
+  collectionId: string;
+  collectionName?: string | null;
+  vacancyId: string;
+}): Promise<HhVacancyApplicant[]> {
+  const { accessToken, collectionId, collectionName, vacancyId } = input;
+  const collected: HhVacancyApplicant[] = [];
   let page = 0;
   let totalPages = 1;
 
@@ -873,7 +894,7 @@ export async function fetchHhVacancyApplicants(
     });
 
     const payload = await fetchHhJson<HhNegotiationCollectionResponse>(
-      `${HH_API_BASE_URL}/negotiations/response?${searchParams}`,
+      `${HH_API_BASE_URL}/negotiations/${collectionId}?${searchParams}`,
       {
         headers: {
           Accept: "application/json",
@@ -884,9 +905,9 @@ export async function fetchHhVacancyApplicants(
     );
 
     const items = payload.items ?? [];
-    applicants.push(
+    collected.push(
       ...items
-        .map((item) => toHhVacancyApplicant(item))
+        .map((item) => toHhVacancyApplicant(item, collectionName ?? null))
         .filter((item): item is HhVacancyApplicant => item !== null),
     );
 
@@ -898,11 +919,48 @@ export async function fetchHhVacancyApplicants(
     }
   }
 
-  console.info("[hh.uz] vacancy applicants fetched", {
+  return collected;
+}
+
+export async function fetchHhVacancyApplicants(
+  vacancyId: string,
+  accessToken: string,
+): Promise<HhVacancyApplicant[]> {
+  const collections = await fetchHhNegotiationCollections(
     vacancyId,
-    total: applicants.length,
-    applicants,
-  });
+    accessToken,
+  );
+
+  const applicantsById = new Map<string, HhVacancyApplicant>();
+
+  for (const collection of collections) {
+    if (!collection.id) {
+      continue;
+    }
+
+    try {
+      const items = await fetchHhNegotiationCollectionItems({
+        accessToken,
+        collectionId: collection.id,
+        collectionName: collection.name ?? null,
+        vacancyId,
+      });
+
+      for (const item of items) {
+        if (!applicantsById.has(item.id)) {
+          applicantsById.set(item.id, item);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch HH negotiation collection items", {
+        vacancyId,
+        collectionId: collection.id,
+        error,
+      });
+    }
+  }
+
+  const applicants = [...applicantsById.values()];
 
   return applicants;
 }
