@@ -252,6 +252,54 @@ export const vacancies = createTable(
   ],
 );
 
+export type VacancyPublicationSource = {
+  platform: string;
+  url: string;
+};
+
+export const vacancyPublications = createTable(
+  "vacancy_publication",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    vacancyId: d
+      .varchar("vacancy_id", { length: 255 })
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    description: d.text().notNull().default(""),
+    isActive: d.boolean().notNull().default(true),
+    sources: d.json().$type<VacancyPublicationSource[]>().notNull().default([]),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("vacancy_publication_vacancy_id_idx").on(t.vacancyId),
+    index("vacancy_publication_active_idx").on(t.isActive),
+    index("vacancy_publication_created_at_idx").on(t.createdAt),
+  ],
+);
+
+export const vacanciesRelations = relations(vacancies, ({ many }) => ({
+  publications: many(vacancyPublications),
+}));
+
+export const vacancyPublicationsRelations = relations(
+  vacancyPublications,
+  ({ one }) => ({
+    vacancy: one(vacancies, {
+      fields: [vacancyPublications.vacancyId],
+      references: [vacancies.id],
+    }),
+  }),
+);
+
 export const candidateVacancies = createTable(
   "vacancy_candidate",
   (d) => ({

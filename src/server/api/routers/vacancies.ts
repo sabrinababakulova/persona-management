@@ -13,6 +13,11 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 
+import {
+  createVacancyPublicationSchema,
+  deleteVacancyPublicationSchema,
+  updateVacancyPublicationSchema,
+} from "~/schemas/vacancy-publication";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidateStatusOptions,
@@ -22,6 +27,7 @@ import {
   companyTelegramChannels,
   recentActivityLogs,
   vacancies,
+  vacancyPublications,
 } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
@@ -147,6 +153,21 @@ function formatVacancy(
     publishedAt: undefined,
     source: "local" as const,
     externalUrl: undefined,
+  };
+}
+
+function formatVacancyPublication(
+  publication: typeof vacancyPublications.$inferSelect,
+) {
+  return {
+    id: publication.id,
+    vacancyId: publication.vacancyId,
+    name: publication.name,
+    description: publication.description,
+    isActive: publication.isActive,
+    sources: publication.sources ?? [],
+    createdAt: publication.createdAt,
+    updatedAt: publication.updatedAt ?? undefined,
   };
 }
 
@@ -754,6 +775,7 @@ export const vacanciesRouter = createTRPCRouter({
             publishedAt: hhVacancy.publishedAt,
             source: "hh.uz" as const,
             externalUrl: hhVacancy.externalUrl,
+            publications: [],
             relatedCandidates,
           };
         } catch (error) {
@@ -783,16 +805,105 @@ export const vacanciesRouter = createTRPCRouter({
         return null;
       }
 
-      const relatedCandidateRows = await getVacancyRelatedCandidates(
-        ctx.db,
-        vacancy.id,
-        userCompanyId,
-      );
+      const [relatedCandidateRows, publicationRows] = await Promise.all([
+        getVacancyRelatedCandidates(ctx.db, vacancy.id, userCompanyId),
+        ctx.db
+          .select({
+            id: vacancyPublications.id,
+            vacancyId: vacancyPublications.vacancyId,
+            name: vacancyPublications.name,
+            description: vacancyPublications.description,
+            isActive: vacancyPublications.isActive,
+            sources: vacancyPublications.sources,
+            createdAt: vacancyPublications.createdAt,
+            updatedAt: vacancyPublications.updatedAt,
+          })
+          .from(vacancyPublications)
+          .where(eq(vacancyPublications.vacancyId, vacancy.id))
+          .orderBy(desc(vacancyPublications.createdAt)),
+      ]);
 
       return {
         ...formatVacancy(vacancy, relatedCandidateRows.length),
+        publications: publicationRows.map(formatVacancyPublication),
         relatedCandidates: relatedCandidateRows,
       };
+    }),
+
+  getVacancyPublications: protectedProcedure
+    .input(
+      z.object({
+        vacancyId: z.string().min(1).max(255),
+        activeOnly: z.boolean().optional().default(false),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
+
+      if (!userCompanyId || isHhVacancyId(input.vacancyId)) {
+        return [];
+      }
+
+      const conditions = [
+        eq(vacancyPublications.vacancyId, input.vacancyId),
+        eq(vacancies.companyId, userCompanyId),
+      ];
+
+      if (input.activeOnly) {
+        conditions.push(eq(vacancyPublications.isActive, true));
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: vacancyPublications.id,
+          vacancyId: vacancyPublications.vacancyId,
+          name: vacancyPublications.name,
+          description: vacancyPublications.description,
+          isActive: vacancyPublications.isActive,
+          sources: vacancyPublications.sources,
+          createdAt: vacancyPublications.createdAt,
+          updatedAt: vacancyPublications.updatedAt,
+        })
+        .from(vacancyPublications)
+        .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
+        .where(and(...conditions))
+        .orderBy(desc(vacancyPublications.createdAt));
+
+      return rows.map(formatVacancyPublication);
+    }),
+
+  getVacancyPublicationById: protectedProcedure
+    .input(z.object({ id: z.string().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
+
+      if (!userCompanyId) {
+        return null;
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: vacancyPublications.id,
+          vacancyId: vacancyPublications.vacancyId,
+          name: vacancyPublications.name,
+          description: vacancyPublications.description,
+          isActive: vacancyPublications.isActive,
+          sources: vacancyPublications.sources,
+          createdAt: vacancyPublications.createdAt,
+          updatedAt: vacancyPublications.updatedAt,
+        })
+        .from(vacancyPublications)
+        .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
+        .where(
+          and(
+            eq(vacancyPublications.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      const publication = rows[0];
+      return publication ? formatVacancyPublication(publication) : null;
     }),
 
   getVacancyFunnel: protectedProcedure
@@ -1668,6 +1779,178 @@ export const vacanciesRouter = createTRPCRouter({
       }
 
       return formatVacancy(updated);
+    }),
+
+  createVacancyPublication: protectedProcedure
+    .input(createVacancyPublicationSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userCompanyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      const vacancyRows = await ctx.db
+        .select({ id: vacancies.id })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, input.vacancyId),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      if (!vacancyRows[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Вакансия не найдена",
+        });
+      }
+
+      const createdRows = await ctx.db
+        .insert(vacancyPublications)
+        .values({
+          vacancyId: input.vacancyId,
+          name: input.name,
+          description: input.description,
+          isActive: input.isActive,
+          sources: input.sources,
+        })
+        .returning();
+
+      const created = createdRows[0];
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Не удалось создать публикацию",
+        });
+      }
+
+      return formatVacancyPublication(created);
+    }),
+
+  updateVacancyPublication: protectedProcedure
+    .input(updateVacancyPublicationSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userCompanyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      const rows = await ctx.db
+        .select({
+          id: vacancyPublications.id,
+          vacancyId: vacancyPublications.vacancyId,
+          name: vacancyPublications.name,
+          description: vacancyPublications.description,
+          isActive: vacancyPublications.isActive,
+          sources: vacancyPublications.sources,
+          createdAt: vacancyPublications.createdAt,
+          updatedAt: vacancyPublications.updatedAt,
+        })
+        .from(vacancyPublications)
+        .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
+        .where(
+          and(
+            eq(vacancyPublications.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      const existing = rows[0];
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Публикация не найдена",
+        });
+      }
+
+      const valuesToUpdate: Partial<{
+        name: string;
+        description: string;
+        isActive: boolean;
+        sources: NonNullable<typeof vacancyPublications.$inferInsert.sources>;
+        updatedAt: Date;
+      }> = {};
+
+      if (input.name !== undefined && input.name !== existing.name) {
+        valuesToUpdate.name = input.name;
+      }
+
+      if (
+        input.description !== undefined &&
+        input.description !== existing.description
+      ) {
+        valuesToUpdate.description = input.description;
+      }
+
+      if (
+        input.isActive !== undefined &&
+        input.isActive !== existing.isActive
+      ) {
+        valuesToUpdate.isActive = input.isActive;
+      }
+
+      if (input.sources !== undefined) {
+        valuesToUpdate.sources = input.sources;
+      }
+
+      if (Object.keys(valuesToUpdate).length === 0) {
+        return formatVacancyPublication(existing);
+      }
+
+      valuesToUpdate.updatedAt = new Date();
+
+      const updatedRows = await ctx.db
+        .update(vacancyPublications)
+        .set(valuesToUpdate)
+        .where(eq(vacancyPublications.id, input.id))
+        .returning();
+
+      const updated = updatedRows[0];
+      if (!updated) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Не удалось обновить публикацию",
+        });
+      }
+
+      return formatVacancyPublication(updated);
+    }),
+
+  deleteVacancyPublication: protectedProcedure
+    .input(deleteVacancyPublicationSchema)
+    .mutation(async ({ ctx, input }) => {
+      const userCompanyId = await requireCurrentUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+
+      const rows = await ctx.db
+        .select({ id: vacancyPublications.id })
+        .from(vacancyPublications)
+        .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
+        .where(
+          and(
+            eq(vacancyPublications.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      if (!rows[0]) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Публикация не найдена",
+        });
+      }
+
+      await ctx.db
+        .delete(vacancyPublications)
+        .where(eq(vacancyPublications.id, input.id));
+
+      return { success: true };
     }),
 
   isTelegramEnabled: protectedProcedure.query(async ({ ctx }) => {
