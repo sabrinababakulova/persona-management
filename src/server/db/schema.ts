@@ -253,7 +253,7 @@ export const vacancies = createTable(
 );
 
 export const candidateVacancies = createTable(
-  "candidate_vacancy_1",
+  "vacancy_candidate",
   (d) => ({
     id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
     candidateId: d
@@ -266,8 +266,8 @@ export const candidateVacancies = createTable(
       .references(() => vacancies.id, { onDelete: "cascade" }),
   }),
   (t) => [
-    index("candidate_vacancy_1_candidate_id_idx").on(t.candidateId),
-    index("candidate_vacancy_1_vacancy_id_idx").on(t.vacancyId),
+    index("vacancy_candidate_candidate_id_idx").on(t.candidateId),
+    index("vacancy_candidate_vacancy_id_idx").on(t.vacancyId),
   ],
 );
 
