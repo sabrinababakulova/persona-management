@@ -9,7 +9,7 @@ export default async function CreateVacancyPage() {
 
   return (
     <HydrateClient>
-      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-bg-light">
+      <main className="h-full bg-bg-light">
         <CreateVacancyForm />
       </main>
     </HydrateClient>
