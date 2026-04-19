@@ -158,6 +158,7 @@ function VacancyFunnelHeader({
 
 function VacancyStageCandidateCard({
   candidate,
+  isHhSource,
 }: {
   candidate: {
     id: string;
@@ -182,6 +183,7 @@ function VacancyStageCandidateCard({
     resumeUrl: string;
     relatedVacancies: { id: string; title: string }[];
   };
+  isHhSource?: boolean;
 }) {
   const subtitleTokens = compactValues([
     candidate.city.toUpperCase(),
@@ -233,9 +235,18 @@ function VacancyStageCandidateCard({
             </button>
           </div>
 
-          <h3 className="font-semibold text-[16px] text-text-heading leading-[1.1] tracking-[-0.32px]">
-            {candidate.fullName}
-          </h3>
+          {isHhSource ? (
+            <Link
+              className="font-semibold text-[16px] text-primary-blue leading-[1.1] tracking-[-0.32px] transition-colors hover:text-primary-blue-hover"
+              href={`/candidates/hh_${candidate.id}`}
+            >
+              {candidate.fullName}
+            </Link>
+          ) : (
+            <h3 className="font-semibold text-[16px] text-text-heading leading-[1.1] tracking-[-0.32px]">
+              {candidate.fullName}
+            </h3>
+          )}
         </div>
 
         <div className="rounded-[5px] bg-status-offer-bg p-2 text-status-offer">
@@ -384,6 +395,7 @@ function VacancyStageCandidateCard({
 function VacancyStageSection({
   candidates,
   canAddCandidate,
+  isHhSource,
   label,
   onAddCandidate,
 }: {
@@ -411,6 +423,7 @@ function VacancyStageSection({
     relatedVacancies: { id: string; title: string }[];
   }[];
   canAddCandidate: boolean;
+  isHhSource?: boolean;
   label: string;
   onAddCandidate: () => void;
 }) {
@@ -451,6 +464,7 @@ function VacancyStageSection({
           candidates.map((candidate) => (
             <VacancyStageCandidateCard
               candidate={candidate}
+              isHhSource={isHhSource}
               key={candidate.id}
             />
           ))
@@ -540,6 +554,7 @@ export default function VacancyFunnelPage() {
             <VacancyStageSection
               canAddCandidate={!isHhVacancy}
               candidates={stage.candidates}
+              isHhSource={isHhVacancy}
               key={stage.value}
               label={stage.label}
               onAddCandidate={() =>

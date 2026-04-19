@@ -99,6 +99,69 @@ export type HhVacancyApplicant = {
   status: string | null;
 };
 
+type HhResumeContact = {
+  type?: { id?: string | null; name?: string | null } | null;
+  value?: string | { formatted?: string | null } | null;
+};
+
+type HhResumeExperience = {
+  company?: string | null;
+  position?: string | null;
+  start?: string | null;
+  end?: string | null;
+  description?: string | null;
+};
+
+type HhResumeEducationItem = {
+  name?: string | null;
+  organization?: string | null;
+  result?: string | null;
+  year?: number | null;
+};
+
+type HhResumeLanguage = {
+  name?: string | null;
+  level?: { name?: string | null } | null;
+};
+
+type HhResumeResponse = {
+  id?: string | null;
+  title?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  middle_name?: string | null;
+  area?: { name?: string | null } | null;
+  salary?: { amount?: number | null; currency?: string | null } | null;
+  total_experience?: { months?: number | null } | null;
+  skill_set?: string[] | null;
+  experience?: HhResumeExperience[] | null;
+  education?: { primary?: HhResumeEducationItem[] | null } | null;
+  languages?: HhResumeLanguage[] | null;
+  contact?: HhResumeContact[] | null;
+  alternate_url?: string | null;
+};
+
+export type HhResumeCandidate = {
+  id: string;
+  fullName: string;
+  city: string;
+  experience: string;
+  salaryExpectation: number;
+  salaryCurrency: "UZS" | "USD";
+  currentPosition: string;
+  skills: string[];
+  languages: { name: string; level: string }[];
+  contacts: { phone: string; email: string; telegram: string };
+  workExperience: {
+    company: string;
+    position: string;
+    period: string;
+    description: string[];
+  }[];
+  education: { institution: string; gpa: string; period: string }[];
+  resumeUrl: string;
+};
+
 type HhVacancyPage = {
   items: HhVacancy[];
   total: number;
@@ -920,6 +983,121 @@ async function fetchHhNegotiationCollectionItems(input: {
   }
 
   return collected;
+}
+
+function formatExperienceMonths(months: number | null | undefined): string {
+  if (!months) return "";
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+  if (years > 0 && remainingMonths > 0) return `${years} лет ${remainingMonths} мес.`;
+  if (years > 0) return `${years} лет`;
+  return `${remainingMonths} мес.`;
+}
+
+function formatWorkPeriod(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string {
+  if (!start) return "";
+  const fmt = (d: string) => {
+    const parts = d.split("-");
+    return parts.length >= 2 ? `${parts[1]}.${parts[0]}` : (parts[0] ?? "");
+  };
+  return `${fmt(start)} — ${end ? fmt(end) : "н.в."}`;
+}
+
+export async function fetchHhResumeById(
+  resumeId: string,
+  accessToken: string,
+): Promise<HhResumeCandidate> {
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const resume = await fetchHhJson<HhResumeResponse>(
+    `${HH_API_BASE_URL}/resumes/${resumeId}?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  const nameParts = [
+    resume.last_name?.trim(),
+    resume.first_name?.trim(),
+    resume.middle_name?.trim(),
+  ].filter(Boolean);
+  const fullName =
+    nameParts.length > 0
+      ? nameParts.join(" ")
+      : resume.title?.trim() || "Неизвестный кандидат";
+
+  const city = resume.area?.name?.trim() || "";
+  const experience = formatExperienceMonths(resume.total_experience?.months);
+
+  const salaryExpectation = resume.salary?.amount ?? 0;
+  const salaryCurrency: "UZS" | "USD" =
+    resume.salary?.currency === "USD" ? "USD" : "UZS";
+
+  const currentPosition = resume.title?.trim() || "";
+  const skills = (resume.skill_set ?? []).filter(Boolean) as string[];
+
+  const languages = (resume.languages ?? [])
+    .map((lang) => ({
+      name: lang.name?.trim() || "",
+      level: lang.level?.name?.trim() || "",
+    }))
+    .filter((l) => l.name);
+
+  let phone = "";
+  let email = "";
+  for (const contact of resume.contact ?? []) {
+    const typeId = contact.type?.id;
+    if ((typeId === "cell" || typeId === "home") && !phone) {
+      phone =
+        typeof contact.value === "string"
+          ? contact.value
+          : (contact.value?.formatted ?? "");
+    } else if (typeId === "email" && !email) {
+      email =
+        typeof contact.value === "string"
+          ? contact.value
+          : (contact.value?.formatted ?? "");
+    }
+  }
+
+  const workExperience = (resume.experience ?? []).map((exp) => ({
+    company: exp.company?.trim() || "",
+    position: exp.position?.trim() || "",
+    period: formatWorkPeriod(exp.start, exp.end),
+    description: (exp.description ?? "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean),
+  }));
+
+  const education = (resume.education?.primary ?? []).map((edu) => ({
+    institution: edu.name?.trim() || edu.organization?.trim() || "",
+    gpa: edu.result?.trim() || "",
+    period: edu.year ? String(edu.year) : "",
+  }));
+
+  return {
+    id: resume.id ?? resumeId,
+    fullName,
+    city,
+    experience,
+    salaryExpectation,
+    salaryCurrency,
+    currentPosition,
+    skills,
+    languages,
+    contacts: { phone, email, telegram: "" },
+    workExperience,
+    education,
+    resumeUrl: resume.alternate_url?.trim() || "",
+  };
 }
 
 export async function fetchHhVacancyApplicants(

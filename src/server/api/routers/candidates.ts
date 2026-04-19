@@ -12,11 +12,17 @@ import {
   candidateStatusOptions,
   candidates,
   candidateVacancies,
+  companyHhAccounts,
   recentActivityLogs,
   users,
   vacancies,
   vacancyLevels,
 } from "~/server/db/schema";
+import {
+  fetchHhResumeById,
+  isHhConfigured,
+  refreshHhAccessToken,
+} from "~/server/services/hh";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import { DirectusStorageError } from "~/server/storage/directus-storage";
@@ -515,6 +521,91 @@ export const candidatesRouter = createTRPCRouter({
       const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
       if (!userCompanyId) {
         return null;
+      }
+
+      if (input.id.startsWith("hh_")) {
+        const resumeId = input.id.slice(3);
+
+        const hhAccountRows = await ctx.db
+          .select({
+            id: companyHhAccounts.id,
+            accessToken: companyHhAccounts.accessToken,
+            refreshToken: companyHhAccounts.refreshToken,
+          })
+          .from(companyHhAccounts)
+          .where(eq(companyHhAccounts.companyId, userCompanyId))
+          .limit(1);
+
+        const hhAccount = hhAccountRows[0];
+        let accessToken = hhAccount?.accessToken ?? undefined;
+        const refreshToken = hhAccount?.refreshToken ?? undefined;
+
+        if (!accessToken && refreshToken && isHhConfigured() && hhAccount?.id) {
+          try {
+            const refreshed = await refreshHhAccessToken(refreshToken);
+            accessToken = refreshed.accessToken;
+            await ctx.db
+              .update(companyHhAccounts)
+              .set({
+                accessToken: refreshed.accessToken,
+                refreshToken: refreshed.refreshToken,
+              })
+              .where(eq(companyHhAccounts.id, hhAccount.id));
+          } catch (error) {
+            console.error("Failed to refresh HH token for candidate fetch", { error });
+          }
+        }
+
+        if (!accessToken) {
+          return null;
+        }
+
+        try {
+          const hhCandidate = await fetchHhResumeById(resumeId, accessToken);
+          return {
+            id: input.id,
+            name: hhCandidate.fullName,
+            location: hhCandidate.city.toUpperCase(),
+            experience: hhCandidate.experience,
+            matchScore: 0,
+            salaryExpectation: hhCandidate.salaryExpectation,
+            salaryCurrency: hhCandidate.salaryCurrency as "UZS" | "USD",
+            status: "new",
+            source: "hh.uz",
+            tags: [] as string[],
+            currentPosition: hhCandidate.currentPosition,
+            languages: hhCandidate.languages,
+            skills: hhCandidate.skills,
+            contacts: hhCandidate.contacts,
+            aiAnalysis: "not in hhuz",
+            otherVacancies: [] as string[],
+            relatedVacancies: [] as { id: string; title: string }[],
+            workExperience: hhCandidate.workExperience,
+            education: hhCandidate.education,
+            resumeFile: {
+              name: "Резюме на hh.uz",
+              size: "",
+              url: hhCandidate.resumeUrl,
+            },
+            notes: [] as { id: string; content: string; author: string; createdAt: string }[],
+            activities: [] as {
+              id: string;
+              userName: string;
+              userAvatar: string;
+              action: string;
+              targetName: string;
+              targetStatus: string;
+              timeAgo: string;
+            }[],
+          };
+        } catch (error) {
+          console.error("Failed to fetch HH resume for candidate page", {
+            resumeId,
+            companyId: userCompanyId,
+            error,
+          });
+          return null;
+        }
       }
 
       const rows = await ctx.db
