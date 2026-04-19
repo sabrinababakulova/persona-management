@@ -1640,26 +1640,19 @@ export const vacanciesRouter = createTRPCRouter({
         let refreshToken = hhAccount?.refreshToken ?? undefined;
         let employerId = hhAccount?.employerId?.trim();
 
-        const refreshAccessTokenIfPossible = async () => {
-          if (!hhAccount?.id || !refreshToken || !isHhConfigured()) {
-            return accessToken;
-          }
-          const refreshed = await refreshHhAccessToken(refreshToken);
-          accessToken = refreshed.accessToken;
-          refreshToken = refreshed.refreshToken ?? undefined;
-          await ctx.db
-            .update(companyHhAccounts)
-            .set({
-              accessToken: refreshed.accessToken,
-              refreshToken: refreshed.refreshToken,
-            })
-            .where(eq(companyHhAccounts.id, hhAccount.id));
-          return accessToken;
-        };
-
-        if (!accessToken) {
+        // Only refresh when the token is actually missing — never on API errors,
+        // because hh.uz rejects refresh attempts on non-expired tokens.
+        if (!accessToken && refreshToken && isHhConfigured() && hhAccount?.id) {
           try {
-            await refreshAccessTokenIfPossible();
+            const refreshed = await refreshHhAccessToken(refreshToken);
+            accessToken = refreshed.accessToken;
+            await ctx.db
+              .update(companyHhAccounts)
+              .set({
+                accessToken: refreshed.accessToken,
+                refreshToken: refreshed.refreshToken,
+              })
+              .where(eq(companyHhAccounts.id, hhAccount.id));
           } catch {}
         }
 
@@ -1684,24 +1677,12 @@ export const vacanciesRouter = createTRPCRouter({
           } catch {}
         }
 
-        const withRetry = async (fn: (token: string) => Promise<void>) => {
-          try {
-            await fn(accessToken!);
-          } catch {
-            const retryToken = await refreshAccessTokenIfPossible();
-            if (retryToken) {
-              await fn(retryToken);
-            }
-          }
-        };
-
         const errors: string[] = [];
 
         // Sync updatable content fields to hh.uz
         const contentFields: Parameters<typeof updateHhVacancyContent>[2] = {};
         if (input.title !== undefined) contentFields.name = input.title;
-        if (input.tasks !== undefined)
-          contentFields.description = input.tasks;
+        if (input.tasks !== undefined) contentFields.description = input.tasks;
         if (input.salaryExpectation !== undefined)
           contentFields.salaryFrom = input.salaryExpectation;
         if (input.salaryCurrency !== undefined)
@@ -1709,9 +1690,7 @@ export const vacanciesRouter = createTRPCRouter({
 
         if (Object.keys(contentFields).length > 0) {
           try {
-            await withRetry((t) =>
-              updateHhVacancyContent(hhVacancyId, t, contentFields),
-            );
+            await updateHhVacancyContent(hhVacancyId, accessToken, contentFields);
           } catch (error) {
             errors.push(
               `Не удалось обновить вакансию: ${error instanceof Error ? error.message : "ошибка"}`,
@@ -1723,9 +1702,7 @@ export const vacanciesRouter = createTRPCRouter({
         if (input.status !== undefined) {
           if (input.status === "archive" && employerId) {
             try {
-              await withRetry((t) =>
-                archiveHhVacancy(hhVacancyId, employerId!, t),
-              );
+              await archiveHhVacancy(hhVacancyId, employerId, accessToken);
             } catch (error) {
               errors.push(
                 `Не удалось архивировать: ${error instanceof Error ? error.message : "ошибка"}`,
@@ -1733,7 +1710,7 @@ export const vacanciesRouter = createTRPCRouter({
             }
           } else if (input.status === "active") {
             try {
-              await withRetry((t) => prolongHhVacancy(hhVacancyId, t));
+              await prolongHhVacancy(hhVacancyId, accessToken);
             } catch (error) {
               errors.push(
                 `Не удалось активировать: ${error instanceof Error ? error.message : "ошибка"}`,
