@@ -71,6 +71,13 @@
       "when": 1776421054436,
       "tag": "0009_green_king_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776622963303,
+      "tag": "0010_perpetual_mysterio",
+      "breakpoints": true
     }
   ]
 }
