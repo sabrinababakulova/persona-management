@@ -1142,3 +1142,115 @@ export async function fetchHhVacancyApplicants(
 
   return applicants;
 }
+
+function toHhDescriptionHtml(text: string): string {
+  if (!text.trim()) return "<p></p>";
+  return text
+    .split(/\n{2,}/)
+    .map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
+export async function updateHhVacancyContent(
+  vacancyId: string,
+  accessToken: string,
+  fields: {
+    name?: string;
+    description?: string;
+    salaryFrom?: number | null;
+    salaryCurrency?: string;
+  },
+): Promise<void> {
+  const body: Record<string, unknown> = {};
+
+  if (fields.name !== undefined) {
+    body.name = fields.name;
+  }
+
+  if (fields.description !== undefined) {
+    body.description = toHhDescriptionHtml(fields.description);
+  }
+
+  if (fields.salaryFrom !== undefined || fields.salaryCurrency !== undefined) {
+    body.salary = {
+      from: fields.salaryFrom ?? null,
+      to: null,
+      currency: fields.salaryCurrency ?? "USD",
+      gross: false,
+    };
+  }
+
+  if (Object.keys(body).length === 0) {
+    return;
+  }
+
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const response = await fetch(
+    `${HH_API_BASE_URL}/vacancies/${vacancyId}?${searchParams}`,
+    {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`HH vacancy update failed ${response.status}: ${errorBody}`);
+  }
+}
+
+export async function archiveHhVacancy(
+  vacancyId: string,
+  employerId: string,
+  accessToken: string,
+): Promise<void> {
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const response = await fetch(
+    `${HH_API_BASE_URL}/employers/${employerId}/vacancies/active/${vacancyId}?${searchParams}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`HH vacancy archive failed ${response.status}: ${errorBody}`);
+  }
+}
+
+export async function prolongHhVacancy(
+  vacancyId: string,
+  accessToken: string,
+): Promise<void> {
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const response = await fetch(
+    `${HH_API_BASE_URL}/vacancies/${vacancyId}/prolongate?${searchParams}`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`HH vacancy prolongation failed ${response.status}: ${errorBody}`);
+  }
+}

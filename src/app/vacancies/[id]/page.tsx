@@ -91,8 +91,8 @@ export default function VacancyDetailPage() {
               <>
                 {vacancy.source === "hh.uz" && (
                   <div className="mt-6 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary">
-                    Данные загружены из hh.uz. Редактирование на этой странице
-                    недоступно.
+                    Данные загружены из hh.uz. Изменения названия, описания,
+                    зарплаты и статуса будут синхронизированы с hh.uz.
                   </div>
                 )}
 
@@ -100,7 +100,6 @@ export default function VacancyDetailPage() {
                   city={vacancy.city}
                   comments={vacancy.comments}
                   companyDescription={vacancy.companyDescription}
-                  isReadOnly={vacancy.source === "hh.uz"}
                   level={vacancy.level}
                   salaryCurrency={vacancy.salaryCurrency}
                   salaryExpectation={vacancy.salaryExpectation}

@@ -30,14 +30,17 @@ import {
   vacancyPublications,
 } from "~/server/db/schema";
 import {
+  archiveHhVacancy,
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
   fetchHhVacancyApplicants,
   fetchHhVacancyById,
   type HhVacancy,
   isHhConfigured,
+  prolongHhVacancy,
   refreshHhAccessToken,
   resolveHhEmployerFromAccessToken,
+  updateHhVacancyContent,
 } from "~/server/services/hh";
 import {
   isTelegramConfigured,
@@ -1617,6 +1620,158 @@ export const vacanciesRouter = createTRPCRouter({
         ctx.db,
         ctx.session?.user?.id,
       );
+
+      if (isHhVacancyId(input.id)) {
+        const hhVacancyId = input.id.slice(3);
+
+        const hhAccountRows = await ctx.db
+          .select({
+            id: companyHhAccounts.id,
+            accessToken: companyHhAccounts.accessToken,
+            refreshToken: companyHhAccounts.refreshToken,
+            employerId: companyHhAccounts.employerId,
+          })
+          .from(companyHhAccounts)
+          .where(eq(companyHhAccounts.companyId, userCompanyId))
+          .limit(1);
+
+        const hhAccount = hhAccountRows[0];
+        let accessToken = hhAccount?.accessToken ?? undefined;
+        let refreshToken = hhAccount?.refreshToken ?? undefined;
+        let employerId = hhAccount?.employerId?.trim();
+
+        const refreshAccessTokenIfPossible = async () => {
+          if (!hhAccount?.id || !refreshToken || !isHhConfigured()) {
+            return accessToken;
+          }
+          const refreshed = await refreshHhAccessToken(refreshToken);
+          accessToken = refreshed.accessToken;
+          refreshToken = refreshed.refreshToken ?? undefined;
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+          return accessToken;
+        };
+
+        if (!accessToken) {
+          try {
+            await refreshAccessTokenIfPossible();
+          } catch {}
+        }
+
+        if (!accessToken) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "hh.uz аккаунт не подключён",
+          });
+        }
+
+        if (!employerId) {
+          try {
+            const resolved =
+              await resolveHhEmployerFromAccessToken(accessToken);
+            employerId = resolved.employerId;
+            if (hhAccount?.id) {
+              await ctx.db
+                .update(companyHhAccounts)
+                .set({ employerId: resolved.employerId, email: resolved.email })
+                .where(eq(companyHhAccounts.id, hhAccount.id));
+            }
+          } catch {}
+        }
+
+        const withRetry = async (fn: (token: string) => Promise<void>) => {
+          try {
+            await fn(accessToken!);
+          } catch {
+            const retryToken = await refreshAccessTokenIfPossible();
+            if (retryToken) {
+              await fn(retryToken);
+            }
+          }
+        };
+
+        const errors: string[] = [];
+
+        // Sync updatable content fields to hh.uz
+        const contentFields: Parameters<typeof updateHhVacancyContent>[2] = {};
+        if (input.title !== undefined) contentFields.name = input.title;
+        if (input.tasks !== undefined)
+          contentFields.description = input.tasks;
+        if (input.salaryExpectation !== undefined)
+          contentFields.salaryFrom = input.salaryExpectation;
+        if (input.salaryCurrency !== undefined)
+          contentFields.salaryCurrency = input.salaryCurrency;
+
+        if (Object.keys(contentFields).length > 0) {
+          try {
+            await withRetry((t) =>
+              updateHhVacancyContent(hhVacancyId, t, contentFields),
+            );
+          } catch (error) {
+            errors.push(
+              `Не удалось обновить вакансию: ${error instanceof Error ? error.message : "ошибка"}`,
+            );
+          }
+        }
+
+        // Sync status to hh.uz (archive ↔ active only)
+        if (input.status !== undefined) {
+          if (input.status === "archive" && employerId) {
+            try {
+              await withRetry((t) =>
+                archiveHhVacancy(hhVacancyId, employerId!, t),
+              );
+            } catch (error) {
+              errors.push(
+                `Не удалось архивировать: ${error instanceof Error ? error.message : "ошибка"}`,
+              );
+            }
+          } else if (input.status === "active") {
+            try {
+              await withRetry((t) => prolongHhVacancy(hhVacancyId, t));
+            } catch (error) {
+              errors.push(
+                `Не удалось активировать: ${error instanceof Error ? error.message : "ошибка"}`,
+              );
+            }
+          }
+        }
+
+        if (errors.length > 0) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: errors.join("; "),
+          });
+        }
+
+        const updated = await fetchHhVacancyById(hhVacancyId, accessToken);
+        return {
+          id: input.id,
+          title: updated.title,
+          level: updated.level ?? "",
+          status: updated.status,
+          city: updated.city ?? "",
+          responses: updated.responses,
+          workType: updated.workType ?? "",
+          salaryExpectation: updated.salaryExpectation,
+          salaryCurrency: updated.salaryCurrency ?? "UZS",
+          workScheduleStart: "09:00",
+          workScheduleEnd: "18:00",
+          comments: "",
+          tasks: updated.tasks ?? "",
+          team: "",
+          companyDescription: "",
+          companyId: userCompanyId,
+          publishedAt: updated.publishedAt,
+          source: "hh.uz" as const,
+          externalUrl: updated.externalUrl,
+        };
+      }
 
       const rows = await ctx.db
         .select()
