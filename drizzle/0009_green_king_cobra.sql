@@ -1,0 +1,1 @@
+-- no-op: journal entry was committed without a corresponding SQL file
