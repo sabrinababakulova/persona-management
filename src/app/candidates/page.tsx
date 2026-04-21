@@ -142,7 +142,39 @@ export default function CandidatesPage() {
   );
   const { data: candidatesData, isLoading } =
     api.candidates.getAllCandidates.useQuery(candidateQueryInput);
-  const totalItems = candidatesData?.total ?? 0;
+
+  const { data: hhCandidatesData } = api.candidates.getHhCandidates.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000 },
+  );
+
+  const filteredHhCandidates = useMemo(() => {
+    const allHh = hhCandidatesData ?? [];
+    if (appliedFilters.sources.length > 0) return [];
+    if (
+      appliedFilters.statuses.length > 0 &&
+      !appliedFilters.statuses.includes("new")
+    )
+      return [];
+    if (debouncedSearchQuery) {
+      const q = debouncedSearchQuery.toLowerCase();
+      return allHh.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.patronymic.toLowerCase().includes(q),
+      );
+    }
+    return allHh;
+  }, [
+    hhCandidatesData,
+    appliedFilters.sources,
+    appliedFilters.statuses,
+    debouncedSearchQuery,
+  ]);
+
+  const localTotal = candidatesData?.total ?? 0;
+  const hhTotal = filteredHhCandidates.length;
+  const totalItems = localTotal + hhTotal;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
   useEffect(() => {
@@ -236,12 +268,17 @@ export default function CandidatesPage() {
     },
   });
 
-  // Merge server data with local selection state
-  const candidates =
-    candidatesData?.items.map((c: Candidate) => ({
-      ...c,
-      selected: localCandidates.find((lc) => lc.id === c.id)?.selected ?? false,
-    })) ?? [];
+  // Merge local (already paginated by server) with the correct hh.uz slice
+  const offset = (currentPage - 1) * itemsPerPage;
+  const localItems = candidatesData?.items ?? [];
+  const hhOffset = Math.max(0, offset - localTotal);
+  const hhLimit = Math.max(0, itemsPerPage - localItems.length);
+  const hhPageItems = filteredHhCandidates.slice(hhOffset, hhOffset + hhLimit);
+
+  const candidates = [...localItems, ...hhPageItems].map((c: Candidate) => ({
+    ...c,
+    selected: localCandidates.find((lc) => lc.id === c.id)?.selected ?? false,
+  }));
 
   const toggleSelection = (id: string) => {
     setLocalCandidates((prev) => {
@@ -265,8 +302,7 @@ export default function CandidatesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const hasCandidates =
-    hasAnyCandidates || (candidatesData?.total ?? 0) > 0;
+  const hasCandidates = hasAnyCandidates || localTotal > 0 || hhTotal > 0;
   const showCandidatesTable = hasCandidates || isLoading || isAnyCandidatesLoading;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
@@ -509,17 +545,12 @@ export default function CandidatesPage() {
                               />
                               <div className="min-w-0">
                                 {isHhCandidate ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="inline-flex shrink-0 items-center rounded-full bg-status-danger-soft px-2.5 py-1 font-semibold text-[11px] text-accent-red leading-none">
-                                      hh.uz
-                                    </span>
-                                    <Link
-                                      className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                      href={`/candidates/${candidate.id}`}
-                                    >
-                                      {candidate.name}
-                                    </Link>
-                                  </div>
+                                  <Link
+                                    className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    href={`/candidates/${candidate.id}`}
+                                  >
+                                    {candidate.name}
+                                  </Link>
                                 ) : (
                                   <button
                                     className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"

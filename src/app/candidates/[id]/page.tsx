@@ -99,6 +99,20 @@ export default function CandidateDetailPage() {
             Профиль кандидата
           </h1>
 
+          {candidateId.startsWith("hh_") && candidate.resumeFile.url && (
+            <a
+              className="mb-6 inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary hover:text-text-heading"
+              href={candidate.resumeFile.url}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-[11px] text-accent-red leading-none">
+                hh.uz
+              </span>
+              Открыть профиль на hh.uz →
+            </a>
+          )}
+
           {/* Main Grid */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Left Column - Profile Info */}
