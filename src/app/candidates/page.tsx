@@ -265,8 +265,9 @@ export default function CandidatesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const hasCandidates = hasAnyCandidates;
-  const showCandidatesTable = hasCandidates || isLoading;
+  const hasCandidates =
+    hasAnyCandidates || (candidatesData?.total ?? 0) > 0;
+  const showCandidatesTable = hasCandidates || isLoading || isAnyCandidatesLoading;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {
@@ -488,7 +489,9 @@ export default function CandidatesPage() {
                         const statusTone =
                           statusToneConfig[candidate.status] ??
                           statusToneConfig.new;
+                        const isHhCandidate = candidate.source === "hh.uz";
                         const isStatusPending =
+                          !isHhCandidate &&
                           updateCandidateStatus.isPending &&
                           updateCandidateStatus.variables?.id === candidate.id;
 
@@ -505,13 +508,29 @@ export default function CandidatesPage() {
                                 onChange={() => toggleSelection(candidate.id)}
                               />
                               <div className="min-w-0">
-                                <button
-                                  className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                  onClick={() => openQuickOverview(candidate.id)}
-                                  type="button"
-                                >
-                                  {candidate.name}
-                                </button>
+                                {isHhCandidate ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex shrink-0 items-center rounded-full bg-status-danger-soft px-2.5 py-1 font-semibold text-[11px] text-accent-red leading-none">
+                                      hh.uz
+                                    </span>
+                                    <Link
+                                      className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                      href={`/candidates/${candidate.id}`}
+                                    >
+                                      {candidate.name}
+                                    </Link>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    onClick={() =>
+                                      openQuickOverview(candidate.id)
+                                    }
+                                    type="button"
+                                  >
+                                    {candidate.name}
+                                  </button>
+                                )}
                                 <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                                   {candidate.patronymic}
                                 </div>
@@ -519,34 +538,44 @@ export default function CandidatesPage() {
                             </div>
 
                             <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                              <div
-                                className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                              >
-                                <select
-                                  aria-label={`Статус кандидата ${candidate.name}`}
-                                  className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                                  disabled={isStatusPending}
-                                  onChange={(event) => {
-                                    handleStatusChange(
-                                      candidate.id,
-                                      event.target.value,
-                                    );
-                                  }}
-                                  value={candidate.status}
+                              {isHhCandidate ? (
+                                <span
+                                  className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
                                 >
-                                  {statusOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                <ChevronDownIcon
-                                  className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                />
-                              </div>
+                                  {statusOptions.find(
+                                    (o) => o.value === candidate.status,
+                                  )?.label ?? candidate.status}
+                                </span>
+                              ) : (
+                                <div
+                                  className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
+                                >
+                                  <select
+                                    aria-label={`Статус кандидата ${candidate.name}`}
+                                    className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
+                                    disabled={isStatusPending}
+                                    onChange={(event) => {
+                                      handleStatusChange(
+                                        candidate.id,
+                                        event.target.value,
+                                      );
+                                    }}
+                                    value={candidate.status}
+                                  >
+                                    {statusOptions.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <ChevronDownIcon
+                                    className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
+                                  />
+                                </div>
+                              )}
                             </div>
 
                             <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">

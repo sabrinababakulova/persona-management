@@ -269,7 +269,6 @@ export function VacancyDescription({
       tasks: formState.tasks.trim(),
       team: formState.team.trim(),
       companyDescription: formState.companyDescription.trim(),
-      status: formState.status,
     });
   };
 

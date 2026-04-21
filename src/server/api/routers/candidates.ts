@@ -19,10 +19,14 @@ import {
   vacancyLevels,
 } from "~/server/db/schema";
 import {
+  fetchCompanyHhVacancies,
   fetchHhResumeById,
+  fetchHhVacancyApplicants,
+  type HhVacancyApplicant,
   isHhConfigured,
   refreshHhAccessToken,
 } from "~/server/services/hh";
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import { DirectusStorageError } from "~/server/storage/directus-storage";
@@ -475,44 +479,178 @@ export const candidatesRouter = createTRPCRouter({
       const whereClause =
         conditions.length > 0 ? and(...conditions) : undefined;
 
-      const [rows, totalRows] = await Promise.all([
-        ctx.db
-          .select()
-          .from(candidates)
-          .where(whereClause)
-          .orderBy(desc(candidates.createdAt))
-          .limit(limit)
-          .offset(offset),
-        ctx.db.select({ total: count() }).from(candidates).where(whereClause),
-      ]);
+      const includeHh =
+        sources.length === 0 &&
+        userCompanyId === DEFAULT_COMPANY_ID &&
+        isHhConfigured();
 
-      return {
-        items: rows.map((c) => {
-          const parts = c.fullName.split(" ");
-          const name = parts.slice(0, 2).join(" ");
-          const patronymic = parts.slice(2).join(" ");
+      function mapLocalCandidate(c: typeof candidates.$inferSelect) {
+        const parts = c.fullName.split(" ");
+        return {
+          id: c.id,
+          name: parts.slice(0, 2).join(" "),
+          patronymic: parts.slice(2).join(" "),
+          city: c.city ?? "",
+          status: (c.status ?? "new") as CandidateStatus,
+          createdAt: c.createdAt
+            ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "",
+          createdAtValue: c.createdAt
+            ? new Date(c.createdAt).toISOString()
+            : "",
+          source: c.source ?? "",
+        };
+      }
 
-          return {
-            id: c.id,
-            name,
-            patronymic,
-            city: c.city ?? "",
-            status: (c.status ?? "new") as CandidateStatus,
-            createdAt: c.createdAt
-              ? new Date(c.createdAt).toLocaleDateString("ru-RU", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-              : "",
-            createdAtValue: c.createdAt
-              ? new Date(c.createdAt).toISOString()
-              : "",
-            source: c.source ?? "",
-          };
-        }),
-        total: totalRows[0]?.total ?? 0,
-      };
+      if (!includeHh) {
+        const [rows, totalRows] = await Promise.all([
+          ctx.db
+            .select()
+            .from(candidates)
+            .where(whereClause)
+            .orderBy(desc(candidates.createdAt))
+            .limit(limit)
+            .offset(offset),
+          ctx.db
+            .select({ total: count() })
+            .from(candidates)
+            .where(whereClause),
+        ]);
+
+        return {
+          items: rows.map(mapLocalCandidate),
+          total: totalRows[0]?.total ?? 0,
+        };
+      }
+
+      // Fetch all local candidates for in-memory merging with hh.uz
+      const localRows = await ctx.db
+        .select()
+        .from(candidates)
+        .where(whereClause)
+        .orderBy(desc(candidates.createdAt));
+      const localCandidates = localRows.map(mapLocalCandidate);
+
+      const hhAccountRows = await ctx.db
+        .select({
+          id: companyHhAccounts.id,
+          accessToken: companyHhAccounts.accessToken,
+          refreshToken: companyHhAccounts.refreshToken,
+          employerId: companyHhAccounts.employerId,
+        })
+        .from(companyHhAccounts)
+        .where(eq(companyHhAccounts.companyId, userCompanyId))
+        .limit(1);
+
+      const hhAccount = hhAccountRows[0];
+      if (!hhAccount || (!hhAccount.accessToken && !hhAccount.refreshToken)) {
+        return {
+          items: localCandidates.slice(offset, offset + limit),
+          total: localCandidates.length,
+        };
+      }
+
+      let accessToken = hhAccount.accessToken ?? undefined;
+      const refreshToken = hhAccount.refreshToken ?? undefined;
+      const employerId = hhAccount.employerId?.trim();
+
+      if (!accessToken && refreshToken && hhAccount.id) {
+        try {
+          const refreshed = await refreshHhAccessToken(refreshToken);
+          accessToken = refreshed.accessToken;
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+        } catch (error) {
+          console.error("Failed to refresh HH token for candidates list", {
+            error,
+          });
+        }
+      }
+
+      if (!accessToken || !employerId) {
+        return {
+          items: localCandidates.slice(offset, offset + limit),
+          total: localCandidates.length,
+        };
+      }
+
+      try {
+        const hhVacancies = await fetchCompanyHhVacancies(
+          employerId,
+          accessToken,
+        );
+
+        const applicantsByVacancy = await Promise.all(
+          hhVacancies.map((v) =>
+            fetchHhVacancyApplicants(v.id, accessToken!).catch(() => []),
+          ),
+        );
+
+        const applicantsById = new Map<string, HhVacancyApplicant>();
+        for (const applicants of applicantsByVacancy) {
+          for (const applicant of applicants) {
+            if (!applicantsById.has(applicant.id)) {
+              applicantsById.set(applicant.id, applicant);
+            }
+          }
+        }
+
+        let hhApplicants = [...applicantsById.values()];
+
+        if (search) {
+          const normalizedSearch = search.toLowerCase();
+          hhApplicants = hhApplicants.filter((a) =>
+            a.fullName.toLowerCase().includes(normalizedSearch),
+          );
+        }
+
+        if (statuses.length > 0 && !statuses.includes("new")) {
+          hhApplicants = [];
+        }
+
+        const hhTotal = hhApplicants.length;
+        const paginatedLocal = localCandidates.slice(offset, offset + limit);
+        const hhOffset = Math.max(0, offset - localCandidates.length);
+        const hhLimit = Math.max(0, limit - paginatedLocal.length);
+
+        const paginatedHh = hhApplicants
+          .slice(hhOffset, hhOffset + hhLimit)
+          .map((applicant) => {
+            const parts = applicant.fullName.split(" ");
+            return {
+              id: `hh_${applicant.id}`,
+              name: parts.slice(0, 2).join(" "),
+              patronymic: parts.slice(2).join(" "),
+              city: "",
+              status: "new" as CandidateStatus,
+              createdAt: "",
+              createdAtValue: "",
+              source: "hh.uz",
+            };
+          });
+
+        return {
+          items: [...paginatedLocal, ...paginatedHh],
+          total: localCandidates.length + hhTotal,
+        };
+      } catch (error) {
+        console.error("Failed to fetch hh.uz applicants for candidates list", {
+          error,
+        });
+        return {
+          items: localCandidates.slice(offset, offset + limit),
+          total: localCandidates.length,
+        };
+      }
     }),
 
   getCandidateById: protectedProcedure
