@@ -1637,7 +1637,7 @@ export const vacanciesRouter = createTRPCRouter({
 
         const hhAccount = hhAccountRows[0];
         let accessToken = hhAccount?.accessToken ?? undefined;
-        let refreshToken = hhAccount?.refreshToken ?? undefined;
+        const refreshToken = hhAccount?.refreshToken ?? undefined;
         let employerId = hhAccount?.employerId?.trim();
 
         // Only refresh when the token is actually missing — never on API errors,
@@ -1690,7 +1690,11 @@ export const vacanciesRouter = createTRPCRouter({
 
         if (Object.keys(contentFields).length > 0) {
           try {
-            await updateHhVacancyContent(hhVacancyId, accessToken, contentFields);
+            await updateHhVacancyContent(
+              hhVacancyId,
+              accessToken,
+              contentFields,
+            );
           } catch (error) {
             errors.push(
               `Не удалось обновить вакансию: ${error instanceof Error ? error.message : "ошибка"}`,

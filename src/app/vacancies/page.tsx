@@ -494,7 +494,9 @@ export default function VacanciesPage() {
                                 href={toVacancyFunnelPath(vacancy)}
                               >
                                 <FunnelIcon className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">Воронка</span>
+                                <span className="hidden xl:inline">
+                                  Воронка
+                                </span>
                               </Link>
                               <button
                                 className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"

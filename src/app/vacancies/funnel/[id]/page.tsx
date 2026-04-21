@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {

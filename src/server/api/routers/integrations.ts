@@ -4,10 +4,7 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import {
-  companyHhAccounts,
-  companyTelegramChannels,
-} from "~/server/db/schema";
+import { companyHhAccounts, companyTelegramChannels } from "~/server/db/schema";
 import { ensureUserCompanyId } from "~/server/utils/ensure-user-company";
 
 /** Resolve the caller's companyId from the session user. */

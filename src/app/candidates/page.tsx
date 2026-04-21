@@ -303,7 +303,8 @@ export default function CandidatesPage() {
   const activeFilterCount = countActiveFilters(appliedFilters);
 
   const hasCandidates = hasAnyCandidates || localTotal > 0 || hhTotal > 0;
-  const showCandidatesTable = hasCandidates || isLoading || isAnyCandidatesLoading;
+  const showCandidatesTable =
+    hasCandidates || isLoading || isAnyCandidatesLoading;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {

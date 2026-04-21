@@ -47,7 +47,10 @@ export function getAppOrigin(request: Request): string {
   }
 
   const requestOrigin = new URL(request.url);
-  if (requestOrigin.protocol === "https:" && !isLocalHost(requestOrigin.hostname)) {
+  if (
+    requestOrigin.protocol === "https:" &&
+    !isLocalHost(requestOrigin.hostname)
+  ) {
     return requestOrigin.origin;
   }
 

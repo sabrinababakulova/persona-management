@@ -18,6 +18,8 @@ import {
   vacancies,
   vacancyLevels,
 } from "~/server/db/schema";
+import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
+import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import {
   fetchCompanyHhVacancies,
   fetchHhResumeById,
@@ -26,9 +28,6 @@ import {
   isHhConfigured,
   refreshHhAccessToken,
 } from "~/server/services/hh";
-import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
-import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
-import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import { DirectusStorageError } from "~/server/storage/directus-storage";
 import {
   buildCandidateResumeUrl,
@@ -43,6 +42,7 @@ import {
   uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import type { CandidateStatus } from "~/types/server/candidates";
 
 function escapeLike(value: string) {
@@ -517,10 +517,7 @@ export const candidatesRouter = createTRPCRouter({
     }),
 
   getHhCandidates: protectedProcedure.query(async ({ ctx }) => {
-    const userCompanyId = await getUserCompanyId(
-      ctx.db,
-      ctx.session?.user?.id,
-    );
+    const userCompanyId = await getUserCompanyId(ctx.db, ctx.session?.user?.id);
 
     if (
       !userCompanyId ||
@@ -573,11 +570,14 @@ export const candidatesRouter = createTRPCRouter({
     }
 
     try {
-      const hhVacancies = await fetchCompanyHhVacancies(employerId, accessToken);
+      const hhVacancies = await fetchCompanyHhVacancies(
+        employerId,
+        accessToken,
+      );
 
       const applicantsByVacancy = await Promise.all(
         hhVacancies.map((v) =>
-          fetchHhVacancyApplicants(v.id, accessToken!).catch(() => []),
+          fetchHhVacancyApplicants(v.id, accessToken ?? "").catch(() => []),
         ),
       );
 
@@ -648,7 +648,9 @@ export const candidatesRouter = createTRPCRouter({
               })
               .where(eq(companyHhAccounts.id, hhAccount.id));
           } catch (error) {
-            console.error("Failed to refresh HH token for candidate fetch", { error });
+            console.error("Failed to refresh HH token for candidate fetch", {
+              error,
+            });
           }
         }
 
@@ -683,7 +685,12 @@ export const candidatesRouter = createTRPCRouter({
               size: "",
               url: hhCandidate.resumeUrl,
             },
-            notes: [] as { id: string; content: string; author: string; createdAt: string }[],
+            notes: [] as {
+              id: string;
+              content: string;
+              author: string;
+              createdAt: string;
+            }[],
             activities: [] as {
               id: string;
               userName: string;

@@ -270,7 +270,7 @@ function toHhVacancy(item: HhVacancyItem): HhVacancy {
   };
 }
 
-function toHhVacancyLogEntry(item: HhVacancyItem) {
+function _toHhVacancyLogEntry(item: HhVacancyItem) {
   return {
     id: item.id,
     title: item.name?.trim() || "Вакансия с hh.uz",
@@ -794,9 +794,7 @@ async function fetchHhVacanciesBatch(input: {
   }
 
   const perPage =
-    input.kind === "active"
-      ? HH_API_ACTIVE_PER_PAGE
-      : HH_API_ARCHIVED_PER_PAGE;
+    input.kind === "active" ? HH_API_ACTIVE_PER_PAGE : HH_API_ARCHIVED_PER_PAGE;
 
   const items: HhVacancy[] = [];
   const pageOffset = Math.max(input.offset, 0);
@@ -827,7 +825,6 @@ async function fetchHhVacanciesBatch(input: {
     const pageItems = payload.items ?? [];
     totalPages = Math.max(payload.pages ?? 0, page + 1);
     total = getTotalFromSearchPayload(payload);
-
 
     const slicedItems = pageItems.slice(skip);
     skip = 0;
@@ -929,9 +926,8 @@ async function fetchHhNegotiationCollections(
   const collections = [
     ...(payload.collections ?? []),
     ...(payload.generated_collections ?? []),
-  ].filter(
-    (collection): collection is HhNegotiationsCollectionInfo =>
-      Boolean(collection?.id),
+  ].filter((collection): collection is HhNegotiationsCollectionInfo =>
+    Boolean(collection?.id),
   );
 
   return collections;
@@ -989,7 +985,8 @@ function formatExperienceMonths(months: number | null | undefined): string {
   if (!months) return "";
   const years = Math.floor(months / 12);
   const remainingMonths = months % 12;
-  if (years > 0 && remainingMonths > 0) return `${years} лет ${remainingMonths} мес.`;
+  if (years > 0 && remainingMonths > 0)
+    return `${years} лет ${remainingMonths} мес.`;
   if (years > 0) return `${years} лет`;
   return `${remainingMonths} мес.`;
 }
@@ -1202,7 +1199,9 @@ export async function updateHhVacancyContent(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`HH vacancy update failed ${response.status}: ${errorBody}`);
+    throw new Error(
+      `HH vacancy update failed ${response.status}: ${errorBody}`,
+    );
   }
 }
 
@@ -1227,7 +1226,9 @@ export async function archiveHhVacancy(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`HH vacancy archive failed ${response.status}: ${errorBody}`);
+    throw new Error(
+      `HH vacancy archive failed ${response.status}: ${errorBody}`,
+    );
   }
 }
 
@@ -1251,6 +1252,8 @@ export async function prolongHhVacancy(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`HH vacancy prolongation failed ${response.status}: ${errorBody}`);
+    throw new Error(
+      `HH vacancy prolongation failed ${response.status}: ${errorBody}`,
+    );
   }
 }
