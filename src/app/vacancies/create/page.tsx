@@ -4,7 +4,7 @@ import { CreateVacancyForm } from "./create-vacancy-form";
 export default async function CreateVacancyPage() {
   await Promise.all([
     api.lookups.getVacancyCreateOptions.prefetch().catch(() => null),
-    api.vacancies.isTelegramEnabled.prefetch().catch(() => null),
+    api.vacancies.getTelegramConfig.prefetch().catch(() => null),
   ]);
 
   return (

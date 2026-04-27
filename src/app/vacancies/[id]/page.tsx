@@ -26,7 +26,7 @@ export default function VacancyDetailPage() {
     refetch: refetchLookups,
   } = api.lookups.getVacancyCreateOptions.useQuery();
 
-  const { data: vacancy, isLoading } = api.vacancies.getVacancyById.useQuery(
+  const { data: vacancy, isLoading } = api.vacancies.get.useQuery(
     { id: vacancyId },
     { enabled: Boolean(vacancyId) },
   );

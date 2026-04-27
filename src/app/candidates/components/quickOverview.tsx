@@ -37,14 +37,13 @@ export function QuickOverview({
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
-  const { data: candidate, isLoading } =
-    api.candidates.getCandidateById.useQuery(
-      { id: candidateId ?? "" },
-      {
-        enabled: isOpen && Boolean(candidateId),
-        retry: false,
-      },
-    );
+  const { data: candidate, isLoading } = api.candidates.get.useQuery(
+    { id: candidateId ?? "" },
+    {
+      enabled: isOpen && Boolean(candidateId),
+      retry: false,
+    },
+  );
 
   useEffect(() => {
     if (!isOpen) {

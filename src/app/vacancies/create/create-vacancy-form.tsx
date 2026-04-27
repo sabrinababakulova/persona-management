@@ -116,7 +116,7 @@ export function CreateVacancyForm() {
     isLoading: isLookupsLoading,
     refetch: refetchLookups,
   } = api.lookups.getVacancyCreateOptions.useQuery();
-  const { data: telegramConfig } = api.vacancies.isTelegramEnabled.useQuery();
+  const { data: telegramConfig } = api.vacancies.getTelegramConfig.useQuery();
 
   const activeSection = SIDE_MENU_ITEMS.find(
     (item) => item.id === activeSectionId,
@@ -158,9 +158,9 @@ export function CreateVacancyForm() {
     };
   }, [formData]);
 
-  const createVacancy = api.vacancies.createVacancy.useMutation({
+  const createVacancy = api.vacancies.create.useMutation({
     onSuccess: async (createdVacancy) => {
-      await utils.vacancies.getAllVacancies.invalidate();
+      await utils.vacancies.list.invalidate();
 
       if (telegramConfig?.enabled) {
         setSavedVacancyId(createdVacancy.id);
@@ -177,7 +177,7 @@ export function CreateVacancyForm() {
     },
   });
 
-  const postToTelegram = api.vacancies.postVacancyToTelegram.useMutation({
+  const postToTelegram = api.vacancies.publishTelegram.useMutation({
     onSuccess: () => {
       setTelegramStatus("sent");
     },

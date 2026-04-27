@@ -124,7 +124,7 @@ export function CreateCandidateForm() {
   }, [candidateLookups]);
 
   // Create candidate mutation
-  const createCandidate = api.candidates.createCandidate.useMutation({
+  const createCandidate = api.candidates.create.useMutation({
     onSuccess: (createdCandidate) => {
       if (!createdCandidate) {
         if (typeof window !== "undefined") {
@@ -137,8 +137,8 @@ export function CreateCandidateForm() {
         return;
       }
 
-      void utils.candidates.getAllCandidates.invalidate();
-      void utils.candidates.hasCandidates.invalidate();
+      void utils.candidates.list.invalidate();
+      void utils.candidates.hasAny.invalidate();
 
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(

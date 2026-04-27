@@ -164,13 +164,13 @@ export function VacancyDescription({
     vacancyLookups.workTypes,
   ]);
 
-  const updateVacancy = api.vacancies.updateVacancy.useMutation({
+  const updateVacancy = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setFormError(null);
       setFormMessage("Изменения сохранены");
       await Promise.all([
-        utils.vacancies.getVacancyById.invalidate({ id: vacancyId }),
-        utils.vacancies.getAllVacancies.invalidate(),
+        utils.vacancies.get.invalidate({ id: vacancyId }),
+        utils.vacancies.list.invalidate(),
       ]);
     },
     onError: (error) => {

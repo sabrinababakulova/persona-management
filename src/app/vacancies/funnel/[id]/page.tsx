@@ -481,26 +481,25 @@ export default function VacancyFunnelPage() {
     label: string;
     value: string;
   } | null>(null);
-  const { data, isLoading } = api.vacancies.getVacancyFunnel.useQuery(
+  const { data, isLoading } = api.vacancies.getFunnel.useQuery(
     { id },
     { enabled: Boolean(id) },
   );
   const isHhVacancy = data?.source === "hh.uz";
-  const assignCandidateToVacancy =
-    api.vacancies.assignCandidateToVacancy.useMutation({
-      onSuccess: async () => {
-        await Promise.all([
-          utils.vacancies.getVacancyFunnel.invalidate({ id }),
-          utils.vacancies.searchAvailableCandidatesForVacancy.invalidate({
-            vacancyId: id,
-            limit: 8,
-            offset: 0,
-            query: "",
-          }),
-        ]);
-        setAssignmentStage(null);
-      },
-    });
+  const assignCandidateToVacancy = api.vacancies.assignCandidate.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.vacancies.getFunnel.invalidate({ id }),
+        utils.vacancies.searchCandidates.invalidate({
+          vacancyId: id,
+          limit: 8,
+          offset: 0,
+          query: "",
+        }),
+      ]);
+      setAssignmentStage(null);
+    },
+  });
 
   const handleCloseAssignmentModal = () => {
     if (assignCandidateToVacancy.isPending) {

@@ -1,0 +1,67 @@
+import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
+import type { DemoRecentActivity } from "./types";
+
+export function getRecentActivityRows() {
+  return [
+    {
+      id: "90000000-0000-4000-8000-000000000001",
+      entityType: "candidate",
+      entityId: "11111111-1111-4111-8111-111111111111",
+      companyId: DEFAULT_COMPANY_ID,
+      actorUserId: null,
+      actorName: "Демо система",
+      action: "Обновил(а) профиль кандидата",
+      targetName: "Анна Каримова",
+      targetStatus: "Скрининг",
+      createdAt: new Date(Date.now() - 1000 * 60 * 20),
+    },
+    {
+      id: "90000000-0000-4000-8000-000000000002",
+      entityType: "candidate",
+      entityId: "33333333-3333-4333-8333-333333333333",
+      companyId: DEFAULT_COMPANY_ID,
+      actorUserId: null,
+      actorName: "Демо система",
+      action: "Перевел(а) кандидата на интервью",
+      targetName: "Диана Хасанова",
+      targetStatus: "Интервью",
+      createdAt: new Date(Date.now() - 1000 * 60 * 90),
+    },
+    {
+      id: "90000000-0000-4000-8000-000000000003",
+      entityType: "vacancy",
+      entityId: "aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      companyId: DEFAULT_COMPANY_ID,
+      actorUserId: null,
+      actorName: "Демо система",
+      action: "Создал(а) вакансию",
+      targetName: "Senior Frontend Developer",
+      targetStatus: "Активна",
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
+    },
+    {
+      id: "90000000-0000-4000-8000-000000000004",
+      entityType: "candidate",
+      entityId: "22222222-2222-4222-8222-222222222222",
+      companyId: DEFAULT_COMPANY_ID,
+      actorUserId: null,
+      actorName: "Демо система",
+      action: "Закрыл(а) кандидата на найм",
+      targetName: "Илья Петров",
+      targetStatus: "Нанят",
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8),
+    },
+    {
+      id: "90000000-0000-4000-8000-000000000005",
+      entityType: "candidate",
+      entityId: "44444444-4444-4444-8444-444444444444",
+      companyId: DEFAULT_COMPANY_ID,
+      actorUserId: null,
+      actorName: "Демо система",
+      action: "Добавил(а) заметку к кандидату",
+      targetName: "Тимур Рахимов",
+      targetStatus: "Новый",
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18),
+    },
+  ] satisfies DemoRecentActivity[];
+}

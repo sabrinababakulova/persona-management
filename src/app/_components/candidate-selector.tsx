@@ -87,7 +87,7 @@ export function CandidateSelector({
   );
 
   const { data, isLoading, isFetching } =
-    api.vacancies.searchAvailableCandidatesForVacancy.useQuery(searchInput, {
+    api.vacancies.searchCandidates.useQuery(searchInput, {
       enabled: isOpen && Boolean(vacancyId),
       placeholderData: (previousData) => previousData,
     });

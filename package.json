@@ -19,6 +19,7 @@
     "start": "next start",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -40,7 +41,6 @@
     "next": "^15.2.3",
     "next-auth": "5.0.0-beta.25",
     "nodemailer": "^8.0.1",
-    "persona-management": ".",
     "postgres": "^3.4.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

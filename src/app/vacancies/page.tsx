@@ -115,7 +115,7 @@ export default function VacanciesPage() {
     EMPTY_FILTER_MODAL_FILTERS,
   );
   const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
-    api.vacancies.hasVacancies.useQuery();
+    api.vacancies.hasAny.useQuery();
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
   const vacancyQueryInput = useMemo(
@@ -139,7 +139,7 @@ export default function VacanciesPage() {
     ],
   );
   const { data: vacanciesData, isLoading } =
-    api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
+    api.vacancies.list.useQuery(vacancyQueryInput);
   const vacancyStatusOptions = vacancyLookups?.statusOptions ?? [];
   const vacancySourceOptions = vacancyLookups?.sourceOptions ?? [];
   const totalItems = vacanciesData?.total ?? 0;
@@ -162,27 +162,24 @@ export default function VacanciesPage() {
     setCurrentPage((prev) => Math.min(prev, totalPages));
   }, [totalPages, vacanciesData]);
 
-  const updateVacancyStatus = api.vacancies.updateVacancy.useMutation({
+  const updateVacancyStatus = api.vacancies.update.useMutation({
     onMutate: async ({ id, status }) => {
-      await utils.vacancies.getAllVacancies.cancel(vacancyQueryInput);
+      await utils.vacancies.list.cancel(vacancyQueryInput);
 
-      const previousVacancies =
-        utils.vacancies.getAllVacancies.getData(vacancyQueryInput);
+      const previousVacancies = utils.vacancies.list.getData(vacancyQueryInput);
 
       if (status) {
-        utils.vacancies.getAllVacancies.setData(
-          vacancyQueryInput,
-          (existing) =>
-            existing
-              ? {
-                  ...existing,
-                  items: existing.items.map((vacancy) =>
-                    vacancy.source === "local" && vacancy.id === id
-                      ? { ...vacancy, status }
-                      : vacancy,
-                  ),
-                }
-              : existing,
+        utils.vacancies.list.setData(vacancyQueryInput, (existing) =>
+          existing
+            ? {
+                ...existing,
+                items: existing.items.map((vacancy) =>
+                  vacancy.source === "local" && vacancy.id === id
+                    ? { ...vacancy, status }
+                    : vacancy,
+                ),
+              }
+            : existing,
         );
       }
 
@@ -190,7 +187,7 @@ export default function VacanciesPage() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previousVacancies) {
-        utils.vacancies.getAllVacancies.setData(
+        utils.vacancies.list.setData(
           vacancyQueryInput,
           context.previousVacancies,
         );
@@ -201,7 +198,7 @@ export default function VacanciesPage() {
       setToastMessage("Статус вакансии обновлен");
     },
     onSettled: () => {
-      void utils.vacancies.getAllVacancies.invalidate();
+      void utils.vacancies.list.invalidate();
     },
   });
 

@@ -104,7 +104,7 @@ export default function CandidatesPage() {
     EMPTY_FILTER_MODAL_FILTERS,
   );
   const { data: hasAnyCandidates = false, isLoading: isAnyCandidatesLoading } =
-    api.candidates.hasCandidates.useQuery();
+    api.candidates.hasAny.useQuery();
   const {
     data: lookups,
     isError: isLookupsError,
@@ -141,7 +141,7 @@ export default function CandidatesPage() {
     ],
   );
   const { data: candidatesData, isLoading } =
-    api.candidates.getAllCandidates.useQuery(candidateQueryInput);
+    api.candidates.list.useQuery(candidateQueryInput);
   const localTotal = candidatesData?.total ?? 0;
   const offset = (currentPage - 1) * itemsPerPage;
   const localItems = candidatesData?.items ?? [];
@@ -172,7 +172,7 @@ export default function CandidatesPage() {
     ],
   );
   const { data: hhCandidatesData, isLoading: isLoadingHhCandidates } =
-    api.candidates.getHhCandidates.useQuery(hhQueryInput, {
+    api.candidates.listHh.useQuery(hhQueryInput, {
       enabled:
         Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
       staleTime: 5 * 60 * 1000,
@@ -213,7 +213,7 @@ export default function CandidatesPage() {
     setCurrentPage((prev) => Math.min(prev, totalPages));
   }, [candidatesData, totalPages]);
 
-  const createQuickCandidate = api.candidates.createCandidate.useMutation({
+  const createQuickCandidate = api.candidates.create.useMutation({
     onSuccess: (createdCandidate) => {
       if (!createdCandidate) {
         setToastMessage("Кандидат сохранен");
@@ -221,9 +221,9 @@ export default function CandidatesPage() {
         return;
       }
 
-      void utils.candidates.getAllCandidates.invalidate();
-      void utils.candidates.getHhCandidates.invalidate();
-      void utils.candidates.hasCandidates.invalidate();
+      void utils.candidates.list.invalidate();
+      void utils.candidates.listHh.invalidate();
+      void utils.candidates.hasAny.invalidate();
 
       setToastMessage("Кандидат успешно добавлен");
       setIsQuickAddModalOpen(false);
@@ -233,27 +233,25 @@ export default function CandidatesPage() {
     },
   });
 
-  const updateCandidateStatus = api.candidates.updateCandidate.useMutation({
+  const updateCandidateStatus = api.candidates.update.useMutation({
     onMutate: async ({ id, status }) => {
-      await utils.candidates.getAllCandidates.cancel(candidateQueryInput);
+      await utils.candidates.list.cancel(candidateQueryInput);
 
       const previousCandidates =
-        utils.candidates.getAllCandidates.getData(candidateQueryInput);
+        utils.candidates.list.getData(candidateQueryInput);
 
       if (status && isCandidateStatus(status)) {
-        utils.candidates.getAllCandidates.setData(
-          candidateQueryInput,
-          (existing) =>
-            existing
-              ? {
-                  ...existing,
-                  items: existing.items.map((candidate) =>
-                    candidate.id === id
-                      ? { ...candidate, status: status as CandidateStatus }
-                      : candidate,
-                  ),
-                }
-              : existing,
+        utils.candidates.list.setData(candidateQueryInput, (existing) =>
+          existing
+            ? {
+                ...existing,
+                items: existing.items.map((candidate) =>
+                  candidate.id === id
+                    ? { ...candidate, status: status as CandidateStatus }
+                    : candidate,
+                ),
+              }
+            : existing,
         );
       }
 
@@ -261,7 +259,7 @@ export default function CandidatesPage() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previousCandidates) {
-        utils.candidates.getAllCandidates.setData(
+        utils.candidates.list.setData(
           candidateQueryInput,
           context.previousCandidates,
         );
@@ -272,7 +270,7 @@ export default function CandidatesPage() {
       setToastMessage("Статус кандидата обновлен");
     },
     onSettled: () => {
-      void utils.candidates.getAllCandidates.invalidate();
+      void utils.candidates.list.invalidate();
     },
   });
 

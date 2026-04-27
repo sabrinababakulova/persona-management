@@ -24,14 +24,15 @@ export default function CandidateDetailPage() {
   const [noteContent, setNoteContent] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
 
-  const { data: candidate, isLoading } =
-    api.candidates.getCandidateById.useQuery({ id: candidateId });
-  const addCandidateNote = api.candidates.addCandidateNote.useMutation({
+  const { data: candidate, isLoading } = api.candidates.get.useQuery({
+    id: candidateId,
+  });
+  const addCandidateNote = api.candidates.addNote.useMutation({
     onSuccess: async () => {
       setNoteContent("");
       setNoteError(null);
       setIsAddNoteModalOpen(false);
-      await utils.candidates.getCandidateById.invalidate({ id: candidateId });
+      await utils.candidates.get.invalidate({ id: candidateId });
     },
     onError: (error) => {
       setNoteError(error.message || "Не удалось сохранить заметку");

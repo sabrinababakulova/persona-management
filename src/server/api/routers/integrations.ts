@@ -3,27 +3,18 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
+import {
+  ensureUserCompanyId,
+  getRequiredCompanyId,
+} from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { companyHhAccounts, companyTelegramChannels } from "~/server/db/schema";
-import { ensureUserCompanyId } from "~/server/utils/ensure-user-company";
-
-/** Resolve the caller's companyId from the session user. */
-async function getCompanyId(userId: string): Promise<string> {
-  const companyId = await ensureUserCompanyId(userId);
-  if (!companyId) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "У вас не привязана компания",
-    });
-  }
-  return companyId;
-}
 
 export const integrationsRouter = createTRPCRouter({
   // ── Telegram channels ──────────────────────────────────────────────
 
   getTelegramChannels: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await getCompanyId(ctx.session.user.id);
+    const companyId = await ensureUserCompanyId(ctx.session.user.id);
 
     return ctx.db
       .select()
@@ -39,7 +30,7 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getCompanyId(ctx.session.user.id);
+      const companyId = await ensureUserCompanyId(ctx.session.user.id);
 
       const rows = await ctx.db
         .insert(companyTelegramChannels)
@@ -56,7 +47,7 @@ export const integrationsRouter = createTRPCRouter({
   removeTelegramChannel: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getCompanyId(ctx.session.user.id);
+      const companyId = await ensureUserCompanyId(ctx.session.user.id);
 
       const deleted = await ctx.db
         .delete(companyTelegramChannels)
@@ -81,7 +72,7 @@ export const integrationsRouter = createTRPCRouter({
   // ── hh.uz account ─────────────────────────────────────────────────
 
   getHhAccount: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await getCompanyId(ctx.session.user.id);
+    const companyId = await ensureUserCompanyId(ctx.session.user.id);
 
     const rows = await ctx.db
       .select()
@@ -119,7 +110,7 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getCompanyId(ctx.session.user.id);
+      const companyId = await ensureUserCompanyId(ctx.session.user.id);
 
       // Upsert — one hh account per company
       const existing = await ctx.db
@@ -152,7 +143,7 @@ export const integrationsRouter = createTRPCRouter({
     }),
 
   removeHhAccount: protectedProcedure.mutation(async ({ ctx }) => {
-    const companyId = await getCompanyId(ctx.session.user.id);
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
 
     await ctx.db
       .delete(companyHhAccounts)
