@@ -173,6 +173,14 @@ function ResumeRow({ name, size, url }: ResumeFile) {
   );
 }
 
+function EmptySectionState() {
+  return (
+    <p className="text-[14px] text-text-placeholder leading-[1.3] tracking-[-0.28px]">
+      no information
+    </p>
+  );
+}
+
 export function CandidateBackgroundCard({
   workExperience,
   education,
@@ -197,15 +205,19 @@ export function CandidateBackgroundCard({
 
         {isExperienceExpanded ? (
           <div className="flex flex-col gap-5">
-            {workExperience.map((item) => (
-              <WorkExperienceEntry
-                company={item.company}
-                description={item.description}
-                key={`${item.company}-${item.position}-${item.period}`}
-                period={item.period}
-                position={item.position}
-              />
-            ))}
+            {workExperience.length > 0 ? (
+              workExperience.map((item) => (
+                <WorkExperienceEntry
+                  company={item.company}
+                  description={item.description}
+                  key={`${item.company}-${item.position}-${item.period}`}
+                  period={item.period}
+                  position={item.position}
+                />
+              ))
+            ) : (
+              <EmptySectionState />
+            )}
           </div>
         ) : null}
       </div>
@@ -221,14 +233,18 @@ export function CandidateBackgroundCard({
 
         {isEducationExpanded ? (
           <div className="flex flex-col gap-5">
-            {education.map((item) => (
-              <EducationEntry
-                gpa={item.gpa}
-                institution={item.institution}
-                key={`${item.institution}-${item.period}-${item.gpa}`}
-                period={item.period}
-              />
-            ))}
+            {education.length > 0 ? (
+              education.map((item) => (
+                <EducationEntry
+                  gpa={item.gpa}
+                  institution={item.institution}
+                  key={`${item.institution}-${item.period}-${item.gpa}`}
+                  period={item.period}
+                />
+              ))
+            ) : (
+              <EmptySectionState />
+            )}
           </div>
         ) : null}
       </div>

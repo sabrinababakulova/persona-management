@@ -8,6 +8,20 @@ export type CandidateAiAnalysisResult = {
   errorMessage?: string;
 };
 
+type CandidateAiAnalysisInput =
+  | {
+      fileBuffer: Buffer;
+      fileName: string;
+      resumeText?: never;
+      sourceLabel?: never;
+    }
+  | {
+      resumeText: string;
+      sourceLabel?: string;
+      fileBuffer?: never;
+      fileName?: never;
+    };
+
 const MAX_ANALYSIS_WORDS = 150;
 
 function normalizeWhitespace(value: string) {
@@ -23,13 +37,9 @@ function truncateToWordLimit(value: string, wordLimit: number) {
   return words.slice(0, wordLimit).join(" ");
 }
 
-export async function generateCandidateAiAnalysis({
-  fileBuffer,
-  fileName,
-}: {
-  fileBuffer: Buffer;
-  fileName: string;
-}): Promise<CandidateAiAnalysisResult> {
+export async function generateCandidateAiAnalysis(
+  input: CandidateAiAnalysisInput,
+): Promise<CandidateAiAnalysisResult> {
   if (
     !process.env.GOOGLE_API_KEY &&
     !process.env.GOOGLE_GENERATIVE_AI_API_KEY
@@ -52,22 +62,40 @@ export async function generateCandidateAiAnalysis({
 - только факты из резюме;
 - выдели ключевой опыт, релевантные навыки и потенциальные риски/ограничения, если они явно есть в резюме.
 `;
+    const resumeText =
+      "resumeText" in input ? input.resumeText?.trim() || "" : "";
+
+    const content =
+      "resumeText" in input
+        ? [
+            {
+              type: "text" as const,
+              text: `${prompt}
+
+Ниже даны структурированные данные кандидата из ${
+                input.sourceLabel?.trim() || "резюме"
+              }. Используй только эту информацию.
+
+${resumeText}`,
+            },
+          ]
+        : [
+            {
+              type: "text" as const,
+              text: prompt,
+            },
+            {
+              type: "file" as const,
+              data: input.fileBuffer,
+              mimeType: "application/pdf",
+              filename: input.fileName,
+            },
+          ];
 
     const result = await resumeSummaryAgent.generate([
       {
         role: "user",
-        content: [
-          {
-            type: "text",
-            text: prompt,
-          },
-          {
-            type: "file",
-            data: fileBuffer,
-            mimeType: "application/pdf",
-            filename: fileName,
-          },
-        ],
+        content,
       },
     ]);
 

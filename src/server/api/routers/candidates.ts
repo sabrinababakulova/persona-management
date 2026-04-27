@@ -24,6 +24,7 @@ import {
   fetchCompanyHhVacancies,
   fetchHhResumeById,
   fetchHhVacancyApplicants,
+  type HhResumeCandidate,
   type HhVacancyApplicant,
   isHhConfigured,
   refreshHhAccessToken,
@@ -126,6 +127,230 @@ async function requireCurrentUserCompanyId(
   }
 
   return companyId;
+}
+
+type StoredCandidateRecord = typeof candidates.$inferSelect;
+
+function formatHhCandidateForAiAnalysis(candidate: HhResumeCandidate) {
+  const contactLines = [
+    candidate.contacts.phone
+      ? `Телефон: ${candidate.contacts.phone.trim()}`
+      : "",
+    candidate.contacts.email ? `Email: ${candidate.contacts.email.trim()}` : "",
+    candidate.contacts.telegram
+      ? `Telegram: ${candidate.contacts.telegram.trim()}`
+      : "",
+  ].filter(Boolean);
+
+  const workExperienceLines = candidate.workExperience.flatMap((item) => {
+    const lines = [
+      `Компания: ${item.company || "Не указано"}`,
+      `Должность: ${item.position || "Не указано"}`,
+      `Период: ${item.period || "Не указан"}`,
+    ];
+
+    if (item.description.length > 0) {
+      lines.push(`Обязанности и достижения: ${item.description.join("; ")}`);
+    }
+
+    return [lines.join("\n")];
+  });
+
+  const educationLines = candidate.education.map((item) =>
+    [
+      `Учебное заведение: ${item.institution || "Не указано"}`,
+      `Результат: ${item.gpa || "Не указан"}`,
+      `Период: ${item.period || "Не указан"}`,
+    ].join("\n"),
+  );
+
+  return [
+    `ФИО: ${candidate.fullName || "Не указано"}`,
+    `Город: ${candidate.city || "Не указан"}`,
+    `Текущая должность: ${candidate.currentPosition || "Не указана"}`,
+    `Опыт: ${candidate.experience || "Не указан"}`,
+    `Зарплатные ожидания: ${
+      candidate.salaryExpectation > 0
+        ? `${candidate.salaryExpectation} ${candidate.salaryCurrency}`
+        : "Не указаны"
+    }`,
+    `Навыки: ${
+      candidate.skills.length > 0 ? candidate.skills.join(", ") : "Не указаны"
+    }`,
+    `Языки: ${
+      candidate.languages.length > 0
+        ? candidate.languages
+            .map(
+              (item) => `${item.name} (${item.level || "уровень не указан"})`,
+            )
+            .join(", ")
+        : "Не указаны"
+    }`,
+    `Контакты:\n${contactLines.length > 0 ? contactLines.join("\n") : "Не указаны"}`,
+    `Опыт работы:\n${
+      workExperienceLines.length > 0
+        ? workExperienceLines.join("\n\n")
+        : "Не указан"
+    }`,
+    `Образование:\n${
+      educationLines.length > 0 ? educationLines.join("\n\n") : "Не указано"
+    }`,
+  ].join("\n\n");
+}
+
+function toStoredCandidateContacts(candidate: HhResumeCandidate) {
+  return [
+    candidate.contacts.phone
+      ? { type: "phone", value: candidate.contacts.phone.trim() }
+      : null,
+    candidate.contacts.email
+      ? { type: "email", value: candidate.contacts.email.trim() }
+      : null,
+    candidate.contacts.telegram
+      ? { type: "telegram", value: candidate.contacts.telegram.trim() }
+      : null,
+  ].filter((contact): contact is { type: string; value: string } =>
+    Boolean(contact?.value),
+  );
+}
+
+async function getStoredCandidateRecord(
+  db: typeof import("~/server/db").db,
+  companyId: string,
+  candidateId: string,
+) {
+  const rows = await db
+    .select()
+    .from(candidates)
+    .where(
+      and(eq(candidates.id, candidateId), eq(candidates.companyId, companyId)),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+async function buildCandidateDetailResponse({
+  db,
+  companyId,
+  candidate,
+  resumeNameOverride,
+  resumeUrlOverride,
+}: {
+  db: typeof import("~/server/db").db;
+  companyId: string;
+  candidate: StoredCandidateRecord;
+  resumeNameOverride?: string;
+  resumeUrlOverride?: string;
+}) {
+  const contactsArr =
+    ((candidate.contacts ?? []) as {
+      type: string;
+      value: string;
+    }[]) ?? [];
+  const phone = contactsArr.find((ct) => ct.type === "phone")?.value ?? "";
+  const telegram =
+    contactsArr.find((ct) => ct.type === "telegram")?.value ?? "";
+  const email = contactsArr.find((ct) => ct.type === "email")?.value ?? "";
+
+  const relatedVacancyRows = await db
+    .select({
+      id: vacancies.id,
+      title: vacancies.title,
+    })
+    .from(candidateVacancies)
+    .innerJoin(vacancies, eq(candidateVacancies.vacancyId, vacancies.id))
+    .where(
+      and(
+        eq(candidateVacancies.candidateId, candidate.id),
+        eq(vacancies.companyId, companyId),
+      ),
+    )
+    .orderBy(desc(candidateVacancies.id));
+
+  const activityRows = await db
+    .select({
+      id: recentActivityLogs.id,
+      actorName: recentActivityLogs.actorName,
+      createdAt: recentActivityLogs.createdAt,
+      action: recentActivityLogs.action,
+      targetName: recentActivityLogs.targetName,
+      targetStatus: recentActivityLogs.targetStatus,
+      userAvatar: users.image,
+    })
+    .from(recentActivityLogs)
+    .leftJoin(users, eq(recentActivityLogs.actorUserId, users.id))
+    .where(
+      and(
+        eq(recentActivityLogs.companyId, companyId),
+        eq(recentActivityLogs.entityType, "candidate"),
+        eq(recentActivityLogs.entityId, candidate.id),
+      ),
+    )
+    .orderBy(desc(recentActivityLogs.createdAt))
+    .limit(10);
+
+  return {
+    id: candidate.id,
+    name: candidate.fullName,
+    location: (candidate.city ?? "").toUpperCase(),
+    experience: candidate.experience ?? "",
+    matchScore: candidate.matchScore ?? 0,
+    salaryExpectation: candidate.salaryExpectation ?? 0,
+    salaryCurrency: candidate.salaryCurrency ?? "UZS",
+    status: candidate.status ?? "new",
+    source: candidate.source ?? "",
+    tags: (candidate.tags ?? []) as string[],
+    currentPosition: candidate.currentPosition ?? "",
+    languages: (candidate.languages ?? []) as {
+      name: string;
+      level: string;
+    }[],
+    skills: (candidate.skills ?? []) as string[],
+    contacts: { phone, telegram, email },
+    aiAnalysis: candidate.aiAnalysis ?? "",
+    otherVacancies: relatedVacancyRows.map((vacancy) => vacancy.title),
+    relatedVacancies: relatedVacancyRows,
+    workExperience: (candidate.workExperience ?? []) as {
+      company: string;
+      position: string;
+      period: string;
+      isCurrent?: boolean;
+      description: string[];
+    }[],
+    education: (candidate.education ?? []) as {
+      institution: string;
+      gpa: string;
+      period: string;
+      isCurrent?: boolean;
+    }[],
+    resumeFile: {
+      name:
+        candidate.resumeFileName ??
+        (resumeUrlOverride ? (resumeNameOverride ?? "") : ""),
+      size: candidate.resumeFileSize ?? "",
+      url: candidate.resumeFileId
+        ? buildCandidateResumeUrl(candidate.id)
+        : (resumeUrlOverride ?? ""),
+    },
+    notes: (candidate.notes ?? []) as {
+      id: string;
+      content: string;
+      author: string;
+      createdAt: string;
+    }[],
+    activities: activityRows.map((activity) => ({
+      id: activity.id,
+      userName: activity.actorName,
+      userAvatar: activity.userAvatar ?? "",
+      action: activity.action,
+      targetName: activity.targetName,
+      targetStatus: activity.targetStatus,
+      timeAgo: formatCandidateActivityTime(
+        activity.createdAt ? new Date(activity.createdAt) : new Date(),
+      ),
+    })),
+  };
 }
 
 export const candidatesRouter = createTRPCRouter({
@@ -590,19 +815,43 @@ export const candidatesRouter = createTRPCRouter({
         }
       }
 
-      return [...applicantsById.values()].map((applicant) => {
-        const parts = applicant.fullName.split(" ");
-        return {
-          id: `hh_${applicant.id}`,
-          name: parts.slice(0, 2).join(" "),
-          patronymic: parts.slice(2).join(" "),
-          city: "",
-          status: "new" as CandidateStatus,
-          createdAt: "",
-          createdAtValue: "",
-          source: "hh.uz",
-        };
-      });
+      const importedCandidateIds = [...applicantsById.keys()].map(
+        (candidateId) => `hh_${candidateId}`,
+      );
+      const existingHhCandidateIds =
+        importedCandidateIds.length > 0
+          ? new Set(
+              (
+                await ctx.db
+                  .select({ id: candidates.id })
+                  .from(candidates)
+                  .where(
+                    and(
+                      eq(candidates.companyId, userCompanyId),
+                      inArray(candidates.id, importedCandidateIds),
+                    ),
+                  )
+              ).map((candidate) => candidate.id),
+            )
+          : new Set<string>();
+
+      return [...applicantsById.values()]
+        .filter(
+          (applicant) => !existingHhCandidateIds.has(`hh_${applicant.id}`),
+        )
+        .map((applicant) => {
+          const parts = applicant.fullName.split(" ");
+          return {
+            id: `hh_${applicant.id}`,
+            name: parts.slice(0, 2).join(" "),
+            patronymic: parts.slice(2).join(" "),
+            city: "",
+            status: "new" as CandidateStatus,
+            createdAt: "",
+            createdAtValue: "",
+            source: "hh.uz",
+          };
+        });
     } catch (error) {
       console.error("Failed to fetch hh.uz applicants for candidates list", {
         error,
@@ -618,6 +867,12 @@ export const candidatesRouter = createTRPCRouter({
       if (!userCompanyId) {
         return null;
       }
+
+      const storedCandidate = await getStoredCandidateRecord(
+        ctx.db,
+        userCompanyId,
+        input.id,
+      );
 
       if (input.id.startsWith("hh_")) {
         const resumeId = input.id.slice(3);
@@ -655,177 +910,110 @@ export const candidatesRouter = createTRPCRouter({
         }
 
         if (!accessToken) {
-          return null;
+          return storedCandidate
+            ? buildCandidateDetailResponse({
+                db: ctx.db,
+                companyId: userCompanyId,
+                candidate: storedCandidate,
+              })
+            : null;
         }
 
         try {
           const hhCandidate = await fetchHhResumeById(resumeId, accessToken);
-          return {
+          let aiAnalysis = storedCandidate?.aiAnalysis?.trim() ?? "";
+
+          if (!aiAnalysis) {
+            const aiAnalysisResult = await generateCandidateAiAnalysis({
+              resumeText: formatHhCandidateForAiAnalysis(hhCandidate),
+              sourceLabel: "резюме hh.uz",
+            });
+
+            if (aiAnalysisResult.status === "success") {
+              aiAnalysis = aiAnalysisResult.text;
+            }
+          }
+
+          const importedCandidate = {
             id: input.id,
-            name: hhCandidate.fullName,
-            location: hhCandidate.city.toUpperCase(),
-            experience: hhCandidate.experience,
-            matchScore: 0,
-            salaryExpectation: hhCandidate.salaryExpectation,
-            salaryCurrency: hhCandidate.salaryCurrency as "UZS" | "USD",
-            status: "new",
+            fullName: hhCandidate.fullName,
+            city: hhCandidate.city || null,
+            salaryExpectation:
+              hhCandidate.salaryExpectation > 0
+                ? hhCandidate.salaryExpectation
+                : null,
+            salaryCurrency: hhCandidate.salaryCurrency,
+            currentPosition: hhCandidate.currentPosition || null,
             source: "hh.uz",
-            tags: [] as string[],
-            currentPosition: hhCandidate.currentPosition,
-            languages: hhCandidate.languages,
+            status: storedCandidate?.status ?? "new",
+            resumeFileId: storedCandidate?.resumeFileId ?? null,
+            resumeFileName: storedCandidate?.resumeFileName ?? null,
+            resumeFileSize: storedCandidate?.resumeFileSize ?? null,
+            experience: hhCandidate.experience || null,
+            matchScore: storedCandidate?.matchScore ?? null,
+            aiAnalysis: aiAnalysis || null,
+            contacts: toStoredCandidateContacts(hhCandidate),
             skills: hhCandidate.skills,
-            contacts: hhCandidate.contacts,
-            aiAnalysis: "not in hhuz",
-            otherVacancies: [] as string[],
-            relatedVacancies: [] as { id: string; title: string }[],
+            languages: hhCandidate.languages,
+            tags: storedCandidate?.tags ?? [],
             workExperience: hhCandidate.workExperience,
             education: hhCandidate.education,
-            resumeFile: {
-              name: "Резюме на hh.uz",
-              size: "",
-              url: hhCandidate.resumeUrl,
-            },
-            notes: [] as {
-              id: string;
-              content: string;
-              author: string;
-              createdAt: string;
-            }[],
-            activities: [] as {
-              id: string;
-              userName: string;
-              userAvatar: string;
-              action: string;
-              targetName: string;
-              targetStatus: string;
-              timeAgo: string;
-            }[],
+            notes: storedCandidate?.notes ?? [],
+            activities: storedCandidate?.activities ?? [],
+            companyId: userCompanyId,
           };
+          const { id, ...set } = importedCandidate;
+
+          await ctx.db
+            .insert(candidates)
+            .values(importedCandidate)
+            .onConflictDoUpdate({
+              target: candidates.id,
+              set,
+            });
+
+          const persistedCandidate = await getStoredCandidateRecord(
+            ctx.db,
+            userCompanyId,
+            input.id,
+          );
+
+          if (!persistedCandidate) {
+            return null;
+          }
+
+          return buildCandidateDetailResponse({
+            db: ctx.db,
+            companyId: userCompanyId,
+            candidate: persistedCandidate,
+            resumeNameOverride: "Резюме на hh.uz",
+            resumeUrlOverride: hhCandidate.resumeUrl,
+          });
         } catch (error) {
           console.error("Failed to fetch HH resume for candidate page", {
             resumeId,
             companyId: userCompanyId,
             error,
           });
-          return null;
+          return storedCandidate
+            ? buildCandidateDetailResponse({
+                db: ctx.db,
+                companyId: userCompanyId,
+                candidate: storedCandidate,
+              })
+            : null;
         }
       }
 
-      const rows = await ctx.db
-        .select()
-        .from(candidates)
-        .where(
-          and(
-            eq(candidates.id, input.id),
-            eq(candidates.companyId, userCompanyId),
-          ),
-        )
-        .limit(1);
-
-      const c = rows[0];
-      if (!c) {
+      if (!storedCandidate) {
         return null;
       }
 
-      // Build contacts object from contacts array
-      const contactsArr = (c.contacts ?? []) as {
-        type: string;
-        value: string;
-      }[];
-      const phone = contactsArr.find((ct) => ct.type === "phone")?.value ?? "";
-      const telegram =
-        contactsArr.find((ct) => ct.type === "telegram")?.value ?? "";
-      const email = contactsArr.find((ct) => ct.type === "email")?.value ?? "";
-      const relatedVacancyRows = await ctx.db
-        .select({
-          id: vacancies.id,
-          title: vacancies.title,
-        })
-        .from(candidateVacancies)
-        .innerJoin(vacancies, eq(candidateVacancies.vacancyId, vacancies.id))
-        .where(
-          and(
-            eq(candidateVacancies.candidateId, c.id),
-            eq(vacancies.companyId, userCompanyId),
-          ),
-        )
-        .orderBy(desc(candidateVacancies.id));
-      const activityRows = await ctx.db
-        .select({
-          id: recentActivityLogs.id,
-          actorName: recentActivityLogs.actorName,
-          createdAt: recentActivityLogs.createdAt,
-          action: recentActivityLogs.action,
-          targetName: recentActivityLogs.targetName,
-          targetStatus: recentActivityLogs.targetStatus,
-          userAvatar: users.image,
-        })
-        .from(recentActivityLogs)
-        .leftJoin(users, eq(recentActivityLogs.actorUserId, users.id))
-        .where(
-          and(
-            eq(recentActivityLogs.companyId, userCompanyId),
-            eq(recentActivityLogs.entityType, "candidate"),
-            eq(recentActivityLogs.entityId, c.id),
-          ),
-        )
-        .orderBy(desc(recentActivityLogs.createdAt))
-        .limit(10);
-
-      return {
-        id: c.id,
-        name: c.fullName,
-        location: (c.city ?? "").toUpperCase(),
-        experience: c.experience ?? "",
-        matchScore: c.matchScore ?? 0,
-        salaryExpectation: c.salaryExpectation ?? 0,
-        salaryCurrency: c.salaryCurrency ?? "UZS",
-        status: c.status ?? "new",
-        source: c.source ?? "",
-        tags: (c.tags ?? []) as string[],
-        currentPosition: c.currentPosition ?? "",
-        languages: (c.languages ?? []) as { name: string; level: string }[],
-        skills: (c.skills ?? []) as string[],
-        contacts: { phone, telegram, email },
-        aiAnalysis: c.aiAnalysis ?? "",
-        otherVacancies: relatedVacancyRows.map((vacancy) => vacancy.title),
-        relatedVacancies: relatedVacancyRows,
-        workExperience: (c.workExperience ?? []) as {
-          company: string;
-          position: string;
-          period: string;
-          isCurrent?: boolean;
-          description: string[];
-        }[],
-        education: (c.education ?? []) as {
-          institution: string;
-          gpa: string;
-          period: string;
-          isCurrent?: boolean;
-        }[],
-        resumeFile: {
-          name: c.resumeFileName ?? "",
-          size: c.resumeFileSize ?? "",
-          url: c.resumeFileId ? buildCandidateResumeUrl(c.id) : "",
-        },
-        notes: (c.notes ?? []) as {
-          id: string;
-          content: string;
-          author: string;
-          createdAt: string;
-        }[],
-        activities: activityRows.map((activity) => ({
-          id: activity.id,
-          userName: activity.actorName,
-          userAvatar: activity.userAvatar ?? "",
-          action: activity.action,
-          targetName: activity.targetName,
-          targetStatus: activity.targetStatus,
-          timeAgo: formatCandidateActivityTime(
-            activity.createdAt ? new Date(activity.createdAt) : new Date(),
-          ),
-        })),
-      };
+      return buildCandidateDetailResponse({
+        db: ctx.db,
+        companyId: userCompanyId,
+        candidate: storedCandidate,
+      });
     }),
 
   addCandidateNote: protectedProcedure

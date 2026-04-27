@@ -16,6 +16,22 @@ import {
 } from "~/server/db/schema";
 import { getVacancyCityOptions } from "~/server/services/countries-now";
 
+const DEFAULT_VACANCY_SOURCE_OPTIONS = [
+  { value: "local", label: "Локальная" },
+  { value: "hh.uz", label: "hh.uz" },
+] as const;
+
+function isMissingRelationError(
+  error: unknown,
+): error is { code: string; message?: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "42P01"
+  );
+}
+
 export const lookupsRouter = createTRPCRouter({
   getCandidateCreateOptions: protectedProcedure.query(async ({ ctx }) => {
     const [
@@ -112,6 +128,25 @@ export const lookupsRouter = createTRPCRouter({
   }),
 
   getVacancyCreateOptions: protectedProcedure.query(async ({ ctx }) => {
+    const sourceOptionsPromise = ctx.db
+      .select({
+        value: vacancySources.value,
+        label: vacancySources.label,
+      })
+      .from(vacancySources)
+      .where(eq(vacancySources.isActive, true))
+      .orderBy(asc(vacancySources.sortOrder), asc(vacancySources.label))
+      .catch((error) => {
+        if (isMissingRelationError(error)) {
+          console.warn(
+            "vacancy_source_option lookup table is missing; falling back to default vacancy sources",
+          );
+          return [...DEFAULT_VACANCY_SOURCE_OPTIONS];
+        }
+
+        throw error;
+      });
+
     const [levels, workTypes, statusOptions, sourceOptions, cities] =
       await Promise.all([
         ctx.db
@@ -144,21 +179,17 @@ export const lookupsRouter = createTRPCRouter({
             asc(vacancyStatusOptions.sortOrder),
             asc(vacancyStatusOptions.label),
           ),
-        ctx.db
-          .select({
-            value: vacancySources.value,
-            label: vacancySources.label,
-          })
-          .from(vacancySources)
-          .where(eq(vacancySources.isActive, true))
-          .orderBy(asc(vacancySources.sortOrder), asc(vacancySources.label)),
+        sourceOptionsPromise,
         getVacancyCityOptions().catch(() => []),
       ]);
 
     return {
       cities,
       levels,
-      sourceOptions,
+      sourceOptions:
+        sourceOptions.length > 0
+          ? sourceOptions
+          : [...DEFAULT_VACANCY_SOURCE_OPTIONS],
       workTypes,
       statusOptions,
     };
