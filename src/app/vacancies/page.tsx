@@ -30,19 +30,6 @@ import { useDebouncedValue } from "../_components/use-debounced-value";
 
 type VacancyStatus = Vacancy["status"];
 
-const VACANCY_STATUS_OPTIONS: Array<{ value: VacancyStatus; label: string }> = [
-  { value: "active", label: "Активна" },
-  { value: "draft", label: "Черновик" },
-  { value: "paused", label: "Приостановлена" },
-  { value: "closed", label: "Закрыта" },
-  { value: "archive", label: "Архив" },
-];
-
-const VACANCY_SOURCE_OPTIONS = [
-  { value: "local", label: "Локальная" },
-  { value: "hh.uz", label: "hh.uz" },
-];
-
 const vacancyStatusTone: Record<
   VacancyStatus,
   {
@@ -72,14 +59,19 @@ const vacancyStatusTone: Record<
   },
 };
 
-function isVacancyStatus(value: string): value is VacancyStatus {
-  return ["active", "draft", "paused", "closed", "archive"].includes(value);
+function isVacancyStatus(
+  value: string,
+  statusOptions: Array<{ value: string }>,
+): value is VacancyStatus {
+  return statusOptions.some((option) => option.value === value);
 }
 
-function getVacancyStatusLabel(status: VacancyStatus): string {
+function getVacancyStatusLabel(
+  status: VacancyStatus,
+  statusOptions: Array<{ value: string; label: string }>,
+): string {
   return (
-    VACANCY_STATUS_OPTIONS.find((option) => option.value === status)?.label ??
-    "Активна"
+    statusOptions.find((option) => option.value === status)?.label ?? status
   );
 }
 
@@ -148,6 +140,8 @@ export default function VacanciesPage() {
   );
   const { data: vacanciesData, isLoading } =
     api.vacancies.getAllVacancies.useQuery(vacancyQueryInput);
+  const vacancyStatusOptions = vacancyLookups?.statusOptions ?? [];
+  const vacancySourceOptions = vacancyLookups?.sourceOptions ?? [];
   const totalItems = vacanciesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
@@ -235,7 +229,7 @@ export default function VacanciesPage() {
   };
 
   const handleStatusChange = (vacancyId: string, nextStatus: string) => {
-    if (!isVacancyStatus(nextStatus)) {
+    if (!isVacancyStatus(nextStatus, vacancyStatusOptions)) {
       setToastMessage("Выбран неизвестный статус");
       return;
     }
@@ -278,8 +272,8 @@ export default function VacanciesPage() {
         isOpen={isFilterModalOpen}
         onApply={handleApplyFilters}
         onClose={() => setIsFilterModalOpen(false)}
-        sourceOptions={VACANCY_SOURCE_OPTIONS}
-        statusOptions={VACANCY_STATUS_OPTIONS}
+        sourceOptions={vacancySourceOptions}
+        statusOptions={vacancyStatusOptions}
       />
 
       <main className="flex h-full flex-1 overflow-auto">
@@ -438,7 +432,10 @@ export default function VacanciesPage() {
                                 <span
                                   className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
                                 >
-                                  {getVacancyStatusLabel(vacancy.status)}
+                                  {getVacancyStatusLabel(
+                                    vacancy.status,
+                                    vacancyStatusOptions,
+                                  )}
                                 </span>
                               ) : (
                                 <div
@@ -456,7 +453,7 @@ export default function VacanciesPage() {
                                     }}
                                     value={vacancy.status}
                                   >
-                                    {VACANCY_STATUS_OPTIONS.map((option) => (
+                                    {vacancyStatusOptions.map((option) => (
                                       <option
                                         key={option.value}
                                         value={option.value}

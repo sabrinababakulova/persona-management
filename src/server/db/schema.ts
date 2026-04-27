@@ -421,6 +421,13 @@ export const vacancyStatusOptions = createTable(
   }),
 );
 
+export const vacancySources = createTable("vacancy_source_option", (d) => ({
+  value: d.varchar({ length: 100 }).notNull().primaryKey(),
+  label: d.varchar({ length: 255 }).notNull(),
+  sortOrder: d.integer().notNull().default(0),
+  isActive: d.boolean().notNull().default(true),
+}));
+
 export const vacancyLevels = createTable("vacancy_level_option", (d) => ({
   value: d.varchar({ length: 50 }).notNull().primaryKey(),
   label: d.varchar({ length: 255 }).notNull(),

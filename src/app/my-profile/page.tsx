@@ -6,9 +6,6 @@ import { companies, users } from "~/server/db/schema";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
 import { MyProfileClient } from "./my-profile-client";
 
-const DEFAULT_AVATAR_SRC =
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim";
-
 type MyProfilePageProps = {
   searchParams?: Promise<{
     section?: string;
@@ -55,11 +52,7 @@ export default async function MyProfilePage({
 
   return (
     <MyProfileClient
-      avatarSrc={
-        getDirectusAssetUrl(user?.avatarFileId) ??
-        user?.image ??
-        DEFAULT_AVATAR_SRC
-      }
+      avatarSrc={getDirectusAssetUrl(user?.avatarFileId) ?? user?.image ?? ""}
       companyName={companyName}
       initialSection={initialSection}
       userCity="Ташкент"

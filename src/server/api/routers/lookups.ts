@@ -10,6 +10,7 @@ import {
   candidateSources,
   candidateStatusOptions,
   vacancyLevels,
+  vacancySources,
   vacancyStatusOptions,
   vacancyWorkTypes,
 } from "~/server/db/schema";
@@ -111,40 +112,53 @@ export const lookupsRouter = createTRPCRouter({
   }),
 
   getVacancyCreateOptions: protectedProcedure.query(async ({ ctx }) => {
-    const [levels, workTypes, statusOptions, cities] = await Promise.all([
-      ctx.db
-        .select({
-          value: vacancyLevels.value,
-          label: vacancyLevels.label,
-        })
-        .from(vacancyLevels)
-        .where(eq(vacancyLevels.isActive, true))
-        .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
-      ctx.db
-        .select({
-          value: vacancyWorkTypes.value,
-          label: vacancyWorkTypes.label,
-        })
-        .from(vacancyWorkTypes)
-        .where(eq(vacancyWorkTypes.isActive, true))
-        .orderBy(asc(vacancyWorkTypes.sortOrder), asc(vacancyWorkTypes.label)),
-      ctx.db
-        .select({
-          value: vacancyStatusOptions.value,
-          label: vacancyStatusOptions.label,
-        })
-        .from(vacancyStatusOptions)
-        .where(eq(vacancyStatusOptions.isActive, true))
-        .orderBy(
-          asc(vacancyStatusOptions.sortOrder),
-          asc(vacancyStatusOptions.label),
-        ),
-      getVacancyCityOptions().catch(() => []),
-    ]);
+    const [levels, workTypes, statusOptions, sourceOptions, cities] =
+      await Promise.all([
+        ctx.db
+          .select({
+            value: vacancyLevels.value,
+            label: vacancyLevels.label,
+          })
+          .from(vacancyLevels)
+          .where(eq(vacancyLevels.isActive, true))
+          .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
+        ctx.db
+          .select({
+            value: vacancyWorkTypes.value,
+            label: vacancyWorkTypes.label,
+          })
+          .from(vacancyWorkTypes)
+          .where(eq(vacancyWorkTypes.isActive, true))
+          .orderBy(
+            asc(vacancyWorkTypes.sortOrder),
+            asc(vacancyWorkTypes.label),
+          ),
+        ctx.db
+          .select({
+            value: vacancyStatusOptions.value,
+            label: vacancyStatusOptions.label,
+          })
+          .from(vacancyStatusOptions)
+          .where(eq(vacancyStatusOptions.isActive, true))
+          .orderBy(
+            asc(vacancyStatusOptions.sortOrder),
+            asc(vacancyStatusOptions.label),
+          ),
+        ctx.db
+          .select({
+            value: vacancySources.value,
+            label: vacancySources.label,
+          })
+          .from(vacancySources)
+          .where(eq(vacancySources.isActive, true))
+          .orderBy(asc(vacancySources.sortOrder), asc(vacancySources.label)),
+        getVacancyCityOptions().catch(() => []),
+      ]);
 
     return {
       cities,
       levels,
+      sourceOptions,
       workTypes,
       statusOptions,
     };

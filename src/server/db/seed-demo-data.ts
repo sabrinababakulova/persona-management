@@ -106,6 +106,11 @@ const VACANCY_STATUS_OPTIONS: LookupOption[] = [
   { value: "archive", label: "Архив" },
 ];
 
+const VACANCY_SOURCE_OPTIONS: LookupOption[] = [
+  { value: "local", label: "Локальная" },
+  { value: "hh.uz", label: "hh.uz" },
+];
+
 const DEMO_CANDIDATES: DemoCandidate[] = [
   {
     id: "11111111-1111-4111-8111-111111111111",
@@ -945,6 +950,24 @@ async function seedLookups(db: SeedDb) {
         .values(row)
         .onConflictDoUpdate({
           target: schema.vacancyStatusOptions.value,
+          set: {
+            label: row.label,
+            sortOrder: row.sortOrder,
+            isActive: row.isActive,
+          },
+        });
+    },
+  );
+
+  await seedTable(
+    "vacancy_source_option",
+    VACANCY_SOURCE_OPTIONS,
+    async (row) => {
+      await db
+        .insert(schema.vacancySources)
+        .values(row)
+        .onConflictDoUpdate({
+          target: schema.vacancySources.value,
           set: {
             label: row.label,
             sortOrder: row.sortOrder,

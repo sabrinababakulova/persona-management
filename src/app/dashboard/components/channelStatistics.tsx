@@ -1,3 +1,4 @@
+import { ChannelStatisticsChartIcon } from "~/app/_components/icons";
 import type {
   ChannelStat,
   ChannelStatisticsProps,
@@ -69,6 +70,17 @@ export function ChannelStatistics({
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   let dashOffset = 0;
+  const chartSegments = normalizedStats.map((item) => {
+    const segment = (item.percentage / safeTotal) * circumference;
+    const chartSegment = {
+      dashOffset,
+      name: item.name,
+      segment,
+      strokeClassName: item.colorClasses.strokeClassName,
+    };
+    dashOffset += segment;
+    return chartSegment;
+  });
 
   return (
     <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
@@ -80,32 +92,12 @@ export function ChannelStatistics({
 
       <div className="flex items-center gap-8">
         <div className="h-[138px] w-[140px] shrink-0">
-          <svg
-            aria-hidden="true"
+          <ChannelStatisticsChartIcon
+            circumference={circumference}
             className="h-full w-full -rotate-90"
-            viewBox="0 0 140 138"
-          >
-            <title>Channel Statistics Chart</title>
-            {normalizedStats.map((item) => {
-              const segment = (item.percentage / safeTotal) * circumference;
-              const circle = (
-                <circle
-                  className={item.colorClasses.strokeClassName}
-                  cx="70"
-                  cy="69"
-                  fill="none"
-                  key={item.name}
-                  r={radius}
-                  strokeDasharray={`${segment} ${circumference - segment}`}
-                  strokeDashoffset={-dashOffset}
-                  strokeLinecap="butt"
-                  strokeWidth="24"
-                />
-              );
-              dashOffset += segment;
-              return circle;
-            })}
-          </svg>
+            radius={radius}
+            segments={chartSegments}
+          />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-4">
