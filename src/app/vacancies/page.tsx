@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
-import { Checkbox } from "../_components/checkbox";
 import {
   countActiveFilters,
   EMPTY_FILTER_MODAL_FILTERS,
@@ -12,14 +11,10 @@ import {
   type FilterModalFilters,
 } from "../_components/filter-modal";
 import {
-  ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
-  FunnelIcon,
-  MoreIcon,
   NoVacancies,
   SearchIcon,
-  SortIcon,
 } from "../_components/icons";
 import {
   PeriodFilter,
@@ -27,69 +22,15 @@ import {
 } from "../_components/period-filter";
 import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
+import { VacancyTable } from "../_components/vacancy-table";
 
 type VacancyStatus = Vacancy["status"];
-
-const vacancyStatusTone: Record<
-  VacancyStatus,
-  {
-    containerClassName: string;
-    textClassName: string;
-  }
-> = {
-  active: {
-    containerClassName: "bg-status-active-soft",
-    textClassName: "text-status-active-strong",
-  },
-  draft: {
-    containerClassName: "bg-status-draft-soft",
-    textClassName: "text-text-placeholder",
-  },
-  paused: {
-    containerClassName: "bg-status-neutral-bg",
-    textClassName: "text-status-neutral",
-  },
-  closed: {
-    containerClassName: "bg-status-danger-soft",
-    textClassName: "text-accent-red",
-  },
-  archive: {
-    containerClassName: "border border-status-outline-border bg-bg-light",
-    textClassName: "text-text-placeholder",
-  },
-};
 
 function isVacancyStatus(
   value: string,
   statusOptions: Array<{ value: string }>,
 ): value is VacancyStatus {
   return statusOptions.some((option) => option.value === value);
-}
-
-function getVacancyStatusLabel(
-  status: VacancyStatus,
-  statusOptions: Array<{ value: string; label: string }>,
-): string {
-  return (
-    statusOptions.find((option) => option.value === status)?.label ?? status
-  );
-}
-
-function formatVacancyPublishedAt(value?: string): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsedDate);
 }
 
 function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
@@ -330,206 +271,35 @@ export default function VacanciesPage() {
                 </button>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[8px] border border-border-input bg-bg-light">
-                <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-[14px] lg:grid">
-                  <div className="col-span-3 flex items-center gap-1 text-[14px] text-text-placeholder">
-                    <span>Название</span>
-                    <SortIcon className="h-4 w-4" />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-                    <span>Статус</span>
-                    <SortIcon className="h-4 w-4" />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-                    <span>Город</span>
-                    <SortIcon className="h-4 w-4" />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-                    <span>Отклики</span>
-                    <SortIcon className="h-4 w-4" />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-                    <span>Тип работы</span>
-                    <SortIcon className="h-4 w-4" />
-                  </div>
-                  <div className="col-span-1" />
-                </div>
-
-                {isLoading ? (
-                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-text-placeholder">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-light border-t-primary-blue" />
-                    <div className="text-[14px]">Загрузка вакансий...</div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="min-h-0 flex-1 overflow-auto">
-                      {vacancies.map((vacancy, index) => {
-                        const statusTone =
-                          vacancyStatusTone[vacancy.status] ??
-                          vacancyStatusTone.active;
-                        const isHhVacancy = vacancy.source === "hh.uz";
-                        const isStatusPending =
-                          !isHhVacancy &&
-                          updateVacancyStatus.isPending &&
-                          updateVacancyStatus.variables?.id === vacancy.id;
-                        const publishedAtLabel = formatVacancyPublishedAt(
-                          vacancy.publishedAt,
-                        );
-                        const titleNode =
-                          vacancy.source === "local" ? (
-                            <Link
-                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                              href={toVacancyDetailPath(vacancy)}
-                              title={vacancy.title}
-                            >
-                              {vacancy.title}
-                            </Link>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2.5 py-1 font-semibold text-[11px] text-accent-red leading-none">
-                                hh.uz
-                              </span>
-                              <Link
-                                className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                                href={toVacancyDetailPath(vacancy)}
-                                title={vacancy.title}
-                              >
-                                {vacancy.title}
-                              </Link>
-                            </div>
-                          );
-
-                        return (
-                          <div
-                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
-                              index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
-                            }`}
-                            key={vacancy.id}
-                          >
-                            <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
-                              <Checkbox
-                                checked={vacancy.selected || false}
-                                onChange={() => toggleSelection(vacancy.id)}
-                              />
-                              <div className="min-w-0">
-                                {titleNode}
-                                <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
-                                  {vacancy.level}
-                                </div>
-                                {publishedAtLabel && (
-                                  <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
-                                    Опубликовано: {publishedAtLabel}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                              {isHhVacancy ? (
-                                <span
-                                  className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
-                                >
-                                  {getVacancyStatusLabel(
-                                    vacancy.status,
-                                    vacancyStatusOptions,
-                                  )}
-                                </span>
-                              ) : (
-                                <div
-                                  className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                                >
-                                  <select
-                                    aria-label={`Статус вакансии ${vacancy.title}`}
-                                    className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                                    disabled={isStatusPending}
-                                    onChange={(event) => {
-                                      handleStatusChange(
-                                        vacancy.id,
-                                        event.target.value,
-                                      );
-                                    }}
-                                    value={vacancy.status}
-                                  >
-                                    {vacancyStatusOptions.map((option) => (
-                                      <option
-                                        key={option.value}
-                                        value={option.value}
-                                      >
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <ChevronDownIcon
-                                    className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                  />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {vacancy.city || "-"}
-                            </div>
-
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {vacancy.responses}
-                            </div>
-
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {vacancy.workType || "-"}
-                            </div>
-
-                            <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                              <Link
-                                className={`flex items-center gap-1 text-[14px] leading-none ${
-                                  isHhVacancy
-                                    ? "text-text-secondary hover:text-text-heading"
-                                    : "text-primary-blue hover:text-primary-blue-hover"
-                                }`}
-                                href={toVacancyFunnelPath(vacancy)}
-                              >
-                                <FunnelIcon className="h-3.5 w-3.5" />
-                                <span className="hidden xl:inline">
-                                  Воронка
-                                </span>
-                              </Link>
-                              <button
-                                className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
-                                type="button"
-                              >
-                                <MoreIcon className="h-4 w-4" />
-                              </button>
-                            </div>
-
-                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
-                              <span>Город: {vacancy.city || "-"}</span>
-                              <span>Отклики: {vacancy.responses}</span>
-                              <span>Тип работы: {vacancy.workType || "-"}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {vacancies.length === 0 && (
-                        <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
-                          Вакансии не найдены
-                        </div>
-                      )}
-                    </div>
-
-                    <TablePagination
-                      currentPage={currentPage}
-                      itemsPerPage={itemsPerPage}
-                      onItemsPerPageChange={(value) => {
-                        setItemsPerPage(value);
-                        setCurrentPage(1);
-                      }}
-                      onPageChange={setCurrentPage}
-                      totalItems={totalItems}
-                      totalPages={totalPages}
-                    />
-                  </>
-                )}
-              </div>
+              <VacancyTable
+                getDetailPath={toVacancyDetailPath}
+                getFunnelPath={toVacancyFunnelPath}
+                isLoading={isLoading}
+                isStatusPending={(vacancy) =>
+                  vacancy.source !== "hh.uz" &&
+                  updateVacancyStatus.isPending &&
+                  updateVacancyStatus.variables?.id === vacancy.id
+                }
+                items={vacancies}
+                loadingLabel="Загрузка вакансий..."
+                onStatusChange={handleStatusChange}
+                onToggleSelection={toggleSelection}
+                pagination={
+                  <TablePagination
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    onItemsPerPageChange={(value) => {
+                      setItemsPerPage(value);
+                      setCurrentPage(1);
+                    }}
+                    onPageChange={setCurrentPage}
+                    totalItems={totalItems}
+                    totalPages={totalPages}
+                  />
+                }
+                stripedRows
+                vacancyStatusOptions={vacancyStatusOptions}
+              />
             </>
           ) : (
             <div className="flex min-h-[60vh] items-center justify-center">

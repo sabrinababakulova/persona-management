@@ -9,6 +9,7 @@ import {
   vacancies,
 } from "~/server/db/schema";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
+import type { Vacancy } from "~/types/pages/vacancies-page";
 
 const RECENT_ACTIVITIES_LIMIT = 5;
 
@@ -242,11 +243,12 @@ export const dashboardRouter = createTRPCRouter({
     const recentVacancies = recentVacancyRows.map((v) => ({
       id: v.id,
       title: v.title,
-      subtitle: "Название",
-      status: (v.status ?? "active").toUpperCase(),
+      level: v.level ?? "",
+      status: (v.status ?? "active") as Vacancy["status"],
       city: v.city ?? "",
       responses: 0,
       workType: v.workType ?? "",
+      source: "local" as const,
     }));
 
     if (recentVacancyRows.length > 0) {

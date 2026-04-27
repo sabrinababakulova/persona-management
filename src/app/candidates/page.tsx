@@ -140,8 +140,12 @@ export default function CandidatesPage() {
       selectedPeriod,
     ],
   );
-  const { data: candidatesData, isLoading } =
-    api.candidates.list.useQuery(candidateQueryInput);
+  const { data: candidatesData, isLoading } = api.candidates.list.useQuery(
+    candidateQueryInput,
+    {
+      placeholderData: (previousData) => previousData,
+    },
+  );
   const localTotal = candidatesData?.total ?? 0;
   const offset = (currentPage - 1) * itemsPerPage;
   const localItems = candidatesData?.items ?? [];
@@ -175,6 +179,7 @@ export default function CandidatesPage() {
     api.candidates.listHh.useQuery(hhQueryInput, {
       enabled:
         Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
+      placeholderData: (previousData) => previousData,
       staleTime: 5 * 60 * 1000,
     });
 
@@ -183,6 +188,11 @@ export default function CandidatesPage() {
     : 0;
   const totalItems = localTotal + hhTotal;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const isWaitingForHhPagination =
+    Boolean(candidatesData) &&
+    shouldIncludeHhCandidates &&
+    hhLimit > 0 &&
+    isLoadingHhCandidates;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -206,12 +216,12 @@ export default function CandidatesPage() {
   }, [toastMessage]);
 
   useEffect(() => {
-    if (!candidatesData) {
+    if (!candidatesData || isWaitingForHhPagination) {
       return;
     }
 
     setCurrentPage((prev) => Math.min(prev, totalPages));
-  }, [candidatesData, totalPages]);
+  }, [candidatesData, isWaitingForHhPagination, totalPages]);
 
   const createQuickCandidate = api.candidates.create.useMutation({
     onSuccess: (createdCandidate) => {

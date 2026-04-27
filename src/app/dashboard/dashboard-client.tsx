@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
-import { ChevronRightIcon, SortIcon } from "../_components/icons";
+import { ChevronRightIcon } from "../_components/icons";
 import { StatsCard } from "../_components/stats-card";
-import { VacancyRow } from "../_components/vacancy-row";
+import { VacancyTable } from "../_components/vacancy-table";
 import { WelcomeModal } from "../_components/welcome-modal";
 import { ChannelStatistics } from "./components/channelStatistics";
 import { RecentActions } from "./components/recentActions";
@@ -90,11 +90,10 @@ export default function DashboardClient({ userName }: { userName: string }) {
           </div>
 
           {/* Recent Vacancies */}
-          <div className="mb-8 rounded-2xl border border-border-light bg-bg-light">
-            <div className="flex items-center justify-between border-border-light border-b px-6 py-4">
-              <h2 className="font-semibold text-lg text-text-heading">
-                Последние вакансии
-              </h2>
+          <VacancyTable
+            columnHeaderClassName="border-border-light bg-bg-light px-6 py-3"
+            containerClassName="mb-8 flex-none rounded-2xl border-border-light"
+            headerAction={
               <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
                 href="/vacancies"
@@ -102,44 +101,12 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 Смотреть все
                 <ChevronRightIcon className="h-4 w-4" />
               </Link>
-            </div>
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 border-border-light border-b bg-bg-light px-6 py-3 font-medium text-sm text-text-muted">
-              <div className="col-span-3 flex items-center gap-1">
-                Название
-                <SortIcon className="h-4 w-4" />
-              </div>
-              <div className="col-span-2 flex items-center gap-1">
-                Статус
-                <SortIcon className="h-4 w-4" />
-              </div>
-              <div className="col-span-2 flex items-center gap-1">
-                Город
-                <SortIcon className="h-4 w-4" />
-              </div>
-              <div className="col-span-2 flex items-center gap-1">
-                Отклики
-                <SortIcon className="h-4 w-4" />
-              </div>
-              <div className="col-span-2 flex items-center gap-1">
-                Тип работы
-                <SortIcon className="h-4 w-4" />
-              </div>
-              <div className="col-span-1" />
-            </div>
-            {/* Table Rows */}
-            {dashboardData?.recentVacancies.map((vacancy) => (
-              <VacancyRow
-                city={vacancy.city}
-                key={vacancy.id}
-                responses={vacancy.responses}
-                status={vacancy.status}
-                subtitle={vacancy.subtitle}
-                title={vacancy.title}
-                workType={vacancy.workType}
-              />
-            ))}
-          </div>
+            }
+            items={dashboardData?.recentVacancies ?? []}
+            title="Последние вакансии"
+            titleBarClassName="border-border-light"
+            vacancyStatusOptions={[]}
+          />
 
           {/* Candidates Section */}
           <div>
