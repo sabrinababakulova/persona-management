@@ -23,7 +23,6 @@
         "next": "^15.2.3",
         "next-auth": "5.0.0-beta.25",
         "nodemailer": "^8.0.1",
-        "persona-management": ".",
         "postgres": "^3.4.4",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -922,8 +921,6 @@
     "path-to-regexp": ["path-to-regexp@0.1.12", "", {}, "sha512-RA1GjUVMnvYFxuqovrEqZoxxW5NUZqbwKtYz/Tt7nXerk0LbLblQmrsgdeOxV5SFHf0UDggjS/bSeOZwt1pmEQ=="],
 
     "pathval": ["pathval@2.0.1", "", {}, "sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ=="],
-
-    "persona-management": ["persona-management@root:", {}],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
