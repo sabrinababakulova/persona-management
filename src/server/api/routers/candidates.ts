@@ -27,6 +27,7 @@ import {
   type HhResumeCandidate,
   type HhVacancyApplicant,
   isHhConfigured,
+  iterateHhVacancyApplicantBatches,
   refreshHhAccessToken,
 } from "~/server/services/hh";
 import { DirectusStorageError } from "~/server/storage/directus-storage";
@@ -741,105 +742,112 @@ export const candidatesRouter = createTRPCRouter({
       };
     }),
 
-  getHhCandidates: protectedProcedure.query(async ({ ctx }) => {
-    const userCompanyId = await getUserCompanyId(ctx.db, ctx.session?.user?.id);
+  getHhCandidates: protectedProcedure
+    .input(
+      z
+        .object({
+          search: z.string().max(255).optional(),
+          statuses: z.array(z.string().max(50)).optional(),
+          city: z.string().max(255).optional(),
+          sources: z.array(z.string().max(255)).optional(),
+          limit: z.number().min(1).max(100).optional(),
+          offset: z.number().min(0).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const userCompanyId = await getUserCompanyId(
+        ctx.db,
+        ctx.session?.user?.id,
+      );
+      const search = input?.search?.trim().toLowerCase() ?? "";
+      const statuses = input?.statuses?.filter(Boolean) ?? [];
+      const city = input?.city?.trim();
+      const sources = input?.sources?.filter(Boolean) ?? [];
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
 
-    if (
-      !userCompanyId ||
-      userCompanyId !== DEFAULT_COMPANY_ID ||
-      !isHhConfigured()
-    ) {
-      return [];
-    }
-
-    const hhAccountRows = await ctx.db
-      .select({
-        id: companyHhAccounts.id,
-        accessToken: companyHhAccounts.accessToken,
-        refreshToken: companyHhAccounts.refreshToken,
-        employerId: companyHhAccounts.employerId,
-      })
-      .from(companyHhAccounts)
-      .where(eq(companyHhAccounts.companyId, userCompanyId))
-      .limit(1);
-
-    const hhAccount = hhAccountRows[0];
-    if (!hhAccount || (!hhAccount.accessToken && !hhAccount.refreshToken)) {
-      return [];
-    }
-
-    let accessToken = hhAccount.accessToken ?? undefined;
-    const refreshToken = hhAccount.refreshToken ?? undefined;
-    const employerId = hhAccount.employerId?.trim();
-
-    if (!accessToken && refreshToken && hhAccount.id) {
-      try {
-        const refreshed = await refreshHhAccessToken(refreshToken);
-        accessToken = refreshed.accessToken;
-        await ctx.db
-          .update(companyHhAccounts)
-          .set({
-            accessToken: refreshed.accessToken,
-            refreshToken: refreshed.refreshToken,
-          })
-          .where(eq(companyHhAccounts.id, hhAccount.id));
-      } catch (error) {
-        console.error("Failed to refresh HH token for candidates list", {
-          error,
-        });
+      if (
+        !userCompanyId ||
+        userCompanyId !== DEFAULT_COMPANY_ID ||
+        !isHhConfigured()
+      ) {
+        return { items: [], total: 0 };
       }
-    }
 
-    if (!accessToken || !employerId) {
-      return [];
-    }
+      if (sources.length > 0 && !sources.includes("hh.uz")) {
+        return { items: [], total: 0 };
+      }
 
-    try {
-      const hhVacancies = await fetchCompanyHhVacancies(
-        employerId,
-        accessToken,
-      );
+      if (statuses.length > 0 && !statuses.includes("new")) {
+        return { items: [], total: 0 };
+      }
 
-      const applicantsByVacancy = await Promise.all(
-        hhVacancies.map((v) =>
-          fetchHhVacancyApplicants(v.id, accessToken ?? "").catch(() => []),
-        ),
-      );
+      if (city) {
+        return { items: [], total: 0 };
+      }
 
-      const applicantsById = new Map<string, HhVacancyApplicant>();
-      for (const applicants of applicantsByVacancy) {
-        for (const applicant of applicants) {
-          if (!applicantsById.has(applicant.id)) {
-            applicantsById.set(applicant.id, applicant);
-          }
+      const hhAccountRows = await ctx.db
+        .select({
+          id: companyHhAccounts.id,
+          accessToken: companyHhAccounts.accessToken,
+          refreshToken: companyHhAccounts.refreshToken,
+          employerId: companyHhAccounts.employerId,
+        })
+        .from(companyHhAccounts)
+        .where(eq(companyHhAccounts.companyId, userCompanyId))
+        .limit(1);
+
+      const hhAccount = hhAccountRows[0];
+      if (!hhAccount || (!hhAccount.accessToken && !hhAccount.refreshToken)) {
+        return { items: [], total: 0 };
+      }
+
+      let accessToken = hhAccount.accessToken ?? undefined;
+      const refreshToken = hhAccount.refreshToken ?? undefined;
+      const employerId = hhAccount.employerId?.trim();
+
+      if (!accessToken && refreshToken && hhAccount.id) {
+        try {
+          const refreshed = await refreshHhAccessToken(refreshToken);
+          accessToken = refreshed.accessToken;
+          await ctx.db
+            .update(companyHhAccounts)
+            .set({
+              accessToken: refreshed.accessToken,
+              refreshToken: refreshed.refreshToken,
+            })
+            .where(eq(companyHhAccounts.id, hhAccount.id));
+        } catch (error) {
+          console.error("Failed to refresh HH token for candidates list", {
+            error,
+          });
         }
       }
 
-      const importedCandidateIds = [...applicantsById.keys()].map(
-        (candidateId) => `hh_${candidateId}`,
-      );
-      const existingHhCandidateIds =
-        importedCandidateIds.length > 0
-          ? new Set(
-              (
-                await ctx.db
-                  .select({ id: candidates.id })
-                  .from(candidates)
-                  .where(
-                    and(
-                      eq(candidates.companyId, userCompanyId),
-                      inArray(candidates.id, importedCandidateIds),
-                    ),
-                  )
-              ).map((candidate) => candidate.id),
-            )
-          : new Set<string>();
+      if (!accessToken || !employerId) {
+        return { items: [], total: 0 };
+      }
 
-      return [...applicantsById.values()]
-        .filter(
-          (applicant) => !existingHhCandidateIds.has(`hh_${applicant.id}`),
-        )
-        .map((applicant) => {
+      try {
+        const hhVacancies = await fetchCompanyHhVacancies(
+          employerId,
+          accessToken,
+        );
+        const importedHhCandidateRows = await ctx.db
+          .select({ id: candidates.id })
+          .from(candidates)
+          .where(
+            and(
+              eq(candidates.companyId, userCompanyId),
+              eq(candidates.source, "hh.uz"),
+            ),
+          );
+        const importedHhCandidateIds = new Set(
+          importedHhCandidateRows.map((candidate) => candidate.id),
+        );
+
+        const mapApplicantToCandidate = (applicant: HhVacancyApplicant) => {
           const parts = applicant.fullName.split(" ");
           return {
             id: `hh_${applicant.id}`,
@@ -851,14 +859,119 @@ export const candidatesRouter = createTRPCRouter({
             createdAtValue: "",
             source: "hh.uz",
           };
+        };
+
+        if (search) {
+          const applicantsById = new Map<string, HhVacancyApplicant>();
+
+          for (const vacancy of hhVacancies) {
+            const applicants = await fetchHhVacancyApplicants(
+              vacancy.id,
+              accessToken,
+            );
+
+            for (const applicant of applicants) {
+              const candidateId = `hh_${applicant.id}`;
+              if (
+                applicantsById.has(applicant.id) ||
+                importedHhCandidateIds.has(candidateId)
+              ) {
+                continue;
+              }
+
+              const normalizedName = applicant.fullName.toLowerCase();
+              if (!normalizedName.includes(search)) {
+                continue;
+              }
+
+              applicantsById.set(applicant.id, applicant);
+            }
+          }
+
+          const items = [...applicantsById.values()]
+            .slice(offset, offset + limit)
+            .map(mapApplicantToCandidate);
+
+          return {
+            items,
+            total: applicantsById.size,
+          };
+        }
+
+        const items: Array<{
+          id: string;
+          name: string;
+          patronymic: string;
+          city: string;
+          status: CandidateStatus;
+          createdAt: string;
+          createdAtValue: string;
+          source: string;
+        }> = [];
+        const seenApplicantIds = new Set<string>();
+        let skipped = 0;
+        let hasMore = false;
+
+        outer: for (const vacancy of hhVacancies) {
+          if (vacancy.responses <= 0) {
+            continue;
+          }
+
+          for await (const batch of iterateHhVacancyApplicantBatches({
+            accessToken,
+            vacancyId: vacancy.id,
+          })) {
+            for (const applicant of batch) {
+              const candidateId = `hh_${applicant.id}`;
+
+              if (
+                seenApplicantIds.has(candidateId) ||
+                importedHhCandidateIds.has(candidateId)
+              ) {
+                continue;
+              }
+
+              seenApplicantIds.add(candidateId);
+
+              if (skipped < offset) {
+                skipped += 1;
+                continue;
+              }
+
+              if (items.length < limit) {
+                items.push(mapApplicantToCandidate(applicant));
+                continue;
+              }
+
+              hasMore = true;
+              break outer;
+            }
+          }
+        }
+
+        const hhResponsesEstimate = hhVacancies.reduce(
+          (total, vacancy) => total + Math.max(vacancy.responses, 0),
+          0,
+        );
+        const total = Math.max(
+          0,
+          Math.max(
+            hhResponsesEstimate - importedHhCandidateIds.size,
+            offset + items.length + (hasMore ? 1 : 0),
+          ),
+        );
+
+        return {
+          items,
+          total,
+        };
+      } catch (error) {
+        console.error("Failed to fetch hh.uz applicants for candidates list", {
+          error,
         });
-    } catch (error) {
-      console.error("Failed to fetch hh.uz applicants for candidates list", {
-        error,
-      });
-      return [];
-    }
-  }),
+        return { items: [], total: 0 };
+      }
+    }),
 
   getCandidateById: protectedProcedure
     .input(z.object({ id: z.string() }))

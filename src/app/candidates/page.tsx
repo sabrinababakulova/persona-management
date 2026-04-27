@@ -142,38 +142,45 @@ export default function CandidatesPage() {
   );
   const { data: candidatesData, isLoading } =
     api.candidates.getAllCandidates.useQuery(candidateQueryInput);
-
-  const { data: hhCandidatesData } = api.candidates.getHhCandidates.useQuery(
-    undefined,
-    { staleTime: 5 * 60 * 1000 },
-  );
-
-  const filteredHhCandidates = useMemo(() => {
-    const allHh = hhCandidatesData ?? [];
-    if (appliedFilters.sources.length > 0) return [];
-    if (
-      appliedFilters.statuses.length > 0 &&
-      !appliedFilters.statuses.includes("new")
-    )
-      return [];
-    if (debouncedSearchQuery) {
-      const q = debouncedSearchQuery.toLowerCase();
-      return allHh.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.patronymic.toLowerCase().includes(q),
-      );
-    }
-    return allHh;
-  }, [
-    hhCandidatesData,
-    appliedFilters.sources,
-    appliedFilters.statuses,
-    debouncedSearchQuery,
-  ]);
-
   const localTotal = candidatesData?.total ?? 0;
-  const hhTotal = filteredHhCandidates.length;
+  const offset = (currentPage - 1) * itemsPerPage;
+  const localItems = candidatesData?.items ?? [];
+  const hhOffset = Math.max(0, offset - localTotal);
+  const hhLimit = Math.max(0, itemsPerPage - localItems.length);
+  const shouldIncludeHhCandidates =
+    !appliedFilters.city.trim() &&
+    (appliedFilters.sources.length === 0 ||
+      appliedFilters.sources.includes("hh.uz")) &&
+    (appliedFilters.statuses.length === 0 ||
+      appliedFilters.statuses.includes("new"));
+  const hhQueryInput = useMemo(
+    () => ({
+      search: debouncedSearchQuery || undefined,
+      statuses: appliedFilters.statuses,
+      city: appliedFilters.city.trim() || undefined,
+      sources: appliedFilters.sources,
+      limit: hhLimit,
+      offset: hhOffset,
+    }),
+    [
+      appliedFilters.city,
+      appliedFilters.sources,
+      appliedFilters.statuses,
+      debouncedSearchQuery,
+      hhLimit,
+      hhOffset,
+    ],
+  );
+  const { data: hhCandidatesData, isLoading: isLoadingHhCandidates } =
+    api.candidates.getHhCandidates.useQuery(hhQueryInput, {
+      enabled:
+        Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
+      staleTime: 5 * 60 * 1000,
+    });
+
+  const hhTotal = shouldIncludeHhCandidates
+    ? (hhCandidatesData?.total ?? 0)
+    : 0;
   const totalItems = localTotal + hhTotal;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
@@ -215,6 +222,7 @@ export default function CandidatesPage() {
       }
 
       void utils.candidates.getAllCandidates.invalidate();
+      void utils.candidates.getHhCandidates.invalidate();
       void utils.candidates.hasCandidates.invalidate();
 
       setToastMessage("Кандидат успешно добавлен");
@@ -269,11 +277,7 @@ export default function CandidatesPage() {
   });
 
   // Merge local (already paginated by server) with the correct hh.uz slice
-  const offset = (currentPage - 1) * itemsPerPage;
-  const localItems = candidatesData?.items ?? [];
-  const hhOffset = Math.max(0, offset - localTotal);
-  const hhLimit = Math.max(0, itemsPerPage - localItems.length);
-  const hhPageItems = filteredHhCandidates.slice(hhOffset, hhOffset + hhLimit);
+  const hhPageItems = hhCandidatesData?.items ?? [];
 
   const candidates = [...localItems, ...hhPageItems].map((c: Candidate) => ({
     ...c,
@@ -303,8 +307,14 @@ export default function CandidatesPage() {
   const activeFilterCount = countActiveFilters(appliedFilters);
 
   const hasCandidates = hasAnyCandidates || localTotal > 0 || hhTotal > 0;
+  const isTableLoading =
+    isLoading ||
+    (Boolean(candidatesData) &&
+      shouldIncludeHhCandidates &&
+      hhLimit > 0 &&
+      isLoadingHhCandidates);
   const showCandidatesTable =
-    hasCandidates || isLoading || isAnyCandidatesLoading;
+    hasCandidates || isTableLoading || isAnyCandidatesLoading;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {
@@ -514,7 +524,7 @@ export default function CandidatesPage() {
                   <div className="col-span-1" />
                 </div>
 
-                {isLoading ? (
+                {isTableLoading ? (
                   <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-text-placeholder">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-light border-t-primary-blue" />
                     <div className="text-[14px]">Загрузка кандидатов...</div>

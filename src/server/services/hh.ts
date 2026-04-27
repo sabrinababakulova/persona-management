@@ -933,52 +933,56 @@ async function fetchHhNegotiationCollections(
   return collections;
 }
 
-async function fetchHhNegotiationCollectionItems(input: {
+export async function* iterateHhVacancyApplicantBatches(input: {
   accessToken: string;
-  collectionId: string;
-  collectionName?: string | null;
   vacancyId: string;
-}): Promise<HhVacancyApplicant[]> {
-  const { accessToken, collectionId, collectionName, vacancyId } = input;
-  const collected: HhVacancyApplicant[] = [];
-  let page = 0;
-  let totalPages = 1;
+}): AsyncGenerator<HhVacancyApplicant[]> {
+  const collections = await fetchHhNegotiationCollections(
+    input.vacancyId,
+    input.accessToken,
+  );
 
-  while (page < totalPages) {
-    const searchParams = new URLSearchParams({
-      host: "hh.uz",
-      page: String(page),
-      per_page: String(HH_API_NEGOTIATIONS_PER_PAGE),
-      vacancy_id: vacancyId,
-    });
+  for (const collection of collections) {
+    if (!collection.id) {
+      continue;
+    }
 
-    const payload = await fetchHhJson<HhNegotiationCollectionResponse>(
-      `${HH_API_BASE_URL}/negotiations/${collectionId}?${searchParams}`,
-      {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${accessToken}`,
+    let page = 0;
+    let totalPages = 1;
+
+    while (page < totalPages) {
+      const searchParams = new URLSearchParams({
+        host: "hh.uz",
+        page: String(page),
+        per_page: String(HH_API_NEGOTIATIONS_PER_PAGE),
+        vacancy_id: input.vacancyId,
+      });
+
+      const payload = await fetchHhJson<HhNegotiationCollectionResponse>(
+        `${HH_API_BASE_URL}/negotiations/${collection.id}?${searchParams}`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${input.accessToken}`,
+          },
+          signal: AbortSignal.timeout(10_000),
         },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
+      );
 
-    const items = payload.items ?? [];
-    collected.push(
-      ...items
-        .map((item) => toHhVacancyApplicant(item, collectionName ?? null))
-        .filter((item): item is HhVacancyApplicant => item !== null),
-    );
+      const items = (payload.items ?? [])
+        .map((item) => toHhVacancyApplicant(item, collection.name ?? null))
+        .filter((item): item is HhVacancyApplicant => item !== null);
 
-    totalPages = Math.max(payload.pages ?? 0, 1);
-    page += 1;
+      yield items;
 
-    if (items.length === 0) {
-      break;
+      totalPages = Math.max(payload.pages ?? 0, 1);
+      page += 1;
+
+      if (items.length === 0) {
+        break;
+      }
     }
   }
-
-  return collected;
 }
 
 function formatExperienceMonths(months: number | null | undefined): string {
@@ -1101,38 +1105,24 @@ export async function fetchHhVacancyApplicants(
   vacancyId: string,
   accessToken: string,
 ): Promise<HhVacancyApplicant[]> {
-  const collections = await fetchHhNegotiationCollections(
-    vacancyId,
-    accessToken,
-  );
-
   const applicantsById = new Map<string, HhVacancyApplicant>();
 
-  for (const collection of collections) {
-    if (!collection.id) {
-      continue;
-    }
-
-    try {
-      const items = await fetchHhNegotiationCollectionItems({
-        accessToken,
-        collectionId: collection.id,
-        collectionName: collection.name ?? null,
-        vacancyId,
-      });
-
-      for (const item of items) {
+  try {
+    for await (const batch of iterateHhVacancyApplicantBatches({
+      accessToken,
+      vacancyId,
+    })) {
+      for (const item of batch) {
         if (!applicantsById.has(item.id)) {
           applicantsById.set(item.id, item);
         }
       }
-    } catch (error) {
-      console.error("Failed to fetch HH negotiation collection items", {
-        vacancyId,
-        collectionId: collection.id,
-        error,
-      });
     }
+  } catch (error) {
+    console.error("Failed to fetch HH vacancy applicants", {
+      vacancyId,
+      error,
+    });
   }
 
   const applicants = [...applicantsById.values()];
