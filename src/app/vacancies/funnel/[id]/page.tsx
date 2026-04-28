@@ -1,8 +1,21 @@
 "use client";
 
+import {
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {
@@ -65,6 +78,36 @@ function toAiSummaryLines(aiAnalysis: string) {
 
   return sourceLines.slice(0, 2);
 }
+
+type FunnelCandidate = {
+  id: string;
+  fullName: string;
+  city: string;
+  experience: string;
+  matchScore: number;
+  aiAnalysis: string;
+  currentPosition: string;
+  currentCompany: string;
+  contacts: {
+    phone: string;
+    telegram: string;
+    email: string;
+  };
+  languages: { name: string; level: string }[];
+  skills: string[];
+  salaryExpectation: number;
+  salaryCurrency: string;
+  tags: string[];
+  source: string;
+  resumeUrl: string;
+  relatedVacancies: { id: string; title: string }[];
+};
+
+type FunnelStage = {
+  value: string;
+  label: string;
+  candidates: FunnelCandidate[];
+};
 
 function CandidateCardSection({
   children,
@@ -158,31 +201,13 @@ function VacancyFunnelHeader({
 
 function VacancyStageCandidateCard({
   candidate,
+  isDragOverlay = false,
+  isDragging = false,
   isHhSource,
 }: {
-  candidate: {
-    id: string;
-    fullName: string;
-    city: string;
-    experience: string;
-    matchScore: number;
-    aiAnalysis: string;
-    currentPosition: string;
-    currentCompany: string;
-    contacts: {
-      phone: string;
-      telegram: string;
-      email: string;
-    };
-    languages: { name: string; level: string }[];
-    skills: string[];
-    salaryExpectation: number;
-    salaryCurrency: string;
-    tags: string[];
-    source: string;
-    resumeUrl: string;
-    relatedVacancies: { id: string; title: string }[];
-  };
+  candidate: FunnelCandidate;
+  isDragOverlay?: boolean;
+  isDragging?: boolean;
   isHhSource?: boolean;
 }) {
   const subtitleTokens = compactValues([
@@ -207,7 +232,11 @@ function VacancyStageCandidateCard({
   ]);
 
   return (
-    <article className="flex w-full flex-col gap-6 rounded-[8px] border border-border-input bg-bg-light p-4 md:w-[293px]">
+    <article
+      className={`flex w-full flex-col gap-6 rounded-[8px] border border-border-input bg-bg-light p-4 md:w-[293px] ${
+        isDragging ? "opacity-40" : ""
+      } ${isDragOverlay ? "rotate-2 cursor-grabbing shadow-2xl" : ""}`}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-4">
@@ -392,43 +421,82 @@ function VacancyStageCandidateCard({
   );
 }
 
+function DraggableCandidateCard({
+  activeCandidateId,
+  candidate,
+  disabled,
+  isHhSource,
+  stageValue,
+}: {
+  activeCandidateId: string | null;
+  candidate: FunnelCandidate;
+  disabled: boolean;
+  isHhSource?: boolean;
+  stageValue: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: candidate.id,
+      disabled,
+      data: { stageValue },
+    });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    touchAction: disabled ? undefined : ("none" as const),
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={disabled ? "" : "cursor-grab active:cursor-grabbing"}
+    >
+      <VacancyStageCandidateCard
+        candidate={candidate}
+        isDragging={isDragging || activeCandidateId === candidate.id}
+        isHhSource={isHhSource}
+      />
+    </div>
+  );
+}
+
 function VacancyStageSection({
+  activeCandidateId,
   candidates,
   canAddCandidate,
+  isDndDisabled,
   isHhSource,
   label,
   onAddCandidate,
+  stageValue,
 }: {
-  candidates: {
-    id: string;
-    fullName: string;
-    city: string;
-    experience: string;
-    matchScore: number;
-    aiAnalysis: string;
-    currentPosition: string;
-    currentCompany: string;
-    contacts: {
-      phone: string;
-      telegram: string;
-      email: string;
-    };
-    languages: { name: string; level: string }[];
-    skills: string[];
-    salaryExpectation: number;
-    salaryCurrency: string;
-    tags: string[];
-    source: string;
-    resumeUrl: string;
-    relatedVacancies: { id: string; title: string }[];
-  }[];
+  activeCandidateId: string | null;
+  candidates: FunnelCandidate[];
   canAddCandidate: boolean;
+  isDndDisabled: boolean;
   isHhSource?: boolean;
   label: string;
   onAddCandidate: () => void;
+  stageValue: string;
 }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: stageValue,
+    disabled: isDndDisabled,
+    data: { stageValue },
+  });
+
   return (
-    <section className="w-full shrink-0 rounded-[8px] border border-border-input bg-bg-input p-4 lg:w-[325px]">
+    <section
+      className={`w-full shrink-0 rounded-[8px] border bg-bg-input p-4 transition-colors lg:w-[325px] ${
+        isOver
+          ? "border-primary-blue bg-primary-blue-light"
+          : "border-border-input"
+      }`}
+      ref={setNodeRef}
+    >
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
           {label}
@@ -462,10 +530,13 @@ function VacancyStageSection({
           </div>
         ) : (
           candidates.map((candidate) => (
-            <VacancyStageCandidateCard
+            <DraggableCandidateCard
+              activeCandidateId={activeCandidateId}
               candidate={candidate}
+              disabled={isDndDisabled}
               isHhSource={isHhSource}
               key={candidate.id}
+              stageValue={stageValue}
             />
           ))
         )}
@@ -486,6 +557,18 @@ export default function VacancyFunnelPage() {
     { enabled: Boolean(id) },
   );
   const isHhVacancy = data?.source === "hh.uz";
+  const [localStages, setLocalStages] = useState<FunnelStage[] | null>(null);
+  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(
+    null,
+  );
+  const previousStagesRef = useRef<FunnelStage[] | null>(null);
+
+  useEffect(() => {
+    if (data?.stages) {
+      setLocalStages(data.stages);
+    }
+  }, [data?.stages]);
+
   const assignCandidateToVacancy = api.vacancies.assignCandidate.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -500,6 +583,93 @@ export default function VacancyFunnelPage() {
       setAssignmentStage(null);
     },
   });
+
+  const moveCandidateMutation = api.vacancies.assignCandidate.useMutation({
+    onSuccess: async () => {
+      await utils.vacancies.getFunnel.invalidate({ id });
+    },
+    onError: () => {
+      if (previousStagesRef.current) {
+        setLocalStages(previousStagesRef.current);
+      }
+    },
+  });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const stages = localStages ?? data?.stages ?? [];
+  const activeCandidate = useMemo<FunnelCandidate | null>(() => {
+    if (!activeCandidateId) {
+      return null;
+    }
+    for (const stage of stages) {
+      const found = stage.candidates.find(
+        (candidate) => candidate.id === activeCandidateId,
+      );
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }, [activeCandidateId, stages]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveCandidateId(String(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveCandidateId(null);
+    const { active, over } = event;
+    if (!over) {
+      return;
+    }
+    const candidateId = String(active.id);
+    const targetStageValue = String(over.id);
+    const sourceStageValue = (
+      active.data.current as { stageValue?: string } | undefined
+    )?.stageValue;
+    if (!sourceStageValue || sourceStageValue === targetStageValue) {
+      return;
+    }
+
+    const baseline = localStages ?? data?.stages ?? [];
+    let candidate: FunnelCandidate | undefined;
+    const withoutCandidate = baseline.map((stage) => {
+      if (stage.value !== sourceStageValue) {
+        return stage;
+      }
+      const remaining = stage.candidates.filter((current) => {
+        if (current.id === candidateId) {
+          candidate = current;
+          return false;
+        }
+        return true;
+      });
+      return { ...stage, candidates: remaining };
+    });
+
+    if (!candidate) {
+      return;
+    }
+
+    const moved = candidate;
+    const nextStages = withoutCandidate.map((stage) =>
+      stage.value === targetStageValue
+        ? { ...stage, candidates: [...stage.candidates, moved] }
+        : stage,
+    );
+
+    previousStagesRef.current = baseline;
+    setLocalStages(nextStages);
+
+    moveCandidateMutation.mutate({
+      candidateId,
+      status: targetStageValue,
+      vacancyId: id,
+    });
+  };
 
   const handleCloseAssignmentModal = () => {
     if (assignCandidateToVacancy.isPending) {
@@ -548,23 +718,42 @@ export default function VacancyFunnelPage() {
           </div>
         ) : null}
 
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {data.stages.map((stage) => (
-            <VacancyStageSection
-              canAddCandidate={!isHhVacancy}
-              candidates={stage.candidates}
-              isHhSource={isHhVacancy}
-              key={stage.value}
-              label={stage.label}
-              onAddCandidate={() =>
-                setAssignmentStage({
-                  label: stage.label,
-                  value: stage.value,
-                })
-              }
-            />
-          ))}
-        </div>
+        <DndContext
+          collisionDetection={pointerWithin}
+          onDragEnd={handleDragEnd}
+          onDragStart={handleDragStart}
+          sensors={sensors}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {stages.map((stage) => (
+              <VacancyStageSection
+                activeCandidateId={activeCandidateId}
+                canAddCandidate={!isHhVacancy}
+                candidates={stage.candidates}
+                isDndDisabled={isHhVacancy}
+                isHhSource={isHhVacancy}
+                key={stage.value}
+                label={stage.label}
+                onAddCandidate={() =>
+                  setAssignmentStage({
+                    label: stage.label,
+                    value: stage.value,
+                  })
+                }
+                stageValue={stage.value}
+              />
+            ))}
+          </div>
+          <DragOverlay>
+            {activeCandidate ? (
+              <VacancyStageCandidateCard
+                candidate={activeCandidate}
+                isDragOverlay
+                isHhSource={isHhVacancy}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       <AssignCandidateToVacancyModal
