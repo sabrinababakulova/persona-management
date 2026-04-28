@@ -231,6 +231,17 @@ export const getVacancyFunnelProcedure = protectedProcedure
     if (!userCompanyId) {
       return null;
     }
+    const stageRows = await ctx.db
+      .select({
+        value: candidateStatusOptions.value,
+        label: candidateStatusOptions.label,
+      })
+      .from(candidateStatusOptions)
+      .where(eq(candidateStatusOptions.isActive, true))
+      .orderBy(
+        asc(candidateStatusOptions.sortOrder),
+        asc(candidateStatusOptions.label),
+      );
 
     if (isHhVacancyId(input.id)) {
       const hhVacancyId = input.id.slice(3);
@@ -275,14 +286,6 @@ export const getVacancyFunnelProcedure = protectedProcedure
           tags: [] as string[],
         }));
 
-        const stageLabels = Array.from(
-          new Set(
-            normalizedCandidates.map(
-              (candidate) => candidate.status?.trim() || "Без статуса",
-            ),
-          ),
-        );
-
         return {
           id: input.id,
           title: hhVacancy.title,
@@ -290,15 +293,11 @@ export const getVacancyFunnelProcedure = protectedProcedure
           city: hhVacancy.city ?? "",
           source: "hh.uz" as const,
           candidates: normalizedCandidates,
-          stages: (stageLabels.length > 0
-            ? stageLabels
-            : ["Отклики hh.uz"]
-          ).map((label) => ({
-            value: label,
-            label,
+          stages: stageRows.map((stage) => ({
+            value: stage.value,
+            label: stage.label,
             candidates: normalizedCandidates.filter(
-              (candidate) =>
-                (candidate.status?.trim() || "Без статуса") === label,
+              (candidate) => candidate.status === stage.value,
             ),
           })),
         };
@@ -376,18 +375,6 @@ export const getVacancyFunnelProcedure = protectedProcedure
       existing.push({ id: row.vacancyId, title: row.title });
       relatedVacanciesByCandidate.set(row.candidateId, existing);
     }
-
-    const stageRows = await ctx.db
-      .select({
-        value: candidateStatusOptions.value,
-        label: candidateStatusOptions.label,
-      })
-      .from(candidateStatusOptions)
-      .where(eq(candidateStatusOptions.isActive, true))
-      .orderBy(
-        asc(candidateStatusOptions.sortOrder),
-        asc(candidateStatusOptions.label),
-      );
 
     const normalizedCandidates = candidateRows.map((candidate) => {
       const contacts =
