@@ -140,12 +140,13 @@ export default function CandidatesPage() {
       selectedPeriod,
     ],
   );
-  const { data: candidatesData, isLoading } = api.candidates.list.useQuery(
-    candidateQueryInput,
-    {
-      placeholderData: (previousData) => previousData,
-    },
-  );
+  const {
+    data: candidatesData,
+    isFetching: isFetchingCandidates,
+    isLoading,
+  } = api.candidates.list.useQuery(candidateQueryInput, {
+    placeholderData: (previousData) => previousData,
+  });
   const localTotal = candidatesData?.total ?? 0;
   const offset = (currentPage - 1) * itemsPerPage;
   const localItems = candidatesData?.items ?? [];
@@ -175,13 +176,16 @@ export default function CandidatesPage() {
       hhOffset,
     ],
   );
-  const { data: hhCandidatesData, isLoading: isLoadingHhCandidates } =
-    api.candidates.listHh.useQuery(hhQueryInput, {
-      enabled:
-        Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
-      placeholderData: (previousData) => previousData,
-      staleTime: 5 * 60 * 1000,
-    });
+  const {
+    data: hhCandidatesData,
+    isFetching: isFetchingHhCandidates,
+    isLoading: isLoadingHhCandidates,
+  } = api.candidates.listHh.useQuery(hhQueryInput, {
+    enabled:
+      Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
+    placeholderData: (previousData) => previousData,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const hhTotal = shouldIncludeHhCandidates
     ? (hhCandidatesData?.total ?? 0)
@@ -192,7 +196,7 @@ export default function CandidatesPage() {
     Boolean(candidatesData) &&
     shouldIncludeHhCandidates &&
     hhLimit > 0 &&
-    isLoadingHhCandidates;
+    isFetchingHhCandidates;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -317,10 +321,11 @@ export default function CandidatesPage() {
   const hasCandidates = hasAnyCandidates || localTotal > 0 || hhTotal > 0;
   const isTableLoading =
     isLoading ||
+    isFetchingCandidates ||
     (Boolean(candidatesData) &&
       shouldIncludeHhCandidates &&
       hhLimit > 0 &&
-      isLoadingHhCandidates);
+      (isLoadingHhCandidates || isFetchingHhCandidates));
   const showCandidatesTable =
     hasCandidates || isTableLoading || isAnyCandidatesLoading;
 
