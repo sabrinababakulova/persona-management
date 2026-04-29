@@ -75,8 +75,7 @@ function isVacancyStatus(value: string): value is VacancyStatus {
 }
 
 function normalizeOptionalString(value: string) {
-  const trimmedValue = value.trim();
-  return trimmedValue ? trimmedValue : undefined;
+  return value.trim() ?? undefined;
 }
 
 function parseHhPhoneClient(raw: string): {
@@ -129,6 +128,7 @@ export function CreateVacancyForm() {
     router.push(`/vacancies/create?step=${id}`);
   };
   const [savedVacancyId, setSavedVacancyId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -261,6 +261,7 @@ export function CreateVacancyForm() {
 
       if (willOfferTelegram || willOfferHh) {
         setSavedVacancyId(createdVacancy.id);
+        setModalOpen(true);
         return;
       }
 
@@ -313,12 +314,27 @@ export function CreateVacancyForm() {
     });
   };
 
-  const closeTelegramModal = () => {
-    setSavedVacancyId(null);
+  const closeModal = () => {
+    setModalOpen(false);
     setTelegramStatus("idle");
     setHhStatus("idle");
     setHhError(null);
     setPublishedHhUrl(null);
+  };
+
+  const reopenModal = () => {
+    setHhStatus("idle");
+    setHhError(null);
+    setPublishedHhUrl(null);
+    setTelegramStatus("idle");
+    setModalOpen(true);
+  };
+
+  const goEditHhFields = () => {
+    setModalOpen(false);
+    setHhStatus("idle");
+    setHhError(null);
+    goToStep("publications");
   };
 
   const triggerHhPublish = () => {
@@ -410,6 +426,10 @@ export function CreateVacancyForm() {
   };
 
   const handleContinueFromPublications = () => {
+    if (savedVacancyId) {
+      reopenModal();
+      return;
+    }
     goToStep("preview");
   };
 
@@ -815,12 +835,14 @@ export function CreateVacancyForm() {
                   <button
                     className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={createVacancy.isPending}
-                    onClick={handleSubmit}
+                    onClick={savedVacancyId ? reopenModal : handleSubmit}
                     type="button"
                   >
                     {createVacancy.isPending
                       ? "loading..."
-                      : "Сохранить вакансию"}
+                      : savedVacancyId
+                        ? "Открыть публикации"
+                        : "Сохранить вакансию"}
                   </button>
                 </div>
               </div>
@@ -831,9 +853,9 @@ export function CreateVacancyForm() {
 
       <Modal
         description="Опубликуйте вакансию в выбранных каналах."
-        isOpen={savedVacancyId !== null}
+        isOpen={modalOpen && savedVacancyId !== null}
         maxWidthClassName="max-w-[460px]"
-        onClose={closeTelegramModal}
+        onClose={closeModal}
         title="Вакансия сохранена"
       >
         <div className="flex flex-col gap-3">
@@ -894,8 +916,15 @@ export function CreateVacancyForm() {
             </div>
           )}
           {hhStatus === "error" && (
-            <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
-              {hhError ?? "Не удалось опубликовать на hh.uz."}
+            <div className="flex flex-col gap-2 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              <span>{hhError ?? "Не удалось опубликовать на hh.uz."}</span>
+              <button
+                className="self-start rounded-[6px] border border-danger-red px-3 py-1 font-medium text-[13px] text-danger-red transition-colors hover:bg-bg-light"
+                onClick={goEditHhFields}
+                type="button"
+              >
+                Изменить параметры hh.uz
+              </button>
             </div>
           )}
           {hhStatus === "sent" && publishedHhUrl && (
