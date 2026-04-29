@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { CheckIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
+import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { Textarea } from "~/app/_components/textarea";
 import { api } from "~/trpc/react";
 
@@ -488,21 +489,18 @@ export function CreateVacancyPublications({
                 value={hh.contactPhone}
               />
 
-              <Textarea
-                className="min-h-[220px] font-mono text-[13px]"
+              <RichTextEditor
                 id="hh-description-html"
-                label="Описание для hh.uz (HTML, минимум 200 символов)"
+                label="Описание для hh.uz (минимум 200 символов)"
                 maxLength={20000}
-                onChange={(event) =>
-                  updateHh("descriptionHtml", event.target.value)
-                }
-                placeholder="<p>О компании…</p><h3>Обязанности</h3><ul><li>…</li></ul>"
+                onChange={(html) => updateHh("descriptionHtml", html)}
+                placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
                 value={hh.descriptionHtml}
               />
               <p className="text-[12px] text-text-secondary">
-                Разрешены: &lt;p&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;,
-                &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;a&gt;, &lt;h3&gt;,
-                &lt;h4&gt;. Описание должно содержать хотя бы один список.
+                hh.uz принимает только базовое форматирование: абзацы, списки,
+                заголовки H3/H4, жирный, курсив и ссылки. Описание должно
+                содержать хотя бы один список.
               </p>
             </div>
           )}

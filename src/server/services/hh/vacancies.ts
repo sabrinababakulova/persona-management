@@ -1,3 +1,4 @@
+import { sanitizeHhDescriptionHtml } from "./sanitize-html";
 import {
   fetchHhJson,
   getTotalFromSearchPayload,
@@ -459,9 +460,11 @@ export async function publishHhVacancy(
   input: PublishHhVacancyInput,
   accessToken: string,
 ): Promise<PublishHhVacancyResult> {
+  const sanitizedDescription = sanitizeHhDescriptionHtml(input.description);
+
   const body: Record<string, unknown> = {
     name: input.name,
-    description: input.description,
+    description: sanitizedDescription,
     area: { id: input.areaId },
     employment: { id: input.employmentId },
     schedule: { id: input.scheduleId },
