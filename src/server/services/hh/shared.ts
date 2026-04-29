@@ -363,20 +363,21 @@ export function toHhVacancyApplicant(
       : null;
   const resumeId = getNestedString(record, ["resume", "id"]);
   const applicantId = getNestedString(record, ["applicant", "id"]);
-  const status =
-    getNestedString(record, ["employer_state", "name"]) ??
-    getNestedString(record, ["employer_state", "id"]) ??
-    getNestedString(record, ["funnel_stage", "state", "name"]) ??
-    getNestedString(record, ["funnel_stage", "state", "id"]) ??
-    getNestedString(record, ["state", "name"]) ??
-    getNestedString(record, ["state", "id"]) ??
-    fallbackStatus ??
-    null;
-
+  // const status =
+  //   getNestedString(record, ["employer_state", "name"]) ??
+  //   getNestedString(record, ["employer_state", "id"]) ??
+  //   getNestedString(record, ["funnel_stage", "state", "name"]) ??
+  //   getNestedString(record, ["funnel_stage", "state", "id"]) ??
+  //   getNestedString(record, ["state", "name"]) ??
+  //   getNestedString(record, ["state", "id"]) ??
+  //   fallbackStatus ??
+  //   null;
+  // console.log(status);
+  // TODO: fix it, it should show actual status
   return {
     id: resumeId ?? applicantId ?? negotiationId ?? "unknown",
     fullName: toHhApplicantFullName(record),
-    status,
+    status: "new",
   };
 }
 
