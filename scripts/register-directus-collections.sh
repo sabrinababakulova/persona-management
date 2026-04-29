@@ -276,6 +276,16 @@ patch_field "vacancy_publication" "vacancy_id" '{
     }
   }' "vacancy_publication.vacancy_id"
 
+patch_field "vacancy" "hh_vacancy_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 50,
+      "width": "half",
+      "note": "ID вакансии на hh.uz. Заполните вручную, чтобы связать существующую локальную вакансию с её копией на hh.uz и убрать дубликат из списка."
+    }
+  }' "vacancy.hh_vacancy_id"
+
 create_field_if_missing "vacancy" "publications" '{
     "field": "publications",
     "type": "alias",

@@ -759,6 +759,11 @@ export const publishHhProcedure = protectedProcedure
       });
     }
 
+    await ctx.db
+      .update(vacancies)
+      .set({ hhVacancyId: result.id })
+      .where(eq(vacancies.id, vacancy.id));
+
     const existing = await ctx.db
       .select({
         id: vacancyPublications.id,

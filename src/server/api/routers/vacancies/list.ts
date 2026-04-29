@@ -149,6 +149,16 @@ export const listVacanciesProcedure = protectedProcedure
       };
     }
 
+    const linkedHhVacancyRows = await ctx.db
+      .select({ hhVacancyId: vacancies.hhVacancyId })
+      .from(vacancies)
+      .where(eq(vacancies.companyId, userCompanyId));
+    const linkedHhVacancyIds = new Set(
+      linkedHhVacancyRows
+        .map((row) => row.hhVacancyId)
+        .filter((id): id is string => Boolean(id)),
+    );
+
     const paginatedLocalVacancies = localVacancies.slice(
       offset,
       offset + limit,
@@ -172,14 +182,19 @@ export const listVacanciesProcedure = protectedProcedure
           offset: hhOffset,
         });
 
+        const dedupedHhItems = hhPage.items.filter(
+          (vacancy) => !linkedHhVacancyIds.has(vacancy.id),
+        );
+        const droppedCount = hhPage.items.length - dedupedHhItems.length;
+
         return {
           items: [
             ...paginatedLocalVacancies,
-            ...hhPage.items.map((vacancy) =>
+            ...dedupedHhItems.map((vacancy) =>
               formatHhVacancy(vacancy, userCompanyId),
             ),
           ],
-          total: localVacancies.length + hhPage.total,
+          total: localVacancies.length + hhPage.total - droppedCount,
         };
       }
 
@@ -188,6 +203,7 @@ export const listVacanciesProcedure = protectedProcedure
         hhAccount.accessToken,
       );
       const filteredHhVacancies = hhVacancies
+        .filter((vacancy) => !linkedHhVacancyIds.has(vacancy.id))
         .map((vacancy) => formatHhVacancy(vacancy, userCompanyId))
         .filter((vacancy) => {
           if (statuses.length > 0 && !statuses.includes(vacancy.status)) {
