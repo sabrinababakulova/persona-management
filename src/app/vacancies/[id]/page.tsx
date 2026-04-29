@@ -1,11 +1,11 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
 import { VacancyDescription } from "../components";
+import { HhVacancyPreview } from "./hh-vacancy-preview";
 
 const SIDE_MENU_ITEMS = [
   { id: "description", label: "Описание вакансии" },
@@ -13,11 +13,26 @@ const SIDE_MENU_ITEMS = [
   { id: "preview", label: "Предпросмотр" },
 ] as const;
 
+type SectionId = (typeof SIDE_MENU_ITEMS)[number]["id"];
+
+function isSectionId(value: string | null): value is SectionId {
+  return value !== null && SIDE_MENU_ITEMS.some((item) => item.id === value);
+}
+
 export default function VacancyDetailPage() {
   const { id: vacancyId } = useParams() as { id: string };
-  const [activeSectionId, setActiveSectionId] = useState<string>(
-    SIDE_MENU_ITEMS[0].id,
-  );
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const stepParam = searchParams.get("step");
+  const activeSectionId: SectionId = isSectionId(stepParam)
+    ? stepParam
+    : SIDE_MENU_ITEMS[0].id;
+
+  const goToStep = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", id);
+    router.replace(`/vacancies/${vacancyId}?${params.toString()}`);
+  };
 
   const {
     data: vacancyLookups,
@@ -70,17 +85,19 @@ export default function VacancyDetailPage() {
     );
   }
 
+  const hasHhLink = vacancy.source === "hh.uz" || Boolean(vacancy.hhVacancyId);
+
   return (
     <main className="h-full bg-bg-light">
       <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
         <SideMenu
           activeId={activeSectionId}
           items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
-          onSelect={setActiveSectionId}
+          onSelect={goToStep}
         />
 
         <section className="flex flex-3 flex-col">
-          <div className="w-full max-w-[560px]">
+          <div className="w-full max-w-[720px]">
             <Breadcrumbs
               label={vacancy.title}
               rootHref="/vacancies"
@@ -114,6 +131,27 @@ export default function VacancyDetailPage() {
                   workType={vacancy.workType}
                 />
               </>
+            ) : activeSectionId === "preview" ? (
+              <div className="mt-6 flex flex-col gap-6">
+                <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+                  Предпросмотр
+                </h1>
+
+                {hasHhLink ? (
+                  <HhVacancyPreview vacancyId={vacancyId} />
+                ) : (
+                  <section className="rounded-[8px] border border-border-input bg-bg-input p-5">
+                    <div className="font-bold text-[18px] text-text-heading">
+                      hh.uz
+                    </div>
+                    <div className="mt-2 text-[14px] text-text-secondary">
+                      Эта вакансия не опубликована на hh.uz. Опубликуйте её или
+                      укажите ID hh.uz в админ-панели Directus, чтобы увидеть
+                      предпросмотр.
+                    </div>
+                  </section>
+                )}
+              </div>
             ) : (
               <div className="mt-12 rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
                 Секция "{activeSection?.label}" будет доступна позже.

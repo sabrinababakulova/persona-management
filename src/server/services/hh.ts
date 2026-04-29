@@ -23,6 +23,7 @@ export type {
   HhDictionaries,
   HhDictionaryItem,
   HhProfessionalRoleCategory,
+  HhVacancyDetail,
   PublishHhVacancyInput,
   PublishHhVacancyResult,
 } from "./hh/vacancies";
@@ -34,6 +35,7 @@ export {
   fetchHhDictionaries,
   fetchHhProfessionalRoles,
   fetchHhVacancyById,
+  fetchHhVacancyDetail,
   prolongHhVacancy,
   publishHhVacancy,
   updateHhVacancyContent,

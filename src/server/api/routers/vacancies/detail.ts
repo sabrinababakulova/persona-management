@@ -11,7 +11,9 @@ import {
 import {
   fetchHhVacancyApplicants,
   fetchHhVacancyById,
+  fetchHhVacancyDetail,
 } from "~/server/services/hh";
+import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
 import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 
@@ -88,6 +90,7 @@ export const getVacancyProcedure = protectedProcedure
           team: hhVacancy.team ?? "",
           companyDescription: hhVacancy.companyDescription ?? "",
           companyId: userCompanyId,
+          hhVacancyId,
           publishedAt: hhVacancy.publishedAt,
           source: "hh.uz" as const,
           externalUrl: hhVacancy.externalUrl,
@@ -141,6 +144,65 @@ export const getVacancyProcedure = protectedProcedure
       publications: publicationRows.map(formatVacancyPublication),
       relatedCandidates: relatedCandidateRows,
     };
+  });
+
+export const getHhVacancyDetailProcedure = protectedProcedure
+  .input(vacancyIdInputSchema)
+  .query(async ({ ctx, input }) => {
+    const userCompanyId = await getOptionalCompanyId(
+      ctx.db,
+      ctx.session.user.id,
+    );
+
+    if (!userCompanyId) {
+      return null;
+    }
+
+    let hhVacancyId: string | null = null;
+
+    if (isHhVacancyId(input.id)) {
+      hhVacancyId = input.id.slice(3);
+    } else {
+      const rows = await ctx.db
+        .select({ hhVacancyId: vacancies.hhVacancyId })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .limit(1);
+
+      hhVacancyId = rows[0]?.hhVacancyId ?? null;
+    }
+
+    if (!hhVacancyId) {
+      return null;
+    }
+
+    const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+    if (!hhAccount?.accessToken) {
+      return null;
+    }
+
+    try {
+      const detail = await fetchHhVacancyDetail(
+        hhVacancyId,
+        hhAccount.accessToken,
+      );
+      return {
+        ...detail,
+        descriptionHtml: sanitizeHhDescriptionHtml(detail.descriptionHtml),
+      };
+    } catch (error) {
+      console.error("Failed to fetch HH vacancy detail", {
+        hhVacancyId,
+        companyId: userCompanyId,
+        error,
+      });
+      return null;
+    }
   });
 
 export const listVacancyPublicationsProcedure = protectedProcedure

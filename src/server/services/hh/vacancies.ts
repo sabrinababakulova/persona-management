@@ -528,6 +528,274 @@ export async function publishHhVacancy(
   };
 }
 
+export type HhVacancyDetail = {
+  id: string;
+  name: string;
+  descriptionHtml: string;
+  area: string | null;
+  employment: string | null;
+  schedule: string | null;
+  experience: string | null;
+  workFormats: string[];
+  professionalRoles: string[];
+  keySkills: string[];
+  billingType: string | null;
+  type: string | null;
+  archived: boolean;
+  hidden: boolean;
+  publishedAt: string | null;
+  createdAt: string | null;
+  initialCreatedAt: string | null;
+  expiresAt: string | null;
+  acceptHandicapped: boolean | null;
+  acceptKids: boolean | null;
+  acceptIncompleteResumes: boolean | null;
+  responseLetterRequired: boolean | null;
+  allowMessages: boolean | null;
+  responseUrl: string | null;
+  alternateUrl: string | null;
+  applyAlternateUrl: string | null;
+  salary: {
+    from: number | null;
+    to: number | null;
+    currency: string | null;
+    gross: boolean | null;
+  } | null;
+  employer: {
+    id: string | null;
+    name: string | null;
+    url: string | null;
+    logoUrl: string | null;
+    trusted: boolean | null;
+  } | null;
+  contacts: {
+    name: string | null;
+    email: string | null;
+    phones: Array<{
+      country: string | null;
+      city: string | null;
+      number: string | null;
+      formatted: string | null;
+      comment: string | null;
+    }>;
+  } | null;
+  address: {
+    city: string | null;
+    street: string | null;
+    building: string | null;
+    description: string | null;
+    raw: string | null;
+  } | null;
+  department: { id: string | null; name: string | null } | null;
+  language: Array<{ name: string | null; level: string | null }>;
+  driverLicenseTypes: string[];
+  counters: {
+    views: number | null;
+    responses: number | null;
+    totalResponses: number | null;
+  };
+  testRequired: boolean | null;
+  code: string | null;
+  branding: { type: string | null; tariff: string | null } | null;
+};
+
+type HhVacancyDetailRaw = {
+  id?: string | null;
+  name?: string | null;
+  description?: string | null;
+  area?: { name?: string | null } | null;
+  employment?: { name?: string | null } | null;
+  schedule?: { name?: string | null } | null;
+  experience?: { name?: string | null } | null;
+  work_format?: Array<{ name?: string | null }> | null;
+  professional_roles?: Array<{ name?: string | null }> | null;
+  key_skills?: Array<{ name?: string | null }> | null;
+  billing_type?: { name?: string | null } | null;
+  type?: { name?: string | null } | null;
+  archived?: boolean | null;
+  hidden?: boolean | null;
+  published_at?: string | null;
+  created_at?: string | null;
+  initial_created_at?: string | null;
+  expires_at?: string | null;
+  accept_handicapped?: boolean | null;
+  accept_kids?: boolean | null;
+  accept_incomplete_resumes?: boolean | null;
+  response_letter_required?: boolean | null;
+  allow_messages?: boolean | null;
+  response_url?: string | null;
+  alternate_url?: string | null;
+  apply_alternate_url?: string | null;
+  salary?: {
+    from?: number | null;
+    to?: number | null;
+    currency?: string | null;
+    gross?: boolean | null;
+  } | null;
+  employer?: {
+    id?: string | null;
+    name?: string | null;
+    alternate_url?: string | null;
+    logo_urls?: { original?: string | null; "240"?: string | null } | null;
+    trusted?: boolean | null;
+  } | null;
+  contacts?: {
+    name?: string | null;
+    email?: string | null;
+    phones?: Array<{
+      country?: string | null;
+      city?: string | null;
+      number?: string | null;
+      formatted?: string | null;
+      comment?: string | null;
+    }> | null;
+  } | null;
+  address?: {
+    city?: string | null;
+    street?: string | null;
+    building?: string | null;
+    description?: string | null;
+    raw?: string | null;
+  } | null;
+  department?: { id?: string | null; name?: string | null } | null;
+  languages?: Array<{
+    name?: string | null;
+    level?: { name?: string | null } | null;
+  }> | null;
+  driver_license_types?: Array<{ id?: string | null }> | null;
+  counters?: {
+    views?: number | null;
+    responses?: number | null;
+    total_responses?: number | null;
+  } | null;
+  test?: { required?: boolean | null } | null;
+  code?: string | null;
+  branding?: { type?: string | null; tariff?: string | null } | null;
+};
+
+export async function fetchHhVacancyDetail(
+  vacancyId: string,
+  accessToken?: string,
+): Promise<HhVacancyDetail> {
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const raw = await fetchHhJson<HhVacancyDetailRaw>(
+    `${HH_API_BASE_URL}/vacancies/${vacancyId}?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  const phones = (raw.contacts?.phones ?? []).map((phone) => ({
+    country: phone.country ?? null,
+    city: phone.city ?? null,
+    number: phone.number ?? null,
+    formatted: phone.formatted ?? null,
+    comment: phone.comment ?? null,
+  }));
+
+  return {
+    id: raw.id ?? vacancyId,
+    name: raw.name?.trim() || "",
+    descriptionHtml: raw.description ?? "",
+    area: raw.area?.name?.trim() || null,
+    employment: raw.employment?.name?.trim() || null,
+    schedule: raw.schedule?.name?.trim() || null,
+    experience: raw.experience?.name?.trim() || null,
+    workFormats: (raw.work_format ?? [])
+      .map((item) => item.name?.trim())
+      .filter((name): name is string => Boolean(name)),
+    professionalRoles: (raw.professional_roles ?? [])
+      .map((item) => item.name?.trim())
+      .filter((name): name is string => Boolean(name)),
+    keySkills: (raw.key_skills ?? [])
+      .map((item) => item.name?.trim())
+      .filter((name): name is string => Boolean(name)),
+    billingType: raw.billing_type?.name?.trim() || null,
+    type: raw.type?.name?.trim() || null,
+    archived: raw.archived ?? false,
+    hidden: raw.hidden ?? false,
+    publishedAt: raw.published_at ?? null,
+    createdAt: raw.created_at ?? null,
+    initialCreatedAt: raw.initial_created_at ?? null,
+    expiresAt: raw.expires_at ?? null,
+    acceptHandicapped: raw.accept_handicapped ?? null,
+    acceptKids: raw.accept_kids ?? null,
+    acceptIncompleteResumes: raw.accept_incomplete_resumes ?? null,
+    responseLetterRequired: raw.response_letter_required ?? null,
+    allowMessages: raw.allow_messages ?? null,
+    responseUrl: raw.response_url ?? null,
+    alternateUrl: raw.alternate_url ?? null,
+    applyAlternateUrl: raw.apply_alternate_url ?? null,
+    salary: raw.salary
+      ? {
+          from: raw.salary.from ?? null,
+          to: raw.salary.to ?? null,
+          currency: raw.salary.currency ?? null,
+          gross: raw.salary.gross ?? null,
+        }
+      : null,
+    employer: raw.employer
+      ? {
+          id: raw.employer.id ?? null,
+          name: raw.employer.name ?? null,
+          url: raw.employer.alternate_url ?? null,
+          logoUrl:
+            raw.employer.logo_urls?.original ??
+            raw.employer.logo_urls?.["240"] ??
+            null,
+          trusted: raw.employer.trusted ?? null,
+        }
+      : null,
+    contacts: raw.contacts
+      ? {
+          name: raw.contacts.name ?? null,
+          email: raw.contacts.email ?? null,
+          phones,
+        }
+      : null,
+    address: raw.address
+      ? {
+          city: raw.address.city ?? null,
+          street: raw.address.street ?? null,
+          building: raw.address.building ?? null,
+          description: raw.address.description ?? null,
+          raw: raw.address.raw ?? null,
+        }
+      : null,
+    department: raw.department
+      ? {
+          id: raw.department.id ?? null,
+          name: raw.department.name ?? null,
+        }
+      : null,
+    language: (raw.languages ?? []).map((language) => ({
+      name: language.name ?? null,
+      level: language.level?.name ?? null,
+    })),
+    driverLicenseTypes: (raw.driver_license_types ?? [])
+      .map((item) => item.id?.trim())
+      .filter((id): id is string => Boolean(id)),
+    counters: {
+      views: raw.counters?.views ?? null,
+      responses: raw.counters?.responses ?? null,
+      totalResponses: raw.counters?.total_responses ?? null,
+    },
+    testRequired: raw.test?.required ?? null,
+    code: raw.code ?? null,
+    branding: raw.branding
+      ? {
+          type: raw.branding.type ?? null,
+          tariff: raw.branding.tariff ?? null,
+        }
+      : null,
+  };
+}
+
 export async function prolongHhVacancy(vacancyId: string, accessToken: string) {
   const searchParams = new URLSearchParams({ host: "hh.uz" });
 
