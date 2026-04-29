@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { ChevronUpIcon } from "~/app/_components/icons";
 
@@ -18,16 +20,21 @@ export const ClosableSection = ({
         <button
           aria-expanded={isSectionOpen}
           aria-label={`Свернуть или развернуть ${title}`}
-          className="rounded p-1 text-text-secondary transition-colors hover:bg-bg-hover"
+          className="rounded p-1 text-text-secondary transition-[background-color,color,transform] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
           onClick={() => setIsSectionOpen((prev) => !prev)}
           type="button"
         >
           <ChevronUpIcon
-            className={`h-4 w-4 transition-transform ${isSectionOpen ? "rotate-0" : "rotate-180"}`}
+            className={`h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isSectionOpen ? "rotate-0" : "rotate-180"}`}
           />
         </button>
       </div>
-      {isSectionOpen && <div className="space-y-4">{children}</div>}
+      <div
+        aria-hidden={!isSectionOpen}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isSectionOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}
+      >
+        <div className="space-y-4 overflow-hidden">{children}</div>
+      </div>
     </section>
   );
 };

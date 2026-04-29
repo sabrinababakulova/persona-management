@@ -4,7 +4,7 @@ import { CheckIcon } from "./icons";
 export function Checkbox({ checked, onChange }: CheckboxProps) {
   return (
     <button
-      className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
+      className={`flex h-5 w-5 items-center justify-center rounded border transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
         checked
           ? "border-checkbox-blue bg-checkbox-blue"
           : "border-border-light bg-bg-light hover:border-text-placeholder"

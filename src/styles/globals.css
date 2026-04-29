@@ -150,3 +150,56 @@
   --color-t3-gradient-end: #15162c;
   --color-t3-accent: hsl(280, 100%, 70%);
 }
+
+:root {
+  --motion-duration-fast: 160ms;
+  --motion-duration-normal: 220ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  :where(
+      button:not(:disabled),
+      [role="button"]:not([aria-disabled="true"]),
+      a[href],
+      select:not(:disabled),
+      summary
+    ):not([data-motion="none"]) {
+    transition-property:
+      box-shadow, background-color, border-color, color, opacity, filter;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  :where(input, textarea, select) {
+    transition-property:
+      box-shadow, background-color, border-color, color, opacity;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease-standard);
+  }
+
+  @media (hover: hover) {
+    :where(
+        input:not(:disabled),
+        textarea:not(:disabled),
+        select:not(:disabled)
+      ):hover {
+      box-shadow: 0 0 0 1px rgba(35, 122, 248, 0.08);
+    }
+  }
+
+  :where(input:focus, textarea:focus, select:focus) {
+    box-shadow: 0 0 0 3px rgba(35, 122, 248, 0.12);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms;
+      animation-iteration-count: 1;
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+    }
+  }
+}

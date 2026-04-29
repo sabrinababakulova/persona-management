@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronDownIcon, SearchIcon } from "./icons";
+import { usePresence } from "./use-presence";
 
 type CandidateSelectorProps = {
   className?: string;
@@ -35,6 +36,7 @@ export function CandidateSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const { shouldRender, isVisible } = usePresence(isOpen, 180);
   const trimmedQuery = debouncedSearchQuery.trim();
 
   useEffect(() => {
@@ -114,7 +116,7 @@ export function CandidateSelector({
           <button
             aria-controls={`${selectId}-panel`}
             aria-expanded={isOpen}
-            className={`flex h-12 w-full items-center justify-between rounded-[6px] border border-border-input bg-bg-input px-3 text-left text-[16px] leading-[1.4] tracking-[-0.32px] transition-colors focus:border-primary-blue focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+            className={`flex h-12 w-full items-center justify-between rounded-[6px] border border-border-input bg-bg-input px-3 text-left text-[16px] leading-[1.4] tracking-[-0.32px] transition-[border-color,background-color,box-shadow,transform,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled || !vacancyId}
             id={selectId}
             onClick={() => setIsOpen((current) => !current)}
@@ -122,13 +124,13 @@ export function CandidateSelector({
           >
             <span className="truncate">{selectedLabel}</span>
             <ChevronDownIcon
-              className={`h-5 w-5 shrink-0 text-text-placeholder transition-transform ${isOpen ? "rotate-180" : ""}`}
+              className={`h-5 w-5 shrink-0 text-text-placeholder transition-transform duration-200 ease-out ${isOpen ? "rotate-180" : ""}`}
             />
           </button>
 
-          {isOpen && (
+          {shouldRender && (
             <div
-              className="absolute top-[calc(100%+8px)] left-0 z-50 w-full rounded-[8px] border border-border-input bg-bg-light shadow-toast"
+              className={`absolute top-[calc(100%+8px)] left-0 z-50 w-full rounded-[8px] border border-border-input bg-bg-light shadow-toast transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"}`}
               id={`${selectId}-panel`}
             >
               <div className="border-border-input border-b p-3">
