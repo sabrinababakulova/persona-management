@@ -264,7 +264,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         const normalizedCandidates = relatedCandidates.map((candidate) => ({
           id: candidate.id,
           fullName: candidate.fullName,
-          status: candidate.status ?? "Новый",
+          status: candidate.status ?? "new",
           city: "",
           experience: "",
           matchScore: 0,

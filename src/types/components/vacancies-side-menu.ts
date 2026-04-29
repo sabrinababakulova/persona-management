@@ -1,6 +1,7 @@
 export type SideMenuItem = {
   id: string;
   label: string;
+  disabled?: boolean;
 };
 
 export type SideMenuProps = {

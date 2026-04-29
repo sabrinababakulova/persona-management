@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { api, HydrateClient } from "~/trpc/server";
 import { CreateVacancyForm } from "./create-vacancy-form";
 
@@ -10,7 +11,9 @@ export default async function CreateVacancyPage() {
   return (
     <HydrateClient>
       <main className="h-full bg-bg-light">
-        <CreateVacancyForm />
+        <Suspense fallback={null}>
+          <CreateVacancyForm />
+        </Suspense>
       </main>
     </HydrateClient>
   );

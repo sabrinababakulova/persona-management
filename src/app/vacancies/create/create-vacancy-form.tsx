@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
@@ -16,7 +16,12 @@ import {
   formatNumberWithSpaces,
   parseFormattedNumber,
 } from "~/utils/format-salaries";
-import { CreateVacancyPublications } from "./create-vacancy-publications";
+import {
+  CreateVacancyPublications,
+  PUBLICATIONS_DRAFT_STORAGE_KEY,
+} from "./create-vacancy-publications";
+
+const DESCRIPTION_DRAFT_KEY = "vacancy-create:description-draft:v1";
 
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
   const label = `${String(hour).padStart(2, "0")}:00`;
@@ -84,15 +89,22 @@ function parseResponses(value: string) {
 
 export function CreateVacancyForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const utils = api.useUtils();
-  const [activeSectionId, setActiveSectionId] = useState<string>(
-    SIDE_MENU_ITEMS[0].id,
-  );
+  const stepParam = searchParams.get("step");
+  const activeSectionId =
+    stepParam && SIDE_MENU_ITEMS.some((item) => item.id === stepParam)
+      ? stepParam
+      : SIDE_MENU_ITEMS[0].id;
+  const goToStep = (id: string) => {
+    router.push(`/vacancies/create?step=${id}`);
+  };
   const [savedVacancyId, setSavedVacancyId] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
   const [errors, setErrors] = useState<VacancyFormErrors>({});
+  const [hydrated, setHydrated] = useState(false);
   const [formData, setFormData] = useState<VacancyCreateFormData>({
     title: "",
     level: "",
@@ -110,6 +122,42 @@ export function CreateVacancyForm() {
     companyDescription: "",
   });
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DESCRIPTION_DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<VacancyCreateFormData>;
+        setFormData((previous) => ({ ...previous, ...parsed }));
+      }
+    } catch {
+      // Ignore corrupt drafts.
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        DESCRIPTION_DRAFT_KEY,
+        JSON.stringify(formData),
+      );
+    } catch {
+      // Ignore quota errors.
+    }
+  }, [formData, hydrated]);
+
+  const clearDrafts = () => {
+    try {
+      window.localStorage.removeItem(DESCRIPTION_DRAFT_KEY);
+      window.localStorage.removeItem(PUBLICATIONS_DRAFT_STORAGE_KEY);
+    } catch {
+      // Ignore.
+    }
+  };
+
   const {
     data: vacancyLookups,
     isError: isLookupsError,
@@ -117,10 +165,6 @@ export function CreateVacancyForm() {
     refetch: refetchLookups,
   } = api.lookups.getVacancyCreateOptions.useQuery();
   const { data: telegramConfig } = api.vacancies.getTelegramConfig.useQuery();
-
-  const activeSection = SIDE_MENU_ITEMS.find(
-    (item) => item.id === activeSectionId,
-  );
 
   useEffect(() => {
     if (!vacancyLookups) {
@@ -161,6 +205,7 @@ export function CreateVacancyForm() {
   const createVacancy = api.vacancies.create.useMutation({
     onSuccess: async (createdVacancy) => {
       await utils.vacancies.list.invalidate();
+      clearDrafts();
 
       if (telegramConfig?.enabled) {
         setSavedVacancyId(createdVacancy.id);
@@ -209,7 +254,7 @@ export function CreateVacancyForm() {
     setTelegramStatus("idle");
   };
 
-  const handleSubmit = () => {
+  const validateDescription = (): boolean => {
     const trimmedTitle = formData.title.trim();
 
     if (!trimmedTitle) {
@@ -217,7 +262,7 @@ export function CreateVacancyForm() {
         ...previous,
         title: "Введите название вакансии",
       }));
-      return;
+      return false;
     }
 
     const parsedSalaryExpectation = parseFormattedNumber(
@@ -231,14 +276,42 @@ export function CreateVacancyForm() {
         ...previous,
         salaryExpectation: "Сумма не должна превышать 1 000 000 000",
       }));
-      return;
+      return false;
     }
 
     setErrors({});
+    return true;
+  };
+
+  const handleContinueFromDescription = () => {
+    if (!validateDescription()) {
+      return;
+    }
+    goToStep("publications");
+  };
+
+  const handleContinueFromPublications = () => {
+    goToStep("preview");
+  };
+
+  const handleCancel = () => {
+    clearDrafts();
+    router.push("/vacancies");
+  };
+
+  const handleSubmit = () => {
+    if (!validateDescription()) {
+      return;
+    }
+
+    const parsedSalaryExpectation = parseFormattedNumber(
+      formData.salaryExpectation,
+    );
+
     setTelegramStatus("idle");
 
     createVacancy.mutate({
-      title: trimmedTitle,
+      title: formData.title.trim(),
       level: normalizeOptionalString(formData.level),
       status: formData.status,
       city: normalizeOptionalString(formData.city),
@@ -287,8 +360,11 @@ export function CreateVacancyForm() {
       <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
         <SideMenu
           activeId={activeSectionId}
-          items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
-          onSelect={setActiveSectionId}
+          items={SIDE_MENU_ITEMS.map((item) => ({
+            ...item,
+            disabled: item.id !== "description",
+          }))}
+          onSelect={goToStep}
         />
 
         <section className="flex flex-3 flex-col">
@@ -566,30 +642,63 @@ export function CreateVacancyForm() {
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-                        onClick={() => router.push("/vacancies")}
+                        onClick={handleCancel}
                         type="button"
                       >
                         Отмена
                       </button>
                       <button
-                        className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={createVacancy.isPending}
-                        onClick={handleSubmit}
+                        className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+                        onClick={handleContinueFromDescription}
                         type="button"
                       >
-                        {createVacancy.isPending
-                          ? "loading..."
-                          : "Сохранить вакансию"}
+                        Продолжить
                       </button>
                     </div>
                   </div>
                 </div>
               </>
             ) : activeSectionId === "publications" ? (
-              <CreateVacancyPublications />
+              <CreateVacancyPublications
+                onCancel={handleCancel}
+                onContinue={handleContinueFromPublications}
+                prefillDescription={formData.tasks}
+                prefillName={formData.title}
+              />
             ) : (
-              <div className="mt-12 rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
-                Секция "{activeSection?.label}" будет доступна позже.
+              <div className="mt-6 flex flex-col gap-6">
+                <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+                  Предпросмотр
+                </h1>
+                <div className="rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
+                  Предпросмотр публикации скоро будет доступен.
+                </div>
+                <div className="min-h-[20px]">
+                  {errors._form && (
+                    <p className="text-[13px] text-danger-red leading-[1.4]">
+                      {errors._form}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-3 border-border-input border-t pt-4">
+                  <button
+                    className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+                    onClick={handleCancel}
+                    type="button"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={createVacancy.isPending}
+                    onClick={handleSubmit}
+                    type="button"
+                  >
+                    {createVacancy.isPending
+                      ? "loading..."
+                      : "Сохранить вакансию"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
