@@ -126,17 +126,16 @@ export const uploadResumeProcedure = protectedProcedure
 
       getCandidateResumeStorageKey(input.candidateId);
       const [candidate] = await ctx.db
-        .select({ resumeFileId: candidates.resumeFileId })
+        .select({
+          id: candidates.id,
+          companyId: candidates.companyId,
+          resumeFileId: candidates.resumeFileId,
+        })
         .from(candidates)
-        .where(
-          and(
-            eq(candidates.id, input.candidateId),
-            eq(candidates.companyId, userCompanyId),
-          ),
-        )
+        .where(eq(candidates.id, input.candidateId))
         .limit(1);
 
-      if (!candidate) {
+      if (candidate && candidate.companyId !== userCompanyId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Кандидат не найден",
@@ -146,11 +145,15 @@ export const uploadResumeProcedure = protectedProcedure
       const uploadResult = await uploadCandidateResumeToStorage(
         input.candidateId,
         fileBuffer,
-        candidate.resumeFileId ?? input.previousResumeFileId ?? null,
+        candidate?.resumeFileId ?? input.previousResumeFileId ?? null,
         input.mimeType || "application/pdf",
       );
       resumeFileId = uploadResult.fileId;
     } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+
       console.error("Failed to save candidate resume file", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
