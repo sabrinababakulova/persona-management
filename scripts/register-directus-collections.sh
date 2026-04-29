@@ -42,6 +42,72 @@ patch_field() {
   fi
 }
 
+get_field_config() {
+  local collection="$1"
+  local field="$2"
+
+  curl -s \
+    "$DIRECTUS_URL/fields/$collection/$field" \
+    -H "Authorization: Bearer $TOKEN"
+}
+
+configure_hash_field() {
+  local collection="$1"
+  local field="$2"
+  local label="$3"
+
+  echo -n "Configuring '$label'... "
+
+  local response
+  response=$(curl -s -o /tmp/directus-hash-field-response.json -w "%{http_code}" -X PATCH \
+    "$DIRECTUS_URL/fields/$collection/$field" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "type": "hash",
+      "meta": {
+        "special": ["hash"],
+        "interface": "input-hash",
+        "options": {
+          "masked": true
+        },
+        "hidden": false,
+        "readonly": false,
+        "note": "Хэшируется Directus при сохранении"
+      }
+    }')
+
+  if [ "$response" != "200" ]; then
+    echo "HTTP $response"
+    return
+  fi
+
+  local field_config
+  field_config=$(get_field_config "$collection" "$field")
+
+  if printf '%s' "$field_config" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+data = payload.get("data") or {}
+field_type = data.get("type")
+meta = data.get("meta") or {}
+special = meta.get("special") or []
+if isinstance(special, str):
+    special = [special]
+
+if field_type == "hash" and "hash" in special:
+    sys.exit(0)
+
+sys.exit(1)
+' >/dev/null 2>&1; then
+    echo "OK"
+  else
+    echo "FAILED_VERIFICATION"
+  fi
+}
+
 create_field_if_missing() {
   local collection="$1"
   local field="$2"
@@ -153,18 +219,7 @@ fi
 echo ""
 echo "Configuring Directus field metadata..."
 
-patch_field "user" "password" '{
-    "type": "hash",
-    "meta": {
-      "interface": "input-hash",
-      "options": {
-        "masked": true
-      },
-      "hidden": false,
-      "readonly": false,
-      "note": "Хэшируется Directus при сохранении"
-    }
-  }' "user.password as hash field"
+configure_hash_field "user" "password" "user.password as hash field"
 
 patch_field "vacancy_publication" "name" '{
     "type": "string",
