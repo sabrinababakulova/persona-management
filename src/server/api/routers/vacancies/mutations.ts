@@ -14,17 +14,25 @@ import {
 } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
 import {
+  companies,
   companyTelegramChannels,
   vacancies,
   vacancyPublications,
 } from "~/server/db/schema";
 import {
   archiveHhVacancy,
+  fetchHhAreasUz,
+  fetchHhDictionaries,
+  fetchHhProfessionalRoles,
   fetchHhVacancyById,
   prolongHhVacancy,
+  publishHhVacancy,
   updateHhVacancyContent,
 } from "~/server/services/hh";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import {
+  getCompanyHhAccount,
+  resolveCompanyHhAuth,
+} from "~/server/services/hh-company-account";
 import {
   isTelegramConfigured,
   sendTelegramMessage,
@@ -584,3 +592,237 @@ export const publishTelegramProcedure = protectedProcedure
       errors: errors.length > 0 ? errors : undefined,
     };
   });
+
+export const getHhConfigProcedure = protectedProcedure.query(
+  async ({ ctx }) => {
+    const companyId = await getOptionalCompanyId(ctx.db, ctx.session?.user?.id);
+    if (!companyId) {
+      return { enabled: false, companyPhone: null as string | null };
+    }
+
+    const [account, companyRows] = await Promise.all([
+      getCompanyHhAccount(ctx.db, companyId),
+      ctx.db
+        .select({ phone: companies.phone })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1),
+    ]);
+
+    return {
+      enabled: Boolean(account?.accessToken || account?.refreshToken),
+      companyPhone: companyRows[0]?.phone ?? null,
+    };
+  },
+);
+
+export const getHhPublishLookupsProcedure = protectedProcedure.query(
+  async () => {
+    const [dictionaries, areas, roleCategories] = await Promise.all([
+      fetchHhDictionaries(),
+      fetchHhAreasUz(),
+      fetchHhProfessionalRoles(),
+    ]);
+
+    return {
+      areas,
+      employment: dictionaries.employment,
+      schedule: dictionaries.schedule,
+      experience: dictionaries.experience,
+      billingType: dictionaries.vacancy_billing_type,
+      currency: dictionaries.currency,
+      professionalRoles: roleCategories.flatMap((category) =>
+        category.roles.map((role) => ({
+          id: role.id,
+          name: `${category.name} — ${role.name}`,
+        })),
+      ),
+    };
+  },
+);
+
+const hhPhoneSchema = z
+  .object({
+    country: z.string().min(1).max(10),
+    city: z.string().min(1).max(10),
+    number: z.string().min(1).max(20),
+  })
+  .nullable()
+  .optional();
+
+export const publishHhProcedure = protectedProcedure
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      name: z.string().min(1).max(500),
+      descriptionHtml: z
+        .string()
+        .min(200, "Описание должно быть не короче 200 символов")
+        .max(20000),
+      areaId: z.string().min(1).max(20),
+      employmentId: z.string().min(1).max(50),
+      scheduleId: z.string().min(1).max(50),
+      experienceId: z.string().min(1).max(50),
+      professionalRoleId: z.string().min(1).max(50),
+      billingTypeId: z.string().min(1).max(50),
+      salaryFrom: z.number().int().nonnegative().nullable().optional(),
+      salaryTo: z.number().int().nonnegative().nullable().optional(),
+      salaryCurrency: z.string().min(1).max(10).optional(),
+      contactPhone: hhPhoneSchema,
+    }),
+  )
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const vacancyRows = await ctx.db
+      .select({ id: vacancies.id, title: vacancies.title })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.vacancyId),
+          eq(vacancies.companyId, companyId),
+        ),
+      )
+      .limit(1);
+
+    const vacancy = vacancyRows[0];
+    if (!vacancy) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    const hhAccount = await resolveCompanyHhAuth(ctx.db, companyId);
+    if (!hhAccount?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "hh.uz аккаунт не подключён. Подключите его в настройках интеграций.",
+      });
+    }
+
+    const contactName =
+      ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Контактное лицо";
+    const contactEmail = ctx.session?.user?.email;
+    if (!contactEmail) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Email пользователя недоступен — обновите профиль",
+      });
+    }
+
+    let resolvedPhone = input.contactPhone ?? null;
+    if (!resolvedPhone) {
+      const companyRows = await ctx.db
+        .select({ phone: companies.phone })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1);
+      const rawPhone = companyRows[0]?.phone?.trim();
+      if (rawPhone) {
+        const parsed = parseHhPhone(rawPhone);
+        if (parsed) {
+          resolvedPhone = parsed;
+        }
+      }
+    }
+
+    let result: Awaited<ReturnType<typeof publishHhVacancy>>;
+    try {
+      result = await publishHhVacancy(
+        {
+          name: input.name,
+          description: input.descriptionHtml,
+          areaId: input.areaId,
+          employmentId: input.employmentId,
+          scheduleId: input.scheduleId,
+          experienceId: input.experienceId,
+          professionalRoleId: input.professionalRoleId,
+          billingTypeId: input.billingTypeId,
+          salaryFrom: input.salaryFrom ?? null,
+          salaryTo: input.salaryTo ?? null,
+          salaryCurrency: input.salaryCurrency ?? "UZS",
+          contactName,
+          contactEmail,
+          contactPhone: resolvedPhone,
+        },
+        hhAccount.accessToken,
+      );
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          error instanceof Error
+            ? `hh.uz отклонил публикацию: ${error.message}`
+            : "Не удалось опубликовать вакансию на hh.uz",
+      });
+    }
+
+    const existing = await ctx.db
+      .select({
+        id: vacancyPublications.id,
+        sources: vacancyPublications.sources,
+      })
+      .from(vacancyPublications)
+      .where(eq(vacancyPublications.vacancyId, vacancy.id))
+      .limit(1);
+
+    const newSource = { platform: "hh.uz" as const, url: result.alternateUrl };
+    if (existing[0]) {
+      const otherSources = (existing[0].sources ?? []).filter(
+        (source) => source.platform !== "hh.uz",
+      );
+      await ctx.db
+        .update(vacancyPublications)
+        .set({
+          sources: [...otherSources, newSource],
+          updatedAt: new Date(),
+        })
+        .where(eq(vacancyPublications.id, existing[0].id));
+    } else {
+      await ctx.db.insert(vacancyPublications).values({
+        vacancyId: vacancy.id,
+        name: input.name,
+        description: input.descriptionHtml,
+        isActive: true,
+        sources: [newSource],
+      });
+    }
+
+    return {
+      success: true,
+      hhVacancyId: result.id,
+      url: result.alternateUrl,
+    };
+  });
+
+function parseHhPhone(raw: string): {
+  country: string;
+  city: string;
+  number: string;
+} | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 9) {
+    return null;
+  }
+  if (digits.startsWith("998") && digits.length >= 12) {
+    return {
+      country: "998",
+      city: digits.slice(3, 5),
+      number: digits.slice(5),
+    };
+  }
+  if (digits.length === 9) {
+    return {
+      country: "998",
+      city: digits.slice(0, 2),
+      number: digits.slice(2),
+    };
+  }
+  return {
+    country: digits.slice(0, digits.length - 9),
+    city: digits.slice(digits.length - 9, digits.length - 7),
+    number: digits.slice(digits.length - 7),
+  };
+}

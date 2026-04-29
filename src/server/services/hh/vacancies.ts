@@ -342,6 +342,189 @@ export async function archiveHhVacancy(
   }
 }
 
+export type HhDictionaryItem = { id: string; name: string };
+
+export type HhArea = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  areas?: HhArea[];
+};
+
+export type HhProfessionalRoleCategory = {
+  id: string;
+  name: string;
+  roles: HhDictionaryItem[];
+};
+
+export type HhDictionaries = {
+  employment: HhDictionaryItem[];
+  schedule: HhDictionaryItem[];
+  experience: HhDictionaryItem[];
+  vacancy_billing_type: HhDictionaryItem[];
+  currency: HhDictionaryItem[];
+};
+
+export async function fetchHhDictionaries(): Promise<HhDictionaries> {
+  const response = await fetchHhJson<{
+    employment?: HhDictionaryItem[];
+    schedule?: HhDictionaryItem[];
+    experience?: HhDictionaryItem[];
+    vacancy_billing_type?: HhDictionaryItem[];
+    currency?: { code: string; name: string }[];
+  }>(`${HH_API_BASE_URL}/dictionaries?host=hh.uz`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  return {
+    employment: response.employment ?? [],
+    schedule: response.schedule ?? [],
+    experience: response.experience ?? [],
+    vacancy_billing_type: response.vacancy_billing_type ?? [],
+    currency: (response.currency ?? []).map((c) => ({
+      id: c.code,
+      name: c.name,
+    })),
+  };
+}
+
+export async function fetchHhAreasUz(): Promise<HhDictionaryItem[]> {
+  const root = await fetchHhJson<HhArea>(`${HH_API_BASE_URL}/areas/97`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const flat: HhDictionaryItem[] = [];
+  const visit = (node: HhArea) => {
+    flat.push({ id: node.id, name: node.name });
+    for (const child of node.areas ?? []) {
+      visit(child);
+    }
+  };
+  for (const child of root.areas ?? []) {
+    visit(child);
+  }
+  return flat;
+}
+
+export async function fetchHhProfessionalRoles(): Promise<
+  HhProfessionalRoleCategory[]
+> {
+  const response = await fetchHhJson<{
+    categories?: Array<{
+      id: string;
+      name: string;
+      roles?: HhDictionaryItem[];
+    }>;
+  }>(`${HH_API_BASE_URL}/professional_roles`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  return (response.categories ?? []).map((category) => ({
+    id: category.id,
+    name: category.name,
+    roles: category.roles ?? [],
+  }));
+}
+
+export type PublishHhVacancyInput = {
+  name: string;
+  description: string;
+  areaId: string;
+  employmentId: string;
+  scheduleId: string;
+  experienceId: string;
+  professionalRoleId: string;
+  billingTypeId: string;
+  salaryFrom?: number | null;
+  salaryTo?: number | null;
+  salaryCurrency?: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: {
+    country: string;
+    city: string;
+    number: string;
+  } | null;
+};
+
+export type PublishHhVacancyResult = {
+  id: string;
+  alternateUrl: string;
+};
+
+export async function publishHhVacancy(
+  input: PublishHhVacancyInput,
+  accessToken: string,
+): Promise<PublishHhVacancyResult> {
+  const body: Record<string, unknown> = {
+    name: input.name,
+    description: input.description,
+    area: { id: input.areaId },
+    employment: { id: input.employmentId },
+    schedule: { id: input.scheduleId },
+    experience: { id: input.experienceId },
+    professional_roles: [{ id: input.professionalRoleId }],
+    billing_type: { id: input.billingTypeId },
+    type: { id: "open" },
+    contacts: {
+      name: input.contactName,
+      email: input.contactEmail,
+      ...(input.contactPhone ? { phones: [input.contactPhone] } : {}),
+    },
+  };
+
+  if (
+    input.salaryFrom !== undefined ||
+    input.salaryTo !== undefined ||
+    input.salaryCurrency !== undefined
+  ) {
+    body.salary = {
+      from: input.salaryFrom ?? null,
+      to: input.salaryTo ?? null,
+      currency: input.salaryCurrency ?? "UZS",
+      gross: false,
+    };
+  }
+
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const response = await fetch(`${HH_API_BASE_URL}/vacancies?${searchParams}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `HH vacancy publish failed ${response.status}: ${errorBody}`,
+    );
+  }
+
+  const created = (await response.json()) as {
+    id?: string;
+    alternate_url?: string;
+  };
+
+  if (!created.id) {
+    throw new Error("HH vacancy publish: missing id in response");
+  }
+
+  return {
+    id: created.id,
+    alternateUrl:
+      created.alternate_url ?? `https://hh.uz/vacancy/${created.id}`,
+  };
+}
+
 export async function prolongHhVacancy(vacancyId: string, accessToken: string) {
   const searchParams = new URLSearchParams({ host: "hh.uz" });
 

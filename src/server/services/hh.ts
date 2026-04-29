@@ -18,11 +18,23 @@ export type {
   HhVacancy,
   HhVacancyApplicant,
 } from "./hh/shared";
+export type {
+  HhArea,
+  HhDictionaries,
+  HhDictionaryItem,
+  HhProfessionalRoleCategory,
+  PublishHhVacancyInput,
+  PublishHhVacancyResult,
+} from "./hh/vacancies";
 export {
   archiveHhVacancy,
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
+  fetchHhAreasUz,
+  fetchHhDictionaries,
+  fetchHhProfessionalRoles,
   fetchHhVacancyById,
   prolongHhVacancy,
+  publishHhVacancy,
   updateHhVacancyContent,
 } from "./hh/vacancies";

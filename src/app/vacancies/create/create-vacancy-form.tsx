@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
@@ -19,6 +19,7 @@ import {
 import {
   CreateVacancyPublications,
   PUBLICATIONS_DRAFT_STORAGE_KEY,
+  type PublicationsConfig,
 } from "./create-vacancy-publications";
 
 const DESCRIPTION_DRAFT_KEY = "vacancy-create:description-draft:v1";
@@ -78,6 +79,34 @@ function normalizeOptionalString(value: string) {
   return trimmedValue ? trimmedValue : undefined;
 }
 
+function parseHhPhoneClient(raw: string): {
+  country: string;
+  city: string;
+  number: string;
+} | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 9) return null;
+  if (digits.startsWith("998") && digits.length >= 12) {
+    return {
+      country: "998",
+      city: digits.slice(3, 5),
+      number: digits.slice(5),
+    };
+  }
+  if (digits.length === 9) {
+    return {
+      country: "998",
+      city: digits.slice(0, 2),
+      number: digits.slice(2),
+    };
+  }
+  return {
+    country: digits.slice(0, digits.length - 9),
+    city: digits.slice(digits.length - 9, digits.length - 7),
+    number: digits.slice(digits.length - 7),
+  };
+}
+
 function parseResponses(value: string) {
   const digits = value.replace(/\D/g, "");
   if (!digits) {
@@ -103,6 +132,19 @@ export function CreateVacancyForm() {
   const [telegramStatus, setTelegramStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
+  const [hhStatus, setHhStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+  const [hhError, setHhError] = useState<string | null>(null);
+  const [publishedHhUrl, setPublishedHhUrl] = useState<string | null>(null);
+  const [publicationsConfig, setPublicationsConfig] =
+    useState<PublicationsConfig | null>(null);
+  const handlePublicationsConfigChange = useCallback(
+    (config: PublicationsConfig) => {
+      setPublicationsConfig(config);
+    },
+    [],
+  );
   const [errors, setErrors] = useState<VacancyFormErrors>({});
   const [hydrated, setHydrated] = useState(false);
   const [formData, setFormData] = useState<VacancyCreateFormData>({
@@ -165,6 +207,7 @@ export function CreateVacancyForm() {
     refetch: refetchLookups,
   } = api.lookups.getVacancyCreateOptions.useQuery();
   const { data: telegramConfig } = api.vacancies.getTelegramConfig.useQuery();
+  const { data: hhConfig } = api.vacancies.getHhConfig.useQuery();
 
   useEffect(() => {
     if (!vacancyLookups) {
@@ -202,12 +245,21 @@ export function CreateVacancyForm() {
     };
   }, [formData]);
 
+  const hhSelected =
+    publicationsConfig?.selectedChannels.includes("hh.uz") ?? false;
+  const telegramSelected =
+    publicationsConfig?.selectedChannels.includes("telegram") ?? false;
+
   const createVacancy = api.vacancies.create.useMutation({
     onSuccess: async (createdVacancy) => {
       await utils.vacancies.list.invalidate();
       clearDrafts();
 
-      if (telegramConfig?.enabled) {
+      const willOfferTelegram =
+        telegramConfig?.enabled === true && telegramSelected;
+      const willOfferHh = hhConfig?.enabled === true && hhSelected;
+
+      if (willOfferTelegram || willOfferHh) {
         setSavedVacancyId(createdVacancy.id);
         return;
       }
@@ -228,6 +280,18 @@ export function CreateVacancyForm() {
     },
     onError: () => {
       setTelegramStatus("error");
+    },
+  });
+
+  const postToHh = api.vacancies.publishHh.useMutation({
+    onSuccess: (data) => {
+      setHhStatus("sent");
+      setHhError(null);
+      setPublishedHhUrl(data.url);
+    },
+    onError: (error) => {
+      setHhStatus("error");
+      setHhError(error.message || "Не удалось опубликовать на hh.uz");
     },
   });
 
@@ -252,6 +316,61 @@ export function CreateVacancyForm() {
   const closeTelegramModal = () => {
     setSavedVacancyId(null);
     setTelegramStatus("idle");
+    setHhStatus("idle");
+    setHhError(null);
+    setPublishedHhUrl(null);
+  };
+
+  const triggerHhPublish = () => {
+    if (!savedVacancyId || !publicationsConfig) {
+      return;
+    }
+    const hh = publicationsConfig.hh;
+    const requiredFields: Array<[keyof typeof hh, string]> = [
+      ["areaId", "город"],
+      ["employmentId", "тип занятости"],
+      ["scheduleId", "график"],
+      ["experienceId", "опыт"],
+      ["professionalRoleId", "профессиональная роль"],
+      ["billingTypeId", "тип публикации"],
+      ["descriptionHtml", "HTML-описание"],
+    ];
+    const missing = requiredFields
+      .filter(([key]) => !hh[key].trim())
+      .map(([, label]) => label);
+    if (missing.length > 0) {
+      setHhStatus("error");
+      setHhError(`Заполните поля hh.uz: ${missing.join(", ")}`);
+      return;
+    }
+
+    setHhStatus("sending");
+    setHhError(null);
+
+    const parsedFrom = hh.salaryFrom
+      ? parseFormattedNumber(hh.salaryFrom)
+      : undefined;
+    const parsedTo = hh.salaryTo
+      ? parseFormattedNumber(hh.salaryTo)
+      : undefined;
+
+    postToHh.mutate({
+      vacancyId: savedVacancyId,
+      name: publicationsConfig.name || formData.title,
+      descriptionHtml: hh.descriptionHtml,
+      areaId: hh.areaId,
+      employmentId: hh.employmentId,
+      scheduleId: hh.scheduleId,
+      experienceId: hh.experienceId,
+      professionalRoleId: hh.professionalRoleId,
+      billingTypeId: hh.billingTypeId,
+      salaryFrom: parsedFrom,
+      salaryTo: parsedTo,
+      salaryCurrency: hh.salaryCurrency || "UZS",
+      contactPhone: hh.contactPhone
+        ? parseHhPhoneClient(hh.contactPhone)
+        : null,
+    });
   };
 
   const validateDescription = (): boolean => {
@@ -661,9 +780,14 @@ export function CreateVacancyForm() {
             ) : activeSectionId === "publications" ? (
               <CreateVacancyPublications
                 onCancel={handleCancel}
+                onConfigChange={handlePublicationsConfigChange}
                 onContinue={handleContinueFromPublications}
                 prefillDescription={formData.tasks}
                 prefillName={formData.title}
+                prefillSalaryCurrency={formData.salaryCurrency}
+                prefillSalaryFrom={parseFormattedNumber(
+                  formData.salaryExpectation,
+                )}
               />
             ) : (
               <div className="mt-6 flex flex-col gap-6">
@@ -706,50 +830,89 @@ export function CreateVacancyForm() {
       </div>
 
       <Modal
-        description="Опубликовать вакансию в Telegram-канал?"
+        description="Опубликуйте вакансию в выбранных каналах."
         isOpen={savedVacancyId !== null}
         maxWidthClassName="max-w-[460px]"
         onClose={closeTelegramModal}
         title="Вакансия сохранена"
       >
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            className="rounded-[8px] bg-primary-blue-dark px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={postToTelegram.isPending || telegramStatus === "sent"}
-            onClick={() => {
-              if (!savedVacancyId) {
-                return;
-              }
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {telegramSelected && telegramConfig?.enabled && (
+              <button
+                className="rounded-[8px] bg-primary-blue-dark px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={postToTelegram.isPending || telegramStatus === "sent"}
+                onClick={() => {
+                  if (!savedVacancyId) {
+                    return;
+                  }
 
-              setTelegramStatus("sending");
-              postToTelegram.mutate({ vacancyId: savedVacancyId });
-            }}
-            type="button"
-          >
-            {telegramStatus === "sending"
-              ? "Отправка..."
-              : telegramStatus === "sent"
-                ? "Отправлено"
-                : "Telegram"}
-          </button>
-          <button
-            className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
-            onClick={() => router.push("/vacancies")}
-            type="button"
-          >
-            Перейти к вакансиям
-          </button>
+                  setTelegramStatus("sending");
+                  postToTelegram.mutate({ vacancyId: savedVacancyId });
+                }}
+                type="button"
+              >
+                {telegramStatus === "sending"
+                  ? "Отправка..."
+                  : telegramStatus === "sent"
+                    ? "Отправлено"
+                    : "Telegram"}
+              </button>
+            )}
+            {hhSelected && hhConfig?.enabled && (
+              <button
+                className="rounded-[8px] bg-primary-blue-dark px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={postToHh.isPending || hhStatus === "sent"}
+                onClick={triggerHhPublish}
+                type="button"
+              >
+                {hhStatus === "sending"
+                  ? "Публикация..."
+                  : hhStatus === "sent"
+                    ? "Опубликовано"
+                    : hhStatus === "error"
+                      ? "Повторить hh.uz"
+                      : "hh.uz"}
+              </button>
+            )}
+            <button
+              className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              onClick={() => router.push("/vacancies")}
+              type="button"
+            >
+              Перейти к вакансиям
+            </button>
+          </div>
+          {telegramStatus === "error" && (
+            <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              Не удалось отправить в Telegram. Попробуйте ещё раз.
+            </div>
+          )}
+          {telegramStatus === "sent" && (
+            <div className="rounded-[6px] border border-success-green-bg bg-success-green-bg px-3 py-2 text-[14px] text-success-green">
+              Вакансия опубликована в Telegram-канал.
+            </div>
+          )}
+          {hhStatus === "error" && (
+            <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              {hhError ?? "Не удалось опубликовать на hh.uz."}
+            </div>
+          )}
+          {hhStatus === "sent" && publishedHhUrl && (
+            <div className="rounded-[6px] border border-success-green-bg bg-success-green-bg px-3 py-2 text-[14px] text-success-green">
+              Вакансия опубликована на hh.uz:{" "}
+              <a
+                className="underline"
+                href={publishedHhUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                открыть
+              </a>
+              .
+            </div>
+          )}
         </div>
-        {telegramStatus === "error" && (
-          <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
-            Не удалось отправить в Telegram. Попробуйте ещё раз.
-          </div>
-        )}
-        {telegramStatus === "sent" && (
-          <div className="rounded-[6px] border border-success-green-bg bg-success-green-bg px-3 py-2 text-[14px] text-success-green">
-            Вакансия опубликована в Telegram-канал.
-          </div>
-        )}
       </Modal>
     </div>
   );
