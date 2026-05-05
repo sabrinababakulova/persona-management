@@ -12,6 +12,7 @@ import {
   fetchHhVacancyApplicants,
   fetchHhVacancyById,
   fetchHhVacancyDetail,
+  type HhVacancyDetail,
 } from "~/server/services/hh";
 import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
 import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
@@ -49,53 +50,66 @@ export const getVacancyProcedure = protectedProcedure
       }
 
       try {
-        const hhVacancy = await fetchHhVacancyById(
-          hhVacancyId,
-          hhAccount.accessToken,
-        );
+        // Fetch the full hh.uz detail in parallel with the slimmer "by id" payload (status,
+        // responses, externalUrl) and the applicants list. The detail call gives us every
+        // field the form needs (areaId, employmentId, scheduleId, experienceId,
+        // professionalRoleId, billingTypeId, salary range, descriptionHtml, contact phone)
+        // while `fetchHhVacancyById` still owns the canonical status/responses/externalUrl
+        // mapping used elsewhere.
+        const [hhVacancy, hhDetail, relatedCandidatesResult] =
+          await Promise.all([
+            fetchHhVacancyById(hhVacancyId, hhAccount.accessToken),
+            fetchHhVacancyDetail(hhVacancyId, hhAccount.accessToken).catch(
+              (error: unknown) => {
+                console.error("Failed to fetch HH vacancy detail", {
+                  hhVacancyId,
+                  companyId: userCompanyId,
+                  error,
+                });
+                return null;
+              },
+            ),
+            fetchHhVacancyApplicants(hhVacancyId, hhAccount.accessToken).catch(
+              (error: unknown) => {
+                console.error("Failed to fetch HH vacancy applicants", {
+                  hhVacancyId,
+                  companyId: userCompanyId,
+                  error,
+                });
+                return [] as {
+                  id: string;
+                  fullName: string;
+                  status: string | null;
+                }[];
+              },
+            ),
+          ]);
 
-        let relatedCandidates: {
-          id: string;
-          fullName: string;
-          status: string | null;
-        }[] = [];
-
-        try {
-          relatedCandidates = await fetchHhVacancyApplicants(
-            hhVacancyId,
-            hhAccount.accessToken,
-          );
-        } catch (error) {
-          console.error("Failed to fetch HH vacancy applicants", {
-            hhVacancyId,
-            companyId: userCompanyId,
-            error,
-          });
-        }
+        const merged = mapHhDetailToVacancyShape(hhDetail);
 
         return {
           id: input.id,
           title: hhVacancy.title,
           status: hhVacancy.status,
           responses: hhVacancy.responses,
-          areaId: "",
-          employmentId: "",
-          scheduleId: "",
-          experienceId: "",
-          professionalRoleId: "",
-          billingTypeId: "",
-          salaryFrom: undefined,
-          salaryTo: undefined,
-          salaryCurrency: "UZS" as const,
-          descriptionHtml: "",
-          contactPhone: "",
+          areaId: merged.areaId,
+          employmentId: merged.employmentId,
+          scheduleId: merged.scheduleId,
+          experienceId: merged.experienceId,
+          professionalRoleId: merged.professionalRoleId,
+          billingTypeId: merged.billingTypeId,
+          salaryFrom: merged.salaryFrom,
+          salaryTo: merged.salaryTo,
+          salaryCurrency: merged.salaryCurrency,
+          descriptionHtml: merged.descriptionHtml,
+          contactPhone: merged.contactPhone,
           companyId: userCompanyId,
           hhVacancyId,
           publishedAt: hhVacancy.publishedAt,
           source: "hh.uz" as const,
           externalUrl: hhVacancy.externalUrl,
           publications: [],
-          relatedCandidates,
+          relatedCandidates: relatedCandidatesResult,
         };
       } catch (error) {
         console.error("Failed to fetch HH vacancy by id", {
@@ -139,12 +153,111 @@ export const getVacancyProcedure = protectedProcedure
         .orderBy(desc(vacancyPublications.createdAt)),
     ]);
 
+    const formatted = formatVacancy(vacancy, relatedCandidateRows.length);
+
+    // If the local row is linked to an hh.uz vacancy, fetch the upstream detail and use it
+    // to fill any blank fields. Local data wins where it's present (the user may have edited
+    // the description in our UI without re-publishing); hh.uz wins for the lookup IDs and
+    // anything else that's empty in the DB. This is the same data the form would otherwise
+    // need to render — pulling it here avoids leaving the edit form empty.
+    if (vacancy.hhVacancyId) {
+      const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      if (hhAccount?.accessToken) {
+        const hhDetail = await fetchHhVacancyDetail(
+          vacancy.hhVacancyId,
+          hhAccount.accessToken,
+        ).catch((error: unknown) => {
+          console.error("Failed to fetch HH vacancy detail for local vacancy", {
+            hhVacancyId: vacancy.hhVacancyId,
+            companyId: userCompanyId,
+            error,
+          });
+          return null;
+        });
+
+        if (hhDetail) {
+          const fallback = mapHhDetailToVacancyShape(hhDetail);
+          formatted.areaId ||= fallback.areaId;
+          formatted.employmentId ||= fallback.employmentId;
+          formatted.scheduleId ||= fallback.scheduleId;
+          formatted.experienceId ||= fallback.experienceId;
+          formatted.professionalRoleId ||= fallback.professionalRoleId;
+          formatted.billingTypeId ||= fallback.billingTypeId;
+          formatted.descriptionHtml ||= fallback.descriptionHtml;
+          formatted.contactPhone ||= fallback.contactPhone;
+          if (formatted.salaryFrom === undefined) {
+            formatted.salaryFrom = fallback.salaryFrom;
+          }
+          if (formatted.salaryTo === undefined) {
+            formatted.salaryTo = fallback.salaryTo;
+          }
+        }
+      }
+    }
+
     return {
-      ...formatVacancy(vacancy, relatedCandidateRows.length),
+      ...formatted,
       publications: publicationRows.map(formatVacancyPublication),
       relatedCandidates: relatedCandidateRows,
     };
   });
+
+/**
+ * Pulls the hh.uz form-shape fields out of a {@link HhVacancyDetail} so callers can spread them
+ * into a Vacancy response. Returns sensible empty defaults when `detail` is null (the hh.uz
+ * call failed or the vacancy isn't linked).
+ */
+function mapHhDetailToVacancyShape(detail: HhVacancyDetail | null): {
+  areaId: string;
+  employmentId: string;
+  scheduleId: string;
+  experienceId: string;
+  professionalRoleId: string;
+  billingTypeId: string;
+  salaryFrom: number | undefined;
+  salaryTo: number | undefined;
+  salaryCurrency: "UZS" | "USD";
+  descriptionHtml: string;
+  contactPhone: string;
+} {
+  if (!detail) {
+    return {
+      areaId: "",
+      employmentId: "",
+      scheduleId: "",
+      experienceId: "",
+      professionalRoleId: "",
+      billingTypeId: "",
+      salaryFrom: undefined,
+      salaryTo: undefined,
+      salaryCurrency: "UZS",
+      descriptionHtml: "",
+      contactPhone: "",
+    };
+  }
+
+  const phone = detail.contacts?.phones?.[0];
+  const phoneParts = phone
+    ? (phone.formatted ??
+      [phone.country, phone.city, phone.number]
+        .filter((part): part is string => Boolean(part))
+        .join(" "))
+    : "";
+
+  return {
+    areaId: detail.areaId ?? "",
+    employmentId: detail.employmentId ?? "",
+    scheduleId: detail.scheduleId ?? "",
+    experienceId: detail.experienceId ?? "",
+    professionalRoleId: detail.professionalRoleIds[0] ?? "",
+    billingTypeId: detail.billingTypeId ?? "",
+    salaryFrom: detail.salary?.from ?? undefined,
+    salaryTo: detail.salary?.to ?? undefined,
+    salaryCurrency: detail.salary?.currency === "USD" ? "USD" : "UZS",
+    descriptionHtml: detail.descriptionHtml ?? "",
+    contactPhone: phoneParts,
+  };
+}
 
 export const getHhVacancyDetailProcedure = protectedProcedure
   .input(vacancyIdInputSchema)

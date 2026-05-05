@@ -537,10 +537,18 @@ export type HhVacancyDetail = {
   id: string;
   name: string;
   descriptionHtml: string;
+  // Display labels (used by HhVacancyPreview to render names).
   area: string | null;
   employment: string | null;
   schedule: string | null;
   experience: string | null;
+  // Lookup IDs, surfaced for the edit form so it can resolve them via hh.uz dictionaries.
+  areaId: string | null;
+  employmentId: string | null;
+  scheduleId: string | null;
+  experienceId: string | null;
+  professionalRoleIds: string[];
+  billingTypeId: string | null;
   workFormats: string[];
   professionalRoles: string[];
   keySkills: string[];
@@ -608,14 +616,17 @@ type HhVacancyDetailRaw = {
   id?: string | null;
   name?: string | null;
   description?: string | null;
-  area?: { name?: string | null } | null;
-  employment?: { name?: string | null } | null;
-  schedule?: { name?: string | null } | null;
-  experience?: { name?: string | null } | null;
+  area?: { id?: string | null; name?: string | null } | null;
+  employment?: { id?: string | null; name?: string | null } | null;
+  schedule?: { id?: string | null; name?: string | null } | null;
+  experience?: { id?: string | null; name?: string | null } | null;
   work_format?: Array<{ name?: string | null }> | null;
-  professional_roles?: Array<{ name?: string | null }> | null;
+  professional_roles?: Array<{
+    id?: string | null;
+    name?: string | null;
+  }> | null;
   key_skills?: Array<{ name?: string | null }> | null;
-  billing_type?: { name?: string | null } | null;
+  billing_type?: { id?: string | null; name?: string | null } | null;
   type?: { name?: string | null } | null;
   archived?: boolean | null;
   hidden?: boolean | null;
@@ -711,6 +722,14 @@ export async function fetchHhVacancyDetail(
     employment: raw.employment?.name?.trim() || null,
     schedule: raw.schedule?.name?.trim() || null,
     experience: raw.experience?.name?.trim() || null,
+    areaId: raw.area?.id?.trim() || null,
+    employmentId: raw.employment?.id?.trim() || null,
+    scheduleId: raw.schedule?.id?.trim() || null,
+    experienceId: raw.experience?.id?.trim() || null,
+    professionalRoleIds: (raw.professional_roles ?? [])
+      .map((item) => item.id?.trim())
+      .filter((id): id is string => Boolean(id)),
+    billingTypeId: raw.billing_type?.id?.trim() || null,
     workFormats: (raw.work_format ?? [])
       .map((item) => item.name?.trim())
       .filter((name): name is string => Boolean(name)),

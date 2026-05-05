@@ -189,6 +189,13 @@ export function VacancyTable({
                 const statusTone =
                   vacancyStatusTone[item.status] ?? vacancyStatusTone.active;
                 const isHhVacancy = item.source === "hh.uz";
+                // The badge is broader than `isHhVacancy`: a vacancy created in our app and
+                // then published to hh.uz lives locally (source === "local") but still has a
+                // `hhVacancyId` link, and the user wants it tagged. Status-edit and funnel
+                // gating below stay tied to `isHhVacancy` because hh.uz-fetched rows aren't
+                // editable through the local update mutation.
+                const hasHhConnection =
+                  isHhVacancy || Boolean(item.hhVacancyId);
                 const publishedAtLabel = formatVacancyPublishedAt(
                   item.publishedAt,
                 );
@@ -212,20 +219,12 @@ export function VacancyTable({
                         />
                       )}
                       <div className="min-w-0">
-                        {isHhVacancy ? (
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          {hasHhConnection && (
                             <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2.5 py-1 font-semibold text-[11px] text-accent-red leading-none">
                               hh.uz
                             </span>
-                            <Link
-                              className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
-                              href={getDetailPath(item)}
-                              title={item.title}
-                            >
-                              {item.title}
-                            </Link>
-                          </div>
-                        ) : (
+                          )}
                           <Link
                             className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
                             href={getDetailPath(item)}
@@ -233,7 +232,7 @@ export function VacancyTable({
                           >
                             {item.title}
                           </Link>
-                        )}
+                        </div>
                         {item.experienceId && (
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             {item.experienceId}
