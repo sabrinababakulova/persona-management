@@ -1,63 +1,72 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
-import { SideMenu } from "~/app/_components/sideMenu";
-import { api } from "~/trpc/react";
-import { VacancyDescription } from "../components";
+import { useMemo } from "react";
+import { api, type RouterOutputs } from "~/trpc/react";
+import {
+  CreateVacancyForm,
+  type CreateVacancyFormInitialData,
+} from "../create/create-vacancy-form";
+import { HhVacancyPreview } from "./hh-vacancy-preview";
 
-const SIDE_MENU_ITEMS = [
-  { id: "description", label: "Описание вакансии" },
-  { id: "publications", label: "Публикации" },
-  { id: "preview", label: "Предпросмотр" },
-] as const;
+type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
 
+/**
+ * Maps a vacancy fetched from `vacancies.get` onto the {@link CreateVacancyForm} field names.
+ *
+ * The schema now stores hh.uz-shaped fields directly, so this mapping is mostly 1:1. Numeric
+ * salary values are formatted with thousands separators for display in the form's text inputs.
+ */
+function buildInitialData(
+  vacancy: VacancyDetail,
+): CreateVacancyFormInitialData {
+  const formatter = new Intl.NumberFormat("ru-RU");
+  return {
+    name: vacancy.title,
+    areaId: vacancy.areaId ?? "",
+    employmentId: vacancy.employmentId ?? "",
+    scheduleId: vacancy.scheduleId ?? "",
+    experienceId: vacancy.experienceId ?? "",
+    professionalRoleId: vacancy.professionalRoleId ?? "",
+    billingTypeId: vacancy.billingTypeId ?? "",
+    salaryFrom:
+      vacancy.salaryFrom !== undefined && vacancy.salaryFrom !== null
+        ? formatter.format(vacancy.salaryFrom)
+        : "",
+    salaryTo:
+      vacancy.salaryTo !== undefined && vacancy.salaryTo !== null
+        ? formatter.format(vacancy.salaryTo)
+        : "",
+    salaryCurrency: vacancy.salaryCurrency ?? "UZS",
+    descriptionHtml: vacancy.descriptionHtml ?? "",
+    contactPhone: vacancy.contactPhone ?? "",
+  };
+}
+
+/**
+ * Vacancy detail page.
+ *
+ * Renders the shared {@link CreateVacancyForm} in edit mode, prefilled from `vacancies.get`.
+ * The form's preview tab is overridden to show {@link HhVacancyPreview} when the vacancy is
+ * linked to hh.uz; otherwise it shows a "not yet published" placeholder.
+ */
 export default function VacancyDetailPage() {
   const { id: vacancyId } = useParams() as { id: string };
-  const [activeSectionId, setActiveSectionId] = useState<string>(
-    SIDE_MENU_ITEMS[0].id,
-  );
-
-  const {
-    data: vacancyLookups,
-    isError: isLookupsError,
-    isLoading: isLookupsLoading,
-    refetch: refetchLookups,
-  } = api.lookups.getVacancyCreateOptions.useQuery();
 
   const { data: vacancy, isLoading } = api.vacancies.get.useQuery(
     { id: vacancyId },
     { enabled: Boolean(vacancyId) },
   );
 
-  const activeSection = SIDE_MENU_ITEMS.find(
-    (item) => item.id === activeSectionId,
+  const initialData = useMemo(
+    () => (vacancy ? buildInitialData(vacancy) : undefined),
+    [vacancy],
   );
 
-  if (isLoading || isLookupsLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-light">
         <div className="text-text-secondary">Загрузка...</div>
-      </div>
-    );
-  }
-
-  if (isLookupsError || !vacancyLookups) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
-          <p className="mb-4 text-[14px]">
-            Не удалось загрузить справочники из базы данных.
-          </p>
-          <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
-            onClick={() => void refetchLookups()}
-            type="button"
-          >
-            Повторить
-          </button>
-        </div>
       </div>
     );
   }
@@ -70,58 +79,55 @@ export default function VacancyDetailPage() {
     );
   }
 
+  const hasHhLink = vacancy.source === "hh.uz" || Boolean(vacancy.hhVacancyId);
+  // Archived hh.uz vacancies are read-only: hh.uz only accepts edits to active vacancies, so
+  // we lock the form and tell the user how to unblock it.
+  const isArchivedHh = hasHhLink && vacancy.status === "archive";
+
+  const previewContent = hasHhLink ? (
+    <HhVacancyPreview vacancyId={vacancyId} />
+  ) : (
+    <section className="rounded-[8px] border border-border-input bg-bg-input p-5">
+      <div className="font-bold text-[18px] text-text-heading">hh.uz</div>
+      <div className="mt-2 text-[14px] text-text-secondary">
+        Эта вакансия не опубликована на hh.uz. Опубликуйте её или укажите ID
+        hh.uz в админ-панели Directus, чтобы увидеть предпросмотр.
+      </div>
+    </section>
+  );
+
+  const archivedBanner = isArchivedHh ? (
+    <section
+      aria-live="polite"
+      className="flex items-start gap-3 rounded-[8px] border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-[14px] text-text-heading"
+      role="alert"
+    >
+      <span
+        aria-hidden="true"
+        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-[12px] text-bg-light leading-none"
+      >
+        !
+      </span>
+      <div>
+        <p className="font-semibold leading-[1.4]">Эта вакансия в архиве.</p>
+        <p className="mt-1 text-text-secondary leading-[1.4]">
+          Чтобы внести изменения, переведите её в активный статус.
+        </p>
+      </div>
+    </section>
+  ) : null;
+
   return (
     <main className="h-full bg-bg-light">
-      <div className="flex w-full gap-[64px] px-6 pt-8 pb-8">
-        <SideMenu
-          activeId={activeSectionId}
-          items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
-          onSelect={setActiveSectionId}
-        />
-
-        <section className="flex flex-3 flex-col">
-          <div className="w-full max-w-[560px]">
-            <Breadcrumbs
-              label={vacancy.title}
-              rootHref="/vacancies"
-              rootLabel="Вакансии"
-            />
-
-            {activeSectionId === "description" ? (
-              <>
-                {vacancy.source === "hh.uz" && (
-                  <div className="mt-6 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary">
-                    Данные загружены из hh.uz. Изменения названия, описания,
-                    зарплаты и статуса будут синхронизированы с hh.uz.
-                  </div>
-                )}
-
-                <VacancyDescription
-                  city={vacancy.city}
-                  comments={vacancy.comments}
-                  companyDescription={vacancy.companyDescription}
-                  level={vacancy.level}
-                  salaryCurrency={vacancy.salaryCurrency}
-                  salaryExpectation={vacancy.salaryExpectation}
-                  status={vacancy.status}
-                  tasks={vacancy.tasks}
-                  team={vacancy.team}
-                  title={vacancy.title}
-                  vacancyId={vacancyId}
-                  vacancyLookups={vacancyLookups}
-                  workScheduleEnd={vacancy.workScheduleEnd}
-                  workScheduleStart={vacancy.workScheduleStart}
-                  workType={vacancy.workType}
-                />
-              </>
-            ) : (
-              <div className="mt-12 rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
-                Секция "{activeSection?.label}" будет доступна позже.
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
+      <CreateVacancyForm
+        bannerContent={archivedBanner}
+        breadcrumbLabel={vacancy.title}
+        initialData={initialData}
+        pageHeading={vacancy.title || "Редактирование вакансии"}
+        previewContent={previewContent}
+        readOnly={isArchivedHh}
+        vacancyId={vacancyId}
+      />
     </main>
   );
 }

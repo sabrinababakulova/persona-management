@@ -17,6 +17,13 @@ type PublicationsDraft = {
   selectedChannels: PublicationChannel[];
 };
 
+export type PublicationsConfig = {
+  name: string;
+  description: string;
+  selectedChannels: PublicationChannel[];
+};
+
+/** Type guard that narrows an unknown value to one of {@link PUBLICATION_CHANNELS}. */
 function isPublicationChannel(value: unknown): value is PublicationChannel {
   return (
     typeof value === "string" &&
@@ -24,13 +31,25 @@ function isPublicationChannel(value: unknown): value is PublicationChannel {
   );
 }
 
+/**
+ * Renders the publications step of the vacancy creation flow.
+ *
+ * Collects the publication's display name and short description, plus the
+ * channels (Telegram and/or hh.uz) the user wants to publish to. The hh.uz
+ * required fields are collected on the description step now, so they no
+ * longer appear here when the hh.uz checkbox is selected.
+ *
+ * Drafts are persisted to localStorage under {@link PUBLICATIONS_DRAFT_KEY}.
+ */
 export function CreateVacancyPublications({
-  onCancel,
+  onBack,
+  onConfigChange,
   onContinue,
   prefillDescription,
   prefillName,
 }: {
-  onCancel: () => void;
+  onBack: () => void;
+  onConfigChange: (config: PublicationsConfig) => void;
   onContinue: () => void;
   prefillDescription: string;
   prefillName: string;
@@ -69,7 +88,11 @@ export function CreateVacancyPublications({
     if (!hydrated) {
       return;
     }
-    const draft: PublicationsDraft = { name, description, selectedChannels };
+    const draft: PublicationsDraft = {
+      name,
+      description,
+      selectedChannels,
+    };
     try {
       window.localStorage.setItem(
         PUBLICATIONS_DRAFT_KEY,
@@ -80,6 +103,11 @@ export function CreateVacancyPublications({
     }
   }, [name, description, selectedChannels, hydrated]);
 
+  useEffect(() => {
+    onConfigChange({ name, description, selectedChannels });
+  }, [name, description, selectedChannels, onConfigChange]);
+
+  /** Toggles the supplied channel in or out of {@link selectedChannels}. */
   const toggleChannel = (channel: PublicationChannel) => {
     setSelectedChannels((previous) =>
       previous.includes(channel)
@@ -156,10 +184,10 @@ export function CreateVacancyPublications({
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-border-input border-t pt-4">
         <button
           className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-          onClick={onCancel}
+          onClick={onBack}
           type="button"
         >
-          Отмена
+          Назад
         </button>
         <button
           className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"

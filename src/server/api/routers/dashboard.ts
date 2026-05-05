@@ -240,14 +240,24 @@ export const dashboardRouter = createTRPCRouter({
       },
     ];
 
-    const recentVacancies = recentVacancyRows.map((v) => ({
+    const recentVacancies: Vacancy[] = recentVacancyRows.map((v) => ({
       id: v.id,
       title: v.title,
-      level: v.level ?? "",
       status: (v.status ?? "active") as Vacancy["status"],
-      city: v.city ?? "",
       responses: 0,
-      workType: v.workType ?? "",
+      areaId: v.areaId ?? "",
+      employmentId: v.employmentId ?? "",
+      scheduleId: v.scheduleId ?? "",
+      experienceId: v.experienceId ?? "",
+      professionalRoleId: v.professionalRoleId ?? "",
+      billingTypeId: v.billingTypeId ?? "",
+      salaryFrom: v.salaryFrom ?? undefined,
+      salaryTo: v.salaryTo ?? undefined,
+      salaryCurrency: (v.salaryCurrency === "USD" ? "USD" : "UZS") as
+        | "UZS"
+        | "USD",
+      descriptionHtml: v.descriptionHtml ?? "",
+      contactPhone: v.contactPhone ?? "",
       source: "local" as const,
     }));
 

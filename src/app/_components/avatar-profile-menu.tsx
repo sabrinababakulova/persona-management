@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { LogoutIcon, ProfileOutlineIcon } from "~/app/_components/icons";
+import { usePresence } from "./use-presence";
 
 type AvatarProfileMenuProps = {
   avatarSrc: string;
@@ -40,6 +41,7 @@ export function AvatarProfileMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { shouldRender, isVisible } = usePresence(isOpen, 180);
 
   useEffect(() => {
     if (!isOpen) {
@@ -91,7 +93,7 @@ export function AvatarProfileMenu({
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label="Профиль"
-        className="h-10 w-10 overflow-hidden rounded-[40px] bg-primary-blue-light outline-none ring-primary-blue focus-visible:ring-2"
+        className="h-10 w-10 overflow-hidden rounded-[40px] bg-primary-blue-light outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
@@ -104,13 +106,13 @@ export function AvatarProfileMenu({
         />
       </button>
 
-      {isOpen && (
+      {shouldRender && (
         <div
-          className="absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] overflow-hidden rounded-[6px] border border-border-light bg-bg-light shadow-toast"
+          className={`absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] overflow-hidden rounded-[6px] border border-border-light bg-bg-light shadow-toast transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"}`}
           role="menu"
         >
           <Link
-            className="flex h-10 items-center gap-2 px-3 text-text-secondary transition-colors hover:bg-bg-light"
+            className="flex h-10 items-center gap-2 px-3 text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
             href="/my-profile"
             onClick={() => setIsOpen(false)}
             role="menuitem"
@@ -121,7 +123,7 @@ export function AvatarProfileMenu({
             </span>
           </Link>
           <button
-            className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-colors hover:bg-bg-light disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isLoggingOut}
             onClick={handleLogout}
             role="menuitem"

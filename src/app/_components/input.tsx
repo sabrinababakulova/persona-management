@@ -22,7 +22,7 @@ export function Input({
           {label}
         </label>
         <div
-          className={`flex h-12 w-full items-center rounded-[6px] border border-border-input bg-bg-input focus-within:border-primary-blue ${className ?? ""}`}
+          className={`flex h-12 w-full items-center rounded-[6px] border border-border-input bg-bg-input transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-primary-blue focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(35,122,248,0.12)] hover:border-border-control hover:bg-white hover:shadow-[0_8px_18px_rgba(28,28,30,0.04)] ${className ?? ""}`}
         >
           <input
             className={`h-full min-w-0 flex-1 border-none bg-transparent px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:outline-none ${inputClassName ?? ""}`}

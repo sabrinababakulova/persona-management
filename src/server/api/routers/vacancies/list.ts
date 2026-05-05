@@ -93,9 +93,7 @@ export const listVacanciesProcedure = protectedProcedure
       if (search) {
         const searchCondition = or(
           ilike(vacancies.title, `%${escapeLike(search)}%`),
-          ilike(vacancies.level, `%${escapeLike(search)}%`),
-          ilike(vacancies.city, `%${escapeLike(search)}%`),
-          ilike(vacancies.workType, `%${escapeLike(search)}%`),
+          ilike(vacancies.descriptionHtml, `%${escapeLike(search)}%`),
         );
 
         if (searchCondition) {
@@ -108,7 +106,10 @@ export const listVacanciesProcedure = protectedProcedure
       }
 
       if (city) {
-        localConditions.push(eq(vacancies.city, city));
+        // The `city` filter input now matches an hh.uz `areaId` since the schema no longer
+        // stores a free-text city. Existing FilterModal city options will only filter local
+        // vacancies whose stored areaId equals the supplied value.
+        localConditions.push(eq(vacancies.areaId, city));
       }
 
       const rows = await ctx.db
@@ -149,6 +150,16 @@ export const listVacanciesProcedure = protectedProcedure
       };
     }
 
+    const linkedHhVacancyRows = await ctx.db
+      .select({ hhVacancyId: vacancies.hhVacancyId })
+      .from(vacancies)
+      .where(eq(vacancies.companyId, userCompanyId));
+    const linkedHhVacancyIds = new Set(
+      linkedHhVacancyRows
+        .map((row) => row.hhVacancyId)
+        .filter((id): id is string => Boolean(id)),
+    );
+
     const paginatedLocalVacancies = localVacancies.slice(
       offset,
       offset + limit,
@@ -172,14 +183,19 @@ export const listVacanciesProcedure = protectedProcedure
           offset: hhOffset,
         });
 
+        const dedupedHhItems = hhPage.items.filter(
+          (vacancy) => !linkedHhVacancyIds.has(vacancy.id),
+        );
+        const droppedCount = hhPage.items.length - dedupedHhItems.length;
+
         return {
           items: [
             ...paginatedLocalVacancies,
-            ...hhPage.items.map((vacancy) =>
+            ...dedupedHhItems.map((vacancy) =>
               formatHhVacancy(vacancy, userCompanyId),
             ),
           ],
-          total: localVacancies.length + hhPage.total,
+          total: localVacancies.length + hhPage.total - droppedCount,
         };
       }
 
@@ -188,16 +204,20 @@ export const listVacanciesProcedure = protectedProcedure
         hhAccount.accessToken,
       );
       const filteredHhVacancies = hhVacancies
-        .map((vacancy) => formatHhVacancy(vacancy, userCompanyId))
-        .filter((vacancy) => {
-          if (statuses.length > 0 && !statuses.includes(vacancy.status)) {
+        .filter((vacancy) => !linkedHhVacancyIds.has(vacancy.id))
+        .map((vacancy) => ({
+          formatted: formatHhVacancy(vacancy, userCompanyId),
+          // hh.uz items still ship display labels we use for keyword matching.
+          searchHaystack:
+            `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.workType}`.toLowerCase(),
+          cityName: vacancy.city.trim().toLowerCase(),
+        }))
+        .filter(({ formatted, searchHaystack, cityName }) => {
+          if (statuses.length > 0 && !statuses.includes(formatted.status)) {
             return false;
           }
 
-          if (
-            normalizedCity &&
-            vacancy.city.trim().toLowerCase() !== normalizedCity
-          ) {
+          if (normalizedCity && cityName !== normalizedCity) {
             return false;
           }
 
@@ -205,11 +225,9 @@ export const listVacanciesProcedure = protectedProcedure
             return true;
           }
 
-          const combinedValue =
-            `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.source} ${vacancy.workType}`.toLowerCase();
-
-          return combinedValue.includes(normalizedSearch);
-        });
+          return searchHaystack.includes(normalizedSearch);
+        })
+        .map(({ formatted }) => formatted);
 
       const items = [...localVacancies, ...filteredHhVacancies];
 

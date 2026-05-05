@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { ModalProps } from "~/types/components/modal-props";
+import { usePresence } from "./use-presence";
 
 export function Modal({
   isOpen,
@@ -27,6 +28,7 @@ export function Modal({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const closeOnEscapeRef = useRef(closeOnEscape);
+  const { shouldRender, isVisible } = usePresence(isOpen, 220);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -37,7 +39,7 @@ export function Modal({
   }, [closeOnEscape]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!shouldRender || !isOpen) {
       return;
     }
 
@@ -99,9 +101,9 @@ export function Modal({
       window.removeEventListener("keydown", handleKeyDown);
       previousActiveElementRef.current?.focus();
     };
-  }, [isOpen]);
+  }, [isOpen, shouldRender]);
 
-  if (!isOpen) {
+  if (!shouldRender) {
     return null;
   }
 
@@ -113,21 +115,23 @@ export function Modal({
   return (
     <div
       aria-describedby={describedBy}
+      aria-hidden={!isOpen}
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
       aria-modal="true"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-5 ${containerClassName ?? ""}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-5 transition-opacity duration-200 ease-out ${isVisible ? "opacity-100" : "pointer-events-none opacity-0"} ${containerClassName ?? ""}`}
       role="dialog"
     >
       <button
         aria-label={closeButtonLabel}
-        className={`absolute inset-0 bg-text-heading/20 ${overlayClassName ?? ""}`}
+        className={`absolute inset-0 bg-text-heading/20 transition-opacity duration-200 ease-out ${isVisible ? "opacity-100" : "opacity-0"} ${overlayClassName ?? ""}`}
+        data-motion="none"
         onClick={closeOnBackdropClick ? onClose : undefined}
         type="button"
       />
 
       <div
-        className={`relative w-full rounded-[8px] border border-border-input bg-bg-light p-5 shadow-toast ${maxWidthClassName} ${panelClassName ?? ""}`}
+        className={`relative w-full rounded-[8px] border border-border-input bg-bg-light p-5 shadow-modal transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.98] opacity-0"} ${maxWidthClassName} ${panelClassName ?? ""}`}
         ref={dialogPanelRef}
         tabIndex={-1}
       >

@@ -14,17 +14,25 @@ import {
 } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
 import {
+  companies,
   companyTelegramChannels,
   vacancies,
   vacancyPublications,
 } from "~/server/db/schema";
 import {
   archiveHhVacancy,
+  fetchHhAreasUz,
+  fetchHhDictionaries,
+  fetchHhProfessionalRoles,
   fetchHhVacancyById,
   prolongHhVacancy,
+  publishHhVacancy,
   updateHhVacancyContent,
 } from "~/server/services/hh";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import {
+  getCompanyHhAccount,
+  resolveCompanyHhAuth,
+} from "~/server/services/hh-company-account";
 import {
   isTelegramConfigured,
   sendTelegramMessage,
@@ -49,19 +57,19 @@ export const createVacancyProcedure = protectedProcedure
       .insert(vacancies)
       .values({
         title: input.title,
-        level: input.level ?? null,
         status: input.status,
-        city: input.city ?? null,
         responses: input.responses,
-        workType: input.workType ?? null,
-        salaryExpectation: input.salaryExpectation ?? null,
+        areaId: input.areaId ?? null,
+        employmentId: input.employmentId ?? null,
+        scheduleId: input.scheduleId ?? null,
+        experienceId: input.experienceId ?? null,
+        professionalRoleId: input.professionalRoleId ?? null,
+        billingTypeId: input.billingTypeId ?? null,
+        salaryFrom: input.salaryFrom ?? null,
+        salaryTo: input.salaryTo ?? null,
         salaryCurrency: input.salaryCurrency,
-        workScheduleStart: input.workScheduleStart ?? null,
-        workScheduleEnd: input.workScheduleEnd ?? null,
-        comments: input.comments ?? null,
-        tasks: input.tasks ?? null,
-        team: input.team ?? null,
-        companyDescription: input.companyDescription ?? null,
+        descriptionHtml: input.descriptionHtml ?? null,
+        contactPhone: input.contactPhone ?? null,
         companyId,
       })
       .returning();
@@ -113,9 +121,17 @@ export const updateVacancyProcedure = protectedProcedure
       const errors: string[] = [];
       const contentFields: Parameters<typeof updateHhVacancyContent>[2] = {};
       if (input.title !== undefined) contentFields.name = input.title;
-      if (input.tasks !== undefined) contentFields.description = input.tasks;
-      if (input.salaryExpectation !== undefined) {
-        contentFields.salaryFrom = input.salaryExpectation;
+      if (
+        input.descriptionHtml !== undefined &&
+        input.descriptionHtml !== null
+      ) {
+        contentFields.description = input.descriptionHtml;
+      }
+      if (input.salaryFrom !== undefined) {
+        contentFields.salaryFrom = input.salaryFrom;
+      }
+      if (input.salaryTo !== undefined) {
+        contentFields.salaryTo = input.salaryTo;
       }
       if (input.salaryCurrency !== undefined) {
         contentFields.salaryCurrency = input.salaryCurrency;
@@ -170,22 +186,25 @@ export const updateVacancyProcedure = protectedProcedure
         hhVacancyId,
         hhAccount.accessToken,
       );
+      // hh.uz returns its display labels (city, level, workType) on the search response, but
+      // the schema now stores hh.uz lookup IDs we can't recover from those names. Return blank
+      // ID fields and let the UI re-resolve names from the dictionaries when needed.
       return {
         id: input.id,
         title: updated.title,
-        level: updated.level ?? "",
         status: updated.status,
-        city: updated.city ?? "",
         responses: updated.responses,
-        workType: updated.workType ?? "",
-        salaryExpectation: updated.salaryExpectation,
+        areaId: "",
+        employmentId: "",
+        scheduleId: "",
+        experienceId: "",
+        professionalRoleId: "",
+        billingTypeId: "",
+        salaryFrom: undefined,
+        salaryTo: undefined,
         salaryCurrency: updated.salaryCurrency ?? "UZS",
-        workScheduleStart: "09:00",
-        workScheduleEnd: "18:00",
-        comments: "",
-        tasks: updated.tasks ?? "",
-        team: "",
-        companyDescription: "",
+        descriptionHtml: "",
+        contactPhone: "",
         companyId: userCompanyId,
         publishedAt: updated.publishedAt,
         source: "hh.uz" as const,
@@ -211,73 +230,82 @@ export const updateVacancyProcedure = protectedProcedure
 
     const valuesToUpdate: Partial<{
       title: string;
-      level: string | null;
       status: "active" | "draft" | "paused" | "closed" | "archive";
-      city: string | null;
       responses: number;
-      workType: string | null;
-      salaryExpectation: number | null;
+      areaId: string | null;
+      employmentId: string | null;
+      scheduleId: string | null;
+      experienceId: string | null;
+      professionalRoleId: string | null;
+      billingTypeId: string | null;
+      salaryFrom: number | null;
+      salaryTo: number | null;
       salaryCurrency: SalaryCurrency;
-      workScheduleStart: string | null;
-      workScheduleEnd: string | null;
-      comments: string | null;
-      tasks: string | null;
-      team: string | null;
-      companyDescription: string | null;
+      descriptionHtml: string | null;
+      contactPhone: string | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
       valuesToUpdate.title = input.title;
-    if (input.level !== undefined && input.level !== (existing.level ?? ""))
-      valuesToUpdate.level = input.level || null;
     if (input.status && input.status !== (existing.status ?? "active"))
       valuesToUpdate.status = input.status;
-    if (input.city !== undefined && input.city !== (existing.city ?? ""))
-      valuesToUpdate.city = input.city || null;
     if (
       input.responses !== undefined &&
       input.responses !== (existing.responses ?? 0)
     )
       valuesToUpdate.responses = input.responses;
     if (
-      input.workType !== undefined &&
-      input.workType !== (existing.workType ?? "")
+      input.areaId !== undefined &&
+      (input.areaId ?? "") !== (existing.areaId ?? "")
     )
-      valuesToUpdate.workType = input.workType || null;
+      valuesToUpdate.areaId = input.areaId || null;
     if (
-      input.salaryExpectation !== undefined &&
-      input.salaryExpectation !== existing.salaryExpectation
+      input.employmentId !== undefined &&
+      (input.employmentId ?? "") !== (existing.employmentId ?? "")
     )
-      valuesToUpdate.salaryExpectation = input.salaryExpectation;
+      valuesToUpdate.employmentId = input.employmentId || null;
+    if (
+      input.scheduleId !== undefined &&
+      (input.scheduleId ?? "") !== (existing.scheduleId ?? "")
+    )
+      valuesToUpdate.scheduleId = input.scheduleId || null;
+    if (
+      input.experienceId !== undefined &&
+      (input.experienceId ?? "") !== (existing.experienceId ?? "")
+    )
+      valuesToUpdate.experienceId = input.experienceId || null;
+    if (
+      input.professionalRoleId !== undefined &&
+      (input.professionalRoleId ?? "") !== (existing.professionalRoleId ?? "")
+    )
+      valuesToUpdate.professionalRoleId = input.professionalRoleId || null;
+    if (
+      input.billingTypeId !== undefined &&
+      (input.billingTypeId ?? "") !== (existing.billingTypeId ?? "")
+    )
+      valuesToUpdate.billingTypeId = input.billingTypeId || null;
+    if (
+      input.salaryFrom !== undefined &&
+      input.salaryFrom !== existing.salaryFrom
+    )
+      valuesToUpdate.salaryFrom = input.salaryFrom;
+    if (input.salaryTo !== undefined && input.salaryTo !== existing.salaryTo)
+      valuesToUpdate.salaryTo = input.salaryTo;
     if (
       input.salaryCurrency !== undefined &&
       input.salaryCurrency !== (existing.salaryCurrency ?? "UZS")
     )
       valuesToUpdate.salaryCurrency = input.salaryCurrency;
     if (
-      input.workScheduleStart !== undefined &&
-      input.workScheduleStart !== (existing.workScheduleStart ?? "")
+      input.descriptionHtml !== undefined &&
+      (input.descriptionHtml ?? "") !== (existing.descriptionHtml ?? "")
     )
-      valuesToUpdate.workScheduleStart = input.workScheduleStart || null;
+      valuesToUpdate.descriptionHtml = input.descriptionHtml || null;
     if (
-      input.workScheduleEnd !== undefined &&
-      input.workScheduleEnd !== (existing.workScheduleEnd ?? "")
-    )
-      valuesToUpdate.workScheduleEnd = input.workScheduleEnd || null;
-    if (
-      input.comments !== undefined &&
-      input.comments !== (existing.comments ?? "")
-    )
-      valuesToUpdate.comments = input.comments || null;
-    if (input.tasks !== undefined && input.tasks !== (existing.tasks ?? ""))
-      valuesToUpdate.tasks = input.tasks || null;
-    if (input.team !== undefined && input.team !== (existing.team ?? ""))
-      valuesToUpdate.team = input.team || null;
-    if (
-      input.companyDescription !== undefined &&
-      input.companyDescription !== (existing.companyDescription ?? "")
+      input.contactPhone !== undefined &&
+      (input.contactPhone ?? "") !== (existing.contactPhone ?? "")
     ) {
-      valuesToUpdate.companyDescription = input.companyDescription || null;
+      valuesToUpdate.contactPhone = input.contactPhone || null;
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {
@@ -584,3 +612,242 @@ export const publishTelegramProcedure = protectedProcedure
       errors: errors.length > 0 ? errors : undefined,
     };
   });
+
+export const getHhConfigProcedure = protectedProcedure.query(
+  async ({ ctx }) => {
+    const companyId = await getOptionalCompanyId(ctx.db, ctx.session?.user?.id);
+    if (!companyId) {
+      return { enabled: false, companyPhone: null as string | null };
+    }
+
+    const [account, companyRows] = await Promise.all([
+      getCompanyHhAccount(ctx.db, companyId),
+      ctx.db
+        .select({ phone: companies.phone })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1),
+    ]);
+
+    return {
+      enabled: Boolean(account?.accessToken || account?.refreshToken),
+      companyPhone: companyRows[0]?.phone ?? null,
+    };
+  },
+);
+
+export const getHhPublishLookupsProcedure = protectedProcedure.query(
+  async () => {
+    const [dictionaries, areas, roleCategories] = await Promise.all([
+      fetchHhDictionaries(),
+      fetchHhAreasUz(),
+      fetchHhProfessionalRoles(),
+    ]);
+
+    return {
+      areas,
+      employment: dictionaries.employment,
+      schedule: dictionaries.schedule,
+      experience: dictionaries.experience,
+      billingType: dictionaries.vacancy_billing_type,
+      currency: dictionaries.currency,
+      professionalRoles: roleCategories.flatMap((category) =>
+        category.roles.map((role) => ({
+          id: role.id,
+          name: `${category.name} — ${role.name}`,
+        })),
+      ),
+    };
+  },
+);
+
+const hhPhoneSchema = z
+  .object({
+    country: z.string().min(1).max(10),
+    city: z.string().min(1).max(10),
+    number: z.string().min(1).max(20),
+  })
+  .nullable()
+  .optional();
+
+export const publishHhProcedure = protectedProcedure
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      name: z.string().min(1).max(500),
+      descriptionHtml: z
+        .string()
+        .min(200, "Описание должно быть не короче 200 символов")
+        .max(20000),
+      areaId: z.string().min(1).max(20),
+      employmentId: z.string().min(1).max(50),
+      scheduleId: z.string().min(1).max(50),
+      experienceId: z.string().min(1).max(50),
+      professionalRoleId: z.string().min(1).max(50),
+      billingTypeId: z.string().min(1).max(50),
+      salaryFrom: z.number().int().nonnegative().nullable().optional(),
+      salaryTo: z.number().int().nonnegative().nullable().optional(),
+      salaryCurrency: z.string().min(1).max(10).optional(),
+      contactPhone: hhPhoneSchema,
+    }),
+  )
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const vacancyRows = await ctx.db
+      .select({ id: vacancies.id, title: vacancies.title })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.vacancyId),
+          eq(vacancies.companyId, companyId),
+        ),
+      )
+      .limit(1);
+
+    const vacancy = vacancyRows[0];
+    if (!vacancy) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    const hhAccount = await resolveCompanyHhAuth(ctx.db, companyId);
+    if (!hhAccount?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "hh.uz аккаунт не подключён. Подключите его в настройках интеграций.",
+      });
+    }
+
+    const contactName =
+      ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Контактное лицо";
+    const contactEmail = ctx.session?.user?.email;
+    if (!contactEmail) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Email пользователя недоступен — обновите профиль",
+      });
+    }
+
+    let resolvedPhone = input.contactPhone ?? null;
+    if (!resolvedPhone) {
+      const companyRows = await ctx.db
+        .select({ phone: companies.phone })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1);
+      const rawPhone = companyRows[0]?.phone?.trim();
+      if (rawPhone) {
+        const parsed = parseHhPhone(rawPhone);
+        if (parsed) {
+          resolvedPhone = parsed;
+        }
+      }
+    }
+
+    let result: Awaited<ReturnType<typeof publishHhVacancy>>;
+    try {
+      result = await publishHhVacancy(
+        {
+          name: input.name,
+          description: input.descriptionHtml,
+          areaId: input.areaId,
+          employmentId: input.employmentId,
+          scheduleId: input.scheduleId,
+          experienceId: input.experienceId,
+          professionalRoleId: input.professionalRoleId,
+          billingTypeId: input.billingTypeId,
+          salaryFrom: input.salaryFrom ?? null,
+          salaryTo: input.salaryTo ?? null,
+          salaryCurrency: input.salaryCurrency ?? "UZS",
+          contactName,
+          contactEmail,
+          contactPhone: resolvedPhone,
+        },
+        hhAccount.accessToken,
+      );
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          error instanceof Error
+            ? `hh.uz отклонил публикацию: ${error.message}`
+            : "Не удалось опубликовать вакансию на hh.uz",
+      });
+    }
+
+    await ctx.db
+      .update(vacancies)
+      .set({ hhVacancyId: result.id })
+      .where(eq(vacancies.id, vacancy.id));
+
+    const existing = await ctx.db
+      .select({
+        id: vacancyPublications.id,
+        sources: vacancyPublications.sources,
+      })
+      .from(vacancyPublications)
+      .where(eq(vacancyPublications.vacancyId, vacancy.id))
+      .limit(1);
+
+    const newSource = { platform: "hh.uz" as const, url: result.alternateUrl };
+    if (existing[0]) {
+      const otherSources = (existing[0].sources ?? []).filter(
+        (source) => source.platform !== "hh.uz",
+      );
+      await ctx.db
+        .update(vacancyPublications)
+        .set({
+          sources: [...otherSources, newSource],
+          updatedAt: new Date(),
+        })
+        .where(eq(vacancyPublications.id, existing[0].id));
+    } else {
+      await ctx.db.insert(vacancyPublications).values({
+        vacancyId: vacancy.id,
+        name: input.name,
+        description: input.descriptionHtml,
+        isActive: true,
+        sources: [newSource],
+      });
+    }
+
+    return {
+      success: true,
+      hhVacancyId: result.id,
+      url: result.alternateUrl,
+    };
+  });
+
+function parseHhPhone(raw: string): {
+  country: string;
+  city: string;
+  number: string;
+} | null {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 9) {
+    return null;
+  }
+  if (digits.startsWith("998") && digits.length >= 12) {
+    return {
+      country: "998",
+      city: digits.slice(3, 5),
+      number: digits.slice(5),
+    };
+  }
+  if (digits.length === 9) {
+    return {
+      country: "998",
+      city: digits.slice(0, 2),
+      number: digits.slice(2),
+    };
+  }
+  return {
+    country: digits.slice(0, digits.length - 9),
+    city: digits.slice(digits.length - 9, digits.length - 7),
+    number: digits.slice(digits.length - 7),
+  };
+}

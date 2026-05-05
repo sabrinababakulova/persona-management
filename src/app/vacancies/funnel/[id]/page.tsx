@@ -134,17 +134,19 @@ function CandidateCardSection({
 }
 
 function VacancyFunnelHeader({
-  city,
+  areaId,
+  experienceId,
   id,
-  level,
   title,
 }: {
-  city: string;
+  areaId: string;
+  experienceId: string;
   id: string;
-  level: string;
   title: string;
 }) {
-  const metadata = [level, city].filter((value) => value.trim().length > 0);
+  const metadata = [experienceId, areaId].filter(
+    (value) => value.trim().length > 0,
+  );
 
   return (
     <section className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -705,9 +707,9 @@ export default function VacancyFunnelPage() {
         />
 
         <VacancyFunnelHeader
-          city={data.city}
+          areaId={data.areaId}
+          experienceId={data.experienceId}
           id={data.id}
-          level={data.level}
           title={data.title}
         />
 

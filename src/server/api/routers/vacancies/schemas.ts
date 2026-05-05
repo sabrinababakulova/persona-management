@@ -33,45 +33,39 @@ export const vacancyAssignCandidateInputSchema = z.object({
 
 export const vacancyCreateInputSchema = z.object({
   title: z.string().min(1, "Название вакансии обязательно").max(255),
-  level: z.string().max(100).optional(),
   status: z
     .enum(["active", "draft", "paused", "closed", "archive"])
     .default("active"),
-  city: z.string().max(255).optional(),
   responses: z.number().int().min(0).default(0),
-  workType: z.string().max(100).optional(),
-  salaryExpectation: z.number().int().min(0).max(1_000_000_000).optional(),
+  areaId: z.string().max(20).optional(),
+  employmentId: z.string().max(50).optional(),
+  scheduleId: z.string().max(50).optional(),
+  experienceId: z.string().max(50).optional(),
+  professionalRoleId: z.string().max(50).optional(),
+  billingTypeId: z.string().max(50).optional(),
+  salaryFrom: z.number().int().min(0).max(1_000_000_000).optional(),
+  salaryTo: z.number().int().min(0).max(1_000_000_000).optional(),
   salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
-  workScheduleStart: z.string().max(10).optional(),
-  workScheduleEnd: z.string().max(10).optional(),
-  comments: z.string().max(4000).optional(),
-  tasks: z.string().max(4000).optional(),
-  team: z.string().max(4000).optional(),
-  companyDescription: z.string().max(8000).optional(),
+  descriptionHtml: z.string().max(20000).optional(),
+  contactPhone: z.string().max(50).optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
   id: z.string().min(1).max(255),
   title: z.string().min(1).max(255).optional(),
-  level: z.string().max(100).optional(),
   status: z.enum(["active", "draft", "paused", "closed", "archive"]).optional(),
-  city: z.string().max(255).optional(),
   responses: z.number().int().min(0).optional(),
-  workType: z.string().max(100).optional(),
-  salaryExpectation: z
-    .number()
-    .int()
-    .min(0)
-    .max(1_000_000_000)
-    .nullable()
-    .optional(),
+  areaId: z.string().max(20).nullable().optional(),
+  employmentId: z.string().max(50).nullable().optional(),
+  scheduleId: z.string().max(50).nullable().optional(),
+  experienceId: z.string().max(50).nullable().optional(),
+  professionalRoleId: z.string().max(50).nullable().optional(),
+  billingTypeId: z.string().max(50).nullable().optional(),
+  salaryFrom: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  salaryTo: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
   salaryCurrency: z.enum(["UZS", "USD"]).optional(),
-  workScheduleStart: z.string().max(10).optional(),
-  workScheduleEnd: z.string().max(10).optional(),
-  comments: z.string().max(4000).optional(),
-  tasks: z.string().max(4000).optional(),
-  team: z.string().max(4000).optional(),
-  companyDescription: z.string().max(8000).optional(),
+  descriptionHtml: z.string().max(20000).nullable().optional(),
+  contactPhone: z.string().max(50).nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({
