@@ -178,6 +178,16 @@ export type CreateVacancyFormProps = {
   breadcrumbLabel?: string;
   /** Page heading inside the description step. Defaults to "Добавление вакансии". */
   pageHeading?: string;
+  /**
+   * Banner rendered above the form fields. Used by the detail page to surface contextual
+   * notices (e.g. an archived-vacancy warning).
+   */
+  bannerContent?: ReactNode;
+  /**
+   * When true, every form input is rendered in a disabled state and the save button is hidden.
+   * Used when the underlying vacancy is not currently editable (e.g. archived hh.uz vacancies).
+   */
+  readOnly?: boolean;
 };
 
 /**
@@ -202,6 +212,8 @@ export function CreateVacancyForm({
   previewContent,
   breadcrumbLabel = "Добавление вакансии",
   pageHeading = "Добавление вакансии",
+  bannerContent,
+  readOnly = false,
 }: CreateVacancyFormProps = {}) {
   const isEditMode = vacancyId !== undefined;
   const router = useRouter();
@@ -652,7 +664,7 @@ export function CreateVacancyForm({
    * the rest of the form data flows straight through.
    */
   const submitEdit = () => {
-    if (!vacancyId) {
+    if (!vacancyId || readOnly) {
       return;
     }
     if (!validateForm()) {
@@ -728,6 +740,9 @@ export function CreateVacancyForm({
    * In edit mode: routes through {@link submitEdit} since the vacancy already exists.
    */
   const handleSubmit = () => {
+    if (readOnly) {
+      return;
+    }
     if (isEditMode) {
       submitEdit();
       return;
@@ -799,6 +814,8 @@ export function CreateVacancyForm({
                   </h1>
                 </div>
 
+                {bannerContent && <div className="mb-6">{bannerContent}</div>}
+
                 <FormProgress
                   filled={progress.filled}
                   missing={progress.missing}
@@ -828,6 +845,7 @@ export function CreateVacancyForm({
                       <ClosableSection title="Основная информация">
                         <div className="flex min-w-0 flex-col gap-2">
                           <Input
+                            disabled={readOnly}
                             label="Название вакансии"
                             maxLength={255}
                             onChange={(event) =>
@@ -846,6 +864,7 @@ export function CreateVacancyForm({
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                           <div className="flex min-w-0 flex-col gap-2">
                             <SearchableSelect
+                              disabled={readOnly}
                               label="Город"
                               onChange={(value) =>
                                 handleFieldChange("areaId", value)
@@ -864,6 +883,7 @@ export function CreateVacancyForm({
 
                           <div className="flex min-w-0 flex-col gap-2">
                             <SearchableSelect
+                              disabled={readOnly}
                               label="Профессиональная роль"
                               onChange={(value) =>
                                 handleFieldChange("professionalRoleId", value)
@@ -884,6 +904,7 @@ export function CreateVacancyForm({
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                           <div className="flex min-w-0 flex-col gap-2">
                             <Dropdown
+                              disabled={readOnly}
                               label="Тип занятости"
                               onChange={(value) =>
                                 handleFieldChange("employmentId", value)
@@ -901,6 +922,7 @@ export function CreateVacancyForm({
 
                           <div className="flex min-w-0 flex-col gap-2">
                             <Dropdown
+                              disabled={readOnly}
                               label="График работы"
                               onChange={(value) =>
                                 handleFieldChange("scheduleId", value)
@@ -920,6 +942,7 @@ export function CreateVacancyForm({
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                           <div className="flex min-w-0 flex-col gap-2">
                             <Dropdown
+                              disabled={readOnly}
                               label="Опыт работы"
                               onChange={(value) =>
                                 handleFieldChange("experienceId", value)
@@ -937,6 +960,7 @@ export function CreateVacancyForm({
 
                           <div className="flex min-w-0 flex-col gap-2">
                             <Dropdown
+                              disabled={readOnly}
                               label="Тип публикации"
                               onChange={(value) =>
                                 handleFieldChange("billingTypeId", value)
@@ -962,6 +986,7 @@ export function CreateVacancyForm({
                       <ClosableSection title="Условия">
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                           <Input
+                            disabled={readOnly}
                             inputMode="numeric"
                             label="Зарплата от"
                             maxLength={20}
@@ -975,6 +1000,7 @@ export function CreateVacancyForm({
                             value={formData.salaryFrom}
                           />
                           <Input
+                            disabled={readOnly}
                             inputMode="numeric"
                             label="Зарплата до"
                             maxLength={20}
@@ -988,6 +1014,7 @@ export function CreateVacancyForm({
                             value={formData.salaryTo}
                           />
                           <Dropdown
+                            disabled={readOnly}
                             label="Валюта"
                             onChange={(value) =>
                               handleFieldChange("salaryCurrency", value)
@@ -998,6 +1025,7 @@ export function CreateVacancyForm({
                         </div>
 
                         <Input
+                          disabled={readOnly}
                           label="Контактный телефон (можно оставить пустым)"
                           onChange={(event) =>
                             handleFieldChange(
@@ -1017,6 +1045,7 @@ export function CreateVacancyForm({
                     >
                       <ClosableSection title="Описание">
                         <RichTextEditor
+                          disabled={readOnly}
                           id="hh-description-html"
                           label="Описание для hh.uz (минимум 200 символов)"
                           maxLength={20000}
@@ -1061,20 +1090,22 @@ export function CreateVacancyForm({
                         onClick={handleCancel}
                         type="button"
                       >
-                        Отмена
+                        {readOnly ? "Назад" : "Отмена"}
                       </button>
-                      <button
-                        className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={isEditMode && updateVacancy.isPending}
-                        onClick={handleContinueFromDescription}
-                        type="button"
-                      >
-                        {isEditMode
-                          ? updateVacancy.isPending
-                            ? "Сохранение..."
-                            : "Сохранить изменения"
-                          : "Продолжить"}
-                      </button>
+                      {!readOnly && (
+                        <button
+                          className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={isEditMode && updateVacancy.isPending}
+                          onClick={handleContinueFromDescription}
+                          type="button"
+                        >
+                          {isEditMode
+                            ? updateVacancy.isPending
+                              ? "Сохранение..."
+                              : "Сохранить изменения"
+                            : "Продолжить"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1112,7 +1143,7 @@ export function CreateVacancyForm({
                   >
                     Назад
                   </button>
-                  {!isEditMode && (
+                  {!isEditMode && !readOnly && (
                     <button
                       className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={createVacancy.isPending}

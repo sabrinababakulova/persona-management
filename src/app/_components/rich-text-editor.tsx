@@ -7,6 +7,8 @@ import { useEffect } from "react";
 
 type RichTextEditorProps = {
   className?: string;
+  /** When true, the editor and toolbar are non-interactive (Tiptap is set to read-only). */
+  disabled?: boolean;
   hideLabel?: boolean;
   id?: string;
   label: string;
@@ -118,6 +120,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 export function RichTextEditor({
   className,
+  disabled = false,
   hideLabel = false,
   id,
   label,
@@ -130,6 +133,7 @@ export function RichTextEditor({
 
   const editor = useEditor({
     content: value,
+    editable: !disabled,
     editorProps: {
       attributes: {
         class:
@@ -172,6 +176,11 @@ export function RichTextEditor({
     editor.commands.setContent(value || "", { emitUpdate: false });
   }, [value, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
+
   const charCount = editor?.getText().length ?? 0;
   const isEmpty = editor?.isEmpty ?? true;
 
@@ -187,8 +196,19 @@ export function RichTextEditor({
       >
         {label}
       </label>
-      <div className="overflow-hidden rounded-[6px] border border-border-input bg-bg-light focus-within:border-primary-blue">
-        {editor && <Toolbar editor={editor} />}
+      <div
+        className={`overflow-hidden rounded-[6px] border border-border-input bg-bg-light focus-within:border-primary-blue ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+      >
+        {editor && (
+          <div
+            aria-hidden={disabled || undefined}
+            className={
+              disabled ? "pointer-events-none select-none opacity-60" : ""
+            }
+          >
+            <Toolbar editor={editor} />
+          </div>
+        )}
         <div className="relative">
           {isEmpty && placeholder && (
             <div className="pointer-events-none absolute top-3 left-3 text-[15px] text-text-placeholder">

@@ -80,6 +80,10 @@ export default function VacancyDetailPage() {
   }
 
   const hasHhLink = vacancy.source === "hh.uz" || Boolean(vacancy.hhVacancyId);
+  // Archived hh.uz vacancies are read-only: hh.uz only accepts edits to active vacancies, so
+  // we lock the form and tell the user how to unblock it.
+  const isArchivedHh = hasHhLink && vacancy.status === "archive";
+
   const previewContent = hasHhLink ? (
     <HhVacancyPreview vacancyId={vacancyId} />
   ) : (
@@ -92,13 +96,36 @@ export default function VacancyDetailPage() {
     </section>
   );
 
+  const archivedBanner = isArchivedHh ? (
+    <section
+      aria-live="polite"
+      className="flex items-start gap-3 rounded-[8px] border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-[14px] text-text-heading"
+      role="alert"
+    >
+      <span
+        aria-hidden="true"
+        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-[12px] text-bg-light leading-none"
+      >
+        !
+      </span>
+      <div>
+        <p className="font-semibold leading-[1.4]">Эта вакансия в архиве.</p>
+        <p className="mt-1 text-text-secondary leading-[1.4]">
+          Чтобы внести изменения, переведите её в активный статус.
+        </p>
+      </div>
+    </section>
+  ) : null;
+
   return (
     <main className="h-full bg-bg-light">
       <CreateVacancyForm
+        bannerContent={archivedBanner}
         breadcrumbLabel={vacancy.title}
         initialData={initialData}
         pageHeading={vacancy.title || "Редактирование вакансии"}
         previewContent={previewContent}
+        readOnly={isArchivedHh}
         vacancyId={vacancyId}
       />
     </main>
