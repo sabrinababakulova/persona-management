@@ -5,19 +5,22 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
 interface TelegramVacancyData {
   title: string;
-  level?: string;
-  city?: string;
-  workType?: string;
-  salaryExpectation?: number;
+  areaId?: string;
+  employmentId?: string;
+  scheduleId?: string;
+  experienceId?: string;
+  professionalRoleId?: string;
+  salaryFrom?: number;
+  salaryTo?: number;
   salaryCurrency?: string;
-  workScheduleStart?: string;
-  workScheduleEnd?: string;
-  tasks?: string;
-  team?: string;
-  companyDescription?: string;
-  comments?: string;
+  descriptionHtml?: string;
+  contactPhone?: string;
 }
 
 export function formatTelegramVacancy(
@@ -29,49 +32,42 @@ export function formatTelegramVacancy(
   lines.push(`<b>${escapeHtml(vacancy.title)}</b>`);
   lines.push("");
 
-  if (vacancy.level) {
-    lines.push(`<b>Уровень:</b> ${escapeHtml(vacancy.level)}`);
+  if (vacancy.areaId) {
+    lines.push(`<b>Регион (hh.uz):</b> ${escapeHtml(vacancy.areaId)}`);
   }
-  if (vacancy.city) {
-    lines.push(`<b>Город:</b> ${escapeHtml(vacancy.city)}`);
+  if (vacancy.employmentId) {
+    lines.push(`<b>Тип занятости:</b> ${escapeHtml(vacancy.employmentId)}`);
   }
-  if (vacancy.workType) {
-    lines.push(`<b>Тип работы:</b> ${escapeHtml(vacancy.workType)}`);
+  if (vacancy.scheduleId) {
+    lines.push(`<b>График:</b> ${escapeHtml(vacancy.scheduleId)}`);
   }
-  if (vacancy.salaryExpectation) {
+  if (vacancy.experienceId) {
+    lines.push(`<b>Опыт:</b> ${escapeHtml(vacancy.experienceId)}`);
+  }
+  if (vacancy.professionalRoleId) {
+    lines.push(`<b>Роль:</b> ${escapeHtml(vacancy.professionalRoleId)}`);
+  }
+  if (vacancy.salaryFrom !== undefined || vacancy.salaryTo !== undefined) {
     const currency = vacancy.salaryCurrency ?? "UZS";
-    lines.push(
-      `<b>Зарплата:</b> ${vacancy.salaryExpectation.toLocaleString()} ${escapeHtml(currency)}`,
-    );
+    const range = [vacancy.salaryFrom, vacancy.salaryTo]
+      .filter((value): value is number => typeof value === "number")
+      .map((value) => value.toLocaleString())
+      .join(" – ");
+    if (range) {
+      lines.push(`<b>Зарплата:</b> ${range} ${escapeHtml(currency)}`);
+    }
   }
-  if (vacancy.workScheduleStart || vacancy.workScheduleEnd) {
-    const start = vacancy.workScheduleStart ?? "—";
-    const end = vacancy.workScheduleEnd ?? "—";
-    lines.push(`<b>График:</b> ${escapeHtml(start)} – ${escapeHtml(end)}`);
-  }
-
-  if (vacancy.tasks) {
-    lines.push("");
-    lines.push(`<b>Задачи:</b>`);
-    lines.push(escapeHtml(vacancy.tasks));
+  if (vacancy.contactPhone) {
+    lines.push(`<b>Контакт:</b> ${escapeHtml(vacancy.contactPhone)}`);
   }
 
-  if (vacancy.team) {
-    lines.push("");
-    lines.push(`<b>Команда:</b>`);
-    lines.push(escapeHtml(vacancy.team));
-  }
-
-  if (vacancy.companyDescription) {
-    lines.push("");
-    lines.push(`<b>О компании:</b>`);
-    lines.push(escapeHtml(vacancy.companyDescription));
-  }
-
-  if (vacancy.comments) {
-    lines.push("");
-    lines.push(`<b>Комментарии:</b>`);
-    lines.push(escapeHtml(vacancy.comments));
+  if (vacancy.descriptionHtml) {
+    const descriptionText = stripHtml(vacancy.descriptionHtml);
+    if (descriptionText) {
+      lines.push("");
+      lines.push(`<b>Описание:</b>`);
+      lines.push(escapeHtml(descriptionText));
+    }
   }
 
   lines.push("");

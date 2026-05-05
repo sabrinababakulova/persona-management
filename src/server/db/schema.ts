@@ -199,7 +199,8 @@ export const candidates = createTable(
   ],
 );
 
-// Vacancies table
+// Vacancies table — schema mirrors the hh.uz publish payload so a vacancy can be created
+// in the form, persisted here, and published to hh.uz without an extra translation layer.
 export const vacancies = createTable(
   "vacancy",
   (d) => ({
@@ -209,19 +210,19 @@ export const vacancies = createTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     title: d.varchar({ length: 255 }).notNull(),
-    level: d.varchar({ length: 100 }),
     status: d.varchar({ length: 50 }).default("active"),
-    city: d.varchar({ length: 255 }),
     responses: d.integer().default(0),
-    workType: d.varchar({ length: 100 }),
-    salaryExpectation: d.integer(),
+    areaId: d.varchar("area_id", { length: 20 }),
+    employmentId: d.varchar("employment_id", { length: 50 }),
+    scheduleId: d.varchar("schedule_id", { length: 50 }),
+    experienceId: d.varchar("experience_id", { length: 50 }),
+    professionalRoleId: d.varchar("professional_role_id", { length: 50 }),
+    billingTypeId: d.varchar("billing_type_id", { length: 50 }),
+    salaryFrom: d.integer("salary_from"),
+    salaryTo: d.integer("salary_to"),
     salaryCurrency: d.varchar({ length: 10 }).default("UZS"),
-    workScheduleStart: d.varchar({ length: 10 }).default("09:00"),
-    workScheduleEnd: d.varchar({ length: 10 }).default("18:00"),
-    comments: d.text(),
-    tasks: d.text(),
-    team: d.text(),
-    companyDescription: d.text(),
+    descriptionHtml: d.text("description_html"),
+    contactPhone: d.varchar("contact_phone", { length: 50 }),
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     hhVacancyId: d.varchar("hh_vacancy_id", { length: 100 }),
     createdAt: d

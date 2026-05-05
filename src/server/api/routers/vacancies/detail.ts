@@ -76,19 +76,19 @@ export const getVacancyProcedure = protectedProcedure
         return {
           id: input.id,
           title: hhVacancy.title,
-          level: hhVacancy.level,
           status: hhVacancy.status,
-          city: hhVacancy.city,
           responses: hhVacancy.responses,
-          workType: hhVacancy.workType,
-          salaryExpectation: hhVacancy.salaryExpectation,
-          salaryCurrency: hhVacancy.salaryCurrency ?? "UZS",
-          workScheduleStart: hhVacancy.workScheduleStart,
-          workScheduleEnd: hhVacancy.workScheduleEnd,
-          comments: hhVacancy.comments ?? "",
-          tasks: hhVacancy.tasks ?? "",
-          team: hhVacancy.team ?? "",
-          companyDescription: hhVacancy.companyDescription ?? "",
+          areaId: "",
+          employmentId: "",
+          scheduleId: "",
+          experienceId: "",
+          professionalRoleId: "",
+          billingTypeId: "",
+          salaryFrom: undefined,
+          salaryTo: undefined,
+          salaryCurrency: "UZS" as const,
+          descriptionHtml: "",
+          contactPhone: "",
           companyId: userCompanyId,
           hhVacancyId,
           publishedAt: hhVacancy.publishedAt,
@@ -351,8 +351,8 @@ export const getVacancyFunnelProcedure = protectedProcedure
         return {
           id: input.id,
           title: hhVacancy.title,
-          level: hhVacancy.level ?? "",
-          city: hhVacancy.city ?? "",
+          areaId: "",
+          experienceId: "",
           source: "hh.uz" as const,
           candidates: normalizedCandidates,
           stages: stageRows.map((stage) => ({
@@ -378,8 +378,8 @@ export const getVacancyFunnelProcedure = protectedProcedure
       .select({
         id: vacancies.id,
         title: vacancies.title,
-        level: vacancies.level,
-        city: vacancies.city,
+        areaId: vacancies.areaId,
+        experienceId: vacancies.experienceId,
       })
       .from(vacancies)
       .where(
@@ -491,8 +491,8 @@ export const getVacancyFunnelProcedure = protectedProcedure
     return {
       id: vacancy.id,
       title: vacancy.title,
-      level: vacancy.level ?? "",
-      city: vacancy.city ?? "",
+      areaId: vacancy.areaId ?? "",
+      experienceId: vacancy.experienceId ?? "",
       source: "local" as const,
       candidates: normalizedCandidates,
       stages: stageRows.map((stage) => ({

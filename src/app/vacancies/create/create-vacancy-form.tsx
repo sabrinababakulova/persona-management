@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
@@ -82,6 +88,12 @@ const EMPTY_FORM: HhFormData = {
 };
 
 /**
+ * Subset of {@link HhFormData} accepted as a prefill so callers can hand the form a
+ * partially-known vacancy (e.g. when editing a record stored before the hh.uz fields existed).
+ */
+export type CreateVacancyFormInitialData = Partial<HhFormData>;
+
+/**
  * Returns true when the supplied HTML contains visible text content.
  * Strips tags so an "empty" rich-text editor (e.g. `<p></p>`) is treated as blank.
  */
@@ -146,18 +158,52 @@ function parseHhPhoneClient(raw: string): {
 }
 
 /**
- * Multi-step form that creates a vacancy and (optionally) publishes it to hh.uz / Telegram.
+ * Props accepted by {@link CreateVacancyForm}.
+ *
+ * The component runs in two modes:
+ * - **Create** (default): no `vacancyId` is passed. Drafts persist to localStorage, a final
+ *   "save" calls `vacancies.create`, and the publish modal opens for the chosen channels.
+ * - **Edit**: a `vacancyId` is passed. Drafts are skipped, the description-step button saves
+ *   via `vacancies.update`, the publish modal is hidden, and the preview tab renders
+ *   {@link previewContent} (typically the hh.uz preview).
+ */
+export type CreateVacancyFormProps = {
+  /** When provided, switches the form into edit mode against the given vacancy. */
+  vacancyId?: string;
+  /** Initial values that override the empty form defaults. Read on first render only. */
+  initialData?: CreateVacancyFormInitialData;
+  /** Custom content for the "Предпросмотр" tab. Defaults to a "coming soon" placeholder. */
+  previewContent?: ReactNode;
+  /** Breadcrumb leaf label. Defaults to "Добавление вакансии". */
+  breadcrumbLabel?: string;
+  /** Page heading inside the description step. Defaults to "Добавление вакансии". */
+  pageHeading?: string;
+};
+
+/**
+ * Multi-step vacancy form that creates a vacancy or edits an existing one and can publish to
+ * hh.uz / Telegram.
  *
  * Steps:
  * - `description` — collects every field hh.uz requires (name, area, role, employment, schedule,
  *   experience, billing type, salary range, contact phone and the HTML description).
  * - `publications` — lets the user choose distribution channels (Telegram and/or hh.uz).
- * - `preview` — submits the vacancy via tRPC and opens a publish modal so each selected channel
- *   can be triggered.
+ *   Disabled in edit mode.
+ * - `preview` — in create mode submits the vacancy via tRPC and opens a publish modal so each
+ *   selected channel can be triggered. In edit mode, renders the supplied {@link CreateVacancyFormProps.previewContent}.
  *
- * Drafts are persisted to localStorage under {@link HH_DRAFT_KEY} so a refresh keeps the work in progress.
+ * In create mode drafts are persisted to localStorage under {@link HH_DRAFT_KEY} so a refresh keeps
+ * the work in progress; in edit mode no drafts are touched and the description-step "Continue"
+ * button becomes "Сохранить изменения" wired to `vacancies.update`.
  */
-export function CreateVacancyForm() {
+export function CreateVacancyForm({
+  vacancyId,
+  initialData,
+  previewContent,
+  breadcrumbLabel = "Добавление вакансии",
+  pageHeading = "Добавление вакансии",
+}: CreateVacancyFormProps = {}) {
+  const isEditMode = vacancyId !== undefined;
   const router = useRouter();
   const searchParams = useSearchParams();
   const utils = api.useUtils();
@@ -167,13 +213,24 @@ export function CreateVacancyForm() {
       ? stepParam
       : SIDE_MENU_ITEMS[0].id;
 
-  /** Pushes the user to the requested step via the `?step=` query parameter. */
+  /**
+   * Pushes the user to the requested step via the `?step=` query parameter.
+   * Stays on the current path so it works for both `/vacancies/create` and `/vacancies/[id]`.
+   */
   const goToStep = (id: string) => {
-    router.push(`/vacancies/create?step=${id}`);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", id);
+    const pathname = isEditMode
+      ? `/vacancies/${vacancyId}`
+      : "/vacancies/create";
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  const [savedVacancyId, setSavedVacancyId] = useState<string | null>(null);
+  const [savedVacancyId, setSavedVacancyId] = useState<string | null>(
+    vacancyId ?? null,
+  );
   const [modalOpen, setModalOpen] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<
     "idle" | "sending" | "sent" | "error"
   >("idle");
@@ -195,9 +252,17 @@ export function CreateVacancyForm() {
 
   const [errors, setErrors] = useState<HhFormErrors>({});
   const [hydrated, setHydrated] = useState(false);
-  const [formData, setFormData] = useState<HhFormData>(EMPTY_FORM);
+  const [formData, setFormData] = useState<HhFormData>(() => ({
+    ...EMPTY_FORM,
+    ...(initialData ?? {}),
+  }));
 
   useEffect(() => {
+    if (isEditMode) {
+      // Edit mode is fed by props; never read or merge a localStorage draft.
+      setHydrated(true);
+      return;
+    }
     try {
       const raw = window.localStorage.getItem(HH_DRAFT_KEY);
       if (raw) {
@@ -208,10 +273,10 @@ export function CreateVacancyForm() {
       // Ignore corrupt drafts.
     }
     setHydrated(true);
-  }, []);
+  }, [isEditMode]);
 
   useEffect(() => {
-    if (!hydrated) {
+    if (isEditMode || !hydrated) {
       return;
     }
     try {
@@ -219,7 +284,7 @@ export function CreateVacancyForm() {
     } catch {
       // Ignore quota errors.
     }
-  }, [formData, hydrated]);
+  }, [formData, hydrated, isEditMode]);
 
   /** Removes the description and publications drafts from localStorage. */
   const clearDrafts = () => {
@@ -392,8 +457,29 @@ export function CreateVacancyForm() {
     },
   });
 
+  const updateVacancy = api.vacancies.update.useMutation({
+    onSuccess: async () => {
+      setErrors({});
+      setUpdateMessage("Изменения сохранены");
+      if (vacancyId) {
+        await Promise.all([
+          utils.vacancies.get.invalidate({ id: vacancyId }),
+          utils.vacancies.list.invalidate(),
+        ]);
+      }
+    },
+    onError: (error) => {
+      setUpdateMessage(null);
+      setErrors((previous) => ({
+        ...previous,
+        _form: error.message || "Не удалось сохранить изменения",
+      }));
+    },
+  });
+
   /**
-   * Updates a single form field and clears any pre-existing per-field or form-level error.
+   * Updates a single form field and clears any pre-existing per-field or form-level error,
+   * plus the "saved" toast in edit mode so the user knows the next save is pending.
    * Generic over the field key so the value type is statically checked.
    */
   const handleFieldChange = <K extends keyof HhFormData>(
@@ -401,6 +487,9 @@ export function CreateVacancyForm() {
     value: HhFormData[K],
   ) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
+    if (updateMessage) {
+      setUpdateMessage(null);
+    }
     setErrors((previous) => {
       if (!previous[field] && !previous._form) {
         return previous;
@@ -505,8 +594,12 @@ export function CreateVacancyForm() {
   /**
    * Validates the description step.
    *
-   * Required: name, area, role, employment, schedule, experience, billing type and a non-empty
-   * description of at least 200 characters (the same minimum the server enforces).
+   * In **create mode** every hh.uz-required field is mandatory (name, area, role, employment,
+   * schedule, experience, billing type and a non-empty description of at least 200 characters —
+   * the same minimum the server enforces).
+   *
+   * In **edit mode** only `name` is required, since the legacy vacancy table doesn't store the
+   * hh.uz lookup IDs and the user is expected to leave them blank when the data is unavailable.
    *
    * Returns true and clears errors on success; otherwise sets per-field error messages and returns false.
    */
@@ -516,29 +609,32 @@ export function CreateVacancyForm() {
     if (!formData.name.trim()) {
       nextErrors.name = "Введите название вакансии";
     }
-    if (!formData.areaId) {
-      nextErrors.areaId = "Выберите город";
-    }
-    if (!formData.professionalRoleId) {
-      nextErrors.professionalRoleId = "Выберите профессиональную роль";
-    }
-    if (!formData.employmentId) {
-      nextErrors.employmentId = "Выберите тип занятости";
-    }
-    if (!formData.scheduleId) {
-      nextErrors.scheduleId = "Выберите график";
-    }
-    if (!formData.experienceId) {
-      nextErrors.experienceId = "Выберите опыт";
-    }
-    if (!formData.billingTypeId) {
-      nextErrors.billingTypeId = "Выберите тип публикации";
-    }
-    if (!hasMeaningfulHtml(formData.descriptionHtml)) {
-      nextErrors.descriptionHtml = "Заполните описание вакансии";
-    } else if (formData.descriptionHtml.length < 200) {
-      nextErrors.descriptionHtml =
-        "Описание должно быть не короче 200 символов";
+
+    if (!isEditMode) {
+      if (!formData.areaId) {
+        nextErrors.areaId = "Выберите город";
+      }
+      if (!formData.professionalRoleId) {
+        nextErrors.professionalRoleId = "Выберите профессиональную роль";
+      }
+      if (!formData.employmentId) {
+        nextErrors.employmentId = "Выберите тип занятости";
+      }
+      if (!formData.scheduleId) {
+        nextErrors.scheduleId = "Выберите график";
+      }
+      if (!formData.experienceId) {
+        nextErrors.experienceId = "Выберите опыт";
+      }
+      if (!formData.billingTypeId) {
+        nextErrors.billingTypeId = "Выберите тип публикации";
+      }
+      if (!hasMeaningfulHtml(formData.descriptionHtml)) {
+        nextErrors.descriptionHtml = "Заполните описание вакансии";
+      } else if (formData.descriptionHtml.length < 200) {
+        nextErrors.descriptionHtml =
+          "Описание должно быть не короче 200 символов";
+      }
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -550,8 +646,58 @@ export function CreateVacancyForm() {
     return true;
   };
 
-  /** Validates the form and advances to the publications step. */
+  /**
+   * Saves the description-step fields against the existing vacancy via `vacancies.update`.
+   * Schema now stores hh.uz-shaped fields directly, so the mapping is 1:1: name → title and
+   * the rest of the form data flows straight through.
+   */
+  const submitEdit = () => {
+    if (!vacancyId) {
+      return;
+    }
+    if (!validateForm()) {
+      return;
+    }
+
+    setUpdateMessage(null);
+
+    const parsedFrom = formData.salaryFrom
+      ? parseFormattedNumber(formData.salaryFrom)
+      : null;
+    const parsedTo = formData.salaryTo
+      ? parseFormattedNumber(formData.salaryTo)
+      : null;
+    const currency: "UZS" | "USD" =
+      formData.salaryCurrency === "USD" ? "USD" : "UZS";
+
+    updateVacancy.mutate({
+      id: vacancyId,
+      title: formData.name.trim(),
+      areaId: formData.areaId || null,
+      employmentId: formData.employmentId || null,
+      scheduleId: formData.scheduleId || null,
+      experienceId: formData.experienceId || null,
+      professionalRoleId: formData.professionalRoleId || null,
+      billingTypeId: formData.billingTypeId || null,
+      salaryFrom: parsedFrom,
+      salaryTo: parsedTo,
+      salaryCurrency: currency,
+      descriptionHtml: formData.descriptionHtml || null,
+      contactPhone: formData.contactPhone || null,
+    });
+  };
+
+  /**
+   * Description-step "Continue" handler.
+   * In create mode: validates and advances to the publications step.
+   * In edit mode: validates and saves via `vacancies.update`, staying on the same step.
+   */
   const handleContinueFromDescription = () => {
+    if (isEditMode) {
+      submitEdit();
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -560,7 +706,7 @@ export function CreateVacancyForm() {
 
   /** From the publications step: opens the publish modal if already saved, else moves to preview. */
   const handleContinueFromPublications = () => {
-    if (savedVacancyId) {
+    if (savedVacancyId && !isEditMode) {
       reopenModal();
       return;
     }
@@ -569,25 +715,53 @@ export function CreateVacancyForm() {
 
   /** Discards drafts and returns the user to the vacancies list. */
   const handleCancel = () => {
-    clearDrafts();
+    if (!isEditMode) {
+      clearDrafts();
+    }
     router.push("/vacancies");
   };
 
   /**
-   * Final-step handler.
-   * Validates the description fields and calls the create-vacancy mutation, using the hh.uz `name`
-   * as the vacancy title. Other vacancy columns fall back to their server-side defaults.
+   * Preview-step submit handler.
+   * In create mode: validates and triggers `vacancies.create` (persisting every hh.uz field),
+   * then opens the publish modal.
+   * In edit mode: routes through {@link submitEdit} since the vacancy already exists.
    */
   const handleSubmit = () => {
+    if (isEditMode) {
+      submitEdit();
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
 
     setTelegramStatus("idle");
 
+    const parsedFrom = formData.salaryFrom
+      ? parseFormattedNumber(formData.salaryFrom)
+      : undefined;
+    const parsedTo = formData.salaryTo
+      ? parseFormattedNumber(formData.salaryTo)
+      : undefined;
+    const currency: "UZS" | "USD" =
+      formData.salaryCurrency === "USD" ? "USD" : "UZS";
+
     createVacancy.mutate({
       title: formData.name.trim(),
       status: "draft",
+      areaId: formData.areaId || undefined,
+      employmentId: formData.employmentId || undefined,
+      scheduleId: formData.scheduleId || undefined,
+      experienceId: formData.experienceId || undefined,
+      professionalRoleId: formData.professionalRoleId || undefined,
+      billingTypeId: formData.billingTypeId || undefined,
+      salaryFrom: parsedFrom,
+      salaryTo: parsedTo,
+      salaryCurrency: currency,
+      descriptionHtml: formData.descriptionHtml || undefined,
+      contactPhone: formData.contactPhone || undefined,
     });
   };
 
@@ -599,6 +773,7 @@ export function CreateVacancyForm() {
           items={SIDE_MENU_ITEMS.map((item) => ({
             ...item,
             disabled:
+              !isEditMode &&
               item.id !== "description" &&
               !(
                 formData.name.trim() &&
@@ -611,7 +786,7 @@ export function CreateVacancyForm() {
         <section className="flex flex-3 flex-col">
           <div className="w-full max-w-[900px]">
             <Breadcrumbs
-              label="Добавление вакансии"
+              label={breadcrumbLabel}
               rootHref="/vacancies"
               rootLabel="Вакансии"
             />
@@ -620,7 +795,7 @@ export function CreateVacancyForm() {
               <>
                 <div className="mt-6 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-                    Добавление вакансии
+                    {pageHeading}
                   </h1>
                 </div>
 
@@ -868,10 +1043,15 @@ export function CreateVacancyForm() {
 
                 <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="min-h-[20px]">
+                    <div className="flex min-h-[20px] flex-col gap-1">
                       {errors._form && (
                         <p className="text-[13px] text-danger-red leading-[1.4]">
                           {errors._form}
+                        </p>
+                      )}
+                      {isEditMode && updateMessage && (
+                        <p className="text-[13px] text-success-green leading-[1.4]">
+                          {updateMessage}
                         </p>
                       )}
                     </div>
@@ -884,11 +1064,16 @@ export function CreateVacancyForm() {
                         Отмена
                       </button>
                       <button
-                        className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+                        className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isEditMode && updateVacancy.isPending}
                         onClick={handleContinueFromDescription}
                         type="button"
                       >
-                        Продолжить
+                        {isEditMode
+                          ? updateVacancy.isPending
+                            ? "Сохранение..."
+                            : "Сохранить изменения"
+                          : "Продолжить"}
                       </button>
                     </div>
                   </div>
@@ -907,9 +1092,11 @@ export function CreateVacancyForm() {
                 <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
                   Предпросмотр
                 </h1>
-                <div className="rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
-                  Предпросмотр публикации скоро будет доступен.
-                </div>
+                {previewContent ?? (
+                  <div className="rounded-[6px] border border-border-input bg-bg-input px-4 py-6 text-[14px] text-text-secondary">
+                    Предпросмотр публикации скоро будет доступен.
+                  </div>
+                )}
                 <div className="min-h-[20px]">
                   {errors._form && (
                     <p className="text-[13px] text-danger-red leading-[1.4]">
@@ -925,18 +1112,20 @@ export function CreateVacancyForm() {
                   >
                     Назад
                   </button>
-                  <button
-                    className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={createVacancy.isPending}
-                    onClick={savedVacancyId ? reopenModal : handleSubmit}
-                    type="button"
-                  >
-                    {createVacancy.isPending
-                      ? "loading..."
-                      : savedVacancyId
-                        ? "Открыть публикации"
-                        : "Сохранить вакансию"}
-                  </button>
+                  {!isEditMode && (
+                    <button
+                      className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={createVacancy.isPending}
+                      onClick={savedVacancyId ? reopenModal : handleSubmit}
+                      type="button"
+                    >
+                      {createVacancy.isPending
+                        ? "loading..."
+                        : savedVacancyId
+                          ? "Открыть публикации"
+                          : "Сохранить вакансию"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -946,7 +1135,7 @@ export function CreateVacancyForm() {
 
       <Modal
         description="Опубликуйте вакансию в выбранных каналах."
-        isOpen={modalOpen && savedVacancyId !== null}
+        isOpen={!isEditMode && modalOpen && savedVacancyId !== null}
         maxWidthClassName="max-w-[460px]"
         onClose={closeModal}
         title="Вакансия сохранена"

@@ -98,9 +98,9 @@ function toVacancyFunnelPath(vacancy: Vacancy) {
 function renderMobileMeta(item: Vacancy) {
   return (
     <>
-      <span>Город: {item.city || "-"}</span>
+      <span>Регион (hh.uz): {item.areaId || "-"}</span>
       <span>Отклики: {item.responses}</span>
-      <span>Тип работы: {item.workType || "-"}</span>
+      <span>Занятость: {item.employmentId || "-"}</span>
     </>
   );
 }
@@ -162,7 +162,7 @@ export function VacancyTable({
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-          <span>Город</span>
+          <span>Регион (hh.uz)</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
@@ -170,7 +170,7 @@ export function VacancyTable({
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
-          <span>Тип работы</span>
+          <span>Занятость</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-1" />
@@ -234,9 +234,11 @@ export function VacancyTable({
                             {item.title}
                           </Link>
                         )}
-                        <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
-                          {item.level}
-                        </div>
+                        {item.experienceId && (
+                          <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                            {item.experienceId}
+                          </div>
+                        )}
                         {publishedAtLabel && (
                           <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
                             Опубликовано: {publishedAtLabel}
@@ -282,7 +284,7 @@ export function VacancyTable({
                     </div>
 
                     <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                      {item.city || "-"}
+                      {item.areaId || "-"}
                     </div>
 
                     <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
@@ -290,7 +292,7 @@ export function VacancyTable({
                     </div>
 
                     <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                      {item.workType || "-"}
+                      {item.employmentId || "-"}
                     </div>
 
                     <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">

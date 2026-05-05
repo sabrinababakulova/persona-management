@@ -266,6 +266,7 @@ export async function updateHhVacancyContent(
     name?: string;
     description?: string;
     salaryFrom?: number | null;
+    salaryTo?: number | null;
     salaryCurrency?: string;
   },
 ) {
@@ -279,10 +280,14 @@ export async function updateHhVacancyContent(
     body.description = toHhDescriptionHtml(fields.description);
   }
 
-  if (fields.salaryFrom !== undefined || fields.salaryCurrency !== undefined) {
+  if (
+    fields.salaryFrom !== undefined ||
+    fields.salaryTo !== undefined ||
+    fields.salaryCurrency !== undefined
+  ) {
     body.salary = {
       from: fields.salaryFrom ?? null,
-      to: null,
+      to: fields.salaryTo ?? null,
       currency: fields.salaryCurrency ?? "USD",
       gross: false,
     };

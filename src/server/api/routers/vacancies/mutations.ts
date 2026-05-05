@@ -57,19 +57,19 @@ export const createVacancyProcedure = protectedProcedure
       .insert(vacancies)
       .values({
         title: input.title,
-        level: input.level ?? null,
         status: input.status,
-        city: input.city ?? null,
         responses: input.responses,
-        workType: input.workType ?? null,
-        salaryExpectation: input.salaryExpectation ?? null,
+        areaId: input.areaId ?? null,
+        employmentId: input.employmentId ?? null,
+        scheduleId: input.scheduleId ?? null,
+        experienceId: input.experienceId ?? null,
+        professionalRoleId: input.professionalRoleId ?? null,
+        billingTypeId: input.billingTypeId ?? null,
+        salaryFrom: input.salaryFrom ?? null,
+        salaryTo: input.salaryTo ?? null,
         salaryCurrency: input.salaryCurrency,
-        workScheduleStart: input.workScheduleStart ?? null,
-        workScheduleEnd: input.workScheduleEnd ?? null,
-        comments: input.comments ?? null,
-        tasks: input.tasks ?? null,
-        team: input.team ?? null,
-        companyDescription: input.companyDescription ?? null,
+        descriptionHtml: input.descriptionHtml ?? null,
+        contactPhone: input.contactPhone ?? null,
         companyId,
       })
       .returning();
@@ -121,9 +121,17 @@ export const updateVacancyProcedure = protectedProcedure
       const errors: string[] = [];
       const contentFields: Parameters<typeof updateHhVacancyContent>[2] = {};
       if (input.title !== undefined) contentFields.name = input.title;
-      if (input.tasks !== undefined) contentFields.description = input.tasks;
-      if (input.salaryExpectation !== undefined) {
-        contentFields.salaryFrom = input.salaryExpectation;
+      if (
+        input.descriptionHtml !== undefined &&
+        input.descriptionHtml !== null
+      ) {
+        contentFields.description = input.descriptionHtml;
+      }
+      if (input.salaryFrom !== undefined) {
+        contentFields.salaryFrom = input.salaryFrom;
+      }
+      if (input.salaryTo !== undefined) {
+        contentFields.salaryTo = input.salaryTo;
       }
       if (input.salaryCurrency !== undefined) {
         contentFields.salaryCurrency = input.salaryCurrency;
@@ -178,22 +186,25 @@ export const updateVacancyProcedure = protectedProcedure
         hhVacancyId,
         hhAccount.accessToken,
       );
+      // hh.uz returns its display labels (city, level, workType) on the search response, but
+      // the schema now stores hh.uz lookup IDs we can't recover from those names. Return blank
+      // ID fields and let the UI re-resolve names from the dictionaries when needed.
       return {
         id: input.id,
         title: updated.title,
-        level: updated.level ?? "",
         status: updated.status,
-        city: updated.city ?? "",
         responses: updated.responses,
-        workType: updated.workType ?? "",
-        salaryExpectation: updated.salaryExpectation,
+        areaId: "",
+        employmentId: "",
+        scheduleId: "",
+        experienceId: "",
+        professionalRoleId: "",
+        billingTypeId: "",
+        salaryFrom: undefined,
+        salaryTo: undefined,
         salaryCurrency: updated.salaryCurrency ?? "UZS",
-        workScheduleStart: "09:00",
-        workScheduleEnd: "18:00",
-        comments: "",
-        tasks: updated.tasks ?? "",
-        team: "",
-        companyDescription: "",
+        descriptionHtml: "",
+        contactPhone: "",
         companyId: userCompanyId,
         publishedAt: updated.publishedAt,
         source: "hh.uz" as const,
@@ -219,73 +230,82 @@ export const updateVacancyProcedure = protectedProcedure
 
     const valuesToUpdate: Partial<{
       title: string;
-      level: string | null;
       status: "active" | "draft" | "paused" | "closed" | "archive";
-      city: string | null;
       responses: number;
-      workType: string | null;
-      salaryExpectation: number | null;
+      areaId: string | null;
+      employmentId: string | null;
+      scheduleId: string | null;
+      experienceId: string | null;
+      professionalRoleId: string | null;
+      billingTypeId: string | null;
+      salaryFrom: number | null;
+      salaryTo: number | null;
       salaryCurrency: SalaryCurrency;
-      workScheduleStart: string | null;
-      workScheduleEnd: string | null;
-      comments: string | null;
-      tasks: string | null;
-      team: string | null;
-      companyDescription: string | null;
+      descriptionHtml: string | null;
+      contactPhone: string | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
       valuesToUpdate.title = input.title;
-    if (input.level !== undefined && input.level !== (existing.level ?? ""))
-      valuesToUpdate.level = input.level || null;
     if (input.status && input.status !== (existing.status ?? "active"))
       valuesToUpdate.status = input.status;
-    if (input.city !== undefined && input.city !== (existing.city ?? ""))
-      valuesToUpdate.city = input.city || null;
     if (
       input.responses !== undefined &&
       input.responses !== (existing.responses ?? 0)
     )
       valuesToUpdate.responses = input.responses;
     if (
-      input.workType !== undefined &&
-      input.workType !== (existing.workType ?? "")
+      input.areaId !== undefined &&
+      (input.areaId ?? "") !== (existing.areaId ?? "")
     )
-      valuesToUpdate.workType = input.workType || null;
+      valuesToUpdate.areaId = input.areaId || null;
     if (
-      input.salaryExpectation !== undefined &&
-      input.salaryExpectation !== existing.salaryExpectation
+      input.employmentId !== undefined &&
+      (input.employmentId ?? "") !== (existing.employmentId ?? "")
     )
-      valuesToUpdate.salaryExpectation = input.salaryExpectation;
+      valuesToUpdate.employmentId = input.employmentId || null;
+    if (
+      input.scheduleId !== undefined &&
+      (input.scheduleId ?? "") !== (existing.scheduleId ?? "")
+    )
+      valuesToUpdate.scheduleId = input.scheduleId || null;
+    if (
+      input.experienceId !== undefined &&
+      (input.experienceId ?? "") !== (existing.experienceId ?? "")
+    )
+      valuesToUpdate.experienceId = input.experienceId || null;
+    if (
+      input.professionalRoleId !== undefined &&
+      (input.professionalRoleId ?? "") !== (existing.professionalRoleId ?? "")
+    )
+      valuesToUpdate.professionalRoleId = input.professionalRoleId || null;
+    if (
+      input.billingTypeId !== undefined &&
+      (input.billingTypeId ?? "") !== (existing.billingTypeId ?? "")
+    )
+      valuesToUpdate.billingTypeId = input.billingTypeId || null;
+    if (
+      input.salaryFrom !== undefined &&
+      input.salaryFrom !== existing.salaryFrom
+    )
+      valuesToUpdate.salaryFrom = input.salaryFrom;
+    if (input.salaryTo !== undefined && input.salaryTo !== existing.salaryTo)
+      valuesToUpdate.salaryTo = input.salaryTo;
     if (
       input.salaryCurrency !== undefined &&
       input.salaryCurrency !== (existing.salaryCurrency ?? "UZS")
     )
       valuesToUpdate.salaryCurrency = input.salaryCurrency;
     if (
-      input.workScheduleStart !== undefined &&
-      input.workScheduleStart !== (existing.workScheduleStart ?? "")
+      input.descriptionHtml !== undefined &&
+      (input.descriptionHtml ?? "") !== (existing.descriptionHtml ?? "")
     )
-      valuesToUpdate.workScheduleStart = input.workScheduleStart || null;
+      valuesToUpdate.descriptionHtml = input.descriptionHtml || null;
     if (
-      input.workScheduleEnd !== undefined &&
-      input.workScheduleEnd !== (existing.workScheduleEnd ?? "")
-    )
-      valuesToUpdate.workScheduleEnd = input.workScheduleEnd || null;
-    if (
-      input.comments !== undefined &&
-      input.comments !== (existing.comments ?? "")
-    )
-      valuesToUpdate.comments = input.comments || null;
-    if (input.tasks !== undefined && input.tasks !== (existing.tasks ?? ""))
-      valuesToUpdate.tasks = input.tasks || null;
-    if (input.team !== undefined && input.team !== (existing.team ?? ""))
-      valuesToUpdate.team = input.team || null;
-    if (
-      input.companyDescription !== undefined &&
-      input.companyDescription !== (existing.companyDescription ?? "")
+      input.contactPhone !== undefined &&
+      (input.contactPhone ?? "") !== (existing.contactPhone ?? "")
     ) {
-      valuesToUpdate.companyDescription = input.companyDescription || null;
+      valuesToUpdate.contactPhone = input.contactPhone || null;
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {
