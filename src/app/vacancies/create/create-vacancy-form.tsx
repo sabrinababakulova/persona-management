@@ -8,10 +8,10 @@ import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { Input } from "~/app/_components/input";
 import { Modal } from "~/app/_components/modal";
+import { RichTextEditor } from "~/app/_components/rich-text-editor";
+import { SearchableSelect } from "~/app/_components/searchable-select";
 import { SideMenu } from "~/app/_components/sideMenu";
-import { Textarea } from "~/app/_components/textarea";
 import { api } from "~/trpc/react";
-import type { Vacancy } from "~/types/pages/vacancies-page";
 import {
   formatNumberWithSpaces,
   parseFormattedNumber,
@@ -22,23 +22,7 @@ import {
   type PublicationsConfig,
 } from "./create-vacancy-publications";
 
-const DESCRIPTION_DRAFT_KEY = "vacancy-create:description-draft:v1";
-
-const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => {
-  const label = `${String(hour).padStart(2, "0")}:00`;
-  return { value: label, label };
-});
-
-const REQUIRED_FIELDS = [
-  { key: "title", label: "Название вакансии" },
-  { key: "level", label: "Уровень" },
-  { key: "city", label: "Город" },
-  { key: "workType", label: "Формат работы" },
-  { key: "salaryExpectation", label: "Зарплата" },
-  { key: "tasks", label: "Задачи" },
-  { key: "team", label: "Команда" },
-  { key: "companyDescription", label: "Описание компании" },
-] as const;
+const HH_DRAFT_KEY = "vacancy-create:hh-draft:v1";
 
 const SIDE_MENU_ITEMS = [
   { id: "description", label: "Описание вакансии" },
@@ -46,38 +30,93 @@ const SIDE_MENU_ITEMS = [
   { id: "preview", label: "Предпросмотр" },
 ] as const;
 
-type VacancyStatus = Vacancy["status"];
-type SalaryCurrency = NonNullable<Vacancy["salaryCurrency"]>;
+const FALLBACK_CURRENCY_OPTIONS = [
+  { value: "UZS", label: "UZS" },
+  { value: "USD", label: "USD" },
+];
 
-type VacancyCreateFormData = {
-  title: string;
-  level: string;
-  status: VacancyStatus;
-  city: string;
-  responses: string;
-  workType: string;
-  salaryExpectation: string;
-  salaryCurrency: SalaryCurrency;
-  workScheduleStart: string;
-  workScheduleEnd: string;
-  comments: string;
-  tasks: string;
-  team: string;
-  companyDescription: string;
+type HhFormData = {
+  name: string;
+  areaId: string;
+  employmentId: string;
+  scheduleId: string;
+  experienceId: string;
+  professionalRoleId: string;
+  billingTypeId: string;
+  salaryFrom: string;
+  salaryTo: string;
+  salaryCurrency: string;
+  descriptionHtml: string;
+  contactPhone: string;
 };
 
-type VacancyFormErrors = Partial<
-  Record<keyof VacancyCreateFormData | "_form", string>
->;
+type HhFormErrors = Partial<Record<keyof HhFormData | "_form", string>>;
 
-function isVacancyStatus(value: string): value is VacancyStatus {
-  return ["active", "draft", "paused", "closed", "archive"].includes(value);
+const REQUIRED_FIELDS: ReadonlyArray<{
+  key: keyof HhFormData;
+  label: string;
+}> = [
+  { key: "name", label: "Название вакансии" },
+  { key: "areaId", label: "Город" },
+  { key: "professionalRoleId", label: "Профессиональная роль" },
+  { key: "employmentId", label: "Тип занятости" },
+  { key: "scheduleId", label: "График работы" },
+  { key: "experienceId", label: "Опыт работы" },
+  { key: "billingTypeId", label: "Тип публикации" },
+  { key: "descriptionHtml", label: "Описание" },
+];
+
+const EMPTY_FORM: HhFormData = {
+  name: "",
+  areaId: "",
+  employmentId: "",
+  scheduleId: "",
+  experienceId: "",
+  professionalRoleId: "",
+  billingTypeId: "",
+  salaryFrom: "",
+  salaryTo: "",
+  salaryCurrency: "UZS",
+  descriptionHtml: "",
+  contactPhone: "",
+};
+
+/**
+ * Returns true when the supplied HTML contains visible text content.
+ * Strips tags so an "empty" rich-text editor (e.g. `<p></p>`) is treated as blank.
+ */
+function hasMeaningfulHtml(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").trim().length > 0;
 }
 
-function normalizeOptionalString(value: string) {
-  return value.trim() ?? undefined;
+/**
+ * Removes duplicate options by `value`, keeping the first occurrence.
+ *
+ * hh.ru returns the same `professionalRoles` id under multiple category groups, which
+ * collides on the `<option key={value}>` we pass to the Dropdown. Deduping by value
+ * keeps the dropdown valid (a `<select>` can't have two options with the same value
+ * anyway) and works for areas/roles/employment/etc. uniformly.
+ */
+function dedupeOptionsByValue<T extends { value: string }>(options: T[]): T[] {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.value)) {
+      return false;
+    }
+    seen.add(option.value);
+    return true;
+  });
 }
 
+/**
+ * Splits a phone number string into the `{ country, city, number }` tuple expected by the hh.uz API.
+ *
+ * - `+998 (XX) XXX-XX-XX` style numbers map directly to country `998`.
+ * - Bare 9-digit numbers are assumed to be Uzbek and prefixed with `998`.
+ * - Other lengths fall back to slicing the trailing 9 digits as the local number.
+ *
+ * Returns null when the digit count is below 9, which means it cannot be turned into a valid tuple.
+ */
 function parseHhPhoneClient(raw: string): {
   country: string;
   city: string;
@@ -106,15 +145,18 @@ function parseHhPhoneClient(raw: string): {
   };
 }
 
-function parseResponses(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) {
-    return 0;
-  }
-
-  return Number(digits);
-}
-
+/**
+ * Multi-step form that creates a vacancy and (optionally) publishes it to hh.uz / Telegram.
+ *
+ * Steps:
+ * - `description` — collects every field hh.uz requires (name, area, role, employment, schedule,
+ *   experience, billing type, salary range, contact phone and the HTML description).
+ * - `publications` — lets the user choose distribution channels (Telegram and/or hh.uz).
+ * - `preview` — submits the vacancy via tRPC and opens a publish modal so each selected channel
+ *   can be triggered.
+ *
+ * Drafts are persisted to localStorage under {@link HH_DRAFT_KEY} so a refresh keeps the work in progress.
+ */
 export function CreateVacancyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -124,9 +166,12 @@ export function CreateVacancyForm() {
     stepParam && SIDE_MENU_ITEMS.some((item) => item.id === stepParam)
       ? stepParam
       : SIDE_MENU_ITEMS[0].id;
+
+  /** Pushes the user to the requested step via the `?step=` query parameter. */
   const goToStep = (id: string) => {
     router.push(`/vacancies/create?step=${id}`);
   };
+
   const [savedVacancyId, setSavedVacancyId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState<
@@ -139,36 +184,24 @@ export function CreateVacancyForm() {
   const [publishedHhUrl, setPublishedHhUrl] = useState<string | null>(null);
   const [publicationsConfig, setPublicationsConfig] =
     useState<PublicationsConfig | null>(null);
+
+  /** Stable callback passed to the publications step so it can report channel changes upward. */
   const handlePublicationsConfigChange = useCallback(
     (config: PublicationsConfig) => {
       setPublicationsConfig(config);
     },
     [],
   );
-  const [errors, setErrors] = useState<VacancyFormErrors>({});
+
+  const [errors, setErrors] = useState<HhFormErrors>({});
   const [hydrated, setHydrated] = useState(false);
-  const [formData, setFormData] = useState<VacancyCreateFormData>({
-    title: "",
-    level: "",
-    status: "draft",
-    city: "",
-    responses: "0",
-    workType: "",
-    salaryExpectation: "",
-    salaryCurrency: "UZS",
-    workScheduleStart: "09:00",
-    workScheduleEnd: "18:00",
-    comments: "",
-    tasks: "",
-    team: "",
-    companyDescription: "",
-  });
+  const [formData, setFormData] = useState<HhFormData>(EMPTY_FORM);
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(DESCRIPTION_DRAFT_KEY);
+      const raw = window.localStorage.getItem(HH_DRAFT_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<VacancyCreateFormData>;
+        const parsed = JSON.parse(raw) as Partial<HhFormData>;
         setFormData((previous) => ({ ...previous, ...parsed }));
       }
     } catch {
@@ -182,55 +215,118 @@ export function CreateVacancyForm() {
       return;
     }
     try {
-      window.localStorage.setItem(
-        DESCRIPTION_DRAFT_KEY,
-        JSON.stringify(formData),
-      );
+      window.localStorage.setItem(HH_DRAFT_KEY, JSON.stringify(formData));
     } catch {
       // Ignore quota errors.
     }
   }, [formData, hydrated]);
 
+  /** Removes the description and publications drafts from localStorage. */
   const clearDrafts = () => {
     try {
-      window.localStorage.removeItem(DESCRIPTION_DRAFT_KEY);
+      window.localStorage.removeItem(HH_DRAFT_KEY);
       window.localStorage.removeItem(PUBLICATIONS_DRAFT_STORAGE_KEY);
     } catch {
       // Ignore.
     }
   };
 
-  const {
-    data: vacancyLookups,
-    isError: isLookupsError,
-    isLoading: isLookupsLoading,
-    refetch: refetchLookups,
-  } = api.lookups.getVacancyCreateOptions.useQuery();
   const { data: telegramConfig } = api.vacancies.getTelegramConfig.useQuery();
-  const { data: hhConfig } = api.vacancies.getHhConfig.useQuery();
+  const hhConfigQuery = api.vacancies.getHhConfig.useQuery();
+  const hhLookupsQuery = api.vacancies.getHhPublishLookups.useQuery();
 
   useEffect(() => {
-    if (!vacancyLookups) {
-      return;
-    }
+    if (!hydrated) return;
+    const companyPhone = hhConfigQuery.data?.companyPhone;
+    if (!companyPhone) return;
+    setFormData((previous) =>
+      previous.contactPhone
+        ? previous
+        : { ...previous, contactPhone: companyPhone },
+    );
+  }, [hydrated, hhConfigQuery.data?.companyPhone]);
 
-    setFormData((previous) => {
-      const nextStatus = vacancyLookups.statusOptions.some(
-        (option) => option.value === previous.status,
-      )
-        ? previous.status
-        : vacancyLookups.statusOptions[0]?.value;
+  const areaOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.areas ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.areas],
+  );
 
-      return {
-        ...previous,
-        status:
-          nextStatus && isVacancyStatus(nextStatus) ? nextStatus : "draft",
-      };
-    });
-  }, [vacancyLookups]);
+  const employmentOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.employment ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.employment],
+  );
+
+  const scheduleOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.schedule ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.schedule],
+  );
+
+  const experienceOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.experience ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.experience],
+  );
+
+  const professionalRoleOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.professionalRoles ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.professionalRoles],
+  );
+
+  const billingTypeOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.billingType ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.billingType],
+  );
+
+  const currencyOptions = useMemo(() => {
+    const list = dedupeOptionsByValue(
+      (hhLookupsQuery.data?.currency ?? []).map((item) => ({
+        value: item.id,
+        label: item.name,
+      })),
+    );
+    return list.length === 0 ? FALLBACK_CURRENCY_OPTIONS : list;
+  }, [hhLookupsQuery.data?.currency]);
 
   const progress = useMemo(() => {
     const missing = REQUIRED_FIELDS.filter(({ key }) => {
+      if (key === "descriptionHtml") {
+        return !hasMeaningfulHtml(formData.descriptionHtml);
+      }
       return formData[key].trim() === "";
     }).map(({ label }) => label);
 
@@ -257,7 +353,7 @@ export function CreateVacancyForm() {
 
       const willOfferTelegram =
         telegramConfig?.enabled === true && telegramSelected;
-      const willOfferHh = hhConfig?.enabled === true && hhSelected;
+      const willOfferHh = hhConfigQuery.data?.enabled === true && hhSelected;
 
       if (willOfferTelegram || willOfferHh) {
         setSavedVacancyId(createdVacancy.id);
@@ -296,9 +392,13 @@ export function CreateVacancyForm() {
     },
   });
 
-  const handleFieldChange = <K extends keyof VacancyCreateFormData>(
+  /**
+   * Updates a single form field and clears any pre-existing per-field or form-level error.
+   * Generic over the field key so the value type is statically checked.
+   */
+  const handleFieldChange = <K extends keyof HhFormData>(
     field: K,
-    value: VacancyCreateFormData[K],
+    value: HhFormData[K],
   ) => {
     setFormData((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => {
@@ -314,6 +414,7 @@ export function CreateVacancyForm() {
     });
   };
 
+  /** Closes the publish modal and resets the per-channel publish status. */
   const closeModal = () => {
     setModalOpen(false);
     setTelegramStatus("idle");
@@ -322,6 +423,7 @@ export function CreateVacancyForm() {
     setPublishedHhUrl(null);
   };
 
+  /** Re-opens the publish modal (after the user has saved but navigated away). */
   const reopenModal = () => {
     setHhStatus("idle");
     setHhError(null);
@@ -330,19 +432,24 @@ export function CreateVacancyForm() {
     setModalOpen(true);
   };
 
+  /** Closes the publish modal and sends the user back to the description step to fix hh.uz fields. */
   const goEditHhFields = () => {
     setModalOpen(false);
     setHhStatus("idle");
     setHhError(null);
-    goToStep("publications");
+    goToStep("description");
   };
 
+  /**
+   * Validates the hh.uz-required fields in {@link formData} and triggers the publish mutation.
+   * Surfaces a `hhError` if anything is missing so the modal can prompt the user to fix it.
+   */
   const triggerHhPublish = () => {
-    if (!savedVacancyId || !publicationsConfig) {
+    if (!savedVacancyId) {
       return;
     }
-    const hh = publicationsConfig.hh;
-    const requiredFields: Array<[keyof typeof hh, string]> = [
+
+    const requiredHhFields: Array<[keyof HhFormData, string]> = [
       ["areaId", "город"],
       ["employmentId", "тип занятости"],
       ["scheduleId", "график"],
@@ -351,9 +458,15 @@ export function CreateVacancyForm() {
       ["billingTypeId", "тип публикации"],
       ["descriptionHtml", "HTML-описание"],
     ];
-    const missing = requiredFields
-      .filter(([key]) => !hh[key].trim())
+    const missing = requiredHhFields
+      .filter(([key]) => {
+        if (key === "descriptionHtml") {
+          return !hasMeaningfulHtml(formData.descriptionHtml);
+        }
+        return !formData[key].trim();
+      })
       .map(([, label]) => label);
+
     if (missing.length > 0) {
       setHhStatus("error");
       setHhError(`Заполните поля hh.uz: ${missing.join(", ")}`);
@@ -363,54 +476,73 @@ export function CreateVacancyForm() {
     setHhStatus("sending");
     setHhError(null);
 
-    const parsedFrom = hh.salaryFrom
-      ? parseFormattedNumber(hh.salaryFrom)
+    const parsedFrom = formData.salaryFrom
+      ? parseFormattedNumber(formData.salaryFrom)
       : undefined;
-    const parsedTo = hh.salaryTo
-      ? parseFormattedNumber(hh.salaryTo)
+    const parsedTo = formData.salaryTo
+      ? parseFormattedNumber(formData.salaryTo)
       : undefined;
 
     postToHh.mutate({
       vacancyId: savedVacancyId,
-      name: publicationsConfig.name || formData.title,
-      descriptionHtml: hh.descriptionHtml,
-      areaId: hh.areaId,
-      employmentId: hh.employmentId,
-      scheduleId: hh.scheduleId,
-      experienceId: hh.experienceId,
-      professionalRoleId: hh.professionalRoleId,
-      billingTypeId: hh.billingTypeId,
+      name: formData.name,
+      descriptionHtml: formData.descriptionHtml,
+      areaId: formData.areaId,
+      employmentId: formData.employmentId,
+      scheduleId: formData.scheduleId,
+      experienceId: formData.experienceId,
+      professionalRoleId: formData.professionalRoleId,
+      billingTypeId: formData.billingTypeId,
       salaryFrom: parsedFrom,
       salaryTo: parsedTo,
-      salaryCurrency: hh.salaryCurrency || "UZS",
-      contactPhone: hh.contactPhone
-        ? parseHhPhoneClient(hh.contactPhone)
+      salaryCurrency: formData.salaryCurrency || "UZS",
+      contactPhone: formData.contactPhone
+        ? parseHhPhoneClient(formData.contactPhone)
         : null,
     });
   };
 
-  const validateDescription = (): boolean => {
-    const trimmedTitle = formData.title.trim();
+  /**
+   * Validates the description step.
+   *
+   * Required: name, area, role, employment, schedule, experience, billing type and a non-empty
+   * description of at least 200 characters (the same minimum the server enforces).
+   *
+   * Returns true and clears errors on success; otherwise sets per-field error messages and returns false.
+   */
+  const validateForm = (): boolean => {
+    const nextErrors: HhFormErrors = {};
 
-    if (!trimmedTitle) {
-      setErrors((previous) => ({
-        ...previous,
-        title: "Введите название вакансии",
-      }));
-      return false;
+    if (!formData.name.trim()) {
+      nextErrors.name = "Введите название вакансии";
+    }
+    if (!formData.areaId) {
+      nextErrors.areaId = "Выберите город";
+    }
+    if (!formData.professionalRoleId) {
+      nextErrors.professionalRoleId = "Выберите профессиональную роль";
+    }
+    if (!formData.employmentId) {
+      nextErrors.employmentId = "Выберите тип занятости";
+    }
+    if (!formData.scheduleId) {
+      nextErrors.scheduleId = "Выберите график";
+    }
+    if (!formData.experienceId) {
+      nextErrors.experienceId = "Выберите опыт";
+    }
+    if (!formData.billingTypeId) {
+      nextErrors.billingTypeId = "Выберите тип публикации";
+    }
+    if (!hasMeaningfulHtml(formData.descriptionHtml)) {
+      nextErrors.descriptionHtml = "Заполните описание вакансии";
+    } else if (formData.descriptionHtml.length < 200) {
+      nextErrors.descriptionHtml =
+        "Описание должно быть не короче 200 символов";
     }
 
-    const parsedSalaryExpectation = parseFormattedNumber(
-      formData.salaryExpectation,
-    );
-    if (
-      parsedSalaryExpectation !== undefined &&
-      parsedSalaryExpectation > 1_000_000_000
-    ) {
-      setErrors((previous) => ({
-        ...previous,
-        salaryExpectation: "Сумма не должна превышать 1 000 000 000",
-      }));
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return false;
     }
 
@@ -418,13 +550,15 @@ export function CreateVacancyForm() {
     return true;
   };
 
+  /** Validates the form and advances to the publications step. */
   const handleContinueFromDescription = () => {
-    if (!validateDescription()) {
+    if (!validateForm()) {
       return;
     }
     goToStep("publications");
   };
 
+  /** From the publications step: opens the publish modal if already saved, else moves to preview. */
   const handleContinueFromPublications = () => {
     if (savedVacancyId) {
       reopenModal();
@@ -433,66 +567,29 @@ export function CreateVacancyForm() {
     goToStep("preview");
   };
 
+  /** Discards drafts and returns the user to the vacancies list. */
   const handleCancel = () => {
     clearDrafts();
     router.push("/vacancies");
   };
 
+  /**
+   * Final-step handler.
+   * Validates the description fields and calls the create-vacancy mutation, using the hh.uz `name`
+   * as the vacancy title. Other vacancy columns fall back to their server-side defaults.
+   */
   const handleSubmit = () => {
-    if (!validateDescription()) {
+    if (!validateForm()) {
       return;
     }
-
-    const parsedSalaryExpectation = parseFormattedNumber(
-      formData.salaryExpectation,
-    );
 
     setTelegramStatus("idle");
 
     createVacancy.mutate({
-      title: formData.title.trim(),
-      level: normalizeOptionalString(formData.level),
-      status: formData.status,
-      city: normalizeOptionalString(formData.city),
-      responses: parseResponses(formData.responses),
-      workType: normalizeOptionalString(formData.workType),
-      salaryExpectation: parsedSalaryExpectation,
-      salaryCurrency: formData.salaryCurrency,
-      workScheduleStart: normalizeOptionalString(formData.workScheduleStart),
-      workScheduleEnd: normalizeOptionalString(formData.workScheduleEnd),
-      comments: normalizeOptionalString(formData.comments),
-      tasks: normalizeOptionalString(formData.tasks),
-      team: normalizeOptionalString(formData.team),
-      companyDescription: normalizeOptionalString(formData.companyDescription),
+      title: formData.name.trim(),
+      status: "draft",
     });
   };
-
-  if (isLookupsLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Загрузка справочников...</div>
-      </div>
-    );
-  }
-
-  if (isLookupsError || !vacancyLookups) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
-          <p className="mb-4 text-[14px]">
-            Не удалось загрузить справочники из базы данных.
-          </p>
-          <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
-            onClick={() => void refetchLookups()}
-            type="button"
-          >
-            Повторить
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full">
@@ -501,13 +598,18 @@ export function CreateVacancyForm() {
           activeId={activeSectionId}
           items={SIDE_MENU_ITEMS.map((item) => ({
             ...item,
-            disabled: item.id !== "description",
+            disabled:
+              item.id !== "description" &&
+              !(
+                formData.name.trim() &&
+                hasMeaningfulHtml(formData.descriptionHtml)
+              ),
           }))}
           onSelect={goToStep}
         />
 
         <section className="flex flex-3 flex-col">
-          <div className="w-full max-w-[560px]">
+          <div className="w-full max-w-[900px]">
             <Breadcrumbs
               label="Добавление вакансии"
               rootHref="/vacancies"
@@ -520,21 +622,6 @@ export function CreateVacancyForm() {
                   <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
                     Добавление вакансии
                   </h1>
-                  <div className="w-full sm:w-[180px]">
-                    <Dropdown
-                      fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
-                      hideLabel
-                      iconClassName="right-2 h-4 w-4 text-text-placeholder"
-                      label="Статус"
-                      onChange={(value) => {
-                        if (isVacancyStatus(value)) {
-                          handleFieldChange("status", value);
-                        }
-                      }}
-                      options={vacancyLookups.statusOptions}
-                      value={formData.status}
-                    />
-                  </div>
                 </div>
 
                 <FormProgress
@@ -544,6 +631,19 @@ export function CreateVacancyForm() {
                   total={progress.total}
                 />
 
+                {hhLookupsQuery.isError && (
+                  <div className="mt-4 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+                    Не удалось загрузить справочники hh.uz.{" "}
+                    <button
+                      className="underline"
+                      onClick={() => void hhLookupsQuery.refetch()}
+                      type="button"
+                    >
+                      Повторить
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
                   <div className="min-w-0 flex-1 space-y-8">
                     <div
@@ -551,77 +651,131 @@ export function CreateVacancyForm() {
                       id="basic-information"
                     >
                       <ClosableSection title="Основная информация">
-                        <Input
-                          label="Название вакансии"
-                          maxLength={255}
-                          onChange={(event) =>
-                            handleFieldChange("title", event.target.value)
-                          }
-                          placeholder="Например, Frontend Developer"
-                          value={formData.title}
-                        />
-                        {errors.title && (
-                          <p className="text-[13px] text-danger-red leading-[1.4]">
-                            {errors.title}
-                          </p>
-                        )}
-
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <Dropdown
-                            label="Уровень"
-                            onChange={(value) =>
-                              handleFieldChange("level", value)
+                        <div className="flex min-w-0 flex-col gap-2">
+                          <Input
+                            label="Название вакансии"
+                            maxLength={255}
+                            onChange={(event) =>
+                              handleFieldChange("name", event.target.value)
                             }
-                            options={vacancyLookups.levels}
-                            placeholder="Выберите уровень"
-                            value={formData.level}
+                            placeholder="Например, Frontend Developer"
+                            value={formData.name}
                           />
-                          {vacancyLookups.cities.length > 0 ? (
-                            <Dropdown
-                              label="Город"
-                              onChange={(value) =>
-                                handleFieldChange("city", value)
-                              }
-                              options={vacancyLookups.cities}
-                              placeholder="Выберите город"
-                              value={formData.city}
-                            />
-                          ) : (
-                            <Input
-                              label="Город"
-                              maxLength={255}
-                              onChange={(event) =>
-                                handleFieldChange("city", event.target.value)
-                              }
-                              placeholder="Введите город"
-                              value={formData.city}
-                            />
+                          {errors.name && (
+                            <p className="text-[13px] text-danger-red leading-[1.4]">
+                              {errors.name}
+                            </p>
                           )}
                         </div>
 
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <Dropdown
-                            label="Формат работы"
-                            onChange={(value) =>
-                              handleFieldChange("workType", value)
-                            }
-                            options={vacancyLookups.workTypes}
-                            placeholder="Выберите формат работы"
-                            value={formData.workType}
-                          />
-                          <Input
-                            inputMode="numeric"
-                            label="Количество откликов"
-                            maxLength={9}
-                            onChange={(event) =>
-                              handleFieldChange(
-                                "responses",
-                                event.target.value.replace(/\D/g, ""),
-                              )
-                            }
-                            placeholder="0"
-                            value={formData.responses}
-                          />
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <SearchableSelect
+                              label="Город"
+                              onChange={(value) =>
+                                handleFieldChange("areaId", value)
+                              }
+                              options={areaOptions}
+                              placeholder="Выберите город"
+                              searchPlaceholder="Найти город"
+                              value={formData.areaId}
+                            />
+                            {errors.areaId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.areaId}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <SearchableSelect
+                              label="Профессиональная роль"
+                              onChange={(value) =>
+                                handleFieldChange("professionalRoleId", value)
+                              }
+                              options={professionalRoleOptions}
+                              placeholder="Выберите роль"
+                              searchPlaceholder="Найти роль"
+                              value={formData.professionalRoleId}
+                            />
+                            {errors.professionalRoleId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.professionalRoleId}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <Dropdown
+                              label="Тип занятости"
+                              onChange={(value) =>
+                                handleFieldChange("employmentId", value)
+                              }
+                              options={employmentOptions}
+                              placeholder="Выберите тип"
+                              value={formData.employmentId}
+                            />
+                            {errors.employmentId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.employmentId}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <Dropdown
+                              label="График работы"
+                              onChange={(value) =>
+                                handleFieldChange("scheduleId", value)
+                              }
+                              options={scheduleOptions}
+                              placeholder="Выберите график"
+                              value={formData.scheduleId}
+                            />
+                            {errors.scheduleId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.scheduleId}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <Dropdown
+                              label="Опыт работы"
+                              onChange={(value) =>
+                                handleFieldChange("experienceId", value)
+                              }
+                              options={experienceOptions}
+                              placeholder="Выберите опыт"
+                              value={formData.experienceId}
+                            />
+                            {errors.experienceId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.experienceId}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <Dropdown
+                              label="Тип публикации"
+                              onChange={(value) =>
+                                handleFieldChange("billingTypeId", value)
+                              }
+                              options={billingTypeOptions}
+                              placeholder="Выберите тип публикации"
+                              value={formData.billingTypeId}
+                            />
+                            {errors.billingTypeId && (
+                              <p className="text-[13px] text-danger-red leading-[1.4]">
+                                {errors.billingTypeId}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </ClosableSection>
                     </div>
@@ -631,94 +785,53 @@ export function CreateVacancyForm() {
                       id="conditions"
                     >
                       <ClosableSection title="Условия">
-                        <Input
-                          endAdornment={
-                            <div className="flex overflow-hidden rounded-md border border-border-input">
-                              <button
-                                aria-pressed={formData.salaryCurrency === "UZS"}
-                                className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
-                                  formData.salaryCurrency === "UZS"
-                                    ? "bg-primary-blue-light text-primary-blue"
-                                    : "bg-bg-light text-text-disabled"
-                                }`}
-                                onClick={() =>
-                                  handleFieldChange("salaryCurrency", "UZS")
-                                }
-                                type="button"
-                              >
-                                UZS
-                              </button>
-                              <button
-                                aria-pressed={formData.salaryCurrency === "USD"}
-                                className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
-                                  formData.salaryCurrency === "USD"
-                                    ? "bg-primary-blue-light text-primary-blue"
-                                    : "bg-bg-light text-text-disabled"
-                                }`}
-                                onClick={() =>
-                                  handleFieldChange("salaryCurrency", "USD")
-                                }
-                                type="button"
-                              >
-                                USD
-                              </button>
-                            </div>
-                          }
-                          id="salaryExpectation"
-                          inputMode="numeric"
-                          label="Зарплата"
-                          maxLength={20}
-                          onChange={(event) =>
-                            handleFieldChange(
-                              "salaryExpectation",
-                              formatNumberWithSpaces(event.target.value),
-                            )
-                          }
-                          placeholder="Введите сумму"
-                          type="text"
-                          value={formData.salaryExpectation}
-                        />
-                        {errors.salaryExpectation && (
-                          <p className="text-[13px] text-danger-red leading-[1.4]">
-                            {errors.salaryExpectation}
-                          </p>
-                        )}
-
-                        <div className="space-y-2">
-                          <p className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
-                            График работы
-                          </p>
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <Dropdown
-                              hideLabel
-                              label="Время начала"
-                              onChange={(value) =>
-                                handleFieldChange("workScheduleStart", value)
-                              }
-                              options={TIME_OPTIONS}
-                              value={formData.workScheduleStart}
-                            />
-                            <Dropdown
-                              hideLabel
-                              label="Время окончания"
-                              onChange={(value) =>
-                                handleFieldChange("workScheduleEnd", value)
-                              }
-                              options={TIME_OPTIONS}
-                              value={formData.workScheduleEnd}
-                            />
-                          </div>
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                          <Input
+                            inputMode="numeric"
+                            label="Зарплата от"
+                            maxLength={20}
+                            onChange={(event) =>
+                              handleFieldChange(
+                                "salaryFrom",
+                                formatNumberWithSpaces(event.target.value),
+                              )
+                            }
+                            placeholder="например, 5 000 000"
+                            value={formData.salaryFrom}
+                          />
+                          <Input
+                            inputMode="numeric"
+                            label="Зарплата до"
+                            maxLength={20}
+                            onChange={(event) =>
+                              handleFieldChange(
+                                "salaryTo",
+                                formatNumberWithSpaces(event.target.value),
+                              )
+                            }
+                            placeholder="например, 8 000 000"
+                            value={formData.salaryTo}
+                          />
+                          <Dropdown
+                            label="Валюта"
+                            onChange={(value) =>
+                              handleFieldChange("salaryCurrency", value)
+                            }
+                            options={currencyOptions}
+                            value={formData.salaryCurrency || "UZS"}
+                          />
                         </div>
 
-                        <Textarea
-                          id="vacancy-comments"
-                          label="Комментарии"
-                          maxLength={4000}
+                        <Input
+                          label="Контактный телефон (можно оставить пустым)"
                           onChange={(event) =>
-                            handleFieldChange("comments", event.target.value)
+                            handleFieldChange(
+                              "contactPhone",
+                              event.target.value,
+                            )
                           }
-                          placeholder="Например, гибкий график, бонусы, испытательный срок"
-                          value={formData.comments}
+                          placeholder="+998 71 123 45 67"
+                          value={formData.contactPhone}
                         />
                       </ClosableSection>
                     </div>
@@ -728,42 +841,26 @@ export function CreateVacancyForm() {
                       id="description"
                     >
                       <ClosableSection title="Описание">
-                        <Textarea
-                          className="min-h-[160px]"
-                          id="vacancy-tasks"
-                          label="Задачи"
-                          maxLength={4000}
-                          onChange={(event) =>
-                            handleFieldChange("tasks", event.target.value)
+                        <RichTextEditor
+                          id="hh-description-html"
+                          label="Описание для hh.uz (минимум 200 символов)"
+                          maxLength={20000}
+                          onChange={(html) =>
+                            handleFieldChange("descriptionHtml", html)
                           }
-                          placeholder="Опишите ключевые задачи, зоны ответственности и ожидаемый результат"
-                          value={formData.tasks}
+                          placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
+                          value={formData.descriptionHtml}
                         />
-                        <Textarea
-                          className="min-h-[120px]"
-                          id="vacancy-team"
-                          label="Команда"
-                          maxLength={4000}
-                          onChange={(event) =>
-                            handleFieldChange("team", event.target.value)
-                          }
-                          placeholder="Кто будет рядом с новым сотрудником: руководитель, команда, смежные роли"
-                          value={formData.team}
-                        />
-                        <Textarea
-                          className="min-h-[160px]"
-                          id="vacancy-company-description"
-                          label="Описание компании"
-                          maxLength={8000}
-                          onChange={(event) =>
-                            handleFieldChange(
-                              "companyDescription",
-                              event.target.value,
-                            )
-                          }
-                          placeholder="Кратко расскажите о компании, продукте и ценности вакансии"
-                          value={formData.companyDescription}
-                        />
+                        {errors.descriptionHtml && (
+                          <p className="text-[13px] text-danger-red leading-[1.4]">
+                            {errors.descriptionHtml}
+                          </p>
+                        )}
+                        <p className="text-[12px] text-text-secondary">
+                          hh.uz принимает только базовое форматирование: абзацы,
+                          списки, заголовки H3/H4, жирный, курсив и ссылки.
+                          Описание должно содержать хотя бы один список.
+                        </p>
                       </ClosableSection>
                     </div>
                   </div>
@@ -799,15 +896,11 @@ export function CreateVacancyForm() {
               </>
             ) : activeSectionId === "publications" ? (
               <CreateVacancyPublications
-                onCancel={handleCancel}
+                onBack={() => goToStep("description")}
                 onConfigChange={handlePublicationsConfigChange}
                 onContinue={handleContinueFromPublications}
-                prefillDescription={formData.tasks}
-                prefillName={formData.title}
-                prefillSalaryCurrency={formData.salaryCurrency}
-                prefillSalaryFrom={parseFormattedNumber(
-                  formData.salaryExpectation,
-                )}
+                prefillDescription={formData.descriptionHtml}
+                prefillName={formData.name}
               />
             ) : (
               <div className="mt-6 flex flex-col gap-6">
@@ -827,10 +920,10 @@ export function CreateVacancyForm() {
                 <div className="flex flex-wrap items-center justify-end gap-3 border-border-input border-t pt-4">
                   <button
                     className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-                    onClick={handleCancel}
+                    onClick={() => goToStep("publications")}
                     type="button"
                   >
-                    Отмена
+                    Назад
                   </button>
                   <button
                     className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
@@ -881,7 +974,7 @@ export function CreateVacancyForm() {
                     : "Telegram"}
               </button>
             )}
-            {hhSelected && hhConfig?.enabled && (
+            {hhSelected && hhConfigQuery.data?.enabled && (
               <button
                 className="rounded-[8px] bg-primary-blue-dark px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={postToHh.isPending || hhStatus === "sent"}

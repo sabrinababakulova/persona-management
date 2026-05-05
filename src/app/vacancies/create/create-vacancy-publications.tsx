@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Dropdown } from "~/app/_components/dropdown";
+import { useEffect, useState } from "react";
 import { CheckIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
-import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { Textarea } from "~/app/_components/textarea";
-import { api } from "~/trpc/react";
 
 const PUBLICATION_CHANNELS = ["telegram", "hh.uz"] as const;
 
@@ -14,48 +11,19 @@ type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
 
 const PUBLICATIONS_DRAFT_KEY = "vacancy-create:publications-draft:v1";
 
-type HhDraft = {
-  areaId: string;
-  employmentId: string;
-  scheduleId: string;
-  experienceId: string;
-  professionalRoleId: string;
-  billingTypeId: string;
-  salaryFrom: string;
-  salaryTo: string;
-  salaryCurrency: string;
-  descriptionHtml: string;
-  contactPhone: string;
-};
-
 type PublicationsDraft = {
   name: string;
   description: string;
   selectedChannels: PublicationChannel[];
-  hh: HhDraft;
 };
 
 export type PublicationsConfig = {
   name: string;
   description: string;
   selectedChannels: PublicationChannel[];
-  hh: HhDraft;
 };
 
-const EMPTY_HH_DRAFT: HhDraft = {
-  areaId: "",
-  employmentId: "",
-  scheduleId: "",
-  experienceId: "",
-  professionalRoleId: "",
-  billingTypeId: "",
-  salaryFrom: "",
-  salaryTo: "",
-  salaryCurrency: "UZS",
-  descriptionHtml: "",
-  contactPhone: "",
-};
-
+/** Type guard that narrows an unknown value to one of {@link PUBLICATION_CHANNELS}. */
 function isPublicationChannel(value: unknown): value is PublicationChannel {
   return (
     typeof value === "string" &&
@@ -63,65 +31,35 @@ function isPublicationChannel(value: unknown): value is PublicationChannel {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function pickString(value: unknown, fallback: string): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function parseHhDraft(value: unknown): HhDraft {
-  if (!isRecord(value)) {
-    return EMPTY_HH_DRAFT;
-  }
-  return {
-    areaId: pickString(value.areaId, ""),
-    employmentId: pickString(value.employmentId, ""),
-    scheduleId: pickString(value.scheduleId, ""),
-    experienceId: pickString(value.experienceId, ""),
-    professionalRoleId: pickString(value.professionalRoleId, ""),
-    billingTypeId: pickString(value.billingTypeId, ""),
-    salaryFrom: pickString(value.salaryFrom, ""),
-    salaryTo: pickString(value.salaryTo, ""),
-    salaryCurrency: pickString(value.salaryCurrency, "UZS"),
-    descriptionHtml: pickString(value.descriptionHtml, ""),
-    contactPhone: pickString(value.contactPhone, ""),
-  };
-}
-
+/**
+ * Renders the publications step of the vacancy creation flow.
+ *
+ * Collects the publication's display name and short description, plus the
+ * channels (Telegram and/or hh.uz) the user wants to publish to. The hh.uz
+ * required fields are collected on the description step now, so they no
+ * longer appear here when the hh.uz checkbox is selected.
+ *
+ * Drafts are persisted to localStorage under {@link PUBLICATIONS_DRAFT_KEY}.
+ */
 export function CreateVacancyPublications({
-  onCancel,
+  onBack,
   onConfigChange,
   onContinue,
   prefillDescription,
   prefillName,
-  prefillSalaryFrom,
-  prefillSalaryCurrency,
 }: {
-  onCancel: () => void;
+  onBack: () => void;
   onConfigChange: (config: PublicationsConfig) => void;
   onContinue: () => void;
   prefillDescription: string;
   prefillName: string;
-  prefillSalaryFrom?: number;
-  prefillSalaryCurrency?: string;
 }) {
   const [name, setName] = useState(prefillName);
   const [description, setDescription] = useState(prefillDescription);
   const [selectedChannels, setSelectedChannels] = useState<
     PublicationChannel[]
   >([]);
-  const [hh, setHh] = useState<HhDraft>(EMPTY_HH_DRAFT);
   const [hydrated, setHydrated] = useState(false);
-
-  const hhSelected = selectedChannels.includes("hh.uz");
-
-  const hhConfigQuery = api.vacancies.getHhConfig.useQuery();
-  const hhLookupsQuery = api.vacancies.getHhPublishLookups.useQuery(undefined, {
-    enabled: hhSelected,
-    staleTime: 60 * 60 * 1000,
-  });
 
   useEffect(() => {
     try {
@@ -139,7 +77,6 @@ export function CreateVacancyPublications({
             parsed.selectedChannels.filter(isPublicationChannel),
           );
         }
-        setHh(parseHhDraft(parsed.hh));
       }
     } catch {
       // Ignore corrupt drafts.
@@ -155,7 +92,6 @@ export function CreateVacancyPublications({
       name,
       description,
       selectedChannels,
-      hh,
     };
     try {
       window.localStorage.setItem(
@@ -165,75 +101,13 @@ export function CreateVacancyPublications({
     } catch {
       // Ignore quota errors.
     }
-  }, [name, description, selectedChannels, hh, hydrated]);
-
-  const prefilledRef = useRef({
-    salaryFrom: false,
-    salaryCurrency: false,
-    contactPhone: false,
-    description: false,
-  });
+  }, [name, description, selectedChannels, hydrated]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    setHh((previous) => {
-      const next = { ...previous };
-      let changed = false;
+    onConfigChange({ name, description, selectedChannels });
+  }, [name, description, selectedChannels, onConfigChange]);
 
-      if (
-        !prefilledRef.current.salaryFrom &&
-        !next.salaryFrom &&
-        prefillSalaryFrom !== undefined
-      ) {
-        next.salaryFrom = String(prefillSalaryFrom);
-        changed = true;
-      }
-      if (
-        !prefilledRef.current.salaryCurrency &&
-        prefillSalaryCurrency &&
-        next.salaryCurrency !== prefillSalaryCurrency
-      ) {
-        next.salaryCurrency = prefillSalaryCurrency;
-        changed = true;
-      }
-      if (
-        !prefilledRef.current.contactPhone &&
-        !next.contactPhone &&
-        hhConfigQuery.data?.companyPhone
-      ) {
-        next.contactPhone = hhConfigQuery.data.companyPhone;
-        changed = true;
-      }
-      if (
-        !prefilledRef.current.description &&
-        !next.descriptionHtml &&
-        description
-      ) {
-        next.descriptionHtml = `<p>${description.replace(/\n+/g, "</p><p>")}</p>`;
-        changed = true;
-      }
-
-      prefilledRef.current = {
-        salaryFrom: true,
-        salaryCurrency: true,
-        contactPhone: true,
-        description: true,
-      };
-
-      return changed ? next : previous;
-    });
-  }, [
-    hydrated,
-    prefillSalaryFrom,
-    prefillSalaryCurrency,
-    hhConfigQuery.data?.companyPhone,
-    description,
-  ]);
-
-  useEffect(() => {
-    onConfigChange({ name, description, selectedChannels, hh });
-  }, [name, description, selectedChannels, hh, onConfigChange]);
-
+  /** Toggles the supplied channel in or out of {@link selectedChannels}. */
   const toggleChannel = (channel: PublicationChannel) => {
     setSelectedChannels((previous) =>
       previous.includes(channel)
@@ -241,80 +115,6 @@ export function CreateVacancyPublications({
         : [...previous, channel],
     );
   };
-
-  const updateHh = <K extends keyof HhDraft>(field: K, value: HhDraft[K]) => {
-    setHh((previous) => ({ ...previous, [field]: value }));
-  };
-
-  const areaOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.areas ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.areas],
-  );
-
-  const employmentOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.employment ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.employment],
-  );
-
-  const scheduleOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.schedule ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.schedule],
-  );
-
-  const experienceOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.experience ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.experience],
-  );
-
-  const professionalRoleOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.professionalRoles ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.professionalRoles],
-  );
-
-  const billingTypeOptions = useMemo(
-    () =>
-      (hhLookupsQuery.data?.billingType ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    [hhLookupsQuery.data?.billingType],
-  );
-
-  const currencyOptions = useMemo(() => {
-    const list = (hhLookupsQuery.data?.currency ?? []).map((item) => ({
-      value: item.id,
-      label: item.name,
-    }));
-    if (list.length === 0) {
-      return [
-        { value: "UZS", label: "UZS" },
-        { value: "USD", label: "USD" },
-      ];
-    }
-    return list;
-  }, [hhLookupsQuery.data?.currency]);
-
-  const hhAccountConnected = hhConfigQuery.data?.enabled === true;
 
   return (
     <div className="mt-6 flex w-full flex-col gap-6">
@@ -378,142 +178,16 @@ export function CreateVacancyPublications({
               ))}
             </div>
           </fieldset>
-
-          {hhSelected && (
-            <div className="flex flex-col gap-4 rounded-[8px] border border-border-input bg-bg-input p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-semibold text-[18px] text-text-heading leading-none tracking-[-0.32px]">
-                  Параметры публикации на hh.uz
-                </h2>
-                {!hhAccountConnected && (
-                  <span className="rounded-[6px] bg-danger-red-bg px-2 py-1 text-[12px] text-danger-red">
-                    Аккаунт hh.uz не подключён
-                  </span>
-                )}
-              </div>
-
-              {hhLookupsQuery.isLoading && (
-                <div className="text-[14px] text-text-secondary">
-                  Загрузка справочников hh.uz…
-                </div>
-              )}
-              {hhLookupsQuery.isError && (
-                <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
-                  Не удалось загрузить справочники hh.uz.{" "}
-                  <button
-                    className="underline"
-                    onClick={() => void hhLookupsQuery.refetch()}
-                    type="button"
-                  >
-                    Повторить
-                  </button>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Dropdown
-                  label="Город (area)"
-                  onChange={(value) => updateHh("areaId", value)}
-                  options={areaOptions}
-                  placeholder="Выберите город"
-                  value={hh.areaId}
-                />
-                <Dropdown
-                  label="Профессиональная роль"
-                  onChange={(value) => updateHh("professionalRoleId", value)}
-                  options={professionalRoleOptions}
-                  placeholder="Выберите роль"
-                  value={hh.professionalRoleId}
-                />
-                <Dropdown
-                  label="Тип занятости"
-                  onChange={(value) => updateHh("employmentId", value)}
-                  options={employmentOptions}
-                  placeholder="Выберите тип"
-                  value={hh.employmentId}
-                />
-                <Dropdown
-                  label="График работы"
-                  onChange={(value) => updateHh("scheduleId", value)}
-                  options={scheduleOptions}
-                  placeholder="Выберите график"
-                  value={hh.scheduleId}
-                />
-                <Dropdown
-                  label="Опыт работы"
-                  onChange={(value) => updateHh("experienceId", value)}
-                  options={experienceOptions}
-                  placeholder="Выберите опыт"
-                  value={hh.experienceId}
-                />
-                <Dropdown
-                  label="Тип публикации (billing)"
-                  onChange={(value) => updateHh("billingTypeId", value)}
-                  options={billingTypeOptions}
-                  placeholder="Выберите тип публикации"
-                  value={hh.billingTypeId}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <Input
-                  inputMode="numeric"
-                  label="Зарплата от"
-                  onChange={(event) =>
-                    updateHh("salaryFrom", event.target.value)
-                  }
-                  placeholder="например, 5 000 000"
-                  value={hh.salaryFrom}
-                />
-                <Input
-                  inputMode="numeric"
-                  label="Зарплата до"
-                  onChange={(event) => updateHh("salaryTo", event.target.value)}
-                  placeholder="например, 8 000 000"
-                  value={hh.salaryTo}
-                />
-                <Dropdown
-                  label="Валюта"
-                  onChange={(value) => updateHh("salaryCurrency", value)}
-                  options={currencyOptions}
-                  value={hh.salaryCurrency || "UZS"}
-                />
-              </div>
-
-              <Input
-                label="Контактный телефон (можно оставить пустым)"
-                onChange={(event) =>
-                  updateHh("contactPhone", event.target.value)
-                }
-                placeholder="+998 71 123 45 67"
-                value={hh.contactPhone}
-              />
-
-              <RichTextEditor
-                id="hh-description-html"
-                label="Описание для hh.uz (минимум 200 символов)"
-                maxLength={20000}
-                onChange={(html) => updateHh("descriptionHtml", html)}
-                placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
-                value={hh.descriptionHtml}
-              />
-              <p className="text-[12px] text-text-secondary">
-                hh.uz принимает только базовое форматирование: абзацы, списки,
-                заголовки H3/H4, жирный, курсив и ссылки. Описание должно
-                содержать хотя бы один список.
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-border-input border-t pt-4">
         <button
           className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-          onClick={onCancel}
+          onClick={onBack}
           type="button"
         >
-          Отмена
+          Назад
         </button>
         <button
           className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
