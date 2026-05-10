@@ -1,19 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckIcon } from "~/app/_components/icons";
-import { Input } from "~/app/_components/input";
-import { Textarea } from "~/app/_components/textarea";
+import {
+  ActionDropdown,
+  type ActionDropdownItem,
+} from "~/app/_components/action-dropdown";
 
-const PUBLICATION_CHANNELS = ["telegram", "hh.uz"] as const;
+const PUBLICATION_CHANNELS = ["linkedin", "hh.uz", "telegram"] as const;
 
 type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
+
+const CHANNEL_OPTIONS: ActionDropdownItem[] = [
+  { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
+  { value: "hh.uz", label: "Для HH", iconSrc: "/hh.svg" },
+  { value: "telegram", label: "Для Telegram", iconSrc: "/telegram.svg" },
+];
+
+const CHANNEL_DISPLAY_NAME: Record<PublicationChannel, string> = {
+  linkedin: "LinkedIn",
+  "hh.uz": "HH",
+  telegram: "Telegram",
+};
 
 const PUBLICATIONS_DRAFT_KEY = "vacancy-create:publications-draft:v1";
 
 type PublicationsDraft = {
-  name: string;
-  description: string;
   selectedChannels: PublicationChannel[];
 };
 
@@ -31,16 +42,6 @@ function isPublicationChannel(value: unknown): value is PublicationChannel {
   );
 }
 
-/**
- * Renders the publications step of the vacancy creation flow.
- *
- * Collects the publication's display name and short description, plus the
- * channels (Telegram and/or hh.uz) the user wants to publish to. The hh.uz
- * required fields are collected on the description step now, so they no
- * longer appear here when the hh.uz checkbox is selected.
- *
- * Drafts are persisted to localStorage under {@link PUBLICATIONS_DRAFT_KEY}.
- */
 export function CreateVacancyPublications({
   onBack,
   onConfigChange,
@@ -54,8 +55,6 @@ export function CreateVacancyPublications({
   prefillDescription: string;
   prefillName: string;
 }) {
-  const [name, setName] = useState(prefillName);
-  const [description, setDescription] = useState(prefillDescription);
   const [selectedChannels, setSelectedChannels] = useState<
     PublicationChannel[]
   >([]);
@@ -66,12 +65,6 @@ export function CreateVacancyPublications({
       const raw = window.localStorage.getItem(PUBLICATIONS_DRAFT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<PublicationsDraft>;
-        if (typeof parsed.name === "string") {
-          setName(parsed.name);
-        }
-        if (typeof parsed.description === "string") {
-          setDescription(parsed.description);
-        }
         if (Array.isArray(parsed.selectedChannels)) {
           setSelectedChannels(
             parsed.selectedChannels.filter(isPublicationChannel),
@@ -88,11 +81,7 @@ export function CreateVacancyPublications({
     if (!hydrated) {
       return;
     }
-    const draft: PublicationsDraft = {
-      name,
-      description,
-      selectedChannels,
-    };
+    const draft: PublicationsDraft = { selectedChannels };
     try {
       window.localStorage.setItem(
         PUBLICATIONS_DRAFT_KEY,
@@ -101,20 +90,23 @@ export function CreateVacancyPublications({
     } catch {
       // Ignore quota errors.
     }
-  }, [name, description, selectedChannels, hydrated]);
+  }, [selectedChannels, hydrated]);
 
   useEffect(() => {
-    onConfigChange({ name, description, selectedChannels });
-  }, [name, description, selectedChannels, onConfigChange]);
+    onConfigChange({
+      name: prefillName,
+      description: prefillDescription,
+      selectedChannels,
+    });
+  }, [prefillName, prefillDescription, selectedChannels, onConfigChange]);
 
-  /** Toggles the supplied channel in or out of {@link selectedChannels}. */
-  const toggleChannel = (channel: PublicationChannel) => {
-    setSelectedChannels((previous) =>
-      previous.includes(channel)
-        ? previous.filter((selectedChannel) => selectedChannel !== channel)
-        : [...previous, channel],
-    );
+  const handleChannelSelect = (value: string) => {
+    if (isPublicationChannel(value)) {
+      setSelectedChannels([value]);
+    }
   };
+
+  const selectedChannel = selectedChannels[0];
 
   return (
     <div className="mt-6 flex w-full flex-col gap-6">
@@ -123,61 +115,17 @@ export function CreateVacancyPublications({
       </h1>
 
       <div className="rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6">
-        <div className="flex flex-col gap-6">
-          <Input
-            label="Название публикации"
-            maxLength={255}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Введите название публикации"
-            value={name}
+        <div className="flex flex-col items-end gap-2">
+          <ActionDropdown
+            items={CHANNEL_OPTIONS}
+            onSelect={handleChannelSelect}
+            triggerLabel="Создать публикацию"
           />
-
-          <Textarea
-            className="min-h-[180px]"
-            id="publication-vacancy-description"
-            label="Описание вакансии"
-            maxLength={8000}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Опишите вакансию для публикации"
-            value={description}
-          />
-
-          <fieldset className="flex flex-col gap-3">
-            <legend className="mb-1 font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
-              Каналы публикации
-            </legend>
-
-            <div className="flex flex-col gap-3">
-              {PUBLICATION_CHANNELS.map((channel) => (
-                <label
-                  className="flex cursor-pointer items-center gap-3 rounded-[6px] border border-border-input bg-bg-input px-3 py-3 transition-colors hover:border-primary-blue"
-                  key={channel}
-                >
-                  <input
-                    checked={selectedChannels.includes(channel)}
-                    className="sr-only"
-                    onChange={() => toggleChannel(channel)}
-                    type="checkbox"
-                    value={channel}
-                  />
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
-                      selectedChannels.includes(channel)
-                        ? "border-checkbox-blue bg-checkbox-blue"
-                        : "border-border-light bg-bg-light"
-                    }`}
-                  >
-                    {selectedChannels.includes(channel) && (
-                      <CheckIcon className="h-3.5 w-3.5 text-bg-light" />
-                    )}
-                  </span>
-                  <span className="font-medium text-[16px] text-text-heading leading-none tracking-[-0.32px]">
-                    {channel}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          {selectedChannel && (
+            <p className="text-[14px] text-text-secondary leading-none">
+              Канал: {CHANNEL_DISPLAY_NAME[selectedChannel]}
+            </p>
+          )}
         </div>
       </div>
 

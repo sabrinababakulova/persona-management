@@ -80,6 +80,13 @@ export default function VacancyDetailPage() {
   }
 
   const hasHhLink = vacancy.source === "hh.uz" || Boolean(vacancy.hhVacancyId);
+  const hasTelegramPosting = vacancy.publications.some(
+    (publication) =>
+      publication.isActive &&
+      publication.sources.some(
+        (source) => source.platform === "telegram" && Boolean(source.keyword),
+      ),
+  );
   // Archived hh.uz vacancies are read-only: hh.uz only accepts edits to active vacancies, so
   // we lock the form and tell the user how to unblock it.
   const isArchivedHh = hasHhLink && vacancy.status === "archive";
@@ -116,11 +123,25 @@ export default function VacancyDetailPage() {
       </div>
     </section>
   ) : null;
+  const telegramBadge = hasTelegramPosting ? (
+    <div>
+      <span className="inline-flex h-8 items-center rounded-full border border-[#0088cc]/30 bg-[#0088cc]/10 px-3 font-semibold text-[#0088cc] text-[13px] leading-none">
+        posted on telegram
+      </span>
+    </div>
+  ) : null;
+  const bannerContent =
+    archivedBanner || telegramBadge ? (
+      <div className="flex flex-col gap-3">
+        {telegramBadge}
+        {archivedBanner}
+      </div>
+    ) : null;
 
   return (
     <main className="h-full bg-bg-light">
       <CreateVacancyForm
-        bannerContent={archivedBanner}
+        bannerContent={bannerContent}
         breadcrumbLabel={vacancy.title}
         initialData={initialData}
         pageHeading={vacancy.title || "Редактирование вакансии"}

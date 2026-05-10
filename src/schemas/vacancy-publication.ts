@@ -7,7 +7,10 @@ export const vacancyPublicationSourcePlatformSchema = z.enum([
 
 export const vacancyPublicationSourceSchema = z.object({
   platform: vacancyPublicationSourcePlatformSchema,
-  url: z.string().url().max(1000),
+  url: z.string().url().max(1000).optional(),
+  keyword: z.string().min(1).max(100).optional(),
+  sentTo: z.number().int().min(0).optional(),
+  postedAt: z.string().datetime().optional(),
 });
 
 export const createVacancyPublicationSchema = z.object({

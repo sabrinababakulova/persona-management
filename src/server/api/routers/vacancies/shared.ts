@@ -35,10 +35,21 @@ export function toSalaryCurrency(value: string | null): SalaryCurrency {
   return value === "USD" ? "USD" : "UZS";
 }
 
+export type VacancyConnection = "telegram" | "hh.uz";
+
 export function formatVacancy(
   vacancy: typeof vacancies.$inferSelect,
   responses = vacancy.responses ?? 0,
+  publicationPlatforms?: ReadonlySet<string>,
 ) {
+  const connections: VacancyConnection[] = [];
+  if (publicationPlatforms?.has("telegram")) {
+    connections.push("telegram");
+  }
+  if (publicationPlatforms?.has("hh.uz") || vacancy.hhVacancyId) {
+    connections.push("hh.uz");
+  }
+
   return {
     id: vacancy.id,
     title: vacancy.title,
@@ -60,6 +71,7 @@ export function formatVacancy(
     publishedAt: undefined,
     source: "local" as const,
     externalUrl: undefined,
+    connections,
   };
 }
 
@@ -103,6 +115,7 @@ export function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
     publishedAt: vacancy.publishedAt,
     source: "hh.uz" as const,
     externalUrl: vacancy.externalUrl,
+    connections: ["hh.uz"] as VacancyConnection[],
   };
 }
 

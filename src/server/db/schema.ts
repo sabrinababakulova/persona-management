@@ -241,7 +241,10 @@ export const vacancies = createTable(
 
 export type VacancyPublicationSource = {
   platform: string;
-  url: string;
+  url?: string;
+  keyword?: string;
+  sentTo?: number;
+  postedAt?: string;
 };
 
 export const vacancyPublications = createTable(

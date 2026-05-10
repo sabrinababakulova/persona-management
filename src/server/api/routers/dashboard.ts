@@ -259,6 +259,7 @@ export const dashboardRouter = createTRPCRouter({
       descriptionHtml: v.descriptionHtml ?? "",
       contactPhone: v.contactPhone ?? "",
       source: "local" as const,
+      connections: [],
     }));
 
     if (recentVacancyRows.length > 0) {

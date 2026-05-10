@@ -19,5 +19,6 @@ export interface Vacancy {
   publishedAt?: string;
   source: "local" | "hh.uz";
   externalUrl?: string;
+  connections: Array<"telegram" | "hh.uz">;
   selected?: boolean;
 }

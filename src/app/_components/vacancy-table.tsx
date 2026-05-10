@@ -1,8 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Vacancy } from "~/types/pages/vacancies-page";
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
+
+const VACANCY_CONNECTION_ICONS: Record<
+  NonNullable<Vacancy["connections"]>[number],
+  { src: string; label: string }
+> = {
+  telegram: { src: "/telegram.svg", label: "Telegram" },
+  "hh.uz": { src: "/hh.svg", label: "hh.uz" },
+};
 
 type VacancyStatus = Vacancy["status"];
 
@@ -165,13 +174,16 @@ export function VacancyTable({
           <span>Регион (hh.uz)</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-1 flex items-center gap-1 text-[14px] text-text-placeholder">
           <span>Отклики</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
           <span>Занятость</span>
           <SortIcon className="h-4 w-4" />
+        </div>
+        <div className="col-span-1 flex items-center gap-1 text-[14px] text-text-placeholder">
+          <span>Связи</span>
         </div>
         <div className="col-span-1" />
       </div>
@@ -189,13 +201,7 @@ export function VacancyTable({
                 const statusTone =
                   vacancyStatusTone[item.status] ?? vacancyStatusTone.active;
                 const isHhVacancy = item.source === "hh.uz";
-                // The badge is broader than `isHhVacancy`: a vacancy created in our app and
-                // then published to hh.uz lives locally (source === "local") but still has a
-                // `hhVacancyId` link, and the user wants it tagged. Status-edit and funnel
-                // gating below stay tied to `isHhVacancy` because hh.uz-fetched rows aren't
-                // editable through the local update mutation.
-                const hasHhConnection =
-                  isHhVacancy || Boolean(item.hhVacancyId);
+                const connections = item.connections ?? [];
                 const publishedAtLabel = formatVacancyPublishedAt(
                   item.publishedAt,
                 );
@@ -220,11 +226,6 @@ export function VacancyTable({
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          {hasHhConnection && (
-                            <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2.5 py-1 font-semibold text-[11px] text-accent-red leading-none">
-                              hh.uz
-                            </span>
-                          )}
                           <Link
                             className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
                             href={getDetailPath(item)}
@@ -286,12 +287,36 @@ export function VacancyTable({
                       {item.areaId || "-"}
                     </div>
 
-                    <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                    <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-1 lg:block">
                       {item.responses}
                     </div>
 
                     <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
                       {item.employmentId || "-"}
+                    </div>
+
+                    <div className="hidden lg:col-span-1 lg:flex lg:items-center lg:gap-1.5">
+                      {connections.length === 0 ? (
+                        <span className="text-[14px] text-text-heading leading-none">
+                          -
+                        </span>
+                      ) : (
+                        connections.map((connection) => {
+                          const meta = VACANCY_CONNECTION_ICONS[connection];
+                          return (
+                            <Image
+                              alt={meta.label}
+                              className="h-4 w-4"
+                              height={16}
+                              key={connection}
+                              src={meta.src}
+                              title={meta.label}
+                              unoptimized
+                              width={16}
+                            />
+                          );
+                        })
+                      )}
                     </div>
 
                     <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">

@@ -605,10 +605,48 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
+    const sentTo = channels.length - errors.length;
+    const existing = await ctx.db
+      .select({
+        id: vacancyPublications.id,
+        sources: vacancyPublications.sources,
+      })
+      .from(vacancyPublications)
+      .where(eq(vacancyPublications.vacancyId, vacancy.id))
+      .limit(1);
+
+    const telegramSource = {
+      platform: "telegram" as const,
+      keyword,
+      sentTo,
+      postedAt: new Date().toISOString(),
+    };
+
+    if (existing[0]) {
+      const otherSources = (existing[0].sources ?? []).filter(
+        (source) => source.platform !== "telegram",
+      );
+      await ctx.db
+        .update(vacancyPublications)
+        .set({
+          sources: [...otherSources, telegramSource],
+          updatedAt: new Date(),
+        })
+        .where(eq(vacancyPublications.id, existing[0].id));
+    } else {
+      await ctx.db.insert(vacancyPublications).values({
+        vacancyId: vacancy.id,
+        name: vacancy.title,
+        description: vacancy.descriptionHtml ?? "",
+        isActive: true,
+        sources: [telegramSource],
+      });
+    }
+
     return {
       success: true,
       keyword,
-      sentTo: channels.length - errors.length,
+      sentTo,
       errors: errors.length > 0 ? errors : undefined,
     };
   });

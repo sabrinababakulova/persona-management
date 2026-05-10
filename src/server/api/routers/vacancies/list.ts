@@ -4,7 +4,7 @@ import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
 import { escapeLike } from "~/server/api/router-utils/sql";
 import { protectedProcedure } from "~/server/api/trpc";
-import { vacancies } from "~/server/db/schema";
+import { vacancies, vacancyPublications } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
@@ -118,10 +118,31 @@ export const listVacanciesProcedure = protectedProcedure
         .where(and(...localConditions))
         .orderBy(vacancies.createdAt);
 
-      const responseCounts = await getVacancyResponseCounts(
-        ctx.db,
-        rows.map((row) => row.id),
-      );
+      const localIds = rows.map((row) => row.id);
+      const responseCounts = await getVacancyResponseCounts(ctx.db, localIds);
+
+      const publicationPlatformsByVacancy = new Map<string, Set<string>>();
+      if (localIds.length > 0) {
+        const publicationRows = await ctx.db
+          .select({
+            vacancyId: vacancyPublications.vacancyId,
+            sources: vacancyPublications.sources,
+          })
+          .from(vacancyPublications)
+          .where(inArray(vacancyPublications.vacancyId, localIds));
+
+        for (const row of publicationRows) {
+          let platforms = publicationPlatformsByVacancy.get(row.vacancyId);
+          if (!platforms) {
+            platforms = new Set<string>();
+            publicationPlatformsByVacancy.set(row.vacancyId, platforms);
+          }
+          for (const source of row.sources ?? []) {
+            platforms.add(source.platform);
+          }
+        }
+      }
+
       localVacancies = rows
         .sort((left, right) => {
           const leftTime = left.createdAt
@@ -132,7 +153,13 @@ export const listVacanciesProcedure = protectedProcedure
             : 0;
           return rightTime - leftTime;
         })
-        .map((row) => formatVacancy(row, responseCounts.get(row.id) ?? 0));
+        .map((row) =>
+          formatVacancy(
+            row,
+            responseCounts.get(row.id) ?? 0,
+            publicationPlatformsByVacancy.get(row.id),
+          ),
+        );
     }
 
     if (userCompanyId !== DEFAULT_COMPANY_ID || !includeHh) {
