@@ -434,9 +434,7 @@ export function CreateVacancyForm({
       if (channelLaunchPending.current) {
         const channel = channelLaunchPending.current;
         channelLaunchPending.current = null;
-        router.push(
-          `/vacancies/${createdVacancy.id}/publications/${channel}`,
-        );
+        router.push(`/vacancies/${createdVacancy.id}/publications/${channel}`);
         return;
       }
 

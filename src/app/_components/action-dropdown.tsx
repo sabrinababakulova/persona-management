@@ -76,15 +76,12 @@ export function ActionDropdown({
       {open && (
         <ul
           className={`absolute top-full right-0 z-20 mt-2 flex w-[260px] flex-col overflow-hidden rounded-[8px] border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
-          role="menu"
         >
           {items.map((item, index) => (
             <li key={item.value} role="none">
               <button
                 className={`flex w-full items-center gap-3 px-4 py-3 text-left font-medium text-[16px] text-text-heading leading-none transition-colors hover:bg-bg-input ${
-                  index < items.length - 1
-                    ? "border-border-input border-b"
-                    : ""
+                  index < items.length - 1 ? "border-border-input border-b" : ""
                 }`}
                 onClick={() => {
                   onSelect(item.value);

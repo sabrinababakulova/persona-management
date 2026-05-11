@@ -350,7 +350,7 @@ export function toHhApplicantFullName(item: unknown) {
 
 export function toHhVacancyApplicant(
   item: unknown,
-  fallbackStatus?: string | null,
+  _fallbackStatus?: string | null,
 ): HhVacancyApplicant | null {
   const record = toRecord(item);
   if (!record) {

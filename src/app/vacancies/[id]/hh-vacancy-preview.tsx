@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo } from "react";
 import { api } from "~/trpc/react";
 
@@ -241,8 +242,7 @@ export function HhVacancyPreview({ vacancyId }: { vacancyId: string }) {
           </span>
           <div className="flex items-center gap-3">
             {hh.employer.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 alt={hh.employer.name ?? "Логотип"}
                 className="h-12 w-12 rounded-[6px] object-contain"
                 src={hh.employer.logoUrl}
