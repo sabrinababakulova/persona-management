@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
@@ -25,6 +26,7 @@ import {
 import {
   CreateVacancyPublications,
   PUBLICATIONS_DRAFT_STORAGE_KEY,
+  type PublicationChannel,
   type PublicationsConfig,
 } from "./create-vacancy-publications";
 
@@ -241,6 +243,7 @@ export function CreateVacancyForm({
   const [savedVacancyId, setSavedVacancyId] = useState<string | null>(
     vacancyId ?? null,
   );
+  const channelLaunchPending = useRef<PublicationChannel | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<
@@ -427,6 +430,15 @@ export function CreateVacancyForm({
     onSuccess: async (createdVacancy) => {
       await utils.vacancies.list.invalidate();
       clearDrafts();
+
+      if (channelLaunchPending.current) {
+        const channel = channelLaunchPending.current;
+        channelLaunchPending.current = null;
+        router.push(
+          `/vacancies/${createdVacancy.id}/publications/${channel}`,
+        );
+        return;
+      }
 
       const willOfferTelegram =
         telegramConfig?.enabled === true && telegramSelected;
@@ -723,6 +735,51 @@ export function CreateVacancyForm({
       return;
     }
     goToStep("preview");
+  };
+
+  /**
+   * Dropdown launch on the publications step: persist the vacancy as a draft (if not already
+   * saved) and navigate to the per-channel editor. The create-mutation onSuccess reads
+   * `channelLaunchPending` to know to route to /vacancies/<id>/publications/<channel> instead
+   * of opening the publish modal.
+   */
+  const handleChannelLaunch = (channel: PublicationChannel) => {
+    const existingId = vacancyId ?? savedVacancyId;
+    if (existingId) {
+      router.push(`/vacancies/${existingId}/publications/${channel}`);
+      return;
+    }
+
+    if (!validateForm()) {
+      return;
+    }
+
+    const parsedFrom = formData.salaryFrom
+      ? parseFormattedNumber(formData.salaryFrom)
+      : undefined;
+    const parsedTo = formData.salaryTo
+      ? parseFormattedNumber(formData.salaryTo)
+      : undefined;
+    const currency: "UZS" | "USD" =
+      formData.salaryCurrency === "USD" ? "USD" : "UZS";
+
+    channelLaunchPending.current = channel;
+
+    createVacancy.mutate({
+      title: formData.name.trim(),
+      status: "draft",
+      areaId: formData.areaId || undefined,
+      employmentId: formData.employmentId || undefined,
+      scheduleId: formData.scheduleId || undefined,
+      experienceId: formData.experienceId || undefined,
+      professionalRoleId: formData.professionalRoleId || undefined,
+      billingTypeId: formData.billingTypeId || undefined,
+      salaryFrom: parsedFrom,
+      salaryTo: parsedTo,
+      salaryCurrency: currency,
+      descriptionHtml: formData.descriptionHtml || undefined,
+      contactPhone: formData.contactPhone || undefined,
+    });
   };
 
   /** Discards drafts and returns the user to the vacancies list. */
@@ -1113,10 +1170,12 @@ export function CreateVacancyForm({
             ) : activeSectionId === "publications" ? (
               <CreateVacancyPublications
                 onBack={() => goToStep("description")}
+                onChannelLaunch={handleChannelLaunch}
                 onConfigChange={handlePublicationsConfigChange}
                 onContinue={handleContinueFromPublications}
                 prefillDescription={formData.descriptionHtml}
                 prefillName={formData.name}
+                vacancyId={vacancyId ?? savedVacancyId ?? undefined}
               />
             ) : (
               <div className="mt-6 flex flex-col gap-6">

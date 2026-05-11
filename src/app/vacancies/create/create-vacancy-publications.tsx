@@ -5,10 +5,12 @@ import {
   ActionDropdown,
   type ActionDropdownItem,
 } from "~/app/_components/action-dropdown";
+import { api } from "~/trpc/react";
+import { PublicationsTable } from "./publications-table";
 
 const PUBLICATION_CHANNELS = ["linkedin", "hh.uz", "telegram"] as const;
 
-type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
+export type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
 
 const CHANNEL_OPTIONS: ActionDropdownItem[] = [
   { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
@@ -44,21 +46,32 @@ function isPublicationChannel(value: unknown): value is PublicationChannel {
 
 export function CreateVacancyPublications({
   onBack,
+  onChannelLaunch,
   onConfigChange,
   onContinue,
   prefillDescription,
   prefillName,
+  vacancyId,
 }: {
   onBack: () => void;
+  onChannelLaunch?: (channel: PublicationChannel) => void;
   onConfigChange: (config: PublicationsConfig) => void;
   onContinue: () => void;
   prefillDescription: string;
   prefillName: string;
+  vacancyId?: string;
 }) {
   const [selectedChannels, setSelectedChannels] = useState<
     PublicationChannel[]
   >([]);
   const [hydrated, setHydrated] = useState(false);
+
+  const publicationsQuery = api.vacancies.listPublications.useQuery(
+    { vacancyId: vacancyId ?? "" },
+    { enabled: Boolean(vacancyId) },
+  );
+  const publications = publicationsQuery.data ?? [];
+  const hasExistingPublications = publications.length > 0;
 
   useEffect(() => {
     try {
@@ -101,33 +114,48 @@ export function CreateVacancyPublications({
   }, [prefillName, prefillDescription, selectedChannels, onConfigChange]);
 
   const handleChannelSelect = (value: string) => {
-    if (isPublicationChannel(value)) {
-      setSelectedChannels([value]);
+    if (!isPublicationChannel(value)) {
+      return;
     }
+    setSelectedChannels([value]);
+    onChannelLaunch?.(value);
   };
 
   const selectedChannel = selectedChannels[0];
 
+  const dropdown = (
+    <ActionDropdown
+      items={CHANNEL_OPTIONS}
+      onSelect={handleChannelSelect}
+      triggerLabel="Создать публикацию"
+    />
+  );
+
   return (
     <div className="mt-6 flex w-full flex-col gap-6">
-      <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-        Создание публикации
-      </h1>
+      {!hasExistingPublications && (
+        <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+          Создание публикации
+        </h1>
+      )}
 
-      <div className="rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6">
-        <div className="flex flex-col items-end gap-2">
-          <ActionDropdown
-            items={CHANNEL_OPTIONS}
-            onSelect={handleChannelSelect}
-            triggerLabel="Создать публикацию"
-          />
-          {selectedChannel && (
-            <p className="text-[14px] text-text-secondary leading-none">
-              Канал: {CHANNEL_DISPLAY_NAME[selectedChannel]}
-            </p>
-          )}
+      {hasExistingPublications ? (
+        <PublicationsTable
+          publications={publications}
+          trailingHeader={dropdown}
+        />
+      ) : (
+        <div className="rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6">
+          <div className="flex flex-col items-end gap-2">
+            {dropdown}
+            {selectedChannel && (
+              <p className="text-[14px] text-text-secondary leading-none">
+                Канал: {CHANNEL_DISPLAY_NAME[selectedChannel]}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-border-input border-t pt-4">
         <button
