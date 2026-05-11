@@ -10,10 +10,11 @@ This review was made from the current codebase plus `AGENTS.md`. `AGENTS.md` is 
 - The schema now includes `vacancy_publication`, `company_telegram_channel`, and `company_hh_account`.
 - The app has Directus asset proxy routes, avatar upload, forgot-password flow, hh.uz OAuth connect/callback routes, hh.uz vacancy preview, and a vacancy funnel route.
 - Vacancy creation/editing currently centers around hh.uz-required fields, not only the older local vacancy fields listed in `AGENTS.md`.
+- The vacancy publication flow has been split across two routes (general fields in `/vacancies/create`, hh.uz fields in `/vacancies/[id]/publications/hh.uz`) and is backed by a single Zustand store with `localStorage` persistence (`src/stores/vacancy-publication-store.ts`).
 
 ## Application Shape
 
-The app is a Russian-language ATS built with Next.js App Router, tRPC, NextAuth, Drizzle, PostgreSQL, Directus storage, Telegram, hh.uz, and Gemini/Mastra for resume analysis.
+The app is a Russian-language ATS built with Next.js App Router, tRPC, NextAuth, Drizzle, PostgreSQL, Directus storage, Telegram, hh.uz, and Gemini/Mastra for resume analysis. Client-side state for the multi-step vacancy publication flow is held in a Zustand store (`src/stores/vacancy-publication-store.ts`) with `localStorage` persistence; server state continues to flow through tRPC + TanStack Query.
 
 The main protected routes are:
 
@@ -134,13 +135,14 @@ Vacancy list:
 
 Vacancy create:
 
-1. User fills hh.uz-style vacancy fields: title, area, professional role, employment, schedule, experience, billing type, salary, phone, HTML description.
-2. Drafts persist in localStorage.
-3. Publications step captures publication name/description and selected channels.
-4. Preview step creates only a local draft vacancy with the title.
-5. If selected and configured, a modal allows sending to Telegram and/or publishing to hh.uz.
+1. User fills general vacancy fields in `/vacancies/create`: title, salary range, currency, contact phone. (hh.uz-specific fields — area, professional role, employment, schedule, experience, billing type, HTML description — moved to the per-channel editor below.)
+2. Drafts persist via the Zustand publication store. `general`, `hh`, `selectedChannels`, and `savedVacancyId` are written through `partialize` to `localStorage` under the key `vacancy-publication-store`; `pendingChannelLaunch` is in-memory only because it is an in-flight nav flag.
+3. Publications step shows a "Создать публикацию" dropdown (LinkedIn / hh.uz / Telegram). Selecting a channel writes to `store.selectedChannels`, sets `store.pendingChannelLaunch`, fires `vacancies.create` to persist a draft vacancy, then routes to `/vacancies/<id>/publications/<channel>`. If the vacancy already has saved `vacancy_publication` rows, the same step renders a "Версии публикаций" table instead.
+4. hh.uz field collection now lives on `/vacancies/[id]/publications/hh.uz` (`HhPublicationForm`). It hydrates the store's `hh` slice from `vacancies.get` and saves via `vacancies.update`.
+5. Preview step creates only a local draft vacancy with the title.
+6. If selected and configured, the legacy publish modal on the preview step still allows sending to Telegram and/or publishing to hh.uz.
 
-Important implementation detail: local `vacancy` creation only stores `title` and `status: "draft"` from the create flow. The hh.uz-specific fields are held in client state and passed directly to `publishHh`; most are not persisted to the local vacancy table.
+Important implementation detail: local `vacancy` creation only stores `title` and `status: "draft"` from the create flow. hh.uz-specific values are persisted via the per-channel editor's `vacancies.update` call (and via the legacy `publishHh` path); they are no longer held only in transient client state.
 
 Vacancy edit:
 

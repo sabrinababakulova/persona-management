@@ -1,23 +1,18 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { Input } from "~/app/_components/input";
 import { Modal } from "~/app/_components/modal";
-import { RichTextEditor } from "~/app/_components/rich-text-editor";
-import { SearchableSelect } from "~/app/_components/searchable-select";
 import { SideMenu } from "~/app/_components/sideMenu";
+import {
+  type GeneralVacancyFields,
+  useVacancyPublicationStore,
+} from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
 import {
   formatNumberWithSpaces,
@@ -25,12 +20,8 @@ import {
 } from "~/utils/format-salaries";
 import {
   CreateVacancyPublications,
-  PUBLICATIONS_DRAFT_STORAGE_KEY,
   type PublicationChannel,
-  type PublicationsConfig,
 } from "./create-vacancy-publications";
-
-const HH_DRAFT_KEY = "vacancy-create:hh-draft:v1";
 
 const SIDE_MENU_ITEMS = [
   { id: "description", label: "Описание вакансии" },
@@ -58,36 +49,14 @@ type HhFormData = {
   contactPhone: string;
 };
 
+/** Per-field error messages keyed by field name, plus `_form` for form-level errors. */
 type HhFormErrors = Partial<Record<keyof HhFormData | "_form", string>>;
 
+/** Fields required for the form's progress meter on the description step. */
 const REQUIRED_FIELDS: ReadonlyArray<{
   key: keyof HhFormData;
   label: string;
-}> = [
-  { key: "name", label: "Название вакансии" },
-  { key: "areaId", label: "Город" },
-  { key: "professionalRoleId", label: "Профессиональная роль" },
-  { key: "employmentId", label: "Тип занятости" },
-  { key: "scheduleId", label: "График работы" },
-  { key: "experienceId", label: "Опыт работы" },
-  { key: "billingTypeId", label: "Тип публикации" },
-  { key: "descriptionHtml", label: "Описание" },
-];
-
-const EMPTY_FORM: HhFormData = {
-  name: "",
-  areaId: "",
-  employmentId: "",
-  scheduleId: "",
-  experienceId: "",
-  professionalRoleId: "",
-  billingTypeId: "",
-  salaryFrom: "",
-  salaryTo: "",
-  salaryCurrency: "UZS",
-  descriptionHtml: "",
-  contactPhone: "",
-};
+}> = [{ key: "name", label: "Название вакансии" }];
 
 /**
  * Subset of {@link HhFormData} accepted as a prefill so callers can hand the form a
@@ -101,25 +70,6 @@ export type CreateVacancyFormInitialData = Partial<HhFormData>;
  */
 function hasMeaningfulHtml(html: string): boolean {
   return html.replace(/<[^>]*>/g, "").trim().length > 0;
-}
-
-/**
- * Removes duplicate options by `value`, keeping the first occurrence.
- *
- * hh.ru returns the same `professionalRoles` id under multiple category groups, which
- * collides on the `<option key={value}>` we pass to the Dropdown. Deduping by value
- * keeps the dropdown valid (a `<select>` can't have two options with the same value
- * anyway) and works for areas/roles/employment/etc. uniformly.
- */
-function dedupeOptionsByValue<T extends { value: string }>(options: T[]): T[] {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    if (seen.has(option.value)) {
-      return false;
-    }
-    seen.add(option.value);
-    return true;
-  });
 }
 
 /**
@@ -240,10 +190,30 @@ export function CreateVacancyForm({
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const [savedVacancyId, setSavedVacancyId] = useState<string | null>(
-    vacancyId ?? null,
+  const general = useVacancyPublicationStore((s) => s.general);
+  const hh = useVacancyPublicationStore((s) => s.hh);
+  const selectedChannels = useVacancyPublicationStore(
+    (s) => s.selectedChannels,
   );
-  const channelLaunchPending = useRef<PublicationChannel | null>(null);
+  const savedVacancyId = useVacancyPublicationStore((s) => s.savedVacancyId);
+  const setGeneralField = useVacancyPublicationStore((s) => s.setGeneralField);
+  const setGeneralFields = useVacancyPublicationStore(
+    (s) => s.setGeneralFields,
+  );
+  const setHhFields = useVacancyPublicationStore((s) => s.setHhFields);
+  const setSavedVacancyId = useVacancyPublicationStore(
+    (s) => s.setSavedVacancyId,
+  );
+  const setPendingChannelLaunch = useVacancyPublicationStore(
+    (s) => s.setPendingChannelLaunch,
+  );
+  const resetPublicationStore = useVacancyPublicationStore((s) => s.reset);
+
+  const formData = useMemo<HhFormData>(
+    () => ({ ...hh, ...general }),
+    [general, hh],
+  );
+
   const [modalOpen, setModalOpen] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<
@@ -254,153 +224,62 @@ export function CreateVacancyForm({
   >("idle");
   const [hhError, setHhError] = useState<string | null>(null);
   const [publishedHhUrl, setPublishedHhUrl] = useState<string | null>(null);
-  const [publicationsConfig, setPublicationsConfig] =
-    useState<PublicationsConfig | null>(null);
-
-  /** Stable callback passed to the publications step so it can report channel changes upward. */
-  const handlePublicationsConfigChange = useCallback(
-    (config: PublicationsConfig) => {
-      setPublicationsConfig(config);
-    },
-    [],
-  );
-
   const [errors, setErrors] = useState<HhFormErrors>({});
-  const [hydrated, setHydrated] = useState(false);
-  const [formData, setFormData] = useState<HhFormData>(() => ({
-    ...EMPTY_FORM,
-    ...(initialData ?? {}),
-  }));
 
+  // Edit mode: load the supplied initialData into the store whenever the target vacancy changes.
+  // The store carries form state across pages, so we overwrite it here to match the vacancy being
+  // edited rather than reading stale draft data. Keyed on vacancyId so a parent re-render with a
+  // new initialData reference for the same vacancy doesn't clobber in-progress edits.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on vacancyId so the hydration runs once per opened vacancy, not whenever initialData reference changes.
   useEffect(() => {
-    if (isEditMode) {
-      // Edit mode is fed by props; never read or merge a localStorage draft.
-      setHydrated(true);
+    if (!isEditMode || !initialData) {
       return;
     }
-    try {
-      const raw = window.localStorage.getItem(HH_DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<HhFormData>;
-        setFormData((previous) => ({ ...previous, ...parsed }));
-      }
-    } catch {
-      // Ignore corrupt drafts.
-    }
-    setHydrated(true);
-  }, [isEditMode]);
+    setGeneralFields({
+      name: initialData.name ?? "",
+      salaryFrom: initialData.salaryFrom ?? "",
+      salaryTo: initialData.salaryTo ?? "",
+      salaryCurrency: initialData.salaryCurrency ?? "UZS",
+      contactPhone: initialData.contactPhone ?? "",
+    });
+    setHhFields({
+      areaId: initialData.areaId ?? "",
+      employmentId: initialData.employmentId ?? "",
+      scheduleId: initialData.scheduleId ?? "",
+      experienceId: initialData.experienceId ?? "",
+      professionalRoleId: initialData.professionalRoleId ?? "",
+      billingTypeId: initialData.billingTypeId ?? "",
+      descriptionHtml: initialData.descriptionHtml ?? "",
+    });
+  }, [vacancyId]);
 
+  // Mirror the prop-driven vacancyId (edit mode) into the store. We only depend on vacancyId so
+  // that switching to a different vacancy refreshes the store; setSavedVacancyId is stable.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: react to vacancyId only — setSavedVacancyId is a stable store action and savedVacancyId is only read for the comparison.
   useEffect(() => {
-    if (isEditMode || !hydrated) {
-      return;
+    if (vacancyId && vacancyId !== savedVacancyId) {
+      setSavedVacancyId(vacancyId);
     }
-    try {
-      window.localStorage.setItem(HH_DRAFT_KEY, JSON.stringify(formData));
-    } catch {
-      // Ignore quota errors.
-    }
-  }, [formData, hydrated, isEditMode]);
+  }, [vacancyId]);
 
-  /** Removes the description and publications drafts from localStorage. */
+  /** Wipes the persisted draft state. */
   const clearDrafts = () => {
-    try {
-      window.localStorage.removeItem(HH_DRAFT_KEY);
-      window.localStorage.removeItem(PUBLICATIONS_DRAFT_STORAGE_KEY);
-    } catch {
-      // Ignore.
-    }
+    resetPublicationStore();
   };
 
   const { data: telegramConfig } = api.vacancies.getTelegramConfig.useQuery();
   const hhConfigQuery = api.vacancies.getHhConfig.useQuery();
-  const hhLookupsQuery = api.vacancies.getHhPublishLookups.useQuery();
 
   useEffect(() => {
-    if (!hydrated) return;
     const companyPhone = hhConfigQuery.data?.companyPhone;
     if (!companyPhone) return;
-    setFormData((previous) =>
-      previous.contactPhone
-        ? previous
-        : { ...previous, contactPhone: companyPhone },
-    );
-  }, [hydrated, hhConfigQuery.data?.companyPhone]);
+    // Read directly so the effect only runs when the company phone changes,
+    // not whenever the user edits the input.
+    if (useVacancyPublicationStore.getState().general.contactPhone) return;
+    setGeneralField("contactPhone", companyPhone);
+  }, [hhConfigQuery.data?.companyPhone, setGeneralField]);
 
-  const areaOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.areas ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.areas],
-  );
-
-  const employmentOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.employment ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.employment],
-  );
-
-  const scheduleOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.schedule ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.schedule],
-  );
-
-  const experienceOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.experience ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.experience],
-  );
-
-  const professionalRoleOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.professionalRoles ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.professionalRoles],
-  );
-
-  const billingTypeOptions = useMemo(
-    () =>
-      dedupeOptionsByValue(
-        (hhLookupsQuery.data?.billingType ?? []).map((item) => ({
-          value: item.id,
-          label: item.name,
-        })),
-      ),
-    [hhLookupsQuery.data?.billingType],
-  );
-
-  const currencyOptions = useMemo(() => {
-    const list = dedupeOptionsByValue(
-      (hhLookupsQuery.data?.currency ?? []).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
-    );
-    return list.length === 0 ? FALLBACK_CURRENCY_OPTIONS : list;
-  }, [hhLookupsQuery.data?.currency]);
+  const currencyOptions = FALLBACK_CURRENCY_OPTIONS;
 
   const progress = useMemo(() => {
     const missing = REQUIRED_FIELDS.filter(({ key }) => {
@@ -421,20 +300,24 @@ export function CreateVacancyForm({
     };
   }, [formData]);
 
-  const hhSelected =
-    publicationsConfig?.selectedChannels.includes("hh.uz") ?? false;
-  const telegramSelected =
-    publicationsConfig?.selectedChannels.includes("telegram") ?? false;
+  const hhSelected = selectedChannels.includes("hh.uz");
+  const telegramSelected = selectedChannels.includes("telegram");
 
   const createVacancy = api.vacancies.create.useMutation({
     onSuccess: async (createdVacancy) => {
       await utils.vacancies.list.invalidate();
-      clearDrafts();
 
-      if (channelLaunchPending.current) {
-        const channel = channelLaunchPending.current;
-        channelLaunchPending.current = null;
-        router.push(`/vacancies/${createdVacancy.id}/publications/${channel}`);
+      // Capture the pending channel before clearing the store.
+      const pendingChannel =
+        useVacancyPublicationStore.getState().pendingChannelLaunch;
+
+      clearDrafts();
+      setSavedVacancyId(createdVacancy.id);
+
+      if (pendingChannel) {
+        router.push(
+          `/vacancies/${createdVacancy.id}/publications/${pendingChannel}`,
+        );
         return;
       }
 
@@ -443,7 +326,6 @@ export function CreateVacancyForm({
       const willOfferHh = hhConfigQuery.data?.enabled === true && hhSelected;
 
       if (willOfferTelegram || willOfferHh) {
-        setSavedVacancyId(createdVacancy.id);
         setModalOpen(true);
         return;
       }
@@ -500,15 +382,15 @@ export function CreateVacancyForm({
   });
 
   /**
-   * Updates a single form field and clears any pre-existing per-field or form-level error,
-   * plus the "saved" toast in edit mode so the user knows the next save is pending.
-   * Generic over the field key so the value type is statically checked.
+   * Updates a single general-vacancy field in the publication store and clears any pre-existing
+   * per-field or form-level error, plus the "saved" toast in edit mode so the user knows the
+   * next save is pending. hh.uz-specific fields live on `/vacancies/<id>/publications/hh.uz`.
    */
-  const handleFieldChange = <K extends keyof HhFormData>(
+  const handleFieldChange = <K extends keyof GeneralVacancyFields>(
     field: K,
-    value: HhFormData[K],
+    value: GeneralVacancyFields[K],
   ) => {
-    setFormData((previous) => ({ ...previous, [field]: value }));
+    setGeneralField(field, value);
     if (updateMessage) {
       setUpdateMessage(null);
     }
@@ -614,49 +496,15 @@ export function CreateVacancyForm({
   };
 
   /**
-   * Validates the description step.
-   *
-   * In **create mode** every hh.uz-required field is mandatory (name, area, role, employment,
-   * schedule, experience, billing type and a non-empty description of at least 200 characters —
-   * the same minimum the server enforces).
-   *
-   * In **edit mode** only `name` is required, since the legacy vacancy table doesn't store the
-   * hh.uz lookup IDs and the user is expected to leave them blank when the data is unavailable.
-   *
-   * Returns true and clears errors on success; otherwise sets per-field error messages and returns false.
+   * Validates the description step. Only the general fields (currently just `name`) are checked
+   * here. hh.uz-specific fields live on `/vacancies/<id>/publications/hh.uz` and are validated
+   * there.
    */
   const validateForm = (): boolean => {
     const nextErrors: HhFormErrors = {};
 
     if (!formData.name.trim()) {
       nextErrors.name = "Введите название вакансии";
-    }
-
-    if (!isEditMode) {
-      if (!formData.areaId) {
-        nextErrors.areaId = "Выберите город";
-      }
-      if (!formData.professionalRoleId) {
-        nextErrors.professionalRoleId = "Выберите профессиональную роль";
-      }
-      if (!formData.employmentId) {
-        nextErrors.employmentId = "Выберите тип занятости";
-      }
-      if (!formData.scheduleId) {
-        nextErrors.scheduleId = "Выберите график";
-      }
-      if (!formData.experienceId) {
-        nextErrors.experienceId = "Выберите опыт";
-      }
-      if (!formData.billingTypeId) {
-        nextErrors.billingTypeId = "Выберите тип публикации";
-      }
-      if (!hasMeaningfulHtml(formData.descriptionHtml)) {
-        nextErrors.descriptionHtml = "Заполните описание вакансии";
-      } else if (formData.descriptionHtml.length < 200) {
-        nextErrors.descriptionHtml =
-          "Описание должно быть не короче 200 символов";
-      }
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -738,8 +586,8 @@ export function CreateVacancyForm({
   /**
    * Dropdown launch on the publications step: persist the vacancy as a draft (if not already
    * saved) and navigate to the per-channel editor. The create-mutation onSuccess reads
-   * `channelLaunchPending` to know to route to /vacancies/<id>/publications/<channel> instead
-   * of opening the publish modal.
+   * `pendingChannelLaunch` from the store to know to route to
+   * /vacancies/<id>/publications/<channel> instead of opening the publish modal.
    */
   const handleChannelLaunch = (channel: PublicationChannel) => {
     const existingId = vacancyId ?? savedVacancyId;
@@ -761,7 +609,7 @@ export function CreateVacancyForm({
     const currency: "UZS" | "USD" =
       formData.salaryCurrency === "USD" ? "USD" : "UZS";
 
-    channelLaunchPending.current = channel;
+    setPendingChannelLaunch(channel);
 
     createVacancy.mutate({
       title: formData.name.trim(),
@@ -878,19 +726,6 @@ export function CreateVacancyForm({
                   total={progress.total}
                 />
 
-                {hhLookupsQuery.isError && (
-                  <div className="mt-4 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
-                    Не удалось загрузить справочники hh.uz.{" "}
-                    <button
-                      className="underline"
-                      onClick={() => void hhLookupsQuery.refetch()}
-                      type="button"
-                    >
-                      Повторить
-                    </button>
-                  </div>
-                )}
-
                 <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
                   <div className="min-w-0 flex-1 space-y-8">
                     <div
@@ -914,122 +749,6 @@ export function CreateVacancyForm({
                               {errors.name}
                             </p>
                           )}
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <SearchableSelect
-                              disabled={readOnly}
-                              label="Город"
-                              onChange={(value) =>
-                                handleFieldChange("areaId", value)
-                              }
-                              options={areaOptions}
-                              placeholder="Выберите город"
-                              searchPlaceholder="Найти город"
-                              value={formData.areaId}
-                            />
-                            {errors.areaId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.areaId}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <SearchableSelect
-                              disabled={readOnly}
-                              label="Профессиональная роль"
-                              onChange={(value) =>
-                                handleFieldChange("professionalRoleId", value)
-                              }
-                              options={professionalRoleOptions}
-                              placeholder="Выберите роль"
-                              searchPlaceholder="Найти роль"
-                              value={formData.professionalRoleId}
-                            />
-                            {errors.professionalRoleId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.professionalRoleId}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <Dropdown
-                              disabled={readOnly}
-                              label="Тип занятости"
-                              onChange={(value) =>
-                                handleFieldChange("employmentId", value)
-                              }
-                              options={employmentOptions}
-                              placeholder="Выберите тип"
-                              value={formData.employmentId}
-                            />
-                            {errors.employmentId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.employmentId}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <Dropdown
-                              disabled={readOnly}
-                              label="График работы"
-                              onChange={(value) =>
-                                handleFieldChange("scheduleId", value)
-                              }
-                              options={scheduleOptions}
-                              placeholder="Выберите график"
-                              value={formData.scheduleId}
-                            />
-                            {errors.scheduleId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.scheduleId}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <Dropdown
-                              disabled={readOnly}
-                              label="Опыт работы"
-                              onChange={(value) =>
-                                handleFieldChange("experienceId", value)
-                              }
-                              options={experienceOptions}
-                              placeholder="Выберите опыт"
-                              value={formData.experienceId}
-                            />
-                            {errors.experienceId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.experienceId}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex min-w-0 flex-col gap-2">
-                            <Dropdown
-                              disabled={readOnly}
-                              label="Тип публикации"
-                              onChange={(value) =>
-                                handleFieldChange("billingTypeId", value)
-                              }
-                              options={billingTypeOptions}
-                              placeholder="Выберите тип публикации"
-                              value={formData.billingTypeId}
-                            />
-                            {errors.billingTypeId && (
-                              <p className="text-[13px] text-danger-red leading-[1.4]">
-                                {errors.billingTypeId}
-                              </p>
-                            )}
-                          </div>
                         </div>
                       </ClosableSection>
                     </div>
@@ -1093,35 +812,6 @@ export function CreateVacancyForm({
                         />
                       </ClosableSection>
                     </div>
-
-                    <div
-                      className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
-                      id="description"
-                    >
-                      <ClosableSection title="Описание">
-                        <RichTextEditor
-                          disabled={readOnly}
-                          id="hh-description-html"
-                          label="Описание для hh.uz (минимум 200 символов)"
-                          maxLength={20000}
-                          onChange={(html) =>
-                            handleFieldChange("descriptionHtml", html)
-                          }
-                          placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
-                          value={formData.descriptionHtml}
-                        />
-                        {errors.descriptionHtml && (
-                          <p className="text-[13px] text-danger-red leading-[1.4]">
-                            {errors.descriptionHtml}
-                          </p>
-                        )}
-                        <p className="text-[12px] text-text-secondary">
-                          hh.uz принимает только базовое форматирование: абзацы,
-                          списки, заголовки H3/H4, жирный, курсив и ссылки.
-                          Описание должно содержать хотя бы один список.
-                        </p>
-                      </ClosableSection>
-                    </div>
                   </div>
                 </div>
 
@@ -1169,10 +859,7 @@ export function CreateVacancyForm({
               <CreateVacancyPublications
                 onBack={() => goToStep("description")}
                 onChannelLaunch={handleChannelLaunch}
-                onConfigChange={handlePublicationsConfigChange}
                 onContinue={handleContinueFromPublications}
-                prefillDescription={formData.descriptionHtml}
-                prefillName={formData.name}
                 vacancyId={vacancyId ?? savedVacancyId ?? undefined}
               />
             ) : (

@@ -4,20 +4,37 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
 
+/** Single entry shown inside an {@link ActionDropdown} menu. */
 export interface ActionDropdownItem {
+  /** Value handed to `onSelect` when the user picks this item. */
   value: string;
+  /** Human-readable label displayed next to the icon. */
   label: string;
+  /** Path of the icon asset (typically a static SVG under `/public`). */
   iconSrc: string;
 }
 
+/** Props for the {@link ActionDropdown} component. */
 export interface ActionDropdownProps {
+  /** Label shown on the trigger button (e.g. "Создать публикацию"). */
   triggerLabel: string;
+  /** Menu entries shown when the dropdown is open. */
   items: ActionDropdownItem[];
+  /** Invoked with the picked item's `value` when the user selects it. */
   onSelect: (value: string) => void;
+  /** Extra classes for the dropdown's outer wrapper. */
   className?: string;
+  /** Extra classes for the popup `<ul>` menu. */
   menuClassName?: string;
 }
 
+/**
+ * A button-with-menu dropdown that renders icons alongside each option.
+ *
+ * Native `<select>` (used by `~/app/_components/dropdown`) can't show icons in options, so this
+ * variant uses a `<button>` trigger plus a `<ul role="menu">` of icon+label items. The menu
+ * closes on outside click, on `Escape`, and when an item is picked.
+ */
 export function ActionDropdown({
   triggerLabel,
   items,

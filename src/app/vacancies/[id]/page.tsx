@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -7,7 +8,6 @@ import {
   CreateVacancyForm,
   type CreateVacancyFormInitialData,
 } from "../create/create-vacancy-form";
-import { HhVacancyPreview } from "./hh-vacancy-preview";
 
 type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
 
@@ -47,8 +47,8 @@ function buildInitialData(
  * Vacancy detail page.
  *
  * Renders the shared {@link CreateVacancyForm} in edit mode, prefilled from `vacancies.get`.
- * The form's preview tab is overridden to show {@link HhVacancyPreview} when the vacancy is
- * linked to hh.uz; otherwise it shows a "not yet published" placeholder.
+ * The form's preview tab points the user at `/vacancies/<id>/publications/hh.uz` when the
+ * vacancy is linked to hh.uz; otherwise it shows a "not yet published" placeholder.
  */
 export default function VacancyDetailPage() {
   const { id: vacancyId } = useParams() as { id: string };
@@ -92,7 +92,18 @@ export default function VacancyDetailPage() {
   const isArchivedHh = hasHhLink && vacancy.status === "archive";
 
   const previewContent = hasHhLink ? (
-    <HhVacancyPreview vacancyId={vacancyId} />
+    <section className="flex flex-col gap-3 rounded-[8px] border border-border-input bg-bg-light p-5">
+      <div className="font-bold text-[18px] text-text-heading">hh.uz</div>
+      <div className="text-[14px] text-text-secondary">
+        Управление публикацией перенесено на отдельную страницу.
+      </div>
+      <Link
+        className="inline-flex h-10 w-fit items-center rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[14px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+        href={`/vacancies/${vacancyId}/publications/hh.uz`}
+      >
+        Открыть публикацию hh.uz
+      </Link>
+    </section>
   ) : (
     <section className="rounded-[8px] border border-border-input bg-bg-input p-5">
       <div className="font-bold text-[18px] text-text-heading">hh.uz</div>

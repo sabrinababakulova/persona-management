@@ -1,15 +1,30 @@
+import { HhPublicationForm } from "./hh-publication-form";
+
+/** Display labels for known channels; unknown channels fall back to their raw segment value. */
 const CHANNEL_DISPLAY_NAME: Record<string, string> = {
   linkedin: "LinkedIn",
   "hh.uz": "HH",
   telegram: "Telegram",
 };
 
+/**
+ * Per-channel publication editor entry point at
+ * `/vacancies/[id]/publications/[channel]`.
+ *
+ * For `hh.uz` the page mounts the full {@link HhPublicationForm}; other channels currently render
+ * a placeholder showing the channel name while their dedicated editors are built.
+ */
 export default async function VacancyPublicationChannelPage({
   params,
 }: {
   params: Promise<{ id: string; channel: string }>;
 }) {
-  const { channel } = await params;
+  const { id, channel } = await params;
+
+  if (channel === "hh.uz") {
+    return <HhPublicationForm vacancyId={id} />;
+  }
+
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;
 
   return (

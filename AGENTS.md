@@ -95,6 +95,8 @@
 │   │   └── resume-analysis.ts  # AI output validation schemas
 │   ├── shared/               # Code shared between client and server
 │   │   └── candidate-lookups.ts  # DEFAULT_CANDIDATE_LOOKUPS fallback data
+│   ├── stores/               # Zustand client-side stores
+│   │   └── vacancy-publication-store.ts  # Draft state for the vacancy publication flow (persisted)
 │   ├── utils/                # Utility functions
 │   │   ├── format-telegram-vacancy.ts    # HTML message formatter for Telegram
 │   │   ├── generate-vacancy-keyword.ts   # SHA-256 keyword for vacancy postings
@@ -146,6 +148,7 @@
 | `@tanstack/react-query` 5.69 | Server state caching, deduplication, background refetching |
 | `superjson` 2.2 | tRPC transformer — serializes Date, Map, Set, BigInt |
 | `zod` 3.24 | Schema validation for tRPC inputs, forms, env vars |
+| `zustand` 5 | Client-side store for the multi-step vacancy publication flow (with `persist` middleware → localStorage) |
 
 ### Authentication
 | Package | Purpose |
@@ -280,6 +283,34 @@ Uses `verificationTokens` table as a generic rate-limit store:
 - Register: 3 attempts / hour per email or IP + 60s cooldown
 - Code verification: 8 attempts / 15 min per flow or IP
 - Password change: 5 attempts / 15 min
+
+---
+
+## Client State Management
+
+Server state lives in TanStack Query (via tRPC). The multi-step vacancy publication flow also keeps a **client-side draft** in Zustand so the draft survives reloads and navigations between the create form, the publications step, and the per-channel publication editor.
+
+### Store: `src/stores/vacancy-publication-store.ts`
+
+Exposed as `useVacancyPublicationStore`. Persisted to `localStorage` under the key `vacancy-publication-store` via `zustand/middleware`'s `persist`.
+
+| Slice | Type | Notes |
+|-------|------|-------|
+| `general` | `GeneralVacancyFields` | `name`, `salaryFrom`, `salaryTo`, `salaryCurrency`, `contactPhone` — edited in `create-vacancy-form` |
+| `hh` | `HhPublicationFields` | `areaId`, `employmentId`, `scheduleId`, `experienceId`, `professionalRoleId`, `billingTypeId`, `descriptionHtml` — edited on `/vacancies/[id]/publications/hh.uz` |
+| `selectedChannels` | `PublicationChannel[]` | Channels chosen via the publications-step dropdown (`linkedin` / `hh.uz` / `telegram`) |
+| `savedVacancyId` | `string \| null` | The vacancy this draft is bound to once persisted via `vacancies.create` / edit mode |
+| `pendingChannelLaunch` | `PublicationChannel \| null` | In-flight nav flag set by the dropdown launcher; read by `createVacancy.onSuccess` to decide whether to navigate to a channel page instead of opening the publish modal. **Excluded from persistence** via `partialize`. |
+
+Imperative actions: `setGeneralField`, `setGeneralFields`, `setHhField`, `setHhFields`, `setSelectedChannels`, `setSavedVacancyId`, `setPendingChannelLaunch`, and `reset` (used as `clearDrafts` after a successful save).
+
+### Consumers
+
+- `src/app/vacancies/create/create-vacancy-form.tsx` — reads `general` / `hh` to build the merged `formData`, writes `general` via `handleFieldChange`, hydrates the store from `initialData` on `vacancyId` change in edit mode.
+- `src/app/vacancies/create/create-vacancy-publications.tsx` — reads/writes `selectedChannels` from the store; no local form state.
+- `src/app/vacancies/[id]/publications/[channel]/hh-publication-form.tsx` — reads `hh`, writes via `setHhField`, hydrates the store from `vacancies.get` once per vacancy ID.
+
+Validation errors, modal open state, and per-channel publish progress remain in local `useState` — they're transient UI state and shouldn't survive a reload.
 
 ---
 

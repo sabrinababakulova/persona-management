@@ -11,14 +11,17 @@ import {
 } from "~/app/_components/icons";
 import type { RouterOutputs } from "~/trpc/react";
 
+/** A single row's worth of data, as returned by `vacancies.listPublications`. */
 type Publication = RouterOutputs["vacancies"]["listPublications"][number];
 
+/** Brand assets used to render the "Канал" column for each known platform. */
 const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
 };
 
+/** Inline duplicate-page glyph used for the row's "Дублировать" action. */
 function CopyIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -38,6 +41,7 @@ function CopyIcon({ className }: { className?: string }) {
   );
 }
 
+/** Formats a Date or ISO string to "DD.MM.YYYY" in the ru-RU locale; returns "" on invalid input. */
 function formatDate(value?: Date | string | null): string {
   if (!value) {
     return "";
@@ -53,6 +57,15 @@ function formatDate(value?: Date | string | null): string {
   }).format(date);
 }
 
+/**
+ * Renders the "Версии публикаций" list for a vacancy.
+ *
+ * The header row shows the section title plus a {@link trailingHeader} slot (used to inject the
+ * "Создать публикацию" dropdown). Each publication renders its name, channel icon (derived from
+ * the first entry in `sources`), an "Опубликовано / Неактивна" status badge, the creation date,
+ * and row-level edit / copy / delete actions. The bottom "Действия" button is reserved for bulk
+ * actions on rows the user has selected via the row checkboxes.
+ */
 export function PublicationsTable({
   publications,
   trailingHeader,
@@ -60,10 +73,15 @@ export function PublicationsTable({
   onDelete,
   onCopy,
 }: {
+  /** Rows to render, in the order they should appear. */
   publications: Publication[];
+  /** Optional element placed to the right of the "Версии публикаций" heading (e.g. a CTA). */
   trailingHeader?: ReactNode;
+  /** Invoked with the publication id when the user clicks the row's pencil icon. */
   onEdit?: (id: string) => void;
+  /** Invoked with the publication id when the user clicks the row's trash icon. */
   onDelete?: (id: string) => void;
+  /** Invoked with the publication id when the user clicks the row's duplicate icon. */
   onCopy?: (id: string) => void;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

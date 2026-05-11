@@ -1,39 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   ActionDropdown,
   type ActionDropdownItem,
 } from "~/app/_components/action-dropdown";
+import {
+  type PublicationChannel,
+  useVacancyPublicationStore,
+} from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
 import { PublicationsTable } from "./publications-table";
 
+export type { PublicationChannel } from "~/stores/vacancy-publication-store";
+
+/** Local copy of the channel list used for the `isPublicationChannel` type guard. */
 const PUBLICATION_CHANNELS = ["linkedin", "hh.uz", "telegram"] as const;
 
-export type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
-
+/** Dropdown entries shown when the user opens the "Создать публикацию" menu. */
 const CHANNEL_OPTIONS: ActionDropdownItem[] = [
   { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
   { value: "hh.uz", label: "Для HH", iconSrc: "/hh.svg" },
   { value: "telegram", label: "Для Telegram", iconSrc: "/telegram.svg" },
 ];
 
+/** Human-readable name shown under the dropdown after a channel is picked. */
 const CHANNEL_DISPLAY_NAME: Record<PublicationChannel, string> = {
   linkedin: "LinkedIn",
   "hh.uz": "HH",
   telegram: "Telegram",
-};
-
-const PUBLICATIONS_DRAFT_KEY = "vacancy-create:publications-draft:v1";
-
-type PublicationsDraft = {
-  selectedChannels: PublicationChannel[];
-};
-
-export type PublicationsConfig = {
-  name: string;
-  description: string;
-  selectedChannels: PublicationChannel[];
 };
 
 /** Type guard that narrows an unknown value to one of {@link PUBLICATION_CHANNELS}. */
@@ -44,27 +38,38 @@ function isPublicationChannel(value: unknown): value is PublicationChannel {
   );
 }
 
+/**
+ * Publications step of the vacancy creation flow.
+ *
+ * - When the vacancy already has saved publications, renders the
+ *   {@link PublicationsTable} with the "Создать публикацию" dropdown in its header.
+ * - Otherwise renders a single right-aligned dropdown card.
+ *
+ * Picking a channel writes to `selectedChannels` in the shared Zustand store and triggers
+ * {@link onChannelLaunch}, which the parent uses to persist the vacancy as a draft and route to
+ * the per-channel editor.
+ */
 export function CreateVacancyPublications({
   onBack,
   onChannelLaunch,
-  onConfigChange,
   onContinue,
-  prefillDescription,
-  prefillName,
   vacancyId,
 }: {
+  /** Sends the user back to the description step. */
   onBack: () => void;
+  /** Called with the picked channel after the user opens the dropdown and selects an item. */
   onChannelLaunch?: (channel: PublicationChannel) => void;
-  onConfigChange: (config: PublicationsConfig) => void;
+  /** Advances to the preview / publish step. */
   onContinue: () => void;
-  prefillDescription: string;
-  prefillName: string;
+  /** Vacancy ID used to fetch existing publications. Omit during early create-flow stages. */
   vacancyId?: string;
 }) {
-  const [selectedChannels, setSelectedChannels] = useState<
-    PublicationChannel[]
-  >([]);
-  const [hydrated, setHydrated] = useState(false);
+  const selectedChannels = useVacancyPublicationStore(
+    (s) => s.selectedChannels,
+  );
+  const setSelectedChannels = useVacancyPublicationStore(
+    (s) => s.setSelectedChannels,
+  );
 
   const publicationsQuery = api.vacancies.listPublications.useQuery(
     { vacancyId: vacancyId ?? "" },
@@ -72,46 +77,6 @@ export function CreateVacancyPublications({
   );
   const publications = publicationsQuery.data ?? [];
   const hasExistingPublications = publications.length > 0;
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(PUBLICATIONS_DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<PublicationsDraft>;
-        if (Array.isArray(parsed.selectedChannels)) {
-          setSelectedChannels(
-            parsed.selectedChannels.filter(isPublicationChannel),
-          );
-        }
-      }
-    } catch {
-      // Ignore corrupt drafts.
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-    const draft: PublicationsDraft = { selectedChannels };
-    try {
-      window.localStorage.setItem(
-        PUBLICATIONS_DRAFT_KEY,
-        JSON.stringify(draft),
-      );
-    } catch {
-      // Ignore quota errors.
-    }
-  }, [selectedChannels, hydrated]);
-
-  useEffect(() => {
-    onConfigChange({
-      name: prefillName,
-      description: prefillDescription,
-      selectedChannels,
-    });
-  }, [prefillName, prefillDescription, selectedChannels, onConfigChange]);
 
   const handleChannelSelect = (value: string) => {
     if (!isPublicationChannel(value)) {
@@ -176,5 +141,3 @@ export function CreateVacancyPublications({
     </div>
   );
 }
-
-export const PUBLICATIONS_DRAFT_STORAGE_KEY = PUBLICATIONS_DRAFT_KEY;

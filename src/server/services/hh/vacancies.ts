@@ -537,7 +537,7 @@ export type HhVacancyDetail = {
   id: string;
   name: string;
   descriptionHtml: string;
-  // Display labels (used by HhVacancyPreview to render names).
+  // Human-readable display labels paired with their lookup IDs below.
   area: string | null;
   employment: string | null;
   schedule: string | null;
