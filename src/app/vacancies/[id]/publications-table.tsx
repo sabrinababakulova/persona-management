@@ -1,7 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { type ReactNode, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import {
+  ActionDropdown,
+  type ActionDropdownItem,
+} from "~/app/_components/action-dropdown";
 import { Checkbox } from "~/app/_components/checkbox";
 import {
   ChevronDownIcon,
@@ -9,10 +14,14 @@ import {
   SortIcon,
   TrashIcon,
 } from "~/app/_components/icons";
-import type { RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
 
-/** A single row's worth of data, as returned by `vacancies.listPublications`. */
-type Publication = RouterOutputs["vacancies"]["listPublications"][number];
+/** Dropdown entries shown when the user opens the "Создать публикацию" menu. */
+const CHANNEL_OPTIONS: ActionDropdownItem[] = [
+  { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
+  { value: "hh.uz", label: "Для HH", iconSrc: "/hh.svg" },
+  { value: "telegram", label: "Для Telegram", iconSrc: "/telegram.svg" },
+];
 
 /** Brand assets used to render the "Канал" column for each known platform. */
 const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
@@ -66,25 +75,20 @@ function formatDate(value?: Date | string | null): string {
  * and row-level edit / copy / delete actions. The bottom "Действия" button is reserved for bulk
  * actions on rows the user has selected via the row checkboxes.
  */
-export function PublicationsTable({
-  publications,
-  trailingHeader,
-  onEdit,
-  onDelete,
-  onCopy,
-}: {
-  /** Rows to render, in the order they should appear. */
-  publications: Publication[];
-  /** Optional element placed to the right of the "Версии публикаций" heading (e.g. a CTA). */
-  trailingHeader?: ReactNode;
-  /** Invoked with the publication id when the user clicks the row's pencil icon. */
-  onEdit?: (id: string) => void;
-  /** Invoked with the publication id when the user clicks the row's trash icon. */
-  onDelete?: (id: string) => void;
-  /** Invoked with the publication id when the user clicks the row's duplicate icon. */
-  onCopy?: (id: string) => void;
-}) {
+export function PublicationsTable() {
+  const router = useRouter();
+  const { id: parentVacancyId } = useParams() as { id: string };
+
+  const { data: publications, isLoading } =
+    api.vacancies.listPublications.useQuery(
+      { parentVacancyId },
+      { enabled: Boolean(parentVacancyId) },
+    );
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const handleChannelSelect = (value: string) => {
+    router.push(`/vacancies/${parentVacancyId}/publications/${value}`);
+  };
 
   const toggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -92,16 +96,24 @@ export function PublicationsTable({
     );
   };
 
+  const onEdit = (_id: string) => {};
+  const onCopy = (_id: string) => {};
+  const onDelete = (_id: string) => {};
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="font-bold text-[28px] text-text-heading leading-none tracking-[-0.48px]">
           Версии публикаций
         </h2>
-        {trailingHeader}
+        <ActionDropdown
+          items={CHANNEL_OPTIONS}
+          onSelect={handleChannelSelect}
+          triggerLabel="Создать публикацию"
+        />
       </div>
 
-      <div className="overflow-hidden rounded-[8px] border border-border-input bg-bg-light">
+      <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
         <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-[14px] text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-4 flex items-center gap-1">
@@ -123,8 +135,8 @@ export function PublicationsTable({
           <div className="col-span-1" />
         </div>
 
-        {publications.map((pub) => {
-          const platform = pub.sources?.[0]?.platform;
+        {publications?.map((pub) => {
+          const platform = pub.destination;
           const icon = platform ? CHANNEL_ICONS[platform] : undefined;
           const dateLabel = formatDate(pub.createdAt);
           return (
@@ -139,7 +151,7 @@ export function PublicationsTable({
                 />
               </div>
               <div className="col-span-11 truncate font-medium text-[14px] text-text-heading lg:col-span-4">
-                {pub.name}
+                {pub.title}
               </div>
               <div className="col-span-1 lg:col-span-2">
                 {icon && (
@@ -155,7 +167,7 @@ export function PublicationsTable({
                 )}
               </div>
               <div className="col-span-5 lg:col-span-2">
-                <span className="inline-flex items-center gap-1 rounded-[6px] bg-status-active-soft px-3 py-1 font-semibold text-[12px] text-status-active-strong uppercase leading-none">
+                <span className="inline-flex items-center gap-1 rounded-md bg-status-active-soft px-3 py-1 font-semibold text-[12px] text-status-active-strong uppercase leading-none">
                   {pub.isActive ? "Опубликовано" : "Неактивна"}
                   <ChevronDownIcon className="h-3 w-3" />
                 </span>
@@ -195,7 +207,7 @@ export function PublicationsTable({
 
         <div className="flex justify-end border-border-input border-t px-4 py-3">
           <button
-            className="inline-flex items-center gap-2 rounded-[6px] border border-border-input px-3 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+            className="inline-flex items-center gap-2 rounded-md border border-border-input px-3 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
             type="button"
           >
             <span>Действия</span>

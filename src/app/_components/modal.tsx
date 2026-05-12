@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { ModalProps } from "~/types/components/modal-props";
+import { CloseIcon } from "./icons";
 import { usePresence } from "./use-presence";
 
 export function Modal({
@@ -135,10 +136,19 @@ export function Modal({
         ref={dialogPanelRef}
         tabIndex={-1}
       >
+        <button
+          aria-label={closeButtonLabel}
+          className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading"
+          onClick={onClose}
+          type="button"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+
         <div className={`flex flex-col gap-4 ${contentClassName ?? ""}`}>
           {title && (
             <h2
-              className={`font-semibold text-[22px] text-text-heading leading-none tracking-[-0.44px] ${titleClassName ?? ""}`}
+              className={`pr-10 font-semibold text-[22px] text-text-heading leading-none tracking-[-0.44px] ${titleClassName ?? ""}`}
               id={titleId}
             >
               {title}

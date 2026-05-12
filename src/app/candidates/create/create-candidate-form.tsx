@@ -138,7 +138,6 @@ export function CreateCandidateForm() {
       }
 
       void utils.candidates.list.invalidate();
-      void utils.candidates.hasAny.invalidate();
 
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(

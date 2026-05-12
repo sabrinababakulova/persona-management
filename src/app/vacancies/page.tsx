@@ -190,8 +190,7 @@ export default function VacanciesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const hasVacancies = hasAnyVacancies;
-  const showVacanciesTable = hasVacancies || isLoading;
+  const showVacanciesTable = hasAnyVacancies || isLoading;
 
   return (
     <>

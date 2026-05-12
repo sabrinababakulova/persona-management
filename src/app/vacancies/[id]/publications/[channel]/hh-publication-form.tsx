@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
+import { Modal } from "~/app/_components/modal";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
 import {
@@ -57,33 +58,31 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
 
   const fields = useVacancyPublicationStore((s) => s.hh);
   const setHhField = useVacancyPublicationStore((s) => s.setHhField);
-  const setHhFields = useVacancyPublicationStore((s) => s.setHhFields);
 
   const [errors, setErrors] = useState<HhErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const [hydratedForVacancyId, setHydratedForVacancyId] = useState<
-    string | null
-  >(null);
+
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
 
   // Hydrate the store from server data once per vacancy. We don't want to clobber
   // user edits if they're navigating around within the same vacancy, but we DO want
   // to overwrite when opening a different vacancy.
-  useEffect(() => {
-    const v = vacancyQuery.data;
-    if (!v || hydratedForVacancyId === vacancyId) {
-      return;
-    }
-    setHhFields({
-      areaId: v.areaId ?? "",
-      employmentId: v.employmentId ?? "",
-      scheduleId: v.scheduleId ?? "",
-      experienceId: v.experienceId ?? "",
-      professionalRoleId: v.professionalRoleId ?? "",
-      billingTypeId: v.billingTypeId ?? "",
-      descriptionHtml: v.descriptionHtml ?? "",
-    });
-    setHydratedForVacancyId(vacancyId);
-  }, [vacancyQuery.data, vacancyId, hydratedForVacancyId, setHhFields]);
+  // useEffect(() => {
+  //   const v = vacancyQuery.data;
+  //   if (!v || hydratedForVacancyId === vacancyId) {
+  //     return;
+  //   }
+  //   setHhFields({
+  //     areaId: v.areaId ?? "",
+  //     employmentId: v.employmentId ?? "",
+  //     scheduleId: v.scheduleId ?? "",
+  //     experienceId: v.experienceId ?? "",
+  //     professionalRoleId: v.professionalRoleId ?? "",
+  //     billingTypeId: v.billingTypeId ?? "",
+  //     descriptionHtml: v.descriptionHtml ?? "",
+  //   });
+  //   setHydratedForVacancyId(vacancyId);
+  // }, [vacancyQuery.data, vacancyId, hydratedForVacancyId, setHhFields]);
 
   const areaOptions = useMemo(
     () =>
@@ -146,14 +145,19 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
     [hhLookupsQuery.data?.billingType],
   );
 
-  const updateVacancy = api.vacancies.update.useMutation({
+  const createPublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Изменения сохранены");
+      setSavedMessage("Публикация сохранены");
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
         utils.vacancies.list.invalidate(),
+        utils.vacancies.listPublications.invalidate({
+          parentVacancyId: vacancyId,
+        }),
       ]);
+      setIsPublishConfirmOpen(false);
+      router.push(`/vacancies/${vacancyId}?step=publications`); // Redirect to vacancy page after saving
     },
     onError: (error) => {
       setSavedMessage(null);
@@ -214,21 +218,18 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
     return true;
   };
 
-  const handleSave = () => {
-    if (!validate()) {
+  const handleSave = ({ isActivePub }: { isActivePub: boolean }) => {
+    if (!validate() || !vacancyQuery.data) {
       return;
     }
 
-    setSavedMessage(null);
-    updateVacancy.mutate({
-      id: vacancyId,
-      areaId: fields.areaId || null,
-      employmentId: fields.employmentId || null,
-      scheduleId: fields.scheduleId || null,
-      experienceId: fields.experienceId || null,
-      professionalRoleId: fields.professionalRoleId || null,
-      billingTypeId: fields.billingTypeId || null,
-      descriptionHtml: fields.descriptionHtml || null,
+    createPublication.mutate({
+      title: vacancyQuery.data.title,
+      parentId: vacancyId,
+      ...fields,
+      isActive: isActivePub,
+      destination: "hh.uz",
+      isPublication: true,
     });
   };
 
@@ -448,11 +449,11 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
                 </button>
                 <button
                   className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={updateVacancy.isPending}
-                  onClick={handleSave}
+                  disabled={createPublication.isPending}
+                  onClick={() => setIsPublishConfirmOpen(true)}
                   type="button"
                 >
-                  {updateVacancy.isPending
+                  {createPublication.isPending
                     ? "Сохранение..."
                     : "Сохранить изменения"}
                 </button>
@@ -461,6 +462,31 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
           </div>
         </div>
       </div>
+
+      <Modal
+        description="Это перезапишет текущую активную публикацию."
+        isOpen={isPublishConfirmOpen}
+        maxWidthClassName="max-w-[420px]"
+        onClose={() => setIsPublishConfirmOpen(false)}
+        title="Опубликовать публикацию?"
+      >
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+          <button
+            className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+            onClick={() => handleSave({ isActivePub: false })}
+            type="button"
+          >
+            Нет
+          </button>
+          <button
+            className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+            onClick={() => handleSave({ isActivePub: true })}
+            type="button"
+          >
+            Да
+          </button>
+        </div>
+      </Modal>
     </main>
   );
 }

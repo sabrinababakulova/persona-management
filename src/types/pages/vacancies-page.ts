@@ -16,9 +16,10 @@ export interface Vacancy {
   contactPhone: string;
   companyId?: string;
   hhVacancyId?: string | null;
+  telegramPostId?: string | null;
   publishedAt?: string;
   source: "local" | "hh.uz";
   externalUrl?: string;
-  connections: Array<"telegram" | "hh.uz">;
+  connections: Array<"telegram" | "hh.uz" | "linkedin">;
   selected?: boolean;
 }

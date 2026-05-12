@@ -233,10 +233,6 @@ export function toHhVacancyStatus(item: HhVacancyItem): HhVacancy["status"] {
   return item.archived ? "archive" : "active";
 }
 
-export function toHhResponses(item: HhVacancyItem): number {
-  return item.counters?.responses ?? item.counters?.total_responses ?? 0;
-}
-
 export function toHhSalaryExpectation(item: HhVacancyItem): number | undefined {
   return item.salary?.from ?? item.salary?.to ?? undefined;
 }
@@ -254,19 +250,15 @@ export function toHhSalaryCurrency(
   }
 }
 
-export function toHhCity(item: HhVacancyItem): string {
-  return item.area?.name?.trim() || "";
-}
-
 export function toHhVacancy(item: HhVacancyItem): HhVacancy {
   return {
     id: item.id,
     title: item.name?.trim() || "Вакансия с hh.uz",
-    city: toHhCity(item),
+    city: item.area?.name?.trim() || "",
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
     status: toHhVacancyStatus(item),
-    responses: toHhResponses(item),
+    responses: item.counters?.responses ?? item.counters?.total_responses ?? 0,
     publishedAt: item.published_at?.trim() || undefined,
     externalUrl: item.alternate_url?.trim() || undefined,
   };

@@ -10,13 +10,10 @@ import {
   getRequiredCompanyId,
 } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
-import { candidates, companyHhAccounts } from "~/server/db/schema";
+import { candidates } from "~/server/db/schema";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
-import {
-  fetchHhResumeById,
-  isHhConfigured,
-  refreshHhAccessToken,
-} from "~/server/services/hh";
+import { fetchHhResumeById } from "~/server/services/hh";
+import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
 
 import { candidateIdInputSchema, candidateNoteInputSchema } from "./schemas";
 import {
@@ -26,6 +23,13 @@ import {
   toStoredCandidateContacts,
 } from "./shared";
 
+/**
+ * Returns a candidate detail DTO for a local or hh.uz-backed candidate.
+ *
+ * Local records are always company-scoped. IDs prefixed with `hh_` are fetched
+ * from hh.uz, persisted locally as a cache/import, and enriched with AI analysis
+ * when no stored analysis exists.
+ */
 export const getCandidateProcedure = protectedProcedure
   .input(candidateIdInputSchema)
   .query(async ({ ctx, input }) => {
@@ -46,39 +50,11 @@ export const getCandidateProcedure = protectedProcedure
     if (input.id.startsWith("hh_")) {
       const resumeId = input.id.slice(3);
 
-      const hhAccountRows = await ctx.db
-        .select({
-          id: companyHhAccounts.id,
-          accessToken: companyHhAccounts.accessToken,
-          refreshToken: companyHhAccounts.refreshToken,
-        })
-        .from(companyHhAccounts)
-        .where(eq(companyHhAccounts.companyId, userCompanyId))
-        .limit(1);
-
-      const hhAccount = hhAccountRows[0];
-      let accessToken = hhAccount?.accessToken ?? undefined;
-      const refreshToken = hhAccount?.refreshToken ?? undefined;
-
-      if (!accessToken && refreshToken && isHhConfigured() && hhAccount?.id) {
-        try {
-          const refreshed = await refreshHhAccessToken(refreshToken);
-          accessToken = refreshed.accessToken;
-          await ctx.db
-            .update(companyHhAccounts)
-            .set({
-              accessToken: refreshed.accessToken,
-              refreshToken: refreshed.refreshToken,
-            })
-            .where(eq(companyHhAccounts.id, hhAccount.id));
-        } catch (error) {
-          console.error("Failed to refresh HH token for candidate fetch", {
-            error,
-          });
-        }
-      }
+      const hhAuth = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      const accessToken = hhAuth?.accessToken;
 
       if (!accessToken) {
+        // If hh.uz is unavailable, still return the stored copy when one exists.
         return storedCandidate
           ? buildCandidateDetailResponse({
               db: ctx.db,
@@ -92,6 +68,7 @@ export const getCandidateProcedure = protectedProcedure
         const hhCandidate = await fetchHhResumeById(resumeId, accessToken);
         let aiAnalysis = storedCandidate?.aiAnalysis?.trim() ?? "";
 
+        // Generate AI analysis once and reuse the stored text on later reads.
         if (!aiAnalysis) {
           const aiAnalysisResult = await generateCandidateAiAnalysis({
             resumeText: formatHhCandidateForAiAnalysis(hhCandidate),
@@ -163,6 +140,7 @@ export const getCandidateProcedure = protectedProcedure
           companyId: userCompanyId,
           error,
         });
+        // External failures should not hide a candidate already imported locally.
         return storedCandidate
           ? buildCandidateDetailResponse({
               db: ctx.db,
@@ -184,6 +162,12 @@ export const getCandidateProcedure = protectedProcedure
     });
   });
 
+/**
+ * Appends a user-authored note to a company-scoped candidate.
+ *
+ * Notes are stored newest-first in the candidate JSON field and mirrored into
+ * recent activity for dashboard/profile timelines.
+ */
 export const addCandidateNoteProcedure = protectedProcedure
   .input(candidateNoteInputSchema)
   .mutation(async ({ ctx, input }) => {

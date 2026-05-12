@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 
 /**
  * Vacancy fields that are shared across every publication channel. They live on the parent
@@ -8,6 +7,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type GeneralVacancyFields = {
   /** Vacancy title shown to candidates and used as the hh.uz `name`. */
   name: string;
+  /** Vacancy description in HTML. For hh.uz, must be ≥ 200 characters at submit. */
+  descriptionHtml: string;
   /** Lower bound of the salary range, kept as a formatted string for display. */
   salaryFrom: string;
   /** Upper bound of the salary range, kept as a formatted string for display. */
@@ -49,8 +50,8 @@ export const PUBLICATION_CHANNELS = ["linkedin", "hh.uz", "telegram"] as const;
 export type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
 
 /**
- * Persisted slice of the vacancy-publication draft. Forms across the create/edit flow read and
- * write this shape; persistence carries it across reloads via localStorage.
+ * In-memory slice of the vacancy-publication draft. Forms across the create/edit flow read and
+ * write this shape; state lives only in memory and is cleared on full page reload.
  */
 type State = {
   general: GeneralVacancyFields;
@@ -98,6 +99,7 @@ type Actions = {
 
 const EMPTY_GENERAL: GeneralVacancyFields = {
   name: "",
+  descriptionHtml: "",
   salaryFrom: "",
   salaryTo: "",
   salaryCurrency: "UZS",
@@ -125,38 +127,21 @@ const INITIAL_STATE: State = {
 /**
  * Zustand store backing the multi-step vacancy publication flow.
  *
- * Persisted under `vacancy-publication-store` in localStorage. `pendingChannelLaunch` is
- * excluded from persistence because it represents an in-flight navigation, not draft data.
- * Consumers should use fine-grained selectors (e.g. `useVacancyPublicationStore((s) => s.hh)`)
- * to avoid re-rendering on unrelated changes.
+ * Held entirely in memory — no localStorage / sessionStorage persistence. Drafts are reset on
+ * full page reload. Consumers should use fine-grained selectors
+ * (e.g. `useVacancyPublicationStore((s) => s.hh)`) to avoid re-rendering on unrelated changes.
  */
-export const useVacancyPublicationStore = create<State & Actions>()(
-  persist(
-    (set) => ({
-      ...INITIAL_STATE,
-      setGeneralField: (key, value) =>
-        set((state) => ({ general: { ...state.general, [key]: value } })),
-      setGeneralFields: (fields) =>
-        set((state) => ({ general: { ...state.general, ...fields } })),
-      setHhField: (key, value) =>
-        set((state) => ({ hh: { ...state.hh, [key]: value } })),
-      setHhFields: (fields) =>
-        set((state) => ({ hh: { ...state.hh, ...fields } })),
-      setSelectedChannels: (channels) => set({ selectedChannels: channels }),
-      setSavedVacancyId: (id) => set({ savedVacancyId: id }),
-      setPendingChannelLaunch: (channel) =>
-        set({ pendingChannelLaunch: channel }),
-      reset: () => set(INITIAL_STATE),
-    }),
-    {
-      name: "vacancy-publication-store",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        general: state.general,
-        hh: state.hh,
-        selectedChannels: state.selectedChannels,
-        savedVacancyId: state.savedVacancyId,
-      }),
-    },
-  ),
-);
+export const useVacancyPublicationStore = create<State & Actions>()((set) => ({
+  ...INITIAL_STATE,
+  setGeneralField: (key, value) =>
+    set((state) => ({ general: { ...state.general, [key]: value } })),
+  setGeneralFields: (fields) =>
+    set((state) => ({ general: { ...state.general, ...fields } })),
+  setHhField: (key, value) =>
+    set((state) => ({ hh: { ...state.hh, [key]: value } })),
+  setHhFields: (fields) => set((state) => ({ hh: { ...state.hh, ...fields } })),
+  setSelectedChannels: (channels) => set({ selectedChannels: channels }),
+  setSavedVacancyId: (id) => set({ savedVacancyId: id }),
+  setPendingChannelLaunch: (channel) => set({ pendingChannelLaunch: channel }),
+  reset: () => set(INITIAL_STATE),
+}));

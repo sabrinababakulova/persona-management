@@ -14,6 +14,7 @@ import {
 
 type DatabaseClient = typeof import("~/server/db").db;
 
+/** Loads active lookup values used to validate candidate form submissions. */
 export async function loadCandidateLookupSets(db: DatabaseClient) {
   const [
     contactTypes,
@@ -95,6 +96,12 @@ export async function loadCandidateLookupSets(db: DatabaseClient) {
   };
 }
 
+/**
+ * Verifies candidate enum-like fields against active lookup tables.
+ *
+ * Throws `BAD_REQUEST` for unknown values so invalid client state is rejected
+ * before writing JSON fields to the candidate row.
+ */
 export async function validateCandidateInput(
   db: DatabaseClient,
   input: {

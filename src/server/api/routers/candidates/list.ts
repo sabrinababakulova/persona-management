@@ -3,47 +3,32 @@ import { getOptionalCompanyId } from "~/server/api/router-utils/company";
 import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
 import { escapeLike } from "~/server/api/router-utils/sql";
 import { protectedProcedure } from "~/server/api/trpc";
-import { candidates, companyHhAccounts } from "~/server/db/schema";
+import { candidates } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
   fetchHhVacancyApplicants,
   type HhVacancyApplicant,
   isHhConfigured,
   iterateHhVacancyApplicantBatches,
-  refreshHhAccessToken,
 } from "~/server/services/hh";
+import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import type { CandidateStatus } from "~/types/server/candidates";
 
 import { candidateListInputSchema } from "./schemas";
 
-export const hasAnyCandidatesProcedure = protectedProcedure.query(
-  async ({ ctx }) => {
-    const userCompanyId = await getOptionalCompanyId(
-      ctx.db,
-      ctx.session?.user?.id,
-    );
-
-    if (!userCompanyId) {
-      return false;
-    }
-
-    const rows = await ctx.db
-      .select({ id: candidates.id })
-      .from(candidates)
-      .where(eq(candidates.companyId, userCompanyId))
-      .limit(1);
-
-    return rows.length > 0;
-  },
-);
-
+/**
+ * Lists stored candidates for the current company.
+ *
+ * Supports search, period filtering, status/source/city filters, and offset
+ * pagination. Period filtering is skipped while searching so older matches are
+ * still discoverable.
+ */
 export const listCandidatesProcedure = protectedProcedure
   .input(candidateListInputSchema)
   .query(async ({ ctx, input }) => {
     const period = input?.period ?? "week";
     const search = input?.search?.trim();
-    const shouldApplyPeriod = !search;
     const statuses = input?.statuses?.filter(Boolean) ?? [];
     const city = input?.city?.trim();
     const sources = input?.sources?.filter(Boolean) ?? [];
@@ -62,7 +47,7 @@ export const listCandidatesProcedure = protectedProcedure
 
     const conditions = [eq(candidates.companyId, userCompanyId)];
 
-    if (shouldApplyPeriod) {
+    if (!search) {
       conditions.push(gte(candidates.createdAt, createdAtCutoff));
     }
     if (search) {
@@ -78,17 +63,18 @@ export const listCandidatesProcedure = protectedProcedure
       conditions.push(inArray(candidates.source, sources));
     }
 
-    const whereClause = and(...conditions);
-
     const [rows, totalRows] = await Promise.all([
       ctx.db
         .select()
         .from(candidates)
-        .where(whereClause)
+        .where(and(...conditions))
         .orderBy(desc(candidates.createdAt))
         .limit(limit)
         .offset(offset),
-      ctx.db.select({ total: count() }).from(candidates).where(whereClause),
+      ctx.db
+        .select({ total: count() })
+        .from(candidates)
+        .where(and(...conditions)),
     ]);
 
     return {
@@ -117,6 +103,13 @@ export const listCandidatesProcedure = protectedProcedure
     };
   });
 
+/**
+ * Lists hh.uz applicants that have not yet been imported as stored candidates.
+ *
+ * This endpoint is available only for the default company while hh.uz is
+ * configured. Unsupported local filters return an empty page because hh.uz
+ * applicants do not map cleanly to every local candidate filter.
+ */
 export const listHhCandidatesProcedure = protectedProcedure
   .input(candidateListInputSchema)
   .query(async ({ ctx, input }) => {
@@ -151,43 +144,9 @@ export const listHhCandidatesProcedure = protectedProcedure
       return { items: [], total: 0 };
     }
 
-    const hhAccountRows = await ctx.db
-      .select({
-        id: companyHhAccounts.id,
-        accessToken: companyHhAccounts.accessToken,
-        refreshToken: companyHhAccounts.refreshToken,
-        employerId: companyHhAccounts.employerId,
-      })
-      .from(companyHhAccounts)
-      .where(eq(companyHhAccounts.companyId, userCompanyId))
-      .limit(1);
-
-    const hhAccount = hhAccountRows[0];
-    if (!hhAccount || (!hhAccount.accessToken && !hhAccount.refreshToken)) {
-      return { items: [], total: 0 };
-    }
-
-    let accessToken = hhAccount.accessToken ?? undefined;
-    const refreshToken = hhAccount.refreshToken ?? undefined;
-    const employerId = hhAccount.employerId?.trim();
-
-    if (!accessToken && refreshToken && hhAccount.id) {
-      try {
-        const refreshed = await refreshHhAccessToken(refreshToken);
-        accessToken = refreshed.accessToken;
-        await ctx.db
-          .update(companyHhAccounts)
-          .set({
-            accessToken: refreshed.accessToken,
-            refreshToken: refreshed.refreshToken,
-          })
-          .where(eq(companyHhAccounts.id, hhAccount.id));
-      } catch (error) {
-        console.error("Failed to refresh HH token for candidates list", {
-          error,
-        });
-      }
-    }
+    const hhAuth = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+    const accessToken = hhAuth?.accessToken;
+    const employerId = hhAuth?.employerId;
 
     if (!accessToken || !employerId) {
       return { items: [], total: 0 };
@@ -211,6 +170,7 @@ export const listHhCandidatesProcedure = protectedProcedure
         importedHhCandidateRows.map((candidate) => candidate.id),
       );
 
+      /** Keeps the external applicant shape compatible with the candidate table UI. */
       const mapApplicantToCandidate = (applicant: HhVacancyApplicant) => {
         const parts = applicant.fullName.split(" ");
         return {
@@ -264,6 +224,7 @@ export const listHhCandidatesProcedure = protectedProcedure
       let skipped = 0;
       let hasMore = false;
 
+      // Applicants can appear under multiple vacancies; de-duplicate before pagination.
       outer: for (const vacancy of hhVacancies) {
         if (vacancy.responses <= 0) {
           continue;
@@ -305,6 +266,7 @@ export const listHhCandidatesProcedure = protectedProcedure
         (total, vacancy) => total + Math.max(vacancy.responses, 0),
         0,
       );
+      // hh.uz does not expose a cheap unique-applicant count, so this is a lower-safe estimate.
       const total = Math.max(
         0,
         Math.max(

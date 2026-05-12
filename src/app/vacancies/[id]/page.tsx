@@ -1,13 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { SideMenu } from "~/app/_components/sideMenu";
+import { SIDE_MENU_ITEMS } from "~/shared/vacancy-side-menu";
 import { api, type RouterOutputs } from "~/trpc/react";
 import {
   CreateVacancyForm,
   type CreateVacancyFormInitialData,
 } from "../create/create-vacancy-form";
+import { PublicationsTable } from "./publications-table";
 
 type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
 
@@ -23,12 +25,6 @@ function buildInitialData(
   const formatter = new Intl.NumberFormat("ru-RU");
   return {
     name: vacancy.title,
-    areaId: vacancy.areaId ?? "",
-    employmentId: vacancy.employmentId ?? "",
-    scheduleId: vacancy.scheduleId ?? "",
-    experienceId: vacancy.experienceId ?? "",
-    professionalRoleId: vacancy.professionalRoleId ?? "",
-    billingTypeId: vacancy.billingTypeId ?? "",
     salaryFrom:
       vacancy.salaryFrom !== undefined && vacancy.salaryFrom !== null
         ? formatter.format(vacancy.salaryFrom)
@@ -52,6 +48,8 @@ function buildInitialData(
  */
 export default function VacancyDetailPage() {
   const { id: vacancyId } = useParams() as { id: string };
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { data: vacancy, isLoading } = api.vacancies.get.useQuery(
     { id: vacancyId },
@@ -62,6 +60,20 @@ export default function VacancyDetailPage() {
     () => (vacancy ? buildInitialData(vacancy) : undefined),
     [vacancy],
   );
+  const stepParam = searchParams.get("step");
+  const normalizedStepParam =
+    stepParam === "publication" ? "publications" : stepParam;
+  const activeSectionId =
+    normalizedStepParam &&
+    SIDE_MENU_ITEMS.some((item) => item.id === normalizedStepParam)
+      ? normalizedStepParam
+      : SIDE_MENU_ITEMS[0].id;
+
+  const goToStep = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", id);
+    router.push(`/vacancies/${vacancyId}?${params.toString()}`);
+  };
 
   if (isLoading) {
     return (
@@ -78,41 +90,10 @@ export default function VacancyDetailPage() {
       </div>
     );
   }
-
-  const hasHhLink = vacancy.source === "hh.uz" || Boolean(vacancy.hhVacancyId);
-  const hasTelegramPosting = vacancy.publications.some(
-    (publication) =>
-      publication.isActive &&
-      publication.sources.some(
-        (source) => source.platform === "telegram" && Boolean(source.keyword),
-      ),
-  );
   // Archived hh.uz vacancies are read-only: hh.uz only accepts edits to active vacancies, so
   // we lock the form and tell the user how to unblock it.
-  const isArchivedHh = hasHhLink && vacancy.status === "archive";
-
-  const previewContent = hasHhLink ? (
-    <section className="flex flex-col gap-3 rounded-[8px] border border-border-input bg-bg-light p-5">
-      <div className="font-bold text-[18px] text-text-heading">hh.uz</div>
-      <div className="text-[14px] text-text-secondary">
-        Управление публикацией перенесено на отдельную страницу.
-      </div>
-      <Link
-        className="inline-flex h-10 w-fit items-center rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[14px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
-        href={`/vacancies/${vacancyId}/publications/hh.uz`}
-      >
-        Открыть публикацию hh.uz
-      </Link>
-    </section>
-  ) : (
-    <section className="rounded-[8px] border border-border-input bg-bg-input p-5">
-      <div className="font-bold text-[18px] text-text-heading">hh.uz</div>
-      <div className="mt-2 text-[14px] text-text-secondary">
-        Эта вакансия не опубликована на hh.uz. Опубликуйте её или укажите ID
-        hh.uz в админ-панели Directus, чтобы увидеть предпросмотр.
-      </div>
-    </section>
-  );
+  const isArchivedHh =
+    vacancy.source === "hh.uz" && vacancy.status === "archive";
 
   const archivedBanner = isArchivedHh ? (
     <section
@@ -134,32 +115,44 @@ export default function VacancyDetailPage() {
       </div>
     </section>
   ) : null;
-  const telegramBadge = hasTelegramPosting ? (
-    <div>
-      <span className="inline-flex h-8 items-center rounded-full border border-[#0088cc]/30 bg-[#0088cc]/10 px-3 font-semibold text-[#0088cc] text-[13px] leading-none">
-        posted on telegram
-      </span>
-    </div>
-  ) : null;
-  const bannerContent =
-    archivedBanner || telegramBadge ? (
-      <div className="flex flex-col gap-3">
-        {telegramBadge}
-        {archivedBanner}
-      </div>
-    ) : null;
 
   return (
     <main className="h-full bg-bg-light">
-      <CreateVacancyForm
-        bannerContent={bannerContent}
-        breadcrumbLabel={vacancy.title}
-        initialData={initialData}
-        pageHeading={vacancy.title || "Редактирование вакансии"}
-        previewContent={previewContent}
-        readOnly={isArchivedHh}
-        vacancyId={vacancyId}
-      />
+      <div className="relative w-full">
+        <div className="flex w-full gap-16 px-6 pt-8 pb-8">
+          <SideMenu
+            activeId={activeSectionId}
+            items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
+            onSelect={goToStep}
+          />
+
+          <section className="flex flex-3 flex-col">
+            {activeSectionId === "description" ? (
+              <CreateVacancyForm
+                bannerContent={archivedBanner}
+                breadcrumbLabel={vacancy.title}
+                initialData={initialData}
+                pageHeading={vacancy.title || "Редактирование вакансии"}
+                readOnly={isArchivedHh}
+                vacancyId={vacancyId}
+              />
+            ) : activeSectionId === "publications" ? (
+              <div className="w-full max-w-[900px]">
+                <PublicationsTable />
+              </div>
+            ) : (
+              <div className="w-full max-w-[900px]">
+                <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+                  Предпросмотр
+                </h1>
+                <div className="mt-6 rounded-[8px] border border-border-input bg-bg-light p-4 text-[14px] text-text-secondary leading-[1.4] lg:p-6">
+                  Coming soon
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

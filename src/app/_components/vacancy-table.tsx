@@ -11,6 +11,7 @@ const VACANCY_CONNECTION_ICONS: Record<
 > = {
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "hh.uz": { src: "/hh.svg", label: "hh.uz" },
+  linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
 };
 
 type VacancyStatus = Vacancy["status"];

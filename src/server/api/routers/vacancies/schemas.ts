@@ -32,6 +32,8 @@ export const vacancyAssignCandidateInputSchema = z.object({
 });
 
 export const vacancyCreateInputSchema = z.object({
+  id: z.string().min(1).max(255).optional(),
+  parentId: z.string().min(1).max(255).optional(),
   title: z.string().min(1, "Название вакансии обязательно").max(255),
   status: z
     .enum(["active", "draft", "paused", "closed", "archive"])
@@ -48,6 +50,9 @@ export const vacancyCreateInputSchema = z.object({
   salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
   descriptionHtml: z.string().max(20000).optional(),
   contactPhone: z.string().max(50).optional(),
+  isActive: z.boolean().optional(),
+  isPublication: z.boolean().optional(),
+  destination: z.string().max(255).optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -69,6 +74,5 @@ export const vacancyUpdateInputSchema = z.object({
 });
 
 export const vacancyPublicationListInputSchema = z.object({
-  vacancyId: z.string().min(1).max(255),
-  activeOnly: z.boolean().optional().default(false),
+  parentVacancyId: z.string().min(1).max(255),
 });

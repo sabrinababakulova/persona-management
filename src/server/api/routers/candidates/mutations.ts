@@ -37,10 +37,18 @@ import {
 } from "./schemas";
 import { validateCandidateInput } from "./validators";
 
+/**
+ * Validates, stores, and analyzes a candidate resume PDF.
+ *
+ * The mutation accepts base64 from the client, verifies the file is a real PDF
+ * within the size limit, uploads it to resume storage, then runs prefill
+ * extraction and AI analysis in parallel.
+ */
 export const uploadResumeProcedure = protectedProcedure
   .input(candidateUploadResumeInputSchema)
   .mutation(async ({ ctx, input }) => {
     const normalizedBase64 = input.fileBase64.replace(/\s+/g, "");
+    // Estimate size before decoding so oversized payloads are rejected early.
     const base64Padding = normalizedBase64.endsWith("==")
       ? 2
       : normalizedBase64.endsWith("=")
@@ -87,6 +95,7 @@ export const uploadResumeProcedure = protectedProcedure
       });
     }
 
+    // Re-encode to catch malformed base64 that Buffer would otherwise tolerate.
     const recomputedBase64 = fileBuffer.toString("base64").replace(/=+$/, "");
     if (recomputedBase64 !== normalizedBase64.replace(/=+$/, "")) {
       throw new TRPCError({
@@ -124,6 +133,7 @@ export const uploadResumeProcedure = protectedProcedure
         ctx.session?.user?.id,
       );
 
+      // Validate the storage key before uploading to Directus.
       getCandidateResumeStorageKey(input.candidateId);
       const [candidate] = await ctx.db
         .select({
@@ -142,6 +152,7 @@ export const uploadResumeProcedure = protectedProcedure
         });
       }
 
+      // Replace the previous stored file when one is known.
       const uploadResult = await uploadCandidateResumeToStorage(
         input.candidateId,
         fileBuffer,
@@ -167,6 +178,7 @@ export const uploadResumeProcedure = protectedProcedure
     const resumeFileName = sanitizeResumeFileName(input.fileName);
     const resumeFileSize = formatFileSize(fileBuffer.length);
 
+    // Reuse active lookup values so AI prefill output is normalized to form options.
     const lookupOptions = {
       contactTypes: await ctx.db
         .select({
@@ -287,6 +299,12 @@ export const uploadResumeProcedure = protectedProcedure
     };
   });
 
+/**
+ * Creates a company-scoped candidate after validating lookup-backed fields.
+ *
+ * Supports an optional caller-supplied UUID so resume-upload prefill flows can
+ * create the candidate record with a preallocated id.
+ */
 export const createCandidateProcedure = protectedProcedure
   .input(candidateCreateInputSchema)
   .mutation(async ({ ctx, input }) => {
@@ -343,6 +361,12 @@ export const createCandidateProcedure = protectedProcedure
     return created;
   });
 
+/**
+ * Updates the editable candidate summary fields for the current company.
+ *
+ * No-op updates return the existing row; real changes create a recent-activity
+ * entry, with status changes getting a status-specific action label.
+ */
 export const updateCandidateProcedure = protectedProcedure
   .input(candidateUpdateInputSchema)
   .mutation(async ({ ctx, input }) => {

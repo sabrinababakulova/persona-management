@@ -13,8 +13,15 @@ import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
+/** Raw candidate row as stored in PostgreSQL. */
 export type StoredCandidateRecord = typeof candidates.$inferSelect;
 
+/**
+ * Converts a parsed hh.uz resume into plain text for AI analysis.
+ *
+ * The output keeps section labels in Russian because the generated assessment is
+ * shown directly in the Russian-language UI.
+ */
 export function formatHhCandidateForAiAnalysis(candidate: HhResumeCandidate) {
   const contactLines = [
     candidate.contacts.phone
@@ -82,6 +89,7 @@ export function formatHhCandidateForAiAnalysis(candidate: HhResumeCandidate) {
   ].join("\n\n");
 }
 
+/** Maps hh.uz contact fields into the JSON shape stored in `candidates.contacts`. */
 export function toStoredCandidateContacts(candidate: HhResumeCandidate) {
   return [
     candidate.contacts.phone
@@ -98,6 +106,12 @@ export function toStoredCandidateContacts(candidate: HhResumeCandidate) {
   );
 }
 
+/**
+ * Fetches one stored candidate scoped to the current company.
+ *
+ * Returns `null` instead of throwing so callers can fall back to external
+ * providers such as hh.uz.
+ */
 export async function getStoredCandidateRecord(
   db: DatabaseClient,
   companyId: string,
@@ -114,6 +128,13 @@ export async function getStoredCandidateRecord(
   return rows[0] ?? null;
 }
 
+/**
+ * Builds the candidate detail DTO consumed by the candidate profile page.
+ *
+ * Combines the candidate row with related vacancies, recent activity, normalized
+ * contacts, and resume metadata. Optional resume overrides are used for external
+ * resumes that are viewable but not stored in Directus.
+ */
 export async function buildCandidateDetailResponse({
   db,
   companyId,

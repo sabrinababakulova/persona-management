@@ -4,7 +4,6 @@ import {
   candidates,
   candidateVacancies,
   type vacancies,
-  type vacancyPublications,
 } from "~/server/db/schema";
 import type { HhVacancy } from "~/server/services/hh";
 
@@ -35,23 +34,43 @@ export function toSalaryCurrency(value: string | null): SalaryCurrency {
   return value === "USD" ? "USD" : "UZS";
 }
 
-export type VacancyConnection = "telegram" | "hh.uz";
+/** Channel a vacancy is linked to / published to. Used for the list "Связи" icons column. */
+export type VacancyConnection = "telegram" | "hh.uz" | "linkedin";
+
+const VACANCY_CONNECTION_VALUES = new Set<VacancyConnection>([
+  "telegram",
+  "hh.uz",
+  "linkedin",
+]);
+
+function isVacancyConnection(value: string): value is VacancyConnection {
+  return VACANCY_CONNECTION_VALUES.has(value as VacancyConnection);
+}
 
 export function formatVacancy(
   vacancy: typeof vacancies.$inferSelect,
   responses = vacancy.responses ?? 0,
-  publicationPlatforms?: ReadonlySet<string>,
 ) {
   const connections: VacancyConnection[] = [];
-  if (publicationPlatforms?.has("telegram")) {
-    connections.push("telegram");
-  }
-  if (publicationPlatforms?.has("hh.uz") || vacancy.hhVacancyId) {
+  // Base vacancy with an hh.uz link still surfaces as an hh.uz connection.
+  if (vacancy.hhVacancyId) {
     connections.push("hh.uz");
+  }
+  // Active per-channel publications contribute their destination, deduped against the hh.uz
+  // link above.
+  if (vacancy.isPublication && vacancy.isActive && vacancy.destination) {
+    const destination = vacancy.destination;
+    if (
+      isVacancyConnection(destination) &&
+      !connections.includes(destination)
+    ) {
+      connections.push(destination);
+    }
   }
 
   return {
     id: vacancy.id,
+    parentId: vacancy.parentId,
     title: vacancy.title,
     status: toVacancyStatus(vacancy.status),
     responses,
@@ -75,27 +94,13 @@ export function formatVacancy(
   };
 }
 
-export function formatVacancyPublication(
-  publication: typeof vacancyPublications.$inferSelect,
-) {
-  return {
-    id: publication.id,
-    vacancyId: publication.vacancyId,
-    name: publication.name,
-    description: publication.description,
-    isActive: publication.isActive,
-    sources: publication.sources ?? [],
-    createdAt: publication.createdAt,
-    updatedAt: publication.updatedAt ?? undefined,
-  };
-}
-
 export function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
   // The hh.uz search response only exposes the human-readable name fields (city, level,
   // workType) but not the lookup IDs we now persist. Leave the ID fields blank for hh.uz-only
   // listings — the Vacancy interface treats them as optional read-only metadata.
   return {
     id: `hh_${vacancy.id}`,
+    parentId: `hh_${vacancy.id}`,
     title: vacancy.title,
     status: vacancy.status,
     responses: vacancy.responses,

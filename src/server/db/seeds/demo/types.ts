@@ -5,7 +5,10 @@ export type SeedRow = LookupOption & { sortOrder: number; isActive: boolean };
 export type DemoCandidate = typeof schema.candidates.$inferInsert & {
   id: string;
 };
-export type DemoVacancy = typeof schema.vacancies.$inferInsert & { id: string };
+export type DemoVacancy = Omit<
+  typeof schema.vacancies.$inferInsert,
+  "parentId"
+> & { id: string; parentId?: string };
 export type DemoRecentActivity =
   typeof schema.recentActivityLogs.$inferInsert & {
     id: string;

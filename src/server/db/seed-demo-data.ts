@@ -21,12 +21,19 @@ export async function seedDemoData(db: SeedDb) {
   console.log(`Seeded demo candidates: ${DEMO_CANDIDATES.length} rows`);
 
   for (const vacancy of DEMO_VACANCIES) {
-    const { id, ...set } = vacancy;
+    const vacancyWithParent = {
+      ...vacancy,
+      parentId: vacancy.parentId ?? vacancy.id,
+    };
+    const { id, ...set } = vacancyWithParent;
 
-    await db.insert(schema.vacancies).values(vacancy).onConflictDoUpdate({
-      target: schema.vacancies.id,
-      set,
-    });
+    await db
+      .insert(schema.vacancies)
+      .values(vacancyWithParent)
+      .onConflictDoUpdate({
+        target: schema.vacancies.id,
+        set,
+      });
   }
   console.log(`Seeded demo vacancies: ${DEMO_VACANCIES.length} rows`);
 

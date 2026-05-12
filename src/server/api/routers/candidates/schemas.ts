@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { periodSchema } from "~/server/api/router-utils/period";
 
+/** Optional filters and pagination accepted by candidate list endpoints. */
 export const candidateListInputSchema = z
   .object({
     period: periodSchema.optional().default("week"),
@@ -14,6 +15,7 @@ export const candidateListInputSchema = z
   })
   .optional();
 
+/** Resume upload payload sent from the candidate form before server-side PDF validation. */
 export const candidateUploadResumeInputSchema = z.object({
   candidateId: z.string().uuid(),
   fileName: z.string().min(1).max(255),
@@ -22,8 +24,10 @@ export const candidateUploadResumeInputSchema = z.object({
   previousResumeFileId: z.string().max(255).optional(),
 });
 
+/** Generic candidate identifier input for detail reads. */
 export const candidateIdInputSchema = z.object({ id: z.string() });
 
+/** Input for appending a note to an existing candidate. */
 export const candidateNoteInputSchema = z.object({
   candidateId: z.string().min(1).max(255),
   content: z
@@ -33,6 +37,7 @@ export const candidateNoteInputSchema = z.object({
     .max(2000, "Заметка не должна превышать 2000 символов"),
 });
 
+/** Full candidate profile payload used when creating a stored candidate. */
 export const candidateCreateInputSchema = z.object({
   id: z.string().uuid().optional(),
   fullName: z.string().min(1, "Ф.И.О обязательно").max(255),
@@ -90,6 +95,7 @@ export const candidateCreateInputSchema = z.object({
   resumeFileSize: z.string().max(50).optional(),
 });
 
+/** Limited editable fields supported by the candidate list/detail quick update flow. */
 export const candidateUpdateInputSchema = z.object({
   id: z.string().min(1).max(255),
   fullName: z.string().min(1).max(255).optional(),

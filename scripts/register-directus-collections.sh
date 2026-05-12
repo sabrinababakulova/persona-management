@@ -195,18 +195,21 @@ for TABLE in $TABLES; do
 done
 
 echo ""
-echo -n "Configuring 'vacancy_publication' collection metadata... "
+# The `vacancy_publication` collection is deprecated. Hide it from the admin Content module so
+# editors don't reach for it; the table is kept in Postgres for the deprecation window but
+# publications now live on `vacancy` rows themselves via is_publication / is_active / destination.
+echo -n "Hiding deprecated 'vacancy_publication' collection... "
 VACANCY_PUBLICATION_COLLECTION_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
   "$DIRECTUS_URL/collections/vacancy_publication" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "meta": {
-      "hidden": false,
+      "hidden": true,
       "singleton": false,
       "icon": "campaign",
       "display_template": "{{name}}",
-      "note": "Версии публикаций вакансий"
+      "note": "DEPRECATED — publications now live on the vacancy row (is_publication / destination)."
     }
   }')
 
@@ -362,60 +365,51 @@ echo "Configuring Directus field metadata..."
 
 configure_hash_field "user" "password" "user.password as hash field"
 
-patch_field "vacancy_publication" "name" '{
-    "type": "string",
-    "meta": {
-      "interface": "input",
-      "required": true,
-      "sort": 1,
-      "width": "full",
-      "note": "Название версии публикации"
-    }
-  }' "vacancy_publication.name"
+# vacancy_publication field metadata has been removed — the collection is deprecated. The
+# remaining columns still exist in Postgres for the deprecation window but Directus no longer
+# surfaces them as editable fields. Drop this entire block (and the table) once no consumers
+# reference it.
 
-patch_field "vacancy_publication" "description" '{
-    "type": "text",
-    "meta": {
-      "interface": "input-multiline",
-      "sort": 2,
-      "width": "full",
-      "note": "Текст описания вакансии для публикации"
-    }
-  }' "vacancy_publication.description"
-
-patch_field "vacancy_publication" "isActive" '{
+# Publication metadata now lives on `vacancy` itself. These three fields turn a vacancy row into
+# a per-channel publication (is_publication=true) and describe its destination + active state.
+patch_field "vacancy" "is_publication" '{
     "type": "boolean",
     "meta": {
       "interface": "boolean",
-      "sort": 3,
+      "sort": 45,
       "width": "half",
-      "note": "Активна ли публикация"
+      "note": "Признак того, что строка является публикацией (а не базовой вакансией)."
     }
-  }' "vacancy_publication.isActive"
+  }' "vacancy.is_publication"
 
-patch_field "vacancy_publication" "sources" '{
-    "type": "json",
+patch_field "vacancy" "is_active" '{
+    "type": "boolean",
     "meta": {
-      "interface": "input-code",
-      "options": {
-        "language": "json"
-      },
-      "sort": 4,
-      "width": "full",
-      "note": "Массив ссылок публикации: [{\"platform\":\"telegram\",\"url\":\"https://...\"}]"
+      "interface": "boolean",
+      "sort": 46,
+      "width": "half",
+      "note": "Активна ли публикация. Игнорируется, когда is_publication = false."
     }
-  }' "vacancy_publication.sources"
+  }' "vacancy.is_active"
 
-patch_field "vacancy_publication" "vacancy_id" '{
+patch_field "vacancy" "destination" '{
     "type": "string",
     "meta": {
-      "interface": "select-dropdown-m2o",
-      "sort": 5,
-      "width": "full",
-      "required": true,
-      "note": "Вакансия, к которой относится публикация"
+      "interface": "select-dropdown",
+      "options": {
+        "choices": [
+          { "text": "LinkedIn", "value": "linkedin" },
+          { "text": "hh.uz", "value": "hh.uz" },
+          { "text": "Telegram", "value": "telegram" }
+        ],
+        "allowOther": false,
+        "allowNone": true
+      },
+      "sort": 47,
+      "width": "half",
+      "note": "Целевой канал публикации. Null для базовых вакансий."
     }
-  }' "vacancy_publication.vacancy_id"
+  }' "vacancy.destination"
 
 patch_field "vacancy" "hh_vacancy_id" '{
     "type": "string",
@@ -556,39 +550,10 @@ patch_field "vacancy" "contact_phone" '{
     }
   }' "vacancy.contact_phone"
 
-create_field_if_missing "vacancy" "publications" '{
-    "field": "publications",
-    "type": "alias",
-    "meta": {
-      "interface": "list-o2m",
-      "special": ["o2m"],
-      "sort": 100,
-      "width": "full",
-      "note": "Версии публикаций вакансии"
-    }
-  }' "vacancy.publications"
-
-upsert_relation "vacancy_publication" "vacancy_id" '{
-    "collection": "vacancy_publication",
-    "field": "vacancy_id",
-    "related_collection": "vacancy",
-    "meta": {
-      "many_collection": "vacancy_publication",
-      "many_field": "vacancy_id",
-      "one_collection": "vacancy",
-      "one_field": "publications",
-      "one_deselect_action": "delete"
-    },
-    "schema": {
-      "table": "vacancy_publication",
-      "column": "vacancy_id",
-      "foreign_key_table": "vacancy",
-      "foreign_key_column": "id",
-      "constraint_name": "vacancy_publication_vacancy_id_vacancy_id_fk",
-      "on_update": "NO ACTION",
-      "on_delete": "CASCADE"
-    }
-  }' "vacancy.publications"
+# The `vacancy.publications` o2m alias and `vacancy_publication` -> `vacancy` relation are no
+# longer registered: the vacancy_publication collection is deprecated and publications live on
+# vacancy rows directly. Drop the underlying FK in a follow-up migration when the table is
+# removed entirely.
 
 echo ""
 echo "Done! All tables should now be visible at $DIRECTUS_URL/admin/content"

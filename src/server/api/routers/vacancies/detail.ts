@@ -6,7 +6,6 @@ import {
   candidateStatusOptions,
   candidateVacancies,
   vacancies,
-  vacancyPublications,
 } from "~/server/db/schema";
 import {
   fetchHhVacancyApplicants,
@@ -22,12 +21,7 @@ import {
   vacancyIdInputSchema,
   vacancyPublicationListInputSchema,
 } from "./schemas";
-import {
-  formatVacancy,
-  formatVacancyPublication,
-  getVacancyRelatedCandidates,
-  isHhVacancyId,
-} from "./shared";
+import { getVacancyRelatedCandidates, isHhVacancyId } from "./shared";
 
 export const getVacancyProcedure = protectedProcedure
   .input(vacancyIdInputSchema)
@@ -105,10 +99,10 @@ export const getVacancyProcedure = protectedProcedure
           contactPhone: merged.contactPhone,
           companyId: userCompanyId,
           hhVacancyId,
+          telegramPostId: null,
           publishedAt: hhVacancy.publishedAt,
           source: "hh.uz" as const,
           externalUrl: hhVacancy.externalUrl,
-          publications: [],
           relatedCandidates: relatedCandidatesResult,
         };
       } catch (error) {
@@ -134,71 +128,9 @@ export const getVacancyProcedure = protectedProcedure
     if (!vacancy) {
       return null;
     }
-
-    const [relatedCandidateRows, publicationRows] = await Promise.all([
-      getVacancyRelatedCandidates(ctx.db, vacancy.id, userCompanyId),
-      ctx.db
-        .select({
-          id: vacancyPublications.id,
-          vacancyId: vacancyPublications.vacancyId,
-          name: vacancyPublications.name,
-          description: vacancyPublications.description,
-          isActive: vacancyPublications.isActive,
-          sources: vacancyPublications.sources,
-          createdAt: vacancyPublications.createdAt,
-          updatedAt: vacancyPublications.updatedAt,
-        })
-        .from(vacancyPublications)
-        .where(eq(vacancyPublications.vacancyId, vacancy.id))
-        .orderBy(desc(vacancyPublications.createdAt)),
-    ]);
-
-    const formatted = formatVacancy(vacancy, relatedCandidateRows.length);
-
-    // If the local row is linked to an hh.uz vacancy, fetch the upstream detail and use it
-    // to fill any blank fields. Local data wins where it's present (the user may have edited
-    // the description in our UI without re-publishing); hh.uz wins for the lookup IDs and
-    // anything else that's empty in the DB. This is the same data the form would otherwise
-    // need to render — pulling it here avoids leaving the edit form empty.
-    if (vacancy.hhVacancyId) {
-      const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
-      if (hhAccount?.accessToken) {
-        const hhDetail = await fetchHhVacancyDetail(
-          vacancy.hhVacancyId,
-          hhAccount.accessToken,
-        ).catch((error: unknown) => {
-          console.error("Failed to fetch HH vacancy detail for local vacancy", {
-            hhVacancyId: vacancy.hhVacancyId,
-            companyId: userCompanyId,
-            error,
-          });
-          return null;
-        });
-
-        if (hhDetail) {
-          const fallback = mapHhDetailToVacancyShape(hhDetail);
-          formatted.areaId ||= fallback.areaId;
-          formatted.employmentId ||= fallback.employmentId;
-          formatted.scheduleId ||= fallback.scheduleId;
-          formatted.experienceId ||= fallback.experienceId;
-          formatted.professionalRoleId ||= fallback.professionalRoleId;
-          formatted.billingTypeId ||= fallback.billingTypeId;
-          formatted.descriptionHtml ||= fallback.descriptionHtml;
-          formatted.contactPhone ||= fallback.contactPhone;
-          if (formatted.salaryFrom === undefined) {
-            formatted.salaryFrom = fallback.salaryFrom;
-          }
-          if (formatted.salaryTo === undefined) {
-            formatted.salaryTo = fallback.salaryTo;
-          }
-        }
-      }
-    }
-
     return {
-      ...formatted,
-      publications: publicationRows.map(formatVacancyPublication),
-      relatedCandidates: relatedCandidateRows,
+      ...vacancy,
+      source: "local" as const,
     };
   });
 
@@ -326,73 +258,30 @@ export const listVacancyPublicationsProcedure = protectedProcedure
       ctx.session.user.id,
     );
 
-    if (!userCompanyId || isHhVacancyId(input.vacancyId)) {
+    if (!userCompanyId) {
       return [];
     }
 
     const conditions = [
-      eq(vacancyPublications.vacancyId, input.vacancyId),
       eq(vacancies.companyId, userCompanyId),
+      eq(vacancies.isPublication, true),
+      eq(vacancies.parentId, input.parentVacancyId),
     ];
 
-    if (input.activeOnly) {
-      conditions.push(eq(vacancyPublications.isActive, true));
-    }
-
     const rows = await ctx.db
       .select({
-        id: vacancyPublications.id,
-        vacancyId: vacancyPublications.vacancyId,
-        name: vacancyPublications.name,
-        description: vacancyPublications.description,
-        isActive: vacancyPublications.isActive,
-        sources: vacancyPublications.sources,
-        createdAt: vacancyPublications.createdAt,
-        updatedAt: vacancyPublications.updatedAt,
+        id: vacancies.id,
+        parentId: vacancies.parentId,
+        title: vacancies.title,
+        isActive: vacancies.isActive,
+        createdAt: vacancies.createdAt,
+        destination: vacancies.destination,
       })
-      .from(vacancyPublications)
-      .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
+      .from(vacancies)
       .where(and(...conditions))
-      .orderBy(desc(vacancyPublications.createdAt));
-
-    return rows.map(formatVacancyPublication);
-  });
-
-export const getVacancyPublicationProcedure = protectedProcedure
-  .input(vacancyIdInputSchema)
-  .query(async ({ ctx, input }) => {
-    const userCompanyId = await getOptionalCompanyId(
-      ctx.db,
-      ctx.session.user.id,
-    );
-
-    if (!userCompanyId) {
-      return null;
-    }
-
-    const rows = await ctx.db
-      .select({
-        id: vacancyPublications.id,
-        vacancyId: vacancyPublications.vacancyId,
-        name: vacancyPublications.name,
-        description: vacancyPublications.description,
-        isActive: vacancyPublications.isActive,
-        sources: vacancyPublications.sources,
-        createdAt: vacancyPublications.createdAt,
-        updatedAt: vacancyPublications.updatedAt,
-      })
-      .from(vacancyPublications)
-      .innerJoin(vacancies, eq(vacancyPublications.vacancyId, vacancies.id))
-      .where(
-        and(
-          eq(vacancyPublications.id, input.id),
-          eq(vacancies.companyId, userCompanyId),
-        ),
-      )
-      .limit(1);
-
-    const publication = rows[0];
-    return publication ? formatVacancyPublication(publication) : null;
+      .orderBy(desc(vacancies.createdAt));
+    console.log("listVacancyPublicationsProcedure rows", rows, input);
+    return rows;
   });
 
 export const getVacancyFunnelProcedure = protectedProcedure
@@ -552,20 +441,12 @@ export const getVacancyFunnelProcedure = protectedProcedure
     }
 
     const normalizedCandidates = candidateRows.map((candidate) => {
-      const contacts =
-        ((candidate.contacts ?? []) as { type: string; value: string }[]) ?? [];
+      const contacts = candidate.contacts ?? [];
       const phone = contacts.find((item) => item.type === "phone")?.value ?? "";
       const telegram =
         contacts.find((item) => item.type === "telegram")?.value ?? "";
       const email = contacts.find((item) => item.type === "email")?.value ?? "";
-      const workExperience =
-        ((candidate.workExperience ?? []) as {
-          company: string;
-          position: string;
-          period: string;
-          isCurrent?: boolean;
-          description: string[];
-        }[]) ?? [];
+      const workExperience = candidate.workExperience ?? [];
       const currentWorkplace =
         workExperience.find((item) => item.isCurrent) ?? workExperience[0];
 

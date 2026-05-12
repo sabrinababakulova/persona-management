@@ -209,6 +209,7 @@ export const vacancies = createTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    parentId: d.varchar({ length: 255 }).notNull(),
     title: d.varchar({ length: 255 }).notNull(),
     status: d.varchar({ length: 50 }).default("active"),
     responses: d.integer().default(0),
@@ -225,6 +226,19 @@ export const vacancies = createTable(
     contactPhone: d.varchar("contact_phone", { length: 50 }),
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     hhVacancyId: d.varchar("hh_vacancy_id", { length: 100 }),
+    telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
+    /**
+     * `true` when this row represents a per-channel publication rather than a base vacancy.
+     * Replaces the deprecated `vacancy_publication` table.
+     */
+    isPublication: d.boolean("is_publication").notNull().default(false),
+    /** Active flag for publications; ignored when `isPublication` is `false`. */
+    isActive: d.boolean("is_active").notNull().default(true),
+    /**
+     * Target channel for this publication (e.g. `"linkedin"`, `"hh.uz"`, `"telegram"`).
+     * Null on base vacancies (`isPublication = false`).
+     */
+    destination: d.varchar({ length: 50 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
@@ -235,60 +249,11 @@ export const vacancies = createTable(
     index("vacancy_title_idx").on(t.title),
     index("vacancy_status_idx").on(t.status),
     index("vacancy_company_id_idx").on(t.companyId),
+    index("vacancy_parent_id_idx").on(t.parentId),
     uniqueIndex("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
   ],
 );
 
-export type VacancyPublicationSource = {
-  platform: string;
-  url?: string;
-  keyword?: string;
-  sentTo?: number;
-  postedAt?: string;
-};
-
-export const vacancyPublications = createTable(
-  "vacancy_publication",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    vacancyId: d
-      .varchar("vacancy_id", { length: 255 })
-      .notNull()
-      .references(() => vacancies.id, { onDelete: "cascade" }),
-    name: d.varchar({ length: 255 }).notNull(),
-    description: d.text().notNull().default(""),
-    isActive: d.boolean().notNull().default(true),
-    sources: d.json().$type<VacancyPublicationSource[]>().notNull().default([]),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-  }),
-  (t) => [
-    index("vacancy_publication_vacancy_id_idx").on(t.vacancyId),
-    index("vacancy_publication_active_idx").on(t.isActive),
-    index("vacancy_publication_created_at_idx").on(t.createdAt),
-  ],
-);
-
-export const vacanciesRelations = relations(vacancies, ({ many }) => ({
-  publications: many(vacancyPublications),
-}));
-
-export const vacancyPublicationsRelations = relations(
-  vacancyPublications,
-  ({ one }) => ({
-    vacancy: one(vacancies, {
-      fields: [vacancyPublications.vacancyId],
-      references: [vacancies.id],
-    }),
-  }),
-);
 
 export const candidateVacancies = createTable(
   "vacancy_candidate",

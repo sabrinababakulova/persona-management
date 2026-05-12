@@ -103,8 +103,7 @@ export default function CandidatesPage() {
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
   );
-  const { data: hasAnyCandidates = false, isLoading: isAnyCandidatesLoading } =
-    api.candidates.hasAny.useQuery();
+
   const {
     data: lookups,
     isError: isLookupsError,
@@ -237,7 +236,6 @@ export default function CandidatesPage() {
 
       void utils.candidates.list.invalidate();
       void utils.candidates.listHh.invalidate();
-      void utils.candidates.hasAny.invalidate();
 
       setToastMessage("Кандидат успешно добавлен");
       setIsQuickAddModalOpen(false);
@@ -318,7 +316,7 @@ export default function CandidatesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const hasCandidates = hasAnyCandidates || localTotal > 0 || hhTotal > 0;
+  const hasCandidates = localTotal > 0 || hhTotal > 0;
   const isTableLoading =
     isLoading ||
     isFetchingCandidates ||
@@ -326,8 +324,7 @@ export default function CandidatesPage() {
       shouldIncludeHhCandidates &&
       hhLimit > 0 &&
       (isLoadingHhCandidates || isFetchingHhCandidates));
-  const showCandidatesTable =
-    hasCandidates || isTableLoading || isAnyCandidatesLoading;
+  const showCandidatesTable = hasCandidates || isTableLoading;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {
@@ -461,7 +458,7 @@ export default function CandidatesPage() {
             <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
               Кандидаты
             </h1>
-            {(showCandidatesTable || isAnyCandidatesLoading) && (
+            {showCandidatesTable && (
               <PeriodFilter
                 ariaLabel="Фильтр периода кандидатов"
                 onChange={(value) => {
