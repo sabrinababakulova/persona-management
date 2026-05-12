@@ -195,31 +195,6 @@ for TABLE in $TABLES; do
 done
 
 echo ""
-# The `vacancy_publication` collection is deprecated. Hide it from the admin Content module so
-# editors don't reach for it; the table is kept in Postgres for the deprecation window but
-# publications now live on `vacancy` rows themselves via is_publication / is_active / destination.
-echo -n "Hiding deprecated 'vacancy_publication' collection... "
-VACANCY_PUBLICATION_COLLECTION_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
-  "$DIRECTUS_URL/collections/vacancy_publication" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "meta": {
-      "hidden": true,
-      "singleton": false,
-      "icon": "campaign",
-      "display_template": "{{name}}",
-      "note": "DEPRECATED — publications now live on the vacancy row (is_publication / destination)."
-    }
-  }')
-
-if [ "$VACANCY_PUBLICATION_COLLECTION_RESPONSE" = "200" ]; then
-  echo "OK"
-else
-  echo "HTTP $VACANCY_PUBLICATION_COLLECTION_RESPONSE"
-fi
-
-echo ""
 echo "Fetching hh.uz dictionaries for vacancy lookups..."
 
 HH_LOOKUPS_DIR="/tmp/directus-hh-lookups"
@@ -365,30 +340,13 @@ echo "Configuring Directus field metadata..."
 
 configure_hash_field "user" "password" "user.password as hash field"
 
-# vacancy_publication field metadata has been removed — the collection is deprecated. The
-# remaining columns still exist in Postgres for the deprecation window but Directus no longer
-# surfaces them as editable fields. Drop this entire block (and the table) once no consumers
-# reference it.
-
-# Publication metadata now lives on `vacancy` itself. These three fields turn a vacancy row into
-# a per-channel publication (is_publication=true) and describe its destination + active state.
-patch_field "vacancy" "is_publication" '{
-    "type": "boolean",
-    "meta": {
-      "interface": "boolean",
-      "sort": 45,
-      "width": "half",
-      "note": "Признак того, что строка является публикацией (а не базовой вакансией)."
-    }
-  }' "vacancy.is_publication"
-
 patch_field "vacancy" "is_active" '{
     "type": "boolean",
     "meta": {
       "interface": "boolean",
       "sort": 46,
       "width": "half",
-      "note": "Активна ли публикация. Игнорируется, когда is_publication = false."
+      "note": "Активна ли строка выбранного канала."
     }
   }' "vacancy.is_active"
 
@@ -407,7 +365,7 @@ patch_field "vacancy" "destination" '{
       },
       "sort": 47,
       "width": "half",
-      "note": "Целевой канал публикации. Null для базовых вакансий."
+      "note": "Целевой канал. Null для базовых вакансий."
     }
   }' "vacancy.destination"
 
@@ -447,7 +405,7 @@ patch_field "vacancy" "experience_id" \
   "vacancy.experience_id"
 
 patch_field "vacancy" "billing_type_id" \
-  "$(build_lookup_payload "$HH_LOOKUPS_DIR/billing.json" 15 "half" "Тип публикации hh.uz (billingTypeId).")" \
+  "$(build_lookup_payload "$HH_LOOKUPS_DIR/billing.json" 15 "half" "Тип размещения hh.uz (billingTypeId).")" \
   "vacancy.billing_type_id"
 
 patch_field "vacancy" "salary_from" '{
@@ -532,7 +490,7 @@ patch_field "vacancy" "description_html" '{
       },
       "sort": 30,
       "width": "full",
-      "note": "Описание вакансии в HTML — публикуется на hh.uz без изменений (минимум 200 символов)."
+      "note": "Описание вакансии в HTML — отправляется на hh.uz без изменений (минимум 200 символов)."
     }
   }' "vacancy.description_html"
 
@@ -546,14 +504,9 @@ patch_field "vacancy" "contact_phone" '{
       },
       "sort": 40,
       "width": "half",
-      "note": "Контактный телефон работодателя (передаётся в payload публикации hh.uz)."
+      "note": "Контактный телефон работодателя (передаётся в payload hh.uz)."
     }
   }' "vacancy.contact_phone"
-
-# The `vacancy.publications` o2m alias and `vacancy_publication` -> `vacancy` relation are no
-# longer registered: the vacancy_publication collection is deprecated and publications live on
-# vacancy rows directly. Drop the underlying FK in a follow-up migration when the table is
-# removed entirely.
 
 echo ""
 echo "Done! All tables should now be visible at $DIRECTUS_URL/admin/content"
