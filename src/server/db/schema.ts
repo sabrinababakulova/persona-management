@@ -254,7 +254,6 @@ export const vacancies = createTable(
   ],
 );
 
-
 export const candidateVacancies = createTable(
   "vacancy_candidate",
   (d) => ({
