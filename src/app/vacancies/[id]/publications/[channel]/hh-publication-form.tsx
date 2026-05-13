@@ -6,7 +6,6 @@ import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { Input } from "~/app/_components/input";
-import { Modal } from "~/app/_components/modal";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
 import {
@@ -14,6 +13,7 @@ import {
   useVacancyPublicationStore,
 } from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
+import { PublicationConfirmationModal } from "./publication-confirmation-modal";
 
 /** Per-field error messages plus an optional `_form` entry for form-level errors. */
 type HhErrors = Partial<Record<keyof HhPublicationFields | "_form", string>>;
@@ -560,32 +560,17 @@ export function HhPublicationForm({
         </div>
       </div>
 
-      <Modal
-        description={"Это перезапишет текущую активную публикацию."}
+      <PublicationConfirmationModal
+        description={
+          "Публикация будет опубликована на hh.uz. Иначе текущая активная публикация будет в неактивном состоянии."
+        }
         isOpen={isPublishConfirmOpen}
-        maxWidthClassName="max-w-[420px]"
+        isPending={updatePublication.isPending}
         onClose={() => setIsPublishConfirmOpen(false)}
-        title={pubId ? "Перезаписать публикацию?" : "Опубликовать публикацию?"}
-      >
-        <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
-          <button
-            className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-            disabled={updatePublication.isPending}
-            onClick={() => handleSave({ isActivePub: false })}
-            type="button"
-          >
-            Нет
-          </button>
-          <button
-            className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
-            disabled={updatePublication.isPending}
-            onClick={() => handleSave({ isActivePub: true })}
-            type="button"
-          >
-            Да
-          </button>
-        </div>
-      </Modal>
+        onConfirm={() => handleSave({ isActivePub: true })}
+        onReject={() => handleSave({ isActivePub: false })}
+        title={"Опубликовать публикацию?"}
+      />
     </main>
   );
 }

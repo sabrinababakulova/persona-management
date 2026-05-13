@@ -17,6 +17,7 @@ import {
 } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import { api } from "~/trpc/react";
+import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
 /** Dropdown entries shown when the user opens the "Создать публикацию" menu. */
 const CHANNEL_OPTIONS: ActionDropdownItem[] = [
@@ -112,6 +113,10 @@ export function PublicationsTable() {
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(
     null,
   );
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    id: string;
+    isActive: boolean;
+  } | null>(null);
   const duplicatePublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -196,7 +201,17 @@ export function PublicationsTable() {
       return;
     }
 
-    updatePublicationStatus.mutate({ id, isActive });
+    setPendingStatusChange({ id, isActive });
+  };
+
+  const confirmStatusChange = () => {
+    if (!pendingStatusChange || updatePublicationStatus.isPending) {
+      return;
+    }
+
+    updatePublicationStatus.mutate(pendingStatusChange, {
+      onSettled: () => setPendingStatusChange(null),
+    });
   };
 
   const confirmDelete = () => {
@@ -374,6 +389,24 @@ export function PublicationsTable() {
           </div>
         </div>
       </Modal>
+
+      <PublicationConfirmationModal
+        description={
+          pendingStatusChange?.isActive
+            ? "Публикация будет опубликована на hh.uz"
+            : "Публикация будет архивирована в hh.uz"
+        }
+        isOpen={Boolean(pendingStatusChange)}
+        isPending={updatePublicationStatus.isPending}
+        onClose={() => setPendingStatusChange(null)}
+        onConfirm={confirmStatusChange}
+        onReject={() => setPendingStatusChange(null)}
+        title={
+          pendingStatusChange?.isActive
+            ? "Активировать публикацию?"
+            : "Деактивировать публикацию?"
+        }
+      />
     </div>
   );
 }
