@@ -255,7 +255,7 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-5 lg:col-span-2">
                 <span className="inline-flex items-center gap-1 rounded-md bg-status-active-soft px-3 py-1 font-semibold text-[12px] text-status-active-strong uppercase leading-none">
-                  {pub.isActive ? "Опубликовано" : "Неактивна"}
+                  {pub.isActive ? "Активна" : "Неактивна"}
                   <ChevronDownIcon className="h-3 w-3" />
                 </span>
               </div>

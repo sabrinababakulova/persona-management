@@ -561,11 +561,7 @@ export function HhPublicationForm({
       </div>
 
       <Modal
-        description={
-          pubId
-            ? "Это перезапишет данные публикации в базе. Публикация на hh.uz не будет отправлена."
-            : "Это перезапишет текущую активную публикацию."
-        }
+        description={"Это перезапишет текущую активную публикацию."}
         isOpen={isPublishConfirmOpen}
         maxWidthClassName="max-w-[420px]"
         onClose={() => setIsPublishConfirmOpen(false)}
