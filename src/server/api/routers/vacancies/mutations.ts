@@ -485,6 +485,18 @@ export const publishTelegramProcedure = protectedProcedure
         .update(vacancies)
         .set({ telegramPostId: firstMessageUrl })
         .where(eq(vacancies.id, vacancy.id));
+
+      if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
+        await ctx.db
+          .update(vacancies)
+          .set({ telegramPostId: firstMessageUrl })
+          .where(
+            and(
+              eq(vacancies.id, vacancy.parentId),
+              eq(vacancies.companyId, companyId),
+            ),
+          );
+      }
     }
 
     const sentTo = channels.length - errors.length;

@@ -85,6 +85,7 @@ export function TgPublicationForm({
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
         utils.vacancies.get.invalidate({ id: variables.vacancyId }),
+        utils.vacancies.list.invalidate(),
         utils.vacancies.listPublications.invalidate({
           parentVacancyId: vacancyId,
         }),
