@@ -1,4 +1,5 @@
 import { HhPublicationForm } from "../hh-publication-form";
+import { TgPublicationForm } from "../tg-publication-form";
 
 export default async function VacancyPublicationIdPage({
   params,
@@ -9,6 +10,10 @@ export default async function VacancyPublicationIdPage({
 
   if (channel === "hh.uz") {
     return <HhPublicationForm pubId={pubid} vacancyId={id} />;
+  }
+
+  if (channel === "telegram") {
+    return <TgPublicationForm pubId={pubid} vacancyId={id} />;
   }
 
   return (

@@ -1,4 +1,5 @@
 import { HhPublicationForm } from "./hh-publication-form";
+import { TgPublicationForm } from "./tg-publication-form";
 
 /** Display labels for known channels; unknown channels fall back to their raw segment value. */
 const CHANNEL_DISPLAY_NAME: Record<string, string> = {
@@ -23,6 +24,10 @@ export default async function VacancyPublicationChannelPage({
 
   if (channel === "hh.uz") {
     return <HhPublicationForm vacancyId={id} />;
+  }
+
+  if (channel === "telegram") {
+    return <TgPublicationForm vacancyId={id} />;
   }
 
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;

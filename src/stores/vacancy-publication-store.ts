@@ -42,6 +42,14 @@ export type HhPublicationFields = {
   descriptionHtml: string;
 };
 
+/** Telegram-specific publication draft fields. */
+export type TelegramPublicationFields = {
+  /** Telegram post title. */
+  title: string;
+  /** Telegram post body in editor HTML. */
+  description: string;
+};
+
 /**
  * The set of distribution channels a vacancy can be published to. Update {@link PUBLICATION_CHANNELS}
  * when adding a new option — the literal-union type is derived from it.
@@ -58,6 +66,7 @@ export type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];
 type State = {
   general: GeneralVacancyFields;
   hh: HhPublicationFields;
+  telegram: TelegramPublicationFields;
   /**
    * Channels the user has chosen for the in-progress vacancy. Currently single-select via the
    * `ActionDropdown`, but kept as an array to leave room for multi-select later.
@@ -89,6 +98,13 @@ type Actions = {
   ) => void;
   /** Merge a partial patch into the hh.uz fields. */
   setHhFields: (fields: Partial<HhPublicationFields>) => void;
+  /** Update a single Telegram field; preserves the rest. */
+  setTelegramField: <K extends keyof TelegramPublicationFields>(
+    key: K,
+    value: TelegramPublicationFields[K],
+  ) => void;
+  /** Merge a partial patch into the Telegram fields. */
+  setTelegramFields: (fields: Partial<TelegramPublicationFields>) => void;
   /** Replace the selected channels list. */
   setSelectedChannels: (channels: PublicationChannel[]) => void;
   /** Set the persisted vacancy ID after a successful create/update. */
@@ -119,9 +135,15 @@ const EMPTY_HH: HhPublicationFields = {
   descriptionHtml: "",
 };
 
+const EMPTY_TELEGRAM: TelegramPublicationFields = {
+  title: "",
+  description: "",
+};
+
 const INITIAL_STATE: State = {
   general: EMPTY_GENERAL,
   hh: EMPTY_HH,
+  telegram: EMPTY_TELEGRAM,
   selectedChannels: [],
   savedVacancyId: null,
   pendingChannelLaunch: null,
@@ -143,6 +165,10 @@ export const useVacancyPublicationStore = create<State & Actions>()((set) => ({
   setHhField: (key, value) =>
     set((state) => ({ hh: { ...state.hh, [key]: value } })),
   setHhFields: (fields) => set((state) => ({ hh: { ...state.hh, ...fields } })),
+  setTelegramField: (key, value) =>
+    set((state) => ({ telegram: { ...state.telegram, [key]: value } })),
+  setTelegramFields: (fields) =>
+    set((state) => ({ telegram: { ...state.telegram, ...fields } })),
   setSelectedChannels: (channels) => set({ selectedChannels: channels }),
   setSavedVacancyId: (id) => set({ savedVacancyId: id }),
   setPendingChannelLaunch: (channel) => set({ pendingChannelLaunch: channel }),

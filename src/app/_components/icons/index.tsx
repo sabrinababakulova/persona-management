@@ -19,6 +19,7 @@ export { FloatingAddIcon } from "./FloatingAddIcon";
 export { FunnelIcon } from "./FunnelIcon";
 export { GlobeIcon } from "./GlobeIcon";
 export { HomeIcon } from "./HomeIcon";
+export { ImageUploadPlaceholderIcon } from "./ImageUploadPlaceholderIcon";
 export { LogoutIcon } from "./LogoutIcon";
 export { MailIcon } from "./MailIcon";
 export { MenuIcon } from "./MenuIcon";
