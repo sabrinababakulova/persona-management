@@ -116,6 +116,7 @@ export function PublicationsTable() {
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     id: string;
     isActive: boolean;
+    destination: string | undefined;
   } | null>(null);
   const duplicatePublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
@@ -161,8 +162,10 @@ export function PublicationsTable() {
     );
   };
 
-  const onEdit = (id: string) => {
-    router.push(`/vacancies/${parentVacancyId}/publications/hh.uz/${id}`);
+  const onEdit = (id: string, destination: string) => {
+    router.push(
+      `/vacancies/${parentVacancyId}/publications/${destination}/${id}`,
+    );
   };
   const onCopy = (id: string) => {
     const publication = publications?.find((item) => item.id === id);
@@ -195,13 +198,17 @@ export function PublicationsTable() {
     setDeleteCandidateId(id);
   };
 
-  const onStatusChange = (id: string, isActive: boolean) => {
+  const onStatusChange = (
+    id: string,
+    isActive: boolean,
+    destination: string | undefined,
+  ) => {
     const publication = publications?.find((item) => item.id === id);
     if (!publication || publication.isActive === isActive) {
       return;
     }
 
-    setPendingStatusChange({ id, isActive });
+    setPendingStatusChange({ id, isActive, destination });
   };
 
   const confirmStatusChange = () => {
@@ -308,7 +315,11 @@ export function PublicationsTable() {
                   }
                   label="Статус публикации"
                   onChange={(value) =>
-                    onStatusChange(pub.id, value === "active")
+                    onStatusChange(
+                      pub.id,
+                      value === "active",
+                      pub.destination ?? "",
+                    )
                   }
                   options={ACTIVE_STATUS_OPTIONS}
                   value={pub.isActive ? "active" : "inactive"}
@@ -321,7 +332,7 @@ export function PublicationsTable() {
                 <button
                   aria-label="Редактировать"
                   className="text-text-placeholder transition-colors hover:text-text-heading"
-                  onClick={() => onEdit?.(pub.id)}
+                  onClick={() => onEdit?.(pub.id, pub.destination ?? "")}
                   type="button"
                 >
                   <PencilIcon className="h-4 w-4" />
@@ -392,7 +403,8 @@ export function PublicationsTable() {
 
       <PublicationConfirmationModal
         description={
-          pendingStatusChange?.isActive
+          pendingStatusChange?.isActive &&
+          pendingStatusChange.destination === "hh.uz"
             ? "Публикация будет опубликована на hh.uz"
             : "Публикация будет архивирована в hh.uz"
         }
