@@ -24,6 +24,8 @@ export type GeneralVacancyFields = {
  * entry in the hh.uz lookup endpoints (`getHhPublishLookups`).
  */
 export type HhPublicationFields = {
+  /** Publication title shown in the versions list and sent to hh.uz as `name`. */
+  title: string;
   /** hh.uz area (city) ID. */
   areaId: string;
   /** hh.uz employment type ID. */
@@ -107,6 +109,7 @@ const EMPTY_GENERAL: GeneralVacancyFields = {
 };
 
 const EMPTY_HH: HhPublicationFields = {
+  title: "",
   areaId: "",
   employmentId: "",
   scheduleId: "",

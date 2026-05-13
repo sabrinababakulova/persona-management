@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
+import { Input } from "~/app/_components/input";
 import { Modal } from "~/app/_components/modal";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
@@ -63,7 +64,6 @@ export function HhPublicationForm({
   const hhLookupsQuery = api.vacancies.getHhPublishLookups.useQuery();
 
   const fields = useVacancyPublicationStore((s) => s.hh);
-  console.log("fields", fields);
   const setHhField = useVacancyPublicationStore((s) => s.setHhField);
   const setHhFields = useVacancyPublicationStore((s) => s.setHhFields);
 
@@ -81,8 +81,8 @@ export function HhPublicationForm({
     if (!v) {
       return;
     }
-    console.log(v);
     setHhFields({
+      title: v.title ?? "",
       areaId: v.areaId ?? "",
       employmentId: v.employmentId ?? "",
       scheduleId: v.scheduleId ?? "",
@@ -176,6 +176,30 @@ export function HhPublicationForm({
     },
   });
 
+  const updatePublication = api.vacancies.update.useMutation({
+    onSuccess: async () => {
+      setErrors({});
+      setSavedMessage("Публикация обновлена");
+      await Promise.all([
+        pubId
+          ? utils.vacancies.get.invalidate({ id: pubId })
+          : Promise.resolve(),
+        utils.vacancies.get.invalidate({ id: vacancyId }),
+        utils.vacancies.listPublications.invalidate({
+          parentVacancyId: vacancyId,
+        }),
+      ]);
+      setIsPublishConfirmOpen(false);
+      router.push(`/vacancies/${vacancyId}?step=publications`);
+    },
+    onError: (error) => {
+      setSavedMessage(null);
+      setErrors({
+        _form: error.message || "Не удалось обновить публикацию",
+      });
+    },
+  });
+
   const publishToHH = api.vacancies.publishHh.useMutation({
     onSuccess: async () => {
       await utils.vacancies.get.invalidate({ id: vacancyId });
@@ -210,6 +234,13 @@ export function HhPublicationForm({
 
   const validate = (): boolean => {
     const next: HhErrors = {};
+    const trimmedTitle = fields.title.trim();
+
+    if (!trimmedTitle) {
+      next.title = "Введите название публикации";
+    } else if (trimmedTitle.length > 255) {
+      next.title = "Название не должно быть длиннее 255 символов";
+    }
 
     if (!fields.areaId) {
       next.areaId = "Выберите город";
@@ -247,11 +278,21 @@ export function HhPublicationForm({
     if (!validate() || !vacancyQuery.data) {
       return;
     }
+    if (pubId) {
+      updatePublication.mutate({
+        id: pubId,
+        ...fields,
+        title: fields.title.trim(),
+        isActive: isActivePub,
+        isPublication: true,
+      });
+      return;
+    }
 
     createPublication.mutate({
-      title: vacancyQuery.data.title,
       parentId: vacancyId,
       ...fields,
+      title: fields.title.trim(),
       isActive: isActivePub,
       destination: "hh.uz",
       isPublication: true,
@@ -259,7 +300,7 @@ export function HhPublicationForm({
     if (isActivePub) {
       publishToHH.mutate({
         ...fields,
-        name: vacancyQuery.data.title,
+        name: fields.title.trim(),
         vacancyId,
         salaryCurrency: vacancyQuery.data.salaryCurrency ?? "UZS",
         salaryFrom: vacancyQuery.data.salaryFrom ?? 0,
@@ -321,6 +362,23 @@ export function HhPublicationForm({
               id="basic-information"
             >
               <ClosableSection title="Основная информация hh.uz">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <Input
+                    label="Название публикации"
+                    maxLength={255}
+                    onChange={(event) =>
+                      setHhField("title", event.target.value)
+                    }
+                    placeholder="Введите название публикации"
+                    value={fields.title}
+                  />
+                  {errors.title && (
+                    <p className="text-[13px] text-danger-red leading-[1.4]">
+                      {errors.title}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex min-w-0 flex-col gap-2">
                     <SearchableSelect
@@ -486,11 +544,13 @@ export function HhPublicationForm({
                 </button>
                 <button
                   className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={createPublication.isPending}
+                  disabled={
+                    createPublication.isPending || updatePublication.isPending
+                  }
                   onClick={() => setIsPublishConfirmOpen(true)}
                   type="button"
                 >
-                  {createPublication.isPending
+                  {createPublication.isPending || updatePublication.isPending
                     ? "Сохранение..."
                     : "Сохранить изменения"}
                 </button>
@@ -501,15 +561,20 @@ export function HhPublicationForm({
       </div>
 
       <Modal
-        description="Это перезапишет текущую активную публикацию."
+        description={
+          pubId
+            ? "Это перезапишет данные публикации в базе. Публикация на hh.uz не будет отправлена."
+            : "Это перезапишет текущую активную публикацию."
+        }
         isOpen={isPublishConfirmOpen}
         maxWidthClassName="max-w-[420px]"
         onClose={() => setIsPublishConfirmOpen(false)}
-        title="Опубликовать публикацию?"
+        title={pubId ? "Перезаписать публикацию?" : "Опубликовать публикацию?"}
       >
         <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
           <button
             className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+            disabled={updatePublication.isPending}
             onClick={() => handleSave({ isActivePub: false })}
             type="button"
           >
@@ -517,6 +582,7 @@ export function HhPublicationForm({
           </button>
           <button
             className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+            disabled={updatePublication.isPending}
             onClick={() => handleSave({ isActivePub: true })}
             type="button"
           >

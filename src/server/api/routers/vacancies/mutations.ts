@@ -242,6 +242,8 @@ export const updateVacancyProcedure = protectedProcedure
       salaryCurrency: SalaryCurrency;
       descriptionHtml: string | null;
       contactPhone: string | null;
+      isActive: boolean;
+      isPublication: boolean;
     }> = {};
 
     if (input.title && input.title !== existing.title)
@@ -305,6 +307,15 @@ export const updateVacancyProcedure = protectedProcedure
       (input.contactPhone ?? "") !== (existing.contactPhone ?? "")
     ) {
       valuesToUpdate.contactPhone = input.contactPhone || null;
+    }
+    if (input.isActive !== undefined && input.isActive !== existing.isActive) {
+      valuesToUpdate.isActive = input.isActive;
+    }
+    if (
+      input.isPublication !== undefined &&
+      input.isPublication !== existing.isPublication
+    ) {
+      valuesToUpdate.isPublication = input.isPublication;
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {
