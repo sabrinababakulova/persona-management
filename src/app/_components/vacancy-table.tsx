@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Vacancy } from "~/types/pages/vacancies-page";
+import type { RouterOutputs } from "~/types/trpc/router-outputs";
+
+type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
+
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
 
@@ -221,7 +224,8 @@ export function VacancyTable({
                     <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
                       {onToggleSelection && (
                         <Checkbox
-                          checked={item.selected || false}
+                          //TODO: fix it when selection will be implemented
+                          checked={false}
                           onChange={() => onToggleSelection(item.id)}
                         />
                       )}

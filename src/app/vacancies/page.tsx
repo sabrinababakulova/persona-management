@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
-import type { Vacancy } from "~/types/pages/vacancies-page";
+import type { RouterOutputs } from "~/types/trpc/router-outputs";
 import {
   countActiveFilters,
   EMPTY_FILTER_MODAL_FILTERS,
@@ -24,6 +24,7 @@ import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
 import { VacancyTable } from "../_components/vacancy-table";
 
+type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
 type VacancyStatus = Vacancy["status"];
 
 function isVacancyStatus(
@@ -144,29 +145,6 @@ export default function VacanciesPage() {
     },
   });
 
-  // Merge server data with local selection state
-  const vacancies =
-    vacanciesData?.items.map((vacancy) => ({
-      ...vacancy,
-      selected:
-        localVacancies.find((localVacancy) => localVacancy.id === vacancy.id)
-          ?.selected ?? false,
-    })) ?? [];
-
-  const toggleSelection = (id: string) => {
-    setLocalVacancies((prev) => {
-      const existing = prev.find((vacancy) => vacancy.id === id);
-      if (existing) {
-        return prev.map((vacancy) =>
-          vacancy.id === id
-            ? { ...vacancy, selected: !vacancy.selected }
-            : vacancy,
-        );
-      }
-      return [...prev, { id, selected: true } as Vacancy];
-    });
-  };
-
   const handleStatusChange = (vacancyId: string, nextStatus: string) => {
     if (!isVacancyStatus(nextStatus, vacancyStatusOptions)) {
       setToastMessage("Выбран неизвестный статус");
@@ -174,7 +152,8 @@ export default function VacanciesPage() {
     }
 
     const currentStatus =
-      vacancies.find((vacancy) => vacancy.id === vacancyId)?.status ?? null;
+      vacanciesData?.items.find((vacancy) => vacancy.id === vacancyId)
+        ?.status ?? null;
 
     if (!currentStatus || currentStatus === nextStatus) {
       return;
@@ -279,10 +258,10 @@ export default function VacanciesPage() {
                   updateVacancyStatus.isPending &&
                   updateVacancyStatus.variables?.id === vacancy.id
                 }
-                items={vacancies}
+                items={vacanciesData?.items ?? []}
                 loadingLabel="Загрузка вакансий..."
                 onStatusChange={handleStatusChange}
-                onToggleSelection={toggleSelection}
+                onToggleSelection={() => {}}
                 pagination={
                   <TablePagination
                     currentPage={currentPage}

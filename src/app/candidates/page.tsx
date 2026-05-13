@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
-import type { Candidate, CandidateStatus } from "~/types/pages/candidates-page";
+import type { CandidateStatus } from "~/types/server/candidates";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
+import type { RouterOutputs } from "~/types/trpc/router-outputs";
+
+type Candidate = RouterOutputs["candidates"]["list"]["items"][number];
+
 import { Checkbox } from "../_components/checkbox";
 import {
   countActiveFilters,
@@ -286,28 +290,6 @@ export default function CandidatesPage() {
     },
   });
 
-  // Merge local (already paginated by server) with the correct hh.uz slice
-  const hhPageItems = hhCandidatesData?.items ?? [];
-
-  const candidates = [...localItems, ...hhPageItems].map((c: Candidate) => ({
-    ...c,
-    selected: localCandidates.find((lc) => lc.id === c.id)?.selected ?? false,
-  }));
-
-  const toggleSelection = (id: string) => {
-    setLocalCandidates((prev) => {
-      const existing = prev.find((candidate) => candidate.id === id);
-      if (existing) {
-        return prev.map((candidate) =>
-          candidate.id === id
-            ? { ...candidate, selected: !candidate.selected }
-            : candidate,
-        );
-      }
-      return [...prev, { id, selected: true } as Candidate];
-    });
-  };
-
   const handleApplyFilters = (filters: FilterModalFilters) => {
     setAppliedFilters(filters);
     setCurrentPage(1);
@@ -333,8 +315,8 @@ export default function CandidatesPage() {
     }
 
     const currentStatus =
-      candidates.find((candidate) => candidate.id === candidateId)?.status ??
-      null;
+      candidatesData?.items.find((candidate) => candidate.id === candidateId)
+        ?.status ?? null;
 
     if (!currentStatus || currentStatus === nextStatus) {
       return;
@@ -542,131 +524,139 @@ export default function CandidatesPage() {
                 ) : (
                   <>
                     <div className="min-h-0 flex-1 overflow-auto">
-                      {candidates.map((candidate: Candidate, index) => {
-                        const statusTone =
-                          statusToneConfig[candidate.status] ??
-                          statusToneConfig.new;
-                        const isHhCandidate = candidate.source === "hh.uz";
-                        const isStatusPending =
-                          !isHhCandidate &&
-                          updateCandidateStatus.isPending &&
-                          updateCandidateStatus.variables?.id === candidate.id;
+                      {(hhCandidatesData?.items ?? []).map(
+                        (candidate: Candidate, index) => {
+                          const statusTone =
+                            statusToneConfig[candidate.status] ??
+                            statusToneConfig.new;
+                          const isHhCandidate = candidate.source === "hh.uz";
+                          const isStatusPending =
+                            !isHhCandidate &&
+                            updateCandidateStatus.isPending &&
+                            updateCandidateStatus.variables?.id ===
+                              candidate.id;
 
-                        return (
-                          <div
-                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
-                              index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
-                            }`}
-                            key={candidate.id}
-                          >
-                            <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
-                              <Checkbox
-                                checked={candidate.selected || false}
-                                onChange={() => toggleSelection(candidate.id)}
-                              />
-                              <div className="min-w-0">
-                                {isHhCandidate ? (
-                                  <Link
-                                    className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                    href={`/candidates/${candidate.id}`}
-                                  >
-                                    {candidate.name}
-                                  </Link>
-                                ) : (
-                                  <button
-                                    className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                    onClick={() =>
-                                      openQuickOverview(candidate.id)
-                                    }
-                                    type="button"
-                                  >
-                                    {candidate.name}
-                                  </button>
-                                )}
-                                <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
-                                  {candidate.patronymic}
+                          return (
+                            <div
+                              className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
+                                index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
+                              }`}
+                              key={candidate.id}
+                            >
+                              <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
+                                <Checkbox
+                                  //TODO: fix it when selection will be implemented
+                                  checked={false}
+                                  onChange={() => {}}
+                                />
+                                <div className="min-w-0">
+                                  {isHhCandidate ? (
+                                    <Link
+                                      className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                      href={`/candidates/${candidate.id}`}
+                                    >
+                                      {candidate.name}
+                                    </Link>
+                                  ) : (
+                                    <button
+                                      className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                      onClick={() =>
+                                        openQuickOverview(candidate.id)
+                                      }
+                                      type="button"
+                                    >
+                                      {candidate.name}
+                                    </button>
+                                  )}
+                                  <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                                    {candidate.patronymic}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                              {isHhCandidate ? (
-                                <span
-                                  className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
-                                >
-                                  {statusOptions.find(
-                                    (o) => o.value === candidate.status,
-                                  )?.label ?? candidate.status}
-                                </span>
-                              ) : (
-                                <div
-                                  className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                                >
-                                  <select
-                                    aria-label={`Статус кандидата ${candidate.name}`}
-                                    className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                                    disabled={isStatusPending}
-                                    onChange={(event) => {
-                                      handleStatusChange(
-                                        candidate.id,
-                                        event.target.value,
-                                      );
-                                    }}
-                                    value={candidate.status}
+                              <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
+                                {isHhCandidate ? (
+                                  <span
+                                    className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
                                   >
-                                    {statusOptions.map((option) => (
-                                      <option
-                                        key={option.value}
-                                        value={option.value}
-                                      >
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <ChevronDownIcon
-                                    className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                  />
-                                </div>
-                              )}
-                            </div>
+                                    {statusOptions.find(
+                                      (o) => o.value === candidate.status,
+                                    )?.label ?? candidate.status}
+                                  </span>
+                                ) : (
+                                  <div
+                                    className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
+                                  >
+                                    <select
+                                      aria-label={`Статус кандидата ${candidate.name}`}
+                                      className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
+                                      disabled={isStatusPending}
+                                      onChange={(event) => {
+                                        handleStatusChange(
+                                          candidate.id,
+                                          event.target.value,
+                                        );
+                                      }}
+                                      value={candidate.status}
+                                    >
+                                      {statusOptions.map((option) => (
+                                        <option
+                                          key={option.value}
+                                          value={option.value}
+                                        >
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <ChevronDownIcon
+                                      className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
+                                    />
+                                  </div>
+                                )}
+                              </div>
 
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {candidate.city || "-"}
-                            </div>
+                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                                {candidate.city || "-"}
+                              </div>
 
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {candidate.createdAt || "-"}
-                            </div>
+                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                                {candidate.createdAt || "-"}
+                              </div>
 
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                              {candidate.source || "-"}
-                            </div>
+                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                                {candidate.source || "-"}
+                              </div>
 
-                            <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                              <Link
-                                className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
-                                href={`/candidates/${candidate.id}`}
-                              >
-                                <span className="hidden xl:inline">детали</span>
-                              </Link>
-                              <button
-                                className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
-                                type="button"
-                              >
-                                <MoreIcon className="h-4 w-4" />
-                              </button>
-                            </div>
+                              <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
+                                <Link
+                                  className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
+                                  href={`/candidates/${candidate.id}`}
+                                >
+                                  <span className="hidden xl:inline">
+                                    детали
+                                  </span>
+                                </Link>
+                                <button
+                                  className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
+                                  type="button"
+                                >
+                                  <MoreIcon className="h-4 w-4" />
+                                </button>
+                              </div>
 
-                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
-                              <span>Город: {candidate.city || "-"}</span>
-                              <span>Создан: {candidate.createdAt || "-"}</span>
-                              <span>Источник: {candidate.source || "-"}</span>
+                              <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
+                                <span>Город: {candidate.city || "-"}</span>
+                                <span>
+                                  Создан: {candidate.createdAt || "-"}
+                                </span>
+                                <span>Источник: {candidate.source || "-"}</span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        },
+                      )}
 
-                      {candidates.length === 0 && (
+                      {(hhCandidatesData?.items ?? []).length === 0 && (
                         <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
                           Кандидаты не найдены
                         </div>

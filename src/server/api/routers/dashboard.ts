@@ -1,5 +1,9 @@
 import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
-
+import {
+  toSalaryCurrency,
+  toVacancyStatus,
+  type VacancyConnection,
+} from "~/server/api/routers/vacancies/shared";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidates,
@@ -9,7 +13,6 @@ import {
   vacancies,
 } from "~/server/db/schema";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
-import type { Vacancy } from "~/types/pages/vacancies-page";
 
 const RECENT_ACTIVITIES_LIMIT = 5;
 
@@ -240,10 +243,10 @@ export const dashboardRouter = createTRPCRouter({
       },
     ];
 
-    const recentVacancies: Vacancy[] = recentVacancyRows.map((v) => ({
+    const recentVacancies = recentVacancyRows.map((v) => ({
       id: v.id,
       title: v.title,
-      status: (v.status ?? "active") as Vacancy["status"],
+      status: toVacancyStatus(v.status),
       responses: 0,
       areaId: v.areaId ?? "",
       employmentId: v.employmentId ?? "",
@@ -253,13 +256,11 @@ export const dashboardRouter = createTRPCRouter({
       billingTypeId: v.billingTypeId ?? "",
       salaryFrom: v.salaryFrom ?? undefined,
       salaryTo: v.salaryTo ?? undefined,
-      salaryCurrency: (v.salaryCurrency === "USD" ? "USD" : "UZS") as
-        | "UZS"
-        | "USD",
+      salaryCurrency: toSalaryCurrency(v.salaryCurrency),
       descriptionHtml: v.descriptionHtml ?? "",
       contactPhone: v.contactPhone ?? "",
       source: "local" as const,
-      connections: [],
+      connections: [] as VacancyConnection[],
     }));
 
     if (recentVacancyRows.length > 0) {
