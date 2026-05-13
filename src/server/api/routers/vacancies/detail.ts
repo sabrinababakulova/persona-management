@@ -273,6 +273,19 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         id: vacancies.id,
         parentId: vacancies.parentId,
         title: vacancies.title,
+        status: vacancies.status,
+        responses: vacancies.responses,
+        areaId: vacancies.areaId,
+        employmentId: vacancies.employmentId,
+        scheduleId: vacancies.scheduleId,
+        experienceId: vacancies.experienceId,
+        professionalRoleId: vacancies.professionalRoleId,
+        billingTypeId: vacancies.billingTypeId,
+        salaryFrom: vacancies.salaryFrom,
+        salaryTo: vacancies.salaryTo,
+        salaryCurrency: vacancies.salaryCurrency,
+        descriptionHtml: vacancies.descriptionHtml,
+        contactPhone: vacancies.contactPhone,
         isActive: vacancies.isActive,
         createdAt: vacancies.createdAt,
         destination: vacancies.destination,
@@ -280,7 +293,7 @@ export const listVacancyPublicationsProcedure = protectedProcedure
       .from(vacancies)
       .where(and(...conditions))
       .orderBy(desc(vacancies.createdAt));
-    console.log("listVacancyPublicationsProcedure rows", rows, input);
+
     return rows;
   });
 

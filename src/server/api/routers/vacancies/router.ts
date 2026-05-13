@@ -14,6 +14,7 @@ import {
 import { hasAnyVacanciesProcedure, listVacanciesProcedure } from "./list";
 import {
   createVacancyProcedure,
+  deleteVacancyPublicationProcedure,
   getHhConfigProcedure,
   getHhPublishLookupsProcedure,
   getTelegramConfigProcedure,
@@ -28,12 +29,12 @@ export const vacanciesRouter = createTRPCRouter({
   get: getVacancyProcedure,
   getFunnel: getVacancyFunnelProcedure,
   listPublications: listVacancyPublicationsProcedure,
-  // getPublication: getVacancyPublicationProcedure,
   getHhDetail: getHhVacancyDetailProcedure,
   searchCandidates: searchVacancyCandidatesProcedure,
   assignCandidate: assignCandidateProcedure,
   create: createVacancyProcedure,
   update: updateVacancyProcedure,
+  deletePublication: deleteVacancyPublicationProcedure,
   getTelegramConfig: getTelegramConfigProcedure,
   publishTelegram: publishTelegramProcedure,
   getHhConfig: getHhConfigProcedure,

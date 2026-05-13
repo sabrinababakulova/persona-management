@@ -14,6 +14,7 @@ import {
   SortIcon,
   TrashIcon,
 } from "~/app/_components/icons";
+import { Modal } from "~/app/_components/modal";
 import { api } from "~/trpc/react";
 
 /** Dropdown entries shown when the user opens the "Создать публикацию" menu. */
@@ -29,6 +30,22 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
 };
+
+const VACANCY_STATUSES = new Set([
+  "active",
+  "archive",
+  "draft",
+  "paused",
+  "closed",
+]);
+
+function normalizeVacancyStatus(
+  status: string | null,
+): "active" | "archive" | "draft" | "paused" | "closed" {
+  return status && VACANCY_STATUSES.has(status)
+    ? (status as "active" | "archive" | "draft" | "paused" | "closed")
+    : "draft";
+}
 
 /** Inline duplicate-page glyph used for the row's "Дублировать" action. */
 function CopyIcon({ className }: { className?: string }) {
@@ -78,6 +95,7 @@ function formatDate(value?: Date | string | null): string {
 export function PublicationsTable() {
   const router = useRouter();
   const { id: parentVacancyId } = useParams() as { id: string };
+  const utils = api.useUtils();
 
   const { data: publications } = api.vacancies.listPublications.useQuery(
     { parentVacancyId },
@@ -85,6 +103,33 @@ export function PublicationsTable() {
   );
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(
+    null,
+  );
+  const duplicatePublication = api.vacancies.create.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.vacancies.list.invalidate(),
+        utils.vacancies.listPublications.invalidate({ parentVacancyId }),
+      ]);
+    },
+    onError: (error) => {
+      console.error("Failed to duplicate vacancy publication", error);
+    },
+  });
+  const deletePublication = api.vacancies.deletePublication.useMutation({
+    onSuccess: async (_result, variables) => {
+      setSelectedIds((current) => current.filter((id) => id !== variables.id));
+      await Promise.all([
+        utils.vacancies.list.invalidate(),
+        utils.vacancies.listPublications.invalidate({ parentVacancyId }),
+      ]);
+    },
+    onError: (error) => {
+      console.error("Failed to delete vacancy publication", error);
+    },
+  });
+
   const handleChannelSelect = (value: string) => {
     router.push(`/vacancies/${parentVacancyId}/publications/${value}`);
   };
@@ -98,8 +143,49 @@ export function PublicationsTable() {
   const onEdit = (id: string) => {
     router.push(`/vacancies/${parentVacancyId}/publications/hh.uz/${id}`);
   };
-  const onCopy = (_id: string) => {};
-  const onDelete = (_id: string) => {};
+  const onCopy = (id: string) => {
+    const publication = publications?.find((item) => item.id === id);
+    if (!publication || duplicatePublication.isPending) {
+      return;
+    }
+
+    duplicatePublication.mutate({
+      parentId: publication.parentId,
+      title: `${publication.title} (копия)`,
+      status: normalizeVacancyStatus(publication.status),
+      responses: publication.responses ?? 0,
+      areaId: publication.areaId ?? undefined,
+      employmentId: publication.employmentId ?? undefined,
+      scheduleId: publication.scheduleId ?? undefined,
+      experienceId: publication.experienceId ?? undefined,
+      professionalRoleId: publication.professionalRoleId ?? undefined,
+      billingTypeId: publication.billingTypeId ?? undefined,
+      salaryFrom: publication.salaryFrom ?? undefined,
+      salaryTo: publication.salaryTo ?? undefined,
+      salaryCurrency: publication.salaryCurrency === "USD" ? "USD" : "UZS",
+      descriptionHtml: publication.descriptionHtml ?? undefined,
+      contactPhone: publication.contactPhone ?? undefined,
+      isActive: publication.isActive,
+      isPublication: true,
+      destination: publication.destination ?? undefined,
+    });
+  };
+  const onDelete = (id: string) => {
+    setDeleteCandidateId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteCandidateId || deletePublication.isPending) {
+      return;
+    }
+
+    deletePublication.mutate(
+      { id: deleteCandidateId },
+      {
+        onSettled: () => setDeleteCandidateId(null),
+      },
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -188,6 +274,7 @@ export function PublicationsTable() {
                 <button
                   aria-label="Дублировать"
                   className="text-text-placeholder transition-colors hover:text-text-heading"
+                  disabled={duplicatePublication.isPending}
                   onClick={() => onCopy?.(pub.id)}
                   type="button"
                 >
@@ -196,6 +283,7 @@ export function PublicationsTable() {
                 <button
                   aria-label="Удалить"
                   className="text-accent-red transition-opacity hover:opacity-80"
+                  disabled={deletePublication.isPending}
                   onClick={() => onDelete?.(pub.id)}
                   type="button"
                 >
@@ -216,6 +304,36 @@ export function PublicationsTable() {
           </button>
         </div>
       </div>
+
+      <Modal
+        ariaLabel="Подтверждение удаления публикации"
+        isOpen={Boolean(deleteCandidateId)}
+        onClose={() => setDeleteCandidateId(null)}
+        title="Удалить публикацию?"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-[14px] text-text-secondary leading-[1.4]">
+            Are you sure you want to delete publication?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              onClick={() => setDeleteCandidateId(null)}
+              type="button"
+            >
+              Отмена
+            </button>
+            <button
+              className="rounded-md bg-accent-red px-4 py-2 font-medium text-[14px] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={deletePublication.isPending}
+              onClick={confirmDelete}
+              type="button"
+            >
+              {deletePublication.isPending ? "Удаление..." : "Удалить"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

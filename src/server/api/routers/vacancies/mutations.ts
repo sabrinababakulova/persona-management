@@ -33,7 +33,11 @@ import {
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
-import { vacancyCreateInputSchema, vacancyUpdateInputSchema } from "./schemas";
+import {
+  vacancyCreateInputSchema,
+  vacancyIdInputSchema,
+  vacancyUpdateInputSchema,
+} from "./schemas";
 import { formatVacancy, isHhVacancyId, type SalaryCurrency } from "./shared";
 
 export const createVacancyProcedure = protectedProcedure
@@ -341,6 +345,33 @@ export const updateVacancyProcedure = protectedProcedure
     });
 
     return formatVacancy(updated);
+  });
+
+export const deleteVacancyPublicationProcedure = protectedProcedure
+  .input(vacancyIdInputSchema)
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const deletedRows = await ctx.db
+      .delete(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, companyId),
+          eq(vacancies.isPublication, true),
+        ),
+      )
+      .returning({ id: vacancies.id, parentId: vacancies.parentId });
+
+    const deleted = deletedRows[0];
+    if (!deleted) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Публикация не найдена",
+      });
+    }
+
+    return { success: true, id: deleted.id, parentId: deleted.parentId };
   });
 
 export const getTelegramConfigProcedure = protectedProcedure.query(
