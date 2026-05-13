@@ -7,7 +7,7 @@ export function isTelegramConfigured(): boolean {
 export async function sendTelegramMessage(
   text: string,
   channelId: string,
-): Promise<void> {
+): Promise<{ messageId: number; messageUrl: string }> {
   if (!env.TELEGRAM_BOT_TOKEN) {
     throw new Error("Telegram bot token is not configured");
   }
@@ -28,4 +28,20 @@ export async function sendTelegramMessage(
     const body = await response.text();
     throw new Error(`Telegram API error ${response.status}: ${body}`);
   }
+
+  const data = (await response.json()) as {
+    ok: boolean;
+    result: {
+      message_id: number;
+      chat: { id: number; username?: string };
+    };
+  };
+
+  const messageId = data.result.message_id;
+  const chat = data.result.chat;
+  const messageUrl = chat.username
+    ? `https://t.me/${chat.username}/${messageId}`
+    : `https://t.me/c/${String(chat.id).replace(/^-100/, "")}/${messageId}`;
+
+  return { messageId, messageUrl };
 }

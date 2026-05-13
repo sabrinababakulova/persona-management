@@ -34,40 +34,10 @@ export function toSalaryCurrency(value: string | null): SalaryCurrency {
   return value === "USD" ? "USD" : "UZS";
 }
 
-/** Channel a vacancy is linked to / published to. Used for the list "Связи" icons column. */
-export type VacancyConnection = "telegram" | "hh.uz" | "linkedin";
-
-const VACANCY_CONNECTION_VALUES = new Set<VacancyConnection>([
-  "telegram",
-  "hh.uz",
-  "linkedin",
-]);
-
-function isVacancyConnection(value: string): value is VacancyConnection {
-  return VACANCY_CONNECTION_VALUES.has(value as VacancyConnection);
-}
-
 export function formatVacancy(
   vacancy: typeof vacancies.$inferSelect,
   responses = vacancy.responses ?? 0,
 ) {
-  const connections: VacancyConnection[] = [];
-  // Base vacancy with an hh.uz link still surfaces as an hh.uz connection.
-  if (vacancy.hhVacancyId) {
-    connections.push("hh.uz");
-  }
-  // Active per-channel publications contribute their destination, deduped against the hh.uz
-  // link above.
-  if (vacancy.isPublication && vacancy.isActive && vacancy.destination) {
-    const destination = vacancy.destination;
-    if (
-      isVacancyConnection(destination) &&
-      !connections.includes(destination)
-    ) {
-      connections.push(destination);
-    }
-  }
-
   return {
     id: vacancy.id,
     parentId: vacancy.parentId,
@@ -87,10 +57,10 @@ export function formatVacancy(
     contactPhone: vacancy.contactPhone ?? "",
     companyId: vacancy.companyId ?? undefined,
     hhVacancyId: vacancy.hhVacancyId ?? null,
+    telegramPostId: vacancy.telegramPostId ?? null,
     publishedAt: undefined,
     source: "local" as const,
     externalUrl: undefined,
-    connections,
   };
 }
 
@@ -117,10 +87,10 @@ export function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
     contactPhone: "",
     companyId,
     hhVacancyId: vacancy.id,
+    telegramPostId: null,
     publishedAt: vacancy.publishedAt,
     source: "hh.uz" as const,
     externalUrl: vacancy.externalUrl,
-    connections: ["hh.uz"] as VacancyConnection[],
   };
 }
 

@@ -19,46 +19,6 @@ import {
   getVacancyResponseCounts,
 } from "./shared";
 
-export const hasAnyVacanciesProcedure = protectedProcedure.query(
-  async ({ ctx }) => {
-    const userCompanyId = await getRequiredCompanyId(
-      ctx.db,
-      ctx.session?.user?.id,
-    );
-
-    const localRows = await ctx.db
-      .select({ id: vacancies.id })
-      .from(vacancies)
-      .where(eq(vacancies.companyId, userCompanyId))
-      .limit(1);
-
-    if (localRows.length > 0) {
-      return true;
-    }
-
-    if (userCompanyId !== DEFAULT_COMPANY_ID) {
-      return false;
-    }
-
-    const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
-    if (!hhAccount?.accessToken || !hhAccount.employerId) {
-      return false;
-    }
-
-    try {
-      const hhPage = await fetchCompanyHhVacanciesPage({
-        accessToken: hhAccount.accessToken,
-        employerId: hhAccount.employerId,
-        limit: 1,
-        offset: 0,
-      });
-      return hhPage.total > 0;
-    } catch {
-      return false;
-    }
-  },
-);
-
 export const listVacanciesProcedure = protectedProcedure
   .input(vacancyListInputSchema)
   .query(async ({ ctx, input }) => {

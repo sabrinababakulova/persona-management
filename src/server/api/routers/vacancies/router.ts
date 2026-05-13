@@ -8,10 +8,9 @@ import {
   getHhVacancyDetailProcedure,
   getVacancyFunnelProcedure,
   getVacancyProcedure,
-  // getVacancyPublicationProcedure,
   listVacancyPublicationsProcedure,
 } from "./detail";
-import { hasAnyVacanciesProcedure, listVacanciesProcedure } from "./list";
+import { listVacanciesProcedure } from "./list";
 import {
   createVacancyProcedure,
   deleteVacancyPublicationProcedure,
@@ -24,7 +23,6 @@ import {
 } from "./mutations";
 
 export const vacanciesRouter = createTRPCRouter({
-  hasAny: hasAnyVacanciesProcedure,
   list: listVacanciesProcedure,
   get: getVacancyProcedure,
   getFunnel: getVacancyFunnelProcedure,

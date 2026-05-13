@@ -459,9 +459,13 @@ export const publishTelegramProcedure = protectedProcedure
     const message = formatTelegramVacancy(formatVacancy(vacancy), keyword);
 
     const errors: string[] = [];
+    let firstMessageUrl: string | null = null;
     for (const channel of channels) {
       try {
-        await sendTelegramMessage(message, channel.channelId);
+        const sent = await sendTelegramMessage(message, channel.channelId);
+        if (!firstMessageUrl) {
+          firstMessageUrl = sent.messageUrl;
+        }
       } catch (error) {
         errors.push(
           `Канал ${channel.channelId}: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
@@ -476,12 +480,20 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
+    if (firstMessageUrl) {
+      await ctx.db
+        .update(vacancies)
+        .set({ telegramPostId: firstMessageUrl })
+        .where(eq(vacancies.id, vacancy.id));
+    }
+
     const sentTo = channels.length - errors.length;
 
     return {
       success: true,
       keyword,
       sentTo,
+      telegramPostUrl: firstMessageUrl,
       errors: errors.length > 0 ? errors : undefined,
     };
   });

@@ -2,7 +2,6 @@ import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
 import {
   toSalaryCurrency,
   toVacancyStatus,
-  type VacancyConnection,
 } from "~/server/api/routers/vacancies/shared";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
@@ -260,7 +259,6 @@ export const dashboardRouter = createTRPCRouter({
       descriptionHtml: v.descriptionHtml ?? "",
       contactPhone: v.contactPhone ?? "",
       source: "local" as const,
-      connections: [] as VacancyConnection[],
     }));
 
     if (recentVacancyRows.length > 0) {

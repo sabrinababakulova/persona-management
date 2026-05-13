@@ -8,16 +8,13 @@ type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
 
-const VACANCY_CONNECTION_ICONS: Record<
-  NonNullable<Vacancy["connections"]>[number],
-  { src: string; label: string }
-> = {
-  telegram: { src: "/telegram.svg", label: "Telegram" },
-  "hh.uz": { src: "/hh.svg", label: "hh.uz" },
-  linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
-};
-
 type VacancyStatus = Vacancy["status"];
+
+const VACANCY_CONNECTION_ICONS = {
+  tg: { src: "/telegram.svg", label: "Telegram" },
+  hh: { src: "/hh.svg", label: "hh.uz" },
+  ln: { src: "/linkedin.svg", label: "LinkedIn" },
+};
 
 const vacancyStatusTone: Record<
   VacancyStatus,
@@ -46,6 +43,19 @@ const vacancyStatusTone: Record<
     containerClassName: "border border-status-outline-border bg-bg-light",
     textClassName: "text-text-placeholder",
   },
+};
+
+const getVacancyConnectionIconsMeta = (vacancy: Vacancy) => {
+  const connections = [];
+
+  if (vacancy.hhVacancyId) {
+    connections.push("hh");
+  }
+
+  if (vacancy.telegramPostId) {
+    connections.push("tg");
+  }
+  return connections;
 };
 
 interface VacancyTableProps {
@@ -204,8 +214,8 @@ export function VacancyTable({
               (() => {
                 const statusTone =
                   vacancyStatusTone[item.status] ?? vacancyStatusTone.active;
+                const connections = getVacancyConnectionIconsMeta(item);
                 const isHhVacancy = item.source === "hh.uz";
-                const connections = item.connections ?? [];
                 const publishedAtLabel = formatVacancyPublishedAt(
                   item.publishedAt,
                 );
@@ -214,7 +224,7 @@ export function VacancyTable({
                 return (
                   <div
                     className={cn(
-                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center",
+                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center",
                       stripedRows &&
                         (index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"),
                       rowClassName,
@@ -264,11 +274,11 @@ export function VacancyTable({
                         </span>
                       ) : (
                         <div
-                          className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
+                          className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1`}
                         >
                           <select
                             aria-label={`Статус вакансии ${item.title}`}
-                            className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} disabled:cursor-not-allowed disabled:opacity-70`}
+                            className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70`}
                             disabled={statusPending}
                             onChange={(event) => {
                               onStatusChange(item.id, event.target.value);
@@ -307,7 +317,10 @@ export function VacancyTable({
                         </span>
                       ) : (
                         connections.map((connection) => {
-                          const meta = VACANCY_CONNECTION_ICONS[connection];
+                          const meta =
+                            VACANCY_CONNECTION_ICONS[
+                              connection as keyof typeof VACANCY_CONNECTION_ICONS
+                            ];
                           return (
                             <Image
                               alt={meta.label}
