@@ -31,7 +31,7 @@ export function Dropdown({
         </label>
         <div className="group relative">
           <select
-            className={`h-12 w-full appearance-none rounded-[6px] border border-border-input bg-bg-input px-3 pr-10 text-[16px] leading-[1.4] tracking-[-0.32px] transition-[border-color,background-color,box-shadow,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${
+            className={`h-12 w-full appearance-none rounded-md border border-border-input bg-bg-input px-3 pr-10 text-[16px] leading-[1.4] tracking-[-0.32px] transition-[border-color,background-color,box-shadow,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${
               value ? "text-text-heading" : "text-text-placeholder"
             } ${fieldClassName ?? ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled}

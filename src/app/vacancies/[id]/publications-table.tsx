@@ -8,6 +8,7 @@ import {
   type ActionDropdownItem,
 } from "~/app/_components/action-dropdown";
 import { Checkbox } from "~/app/_components/checkbox";
+import { Dropdown } from "~/app/_components/dropdown";
 import {
   ChevronDownIcon,
   PencilIcon,
@@ -30,6 +31,11 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
 };
+
+const ACTIVE_STATUS_OPTIONS = [
+  { value: "active", label: "Активна" },
+  { value: "inactive", label: "Неактивна" },
+];
 
 const VACANCY_STATUSES = new Set([
   "active",
@@ -129,6 +135,16 @@ export function PublicationsTable() {
       console.error("Failed to delete vacancy publication", error);
     },
   });
+  const updatePublicationStatus = api.vacancies.update.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.vacancies.listPublications.invalidate({ parentVacancyId }),
+      ]);
+    },
+    onError: (error) => {
+      console.error("Failed to update vacancy publication status", error);
+    },
+  });
 
   const handleChannelSelect = (value: string) => {
     router.push(`/vacancies/${parentVacancyId}/publications/${value}`);
@@ -172,6 +188,15 @@ export function PublicationsTable() {
   };
   const onDelete = (id: string) => {
     setDeleteCandidateId(id);
+  };
+
+  const onStatusChange = (id: string, isActive: boolean) => {
+    const publication = publications?.find((item) => item.id === id);
+    if (!publication || publication.isActive === isActive) {
+      return;
+    }
+
+    updatePublicationStatus.mutate({ id, isActive });
   };
 
   const confirmDelete = () => {
@@ -254,10 +279,25 @@ export function PublicationsTable() {
                 )}
               </div>
               <div className="col-span-5 lg:col-span-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-status-active-soft px-3 py-1 font-semibold text-[12px] text-status-active-strong uppercase leading-none">
-                  {pub.isActive ? "Активна" : "Неактивна"}
-                  <ChevronDownIcon className="h-3 w-3" />
-                </span>
+                <Dropdown
+                  className="w-full max-w-35"
+                  disabled={updatePublicationStatus.isPending}
+                  fieldClassName={
+                    pub.isActive
+                      ? "max-h-[30px] border-status-active-bg bg-status-active-bg font-semibold text-status-active hover:border-status-active hover:bg-status-active-bg focus:border-status-active focus:bg-status-active-bg"
+                      : "max-h-[30px] border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
+                  }
+                  hideLabel
+                  iconClassName={
+                    pub.isActive ? "text-status-active" : "text-status-closed"
+                  }
+                  label="Статус публикации"
+                  onChange={(value) =>
+                    onStatusChange(pub.id, value === "active")
+                  }
+                  options={ACTIVE_STATUS_OPTIONS}
+                  value={pub.isActive ? "active" : "inactive"}
+                />
               </div>
               <div className="col-span-3 text-[14px] text-text-heading lg:col-span-2">
                 {dateLabel}
