@@ -48,17 +48,18 @@ export default function VacanciesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 300);
   const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
   );
-  const { data: hasAnyVacancies = false, isLoading: isAnyVacanciesLoading } =
-    api.vacancies.hasAny.useQuery();
+
+  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 300);
+
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
+
   const vacancyQueryInput = useMemo(
     () => ({
       period: selectedPeriod,
@@ -190,7 +191,8 @@ export default function VacanciesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const showVacanciesTable = hasAnyVacancies || isLoading;
+  const showVacanciesTable =
+    (vacanciesData?.items?.length ?? 0) > 0 || isLoading;
 
   return (
     <>
@@ -219,16 +221,14 @@ export default function VacanciesPage() {
             <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
               Вакансии
             </h1>
-            {(showVacanciesTable || isAnyVacanciesLoading) && (
-              <PeriodFilter
-                ariaLabel="Фильтр периода вакансий"
-                onChange={(value) => {
-                  setSelectedPeriod(value);
-                  setCurrentPage(1);
-                }}
-                value={selectedPeriod}
-              />
-            )}
+            <PeriodFilter
+              ariaLabel="Фильтр периода вакансий"
+              onChange={(value) => {
+                setSelectedPeriod(value);
+                setCurrentPage(1);
+              }}
+              value={selectedPeriod}
+            />
           </div>
 
           {showVacanciesTable ? (
@@ -302,10 +302,10 @@ export default function VacanciesPage() {
             </>
           ) : (
             <div className="flex min-h-[60vh] items-center justify-center">
-              <div className="flex w-full max-w-[236px] flex-col items-center gap-10">
-                <NoVacancies className="h-[190px] w-[236px]" />
+              <div className="flex w-full max-w-59 flex-col items-center gap-10">
+                <NoVacancies className="h-47.5 w-59" />
                 <Link
-                  className="flex h-[40px] w-[190px] items-center justify-center rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                  className="flex h-10 w-47.5 items-center justify-center rounded-md bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
                   href="/vacancies/create"
                 >
                   Добавить вакансию

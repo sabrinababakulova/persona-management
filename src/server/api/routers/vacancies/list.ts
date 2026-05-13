@@ -84,7 +84,10 @@ export const listVacanciesProcedure = protectedProcedure
     let localVacancies: ReturnType<typeof formatVacancy>[] = [];
 
     if (includeLocal) {
-      const localConditions = [eq(vacancies.companyId, userCompanyId)];
+      const localConditions = [
+        eq(vacancies.companyId, userCompanyId),
+        eq(vacancies.isPublication, false),
+      ];
 
       if (shouldApplyPeriod) {
         localConditions.push(gte(vacancies.createdAt, createdAtCutoff));

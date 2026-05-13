@@ -79,11 +79,10 @@ export function PublicationsTable() {
   const router = useRouter();
   const { id: parentVacancyId } = useParams() as { id: string };
 
-  const { data: publications, isLoading } =
-    api.vacancies.listPublications.useQuery(
-      { parentVacancyId },
-      { enabled: Boolean(parentVacancyId) },
-    );
+  const { data: publications } = api.vacancies.listPublications.useQuery(
+    { parentVacancyId },
+    { enabled: Boolean(parentVacancyId) },
+  );
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const handleChannelSelect = (value: string) => {
@@ -96,7 +95,9 @@ export function PublicationsTable() {
     );
   };
 
-  const onEdit = (_id: string) => {};
+  const onEdit = (id: string) => {
+    router.push(`/vacancies/${parentVacancyId}/publications/hh.uz/${id}`);
+  };
   const onCopy = (_id: string) => {};
   const onDelete = (_id: string) => {};
 

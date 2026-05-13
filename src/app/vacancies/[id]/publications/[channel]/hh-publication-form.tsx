@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
@@ -50,14 +50,22 @@ function dedupeOptionsByValue<T extends { value: string }>(options: T[]): T[] {
  * Saving calls `vacancies.update`, refreshes the cache, and surfaces validation / API errors
  * inline.
  */
-export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
+export function HhPublicationForm({
+  vacancyId,
+  pubId,
+}: {
+  vacancyId: string;
+  pubId?: string;
+}) {
   const router = useRouter();
   const utils = api.useUtils();
-  const vacancyQuery = api.vacancies.get.useQuery({ id: vacancyId });
+  const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
   const hhLookupsQuery = api.vacancies.getHhPublishLookups.useQuery();
 
   const fields = useVacancyPublicationStore((s) => s.hh);
+  console.log("fields", fields);
   const setHhField = useVacancyPublicationStore((s) => s.setHhField);
+  const setHhFields = useVacancyPublicationStore((s) => s.setHhFields);
 
   const [errors, setErrors] = useState<HhErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
@@ -67,22 +75,23 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
   // Hydrate the store from server data once per vacancy. We don't want to clobber
   // user edits if they're navigating around within the same vacancy, but we DO want
   // to overwrite when opening a different vacancy.
-  // useEffect(() => {
-  //   const v = vacancyQuery.data;
-  //   if (!v || hydratedForVacancyId === vacancyId) {
-  //     return;
-  //   }
-  //   setHhFields({
-  //     areaId: v.areaId ?? "",
-  //     employmentId: v.employmentId ?? "",
-  //     scheduleId: v.scheduleId ?? "",
-  //     experienceId: v.experienceId ?? "",
-  //     professionalRoleId: v.professionalRoleId ?? "",
-  //     billingTypeId: v.billingTypeId ?? "",
-  //     descriptionHtml: v.descriptionHtml ?? "",
-  //   });
-  //   setHydratedForVacancyId(vacancyId);
-  // }, [vacancyQuery.data, vacancyId, hydratedForVacancyId, setHhFields]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: update should happen when pub or vacancy is updated
+  useEffect(() => {
+    const v = vacancyQuery.data;
+    if (!v) {
+      return;
+    }
+    console.log(v);
+    setHhFields({
+      areaId: v.areaId ?? "",
+      employmentId: v.employmentId ?? "",
+      scheduleId: v.scheduleId ?? "",
+      experienceId: v.experienceId ?? "",
+      professionalRoleId: v.professionalRoleId ?? "",
+      billingTypeId: v.billingTypeId ?? "",
+      descriptionHtml: v.descriptionHtml ?? "",
+    });
+  }, [vacancyQuery.data, pubId, vacancyId, setHhFields]);
 
   const areaOptions = useMemo(
     () =>
@@ -167,6 +176,22 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
     },
   });
 
+  const publishToHH = api.vacancies.publishHh.useMutation({
+    onSuccess: async () => {
+      await utils.vacancies.get.invalidate({ id: vacancyId });
+      await utils.vacancies.list.invalidate();
+      await utils.vacancies.listPublications.invalidate({
+        parentVacancyId: vacancyId,
+      });
+      router.push(`/vacancies/${vacancyId}?step=publications`); // Redirect to vacancy page after publishing
+    },
+    onError: (error) => {
+      setErrors({
+        _form: error.message || "Не удалось опубликовать на hh.uz",
+      });
+    },
+  });
+
   const handleFieldChange = <K extends keyof HhPublicationFields>(
     key: K,
     value: HhPublicationFields[K],
@@ -231,6 +256,16 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
       destination: "hh.uz",
       isPublication: true,
     });
+    if (isActivePub) {
+      publishToHH.mutate({
+        ...fields,
+        name: vacancyQuery.data.title,
+        vacancyId,
+        salaryCurrency: vacancyQuery.data.salaryCurrency ?? "UZS",
+        salaryFrom: vacancyQuery.data.salaryFrom ?? 0,
+        salaryTo: vacancyQuery.data.salaryTo ?? 0,
+      });
+    }
   };
 
   if (vacancyQuery.isLoading) {
@@ -397,7 +432,7 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
             </div>
 
             <div
-              className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
+              className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6"
               id="description"
             >
               <ClosableSection title="Описание">
@@ -442,7 +477,9 @@ export function HhPublicationForm({ vacancyId }: { vacancyId: string }) {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
-                  onClick={() => router.push(`/vacancies/${vacancyId}`)}
+                  onClick={() =>
+                    router.push(`/vacancies/${vacancyId}?step=publications`)
+                  }
                   type="button"
                 >
                   Назад
