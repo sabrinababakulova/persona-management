@@ -1,8 +1,5 @@
 import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
-import {
-  toSalaryCurrency,
-  toVacancyStatus,
-} from "~/server/api/routers/vacancies/shared";
+import { toVacancyStatus } from "~/server/api/routers/vacancies/shared";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidates,
@@ -192,9 +189,18 @@ export const dashboardRouter = createTRPCRouter({
         .from(candidates)
         .where(eq(candidates.companyId, userCompanyId))
         .groupBy(candidates.source),
-      // Recent vacancies
+      // Recent vacancies — only fields rendered by the dashboard's VacancyTable
       ctx.db
-        .select()
+        .select({
+          id: vacancies.id,
+          title: vacancies.title,
+          status: vacancies.status,
+          areaId: vacancies.areaId,
+          employmentId: vacancies.employmentId,
+          experienceId: vacancies.experienceId,
+          hhVacancyId: vacancies.hhVacancyId,
+          telegramPostId: vacancies.telegramPostId,
+        })
         .from(vacancies)
         .where(
           and(
@@ -206,7 +212,14 @@ export const dashboardRouter = createTRPCRouter({
         .limit(3),
       // Recent activity events from candidate/vacancy updates
       ctx.db
-        .select()
+        .select({
+          id: recentActivityLogs.id,
+          actorName: recentActivityLogs.actorName,
+          action: recentActivityLogs.action,
+          targetName: recentActivityLogs.targetName,
+          targetStatus: recentActivityLogs.targetStatus,
+          createdAt: recentActivityLogs.createdAt,
+        })
         .from(recentActivityLogs)
         .where(eq(recentActivityLogs.companyId, userCompanyId))
         .orderBy(desc(recentActivityLogs.createdAt))
@@ -249,15 +262,10 @@ export const dashboardRouter = createTRPCRouter({
       responses: 0,
       areaId: v.areaId ?? "",
       employmentId: v.employmentId ?? "",
-      scheduleId: v.scheduleId ?? "",
       experienceId: v.experienceId ?? "",
-      professionalRoleId: v.professionalRoleId ?? "",
-      billingTypeId: v.billingTypeId ?? "",
-      salaryFrom: v.salaryFrom ?? undefined,
-      salaryTo: v.salaryTo ?? undefined,
-      salaryCurrency: toSalaryCurrency(v.salaryCurrency),
-      descriptionHtml: v.descriptionHtml ?? "",
-      contactPhone: v.contactPhone ?? "",
+      hhVacancyId: v.hhVacancyId ?? null,
+      telegramPostId: v.telegramPostId ?? null,
+      publishedAt: undefined as string | undefined,
       source: "local" as const,
     }));
 

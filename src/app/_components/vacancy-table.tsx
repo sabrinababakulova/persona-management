@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
 
 type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
+type DashboardVacancy =
+  RouterOutputs["dashboard"]["getDashboardData"]["recentVacancies"][number];
+type VacancyTableItem = Vacancy | DashboardVacancy;
 
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
@@ -45,7 +48,7 @@ const vacancyStatusTone: Record<
   },
 };
 
-const getVacancyConnectionIconsMeta = (vacancy: Vacancy) => {
+const getVacancyConnectionIconsMeta = (vacancy: VacancyTableItem) => {
   const connections = [];
 
   if (vacancy.hhVacancyId) {
@@ -59,7 +62,7 @@ const getVacancyConnectionIconsMeta = (vacancy: Vacancy) => {
 };
 
 interface VacancyTableProps {
-  items: Vacancy[];
+  items: VacancyTableItem[];
   title?: ReactNode;
   headerAction?: ReactNode;
   isLoading?: boolean;
@@ -69,9 +72,9 @@ interface VacancyTableProps {
   vacancyStatusOptions: Array<{ value: string; label: string }>;
   onToggleSelection?: (id: string) => void;
   onStatusChange?: (vacancyId: string, nextStatus: string) => void;
-  isStatusPending?: (vacancy: Vacancy) => boolean;
-  getDetailPath?: (vacancy: Vacancy) => string;
-  getFunnelPath?: (vacancy: Vacancy) => string;
+  isStatusPending?: (vacancy: VacancyTableItem) => boolean;
+  getDetailPath?: (vacancy: VacancyTableItem) => string;
+  getFunnelPath?: (vacancy: VacancyTableItem) => string;
   stripedRows?: boolean;
   containerClassName?: string;
   titleBarClassName?: string;
@@ -110,15 +113,15 @@ function formatVacancyPublishedAt(value?: string): string | null {
   }).format(parsedDate);
 }
 
-function toVacancyDetailPath(vacancy: Vacancy) {
+function toVacancyDetailPath(vacancy: VacancyTableItem) {
   return `/vacancies/${vacancy.id}`;
 }
 
-function toVacancyFunnelPath(vacancy: Vacancy) {
+function toVacancyFunnelPath(vacancy: VacancyTableItem) {
   return `/vacancies/funnel/${vacancy.id}`;
 }
 
-function renderMobileMeta(item: Vacancy) {
+function renderMobileMeta(item: VacancyTableItem) {
   return (
     <>
       <span>Регион (hh.uz): {item.areaId || "-"}</span>
