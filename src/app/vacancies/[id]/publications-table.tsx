@@ -195,6 +195,11 @@ export function PublicationsTable() {
     });
   };
   const onDelete = (id: string) => {
+    const publication = publications?.find((item) => item.id === id);
+    if (!publication || publication.isActive) {
+      return;
+    }
+
     setDeleteCandidateId(id);
   };
 
@@ -348,8 +353,8 @@ export function PublicationsTable() {
                 </button>
                 <button
                   aria-label="Удалить"
-                  className="text-accent-red transition-opacity hover:opacity-80"
-                  disabled={deletePublication.isPending}
+                  className="text-accent-red transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
+                  disabled={pub.isActive || deletePublication.isPending}
                   onClick={() => onDelete?.(pub.id)}
                   type="button"
                 >
