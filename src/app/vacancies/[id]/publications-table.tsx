@@ -189,7 +189,7 @@ export function PublicationsTable() {
       salaryCurrency: publication.salaryCurrency === "USD" ? "USD" : "UZS",
       descriptionHtml: publication.descriptionHtml ?? undefined,
       contactPhone: publication.contactPhone ?? undefined,
-      isActive: publication.isActive,
+      isActive: false,
       isPublication: true,
       destination: publication.destination ?? undefined,
     });
