@@ -39,7 +39,7 @@ function toVacancyDetailPath(vacancy: Pick<Vacancy, "id" | "source">): string {
 }
 
 function toVacancyFunnelPath(vacancy: Pick<Vacancy, "id">): string {
-  return `/vacancies/funnel/${vacancy.id}`;
+  return `/vacancies/${vacancy.id}/funnel`;
 }
 
 export default function VacanciesPage() {
@@ -49,7 +49,6 @@ export default function VacanciesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
-  const [localVacancies, setLocalVacancies] = useState<Vacancy[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(

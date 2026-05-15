@@ -138,7 +138,7 @@ export default function VacancyDetailPage() {
                 vacancyId={vacancyId}
               />
             ) : activeSectionId === "publications" ? (
-              <div className="w-full max-w-[900px]">
+              <div className="w-full max-w-225">
                 <PublicationsTable />
               </div>
             ) : (

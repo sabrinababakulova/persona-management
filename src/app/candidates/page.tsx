@@ -116,7 +116,6 @@ export default function CandidatesPage() {
   } = api.lookups.getCandidateCreateOptions.useQuery();
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
-  const [localCandidates, setLocalCandidates] = useState<Candidate[]>([]);
 
   const statusOptions = useMemo(
     () => mapStatusOptions(lookups?.statusOptions ?? []),

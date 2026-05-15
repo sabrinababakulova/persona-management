@@ -118,7 +118,7 @@ function toVacancyDetailPath(vacancy: VacancyTableItem) {
 }
 
 function toVacancyFunnelPath(vacancy: VacancyTableItem) {
-  return `/vacancies/funnel/${vacancy.id}`;
+  return `/vacancies/${vacancy.id}/funnel`;
 }
 
 function renderMobileMeta(item: VacancyTableItem) {
