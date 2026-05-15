@@ -9,6 +9,7 @@ import {
   CreateVacancyForm,
   type CreateVacancyFormInitialData,
 } from "../create/create-vacancy-form";
+import { PreviewStep } from "./preview-step";
 import { PublicationsTable } from "./publications-table";
 
 type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
@@ -141,13 +142,11 @@ export default function VacancyDetailPage() {
                 <PublicationsTable />
               </div>
             ) : (
-              <div className="w-full max-w-[900px]">
-                <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
+              <div className="w-full max-w-225">
+                <h1 className="mb-6 font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
                   Предпросмотр
                 </h1>
-                <div className="mt-6 rounded-[8px] border border-border-input bg-bg-light p-4 text-[14px] text-text-secondary leading-[1.4] lg:p-6">
-                  Coming soon
-                </div>
+                <PreviewStep />
               </div>
             )}
           </section>
