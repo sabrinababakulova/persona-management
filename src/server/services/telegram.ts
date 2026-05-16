@@ -130,8 +130,7 @@ export async function canBotDeleteMessages(chatId: string): Promise<boolean> {
 
   // The channel creator can always delete; admins need the explicit right.
   return (
-    data.result.status === "creator" ||
-    data.result.can_delete_messages === true
+    data.result.status === "creator" || data.result.can_delete_messages === true
   );
 }
 

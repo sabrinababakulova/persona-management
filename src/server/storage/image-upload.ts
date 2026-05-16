@@ -1,9 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
-import {
-  DirectusStorageError,
-  uploadFileToDirectus,
-} from "./directus-storage";
+import { DirectusStorageError, uploadFileToDirectus } from "./directus-storage";
 
 /** Image MIME types accepted by every image upload endpoint. */
 export const ALLOWED_IMAGE_MIME_TYPES = [
