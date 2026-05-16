@@ -35,7 +35,10 @@ type BasicVacancyFormErrors = Partial<
 const REQUIRED_FIELDS: ReadonlyArray<{
   key: keyof BasicVacancyFormData;
   label: string;
-}> = [{ key: "title", label: "Название вакансии" }];
+}> = [
+  { key: "title", label: "Название вакансии" },
+  { key: "descriptionHtml", label: "Описание вакансии" },
+];
 
 export type CreateVacancyFormInitialData = Partial<BasicVacancyFormData> & {
   name?: string;
@@ -174,6 +177,10 @@ export function CreateVacancyForm({
 
     if (!formData.title.trim()) {
       nextErrors.title = "Введите название вакансии";
+    }
+
+    if (!formData.descriptionHtml.trim()) {
+      nextErrors.descriptionHtml = "Введите описание вакансии";
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -384,7 +391,7 @@ export function CreateVacancyForm({
             {!readOnly && (
               <button
                 className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSaving}
+                disabled={isSaving || progress.missing.length > 0}
                 onClick={handleSubmit}
                 type="button"
               >
