@@ -29,7 +29,9 @@ import {
 import {
   isTelegramConfigured,
   sendTelegramMessage,
+  sendTelegramPhoto,
 } from "~/server/services/telegram";
+import { fetchDirectusAsset } from "~/server/storage/directus-storage";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
@@ -464,13 +466,107 @@ export const publishTelegramProcedure = protectedProcedure
     }
 
     const keyword = generateVacancyKeyword(vacancy.id, vacancy.companyId);
-    const message = formatTelegramVacancy(formatVacancy(vacancy), keyword);
+
+    // Telegram publications don't carry their own salary — fall back to the parent vacancy.
+    let parentSalary: {
+      from: number | null;
+      to: number | null;
+      currency: string | null;
+    } | null = null;
+    if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
+      const parentRows = await ctx.db
+        .select({
+          salaryFrom: vacancies.salaryFrom,
+          salaryTo: vacancies.salaryTo,
+          salaryCurrency: vacancies.salaryCurrency,
+        })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, vacancy.parentId),
+            eq(vacancies.companyId, companyId),
+          ),
+        )
+        .limit(1);
+      const parent = parentRows[0];
+      if (parent) {
+        parentSalary = {
+          from: parent.salaryFrom,
+          to: parent.salaryTo,
+          currency: parent.salaryCurrency,
+        };
+      }
+    }
+
+    const salaryFrom = vacancy.salaryFrom ?? parentSalary?.from ?? null;
+    const salaryTo = vacancy.salaryTo ?? parentSalary?.to ?? null;
+    const salaryCurrency =
+      vacancy.salaryCurrency ?? parentSalary?.currency ?? "UZS";
+    const salaryRange = [salaryFrom, salaryTo]
+      .filter((value): value is number => typeof value === "number")
+      .map((value) => value.toLocaleString())
+      .join(" – ");
+    const salaryLine = salaryRange
+      ? `salary: ${salaryRange} ${salaryCurrency}`
+      : null;
+
+    // formatTelegramVacancy renders its own salary line — drop the salary fields so the salary
+    // is posted once, with the requested "salary:" prefix.
+    const messageVacancy = {
+      ...formatVacancy(vacancy),
+      salaryFrom: undefined,
+      salaryTo: undefined,
+    };
+
+    const buildMessage = (maxLength: number) => {
+      const reserve = salaryLine ? salaryLine.length + 2 : 0;
+      const body = formatTelegramVacancy(
+        messageVacancy,
+        keyword,
+        maxLength - reserve,
+      );
+      return salaryLine ? `${body}\n\n${salaryLine}` : body;
+    };
+
+    // Load the publication image once; fall back to a plain text post if it can't be fetched.
+    let photo: { data: ArrayBuffer; contentType: string } | null = null;
+    if (vacancy.telegramFileId) {
+      try {
+        const assetResponse = await fetchDirectusAsset(vacancy.telegramFileId);
+        photo = {
+          data: await assetResponse.arrayBuffer(),
+          contentType:
+            assetResponse.headers.get("content-type") ?? "image/jpeg",
+        };
+      } catch (error) {
+        console.error("Failed to load Telegram publication image", {
+          vacancyId: vacancy.id,
+          telegramFileId: vacancy.telegramFileId,
+          error,
+        });
+      }
+    }
+
+    // Photo captions are capped at 1024 chars by Telegram; plain messages at 4096.
+    const textMessage = buildMessage(4096);
+    const photoCaption = photo ? buildMessage(1024) : null;
 
     const errors: string[] = [];
     let firstMessageUrl: string | null = null;
     for (const channel of channels) {
       try {
-        const sent = await sendTelegramMessage(message, channel.channelId);
+        const sent =
+          photo && photoCaption !== null
+            ? await sendTelegramPhoto(
+                {
+                  data: photo.data,
+                  filename: "vacancy",
+                  contentType: photo.contentType,
+                },
+                photoCaption,
+                channel.channelId,
+              )
+            : await sendTelegramMessage(textMessage, channel.channelId);
         if (!firstMessageUrl) {
           firstMessageUrl = sent.messageUrl;
         }

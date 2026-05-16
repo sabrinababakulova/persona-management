@@ -26,6 +26,7 @@ interface TelegramVacancyData {
 export function formatTelegramVacancy(
   vacancy: TelegramVacancyData,
   keyword: string,
+  maxLength = 4096,
 ): string {
   const lines: string[] = [];
 
@@ -76,10 +77,11 @@ export function formatTelegramVacancy(
 
   let message = lines.join("\n");
 
-  // Telegram message limit is 4096 characters
-  if (message.length > 4096) {
+  // Telegram caps plain messages at 4096 characters and photo captions at 1024 — callers pass
+  // the relevant limit via `maxLength`.
+  if (message.length > maxLength) {
     const suffix = `\n\nВаше кодовое слово: <code>${keyword}</code>\nВставьте это слово в начало вашего ответа.`;
-    const maxContentLength = 4096 - suffix.length - 4; // 4 for "..."
+    const maxContentLength = maxLength - suffix.length - 4; // 4 for "..."
     message = `${message.slice(0, maxContentLength)}...${suffix}`;
   }
 
