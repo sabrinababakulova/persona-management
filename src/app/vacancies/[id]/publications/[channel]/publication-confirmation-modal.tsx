@@ -43,11 +43,14 @@ export function PublicationConfirmationModal({
           {rejectLabel}
         </button>
         <button
-          className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-10 items-center gap-2 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isPending}
           onClick={onConfirm}
           type="button"
         >
+          {isPending && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-blue/30 border-t-primary-blue" />
+          )}
           {confirmLabel}
         </button>
       </div>

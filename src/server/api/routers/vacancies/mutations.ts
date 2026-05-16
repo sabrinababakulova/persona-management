@@ -27,7 +27,10 @@ import {
   resolveCompanyHhAuth,
 } from "~/server/services/hh-company-account";
 import {
+  canBotDeleteMessages,
+  deleteTelegramMessage,
   isTelegramConfigured,
+  parseTelegramMessageUrl,
   sendTelegramMessage,
   sendTelegramPhoto,
 } from "~/server/services/telegram";
@@ -230,6 +233,30 @@ export const updateVacancyProcedure = protectedProcedure
       });
     }
 
+    // Deactivating a Telegram publication must first remove its channel post — only possible
+    // when the bot has the `can_delete_messages` admin right.
+    let clearTelegramPostId = false;
+    if (
+      input.isActive === false &&
+      existing.isActive &&
+      existing.destination === "telegram" &&
+      existing.telegramPostId
+    ) {
+      const target = parseTelegramMessageUrl(existing.telegramPostId);
+      if (target) {
+        const canDelete = await canBotDeleteMessages(target.chatId);
+        if (!canDelete) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Вы не можете деактивировать эту публикацию, так как её нельзя удалить в Telegram.",
+          });
+        }
+        await deleteTelegramMessage(target.chatId, target.messageId);
+        clearTelegramPostId = true;
+      }
+    }
+
     const valuesToUpdate: Partial<{
       title: string;
       status: "active" | "draft" | "paused" | "closed" | "archive";
@@ -246,6 +273,7 @@ export const updateVacancyProcedure = protectedProcedure
       descriptionHtml: string | null;
       contactPhone: string | null;
       telegramFileId: string | null;
+      telegramPostId: string | null;
       isActive: boolean;
       isPublication: boolean;
     }> = {};
@@ -326,6 +354,9 @@ export const updateVacancyProcedure = protectedProcedure
       input.isPublication !== existing.isPublication
     ) {
       valuesToUpdate.isPublication = input.isPublication;
+    }
+    if (clearTelegramPostId) {
+      valuesToUpdate.telegramPostId = null;
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {

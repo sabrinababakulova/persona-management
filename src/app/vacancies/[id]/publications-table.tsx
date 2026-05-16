@@ -118,6 +118,8 @@ export function PublicationsTable() {
     isActive: boolean;
     destination: string | undefined;
   } | null>(null);
+  const [isDeactivationBlocked, setIsDeactivationBlocked] = useState(false);
+  const [isTelegramDeleteSuccess, setIsTelegramDeleteSuccess] = useState(false);
   const duplicatePublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -148,6 +150,10 @@ export function PublicationsTable() {
       ]);
     },
     onError: (error) => {
+      if (error.data?.code === "FORBIDDEN") {
+        setIsDeactivationBlocked(true);
+        return;
+      }
       console.error("Failed to update vacancy publication status", error);
     },
   });
@@ -213,7 +219,18 @@ export function PublicationsTable() {
       return;
     }
 
-    setPendingStatusChange({ id, isActive, destination });
+    // hh.uz changes and Telegram deactivations need a confirmation step (the latter deletes the
+    // channel post); other status changes apply directly.
+
+    if (destination === "hh.uz" || (destination === "telegram" && !isActive)) {
+      setPendingStatusChange({ id, isActive, destination });
+      return;
+    }
+
+    if (updatePublicationStatus.isPending) {
+      return;
+    }
+    updatePublicationStatus.mutate({ id, isActive });
   };
 
   const confirmStatusChange = () => {
@@ -221,7 +238,15 @@ export function PublicationsTable() {
       return;
     }
 
+    // Deactivating a Telegram publication removes its channel post — confirm that on success.
+    const isTelegramDeactivation =
+      pendingStatusChange.destination === "telegram" &&
+      !pendingStatusChange.isActive;
+
     updatePublicationStatus.mutate(pendingStatusChange, {
+      onSuccess: isTelegramDeactivation
+        ? () => setIsTelegramDeleteSuccess(true)
+        : undefined,
       onSettled: () => setPendingStatusChange(null),
     });
   };
@@ -406,12 +431,58 @@ export function PublicationsTable() {
         </div>
       </Modal>
 
+      <Modal
+        ariaLabel="Публикация удалена из Telegram"
+        isOpen={isTelegramDeleteSuccess}
+        onClose={() => setIsTelegramDeleteSuccess(false)}
+        title="Успешно удалено"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-[14px] text-text-secondary leading-[1.4]">
+            Публикация удалена из Telegram-канала.
+          </p>
+          <div className="flex justify-end">
+            <button
+              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              onClick={() => setIsTelegramDeleteSuccess(false)}
+              type="button"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        ariaLabel="Публикация не может быть деактивирована"
+        isOpen={isDeactivationBlocked}
+        onClose={() => setIsDeactivationBlocked(false)}
+        title="Публикация не может быть деактивирована"
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-[14px] text-text-secondary leading-[1.4]">
+            Вы не можете деактивировать эту публикацию, так как её нельзя
+            удалить в Telegram.
+          </p>
+          <div className="flex justify-end">
+            <button
+              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              onClick={() => setIsDeactivationBlocked(false)}
+              type="button"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <PublicationConfirmationModal
         description={
-          pendingStatusChange?.isActive &&
-          pendingStatusChange.destination === "hh.uz"
-            ? "Публикация будет опубликована на hh.uz"
-            : "Публикация будет архивирована в hh.uz"
+          pendingStatusChange?.destination === "telegram"
+            ? "Публикация будет удалена из Telegram-канала."
+            : pendingStatusChange?.isActive
+              ? "Публикация будет опубликована на hh.uz"
+              : "Публикация будет архивирована в hh.uz"
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}
