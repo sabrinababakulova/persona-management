@@ -50,6 +50,7 @@ export const vacancyCreateInputSchema = z.object({
   salaryCurrency: z.enum(["UZS", "USD"]).default("UZS"),
   descriptionHtml: z.string().max(20000).optional(),
   contactPhone: z.string().max(50).optional(),
+  telegramFileId: z.string().max(255).optional(),
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
@@ -71,6 +72,7 @@ export const vacancyUpdateInputSchema = z.object({
   salaryCurrency: z.enum(["UZS", "USD"]).optional(),
   descriptionHtml: z.string().max(20000).nullable().optional(),
   contactPhone: z.string().max(50).nullable().optional(),
+  telegramFileId: z.string().max(255).nullable().optional(),
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
 });

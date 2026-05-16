@@ -68,6 +68,7 @@ export const createVacancyProcedure = protectedProcedure
         salaryCurrency: input.salaryCurrency,
         descriptionHtml: input.descriptionHtml ?? null,
         contactPhone: input.contactPhone ?? null,
+        telegramFileId: input.telegramFileId ?? null,
         companyId,
       })
       .returning();
@@ -242,6 +243,7 @@ export const updateVacancyProcedure = protectedProcedure
       salaryCurrency: SalaryCurrency;
       descriptionHtml: string | null;
       contactPhone: string | null;
+      telegramFileId: string | null;
       isActive: boolean;
       isPublication: boolean;
     }> = {};
@@ -307,6 +309,12 @@ export const updateVacancyProcedure = protectedProcedure
       (input.contactPhone ?? "") !== (existing.contactPhone ?? "")
     ) {
       valuesToUpdate.contactPhone = input.contactPhone || null;
+    }
+    if (
+      input.telegramFileId !== undefined &&
+      (input.telegramFileId ?? "") !== (existing.telegramFileId ?? "")
+    ) {
+      valuesToUpdate.telegramFileId = input.telegramFileId || null;
     }
     if (input.isActive !== undefined && input.isActive !== existing.isActive) {
       valuesToUpdate.isActive = input.isActive;

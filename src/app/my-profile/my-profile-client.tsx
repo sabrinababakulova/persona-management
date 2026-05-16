@@ -1,10 +1,8 @@
 "use client";
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { AvatarUploader } from "~/app/_components/avatar-uploader";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
-import { PencilIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
@@ -33,77 +31,13 @@ export function MyProfileClient({
   userEmail,
   userFullName,
 }: MyProfileClientProps) {
-  const router = useRouter();
   const [activeSectionId, setActiveSectionId] =
     useState<string>(initialSection);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [currentAvatarSrc, setCurrentAvatarSrc] = useState(avatarSrc);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-
-  const updateAvatar = api.profile.updateAvatar.useMutation({
-    onSuccess: (data) => {
-      setCurrentAvatarSrc(data.imageUrl);
-      router.refresh();
-    },
-  });
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(file.type)) {
-      setFormError("Допустимые форматы: JPEG, PNG, WebP, GIF");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setFormError("Максимальный размер файла — 5 МБ");
-      return;
-    }
-
-    setAvatarUploading(true);
-    setFormError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const payload = (await res.json().catch(() => null)) as {
-        error?: string;
-        fileId?: string;
-      } | null;
-
-      if (!res.ok) {
-        throw new Error(payload?.error ?? "Не удалось загрузить файл");
-      }
-
-      if (!payload?.fileId) {
-        throw new Error("Сервер не вернул идентификатор аватара");
-      }
-
-      await updateAvatar.mutateAsync({ avatarFileId: payload.fileId });
-    } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Не удалось загрузить аватар",
-      );
-    } finally {
-      setAvatarUploading(false);
-      if (avatarInputRef.current) {
-        avatarInputRef.current.value = "";
-      }
-    }
-  };
 
   const changePassword = api.profile.changePassword.useMutation({
     onSuccess: (response) => {
@@ -209,31 +143,7 @@ export function MyProfileClient({
             />
 
             <div className="mt-6 flex items-center gap-6">
-              <button
-                className="group relative h-[72px] w-[72px] overflow-hidden rounded-full bg-bg-active-menu focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={avatarUploading}
-                onClick={() => avatarInputRef.current?.click()}
-                title="Изменить аватар"
-                type="button"
-              >
-                <Image
-                  alt="Аватар"
-                  className="h-full w-full object-cover"
-                  height={72}
-                  src={currentAvatarSrc}
-                  width={72}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-text-heading/0 transition-colors group-hover:bg-text-heading/40">
-                  <PencilIcon className="h-6 w-6 text-bg-light opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
-                <input
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => void handleAvatarChange(e)}
-                  ref={avatarInputRef}
-                  type="file"
-                />
-              </button>
+              <AvatarUploader avatarSrc={avatarSrc} />
               <div className="space-y-[10px]">
                 <h1 className="font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
                   {userFullName}

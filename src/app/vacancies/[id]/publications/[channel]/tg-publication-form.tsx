@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
-import { ImageUploadPlaceholderIcon } from "~/app/_components/icons";
+import { ImageUploader } from "~/app/_components/image-uploader";
 import { Input } from "~/app/_components/input";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { useVacancyPublicationStore } from "~/stores/vacancy-publication-store";
@@ -29,9 +28,8 @@ export function TgPublicationForm({
 }) {
   const router = useRouter();
   const utils = api.useUtils();
-  const imageInputId = useId();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [telegramFileId, setTelegramFileId] = useState<string | null>(null);
   const [errors, setErrors] = useState<TelegramErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
@@ -54,28 +52,8 @@ export function TgPublicationForm({
       title: vacancy.title ?? "",
       description: vacancy.descriptionHtml ?? "",
     });
+    setTelegramFileId(vacancy.telegramFileId ?? null);
   }, [setTelegramFields, vacancyQuery.data]);
-
-  useEffect(() => {
-    return () => {
-      if (imagePreviewUrl) {
-        URL.revokeObjectURL(imagePreviewUrl);
-      }
-    };
-  }, [imagePreviewUrl]);
-
-  const handleImageChange = (file: File | undefined) => {
-    if (!file) {
-      return;
-    }
-
-    setImagePreviewUrl((current) => {
-      if (current) {
-        URL.revokeObjectURL(current);
-      }
-      return URL.createObjectURL(file);
-    });
-  };
 
   const publishTelegram = api.vacancies.publishTelegram.useMutation({
     onSuccess: async (_result, variables) => {
@@ -203,6 +181,7 @@ export function TgPublicationForm({
         id: pubId,
         title,
         descriptionHtml: fields.description,
+        telegramFileId,
         isPublication: true,
       });
       return;
@@ -213,6 +192,7 @@ export function TgPublicationForm({
       title,
       descriptionHtml: fields.description,
       destination: "telegram",
+      telegramFileId: telegramFileId ?? undefined,
       isActive: true,
       isPublication: true,
     });
@@ -259,43 +239,14 @@ export function TgPublicationForm({
         </div>
 
         <div className="w-full max-w-225">
-          <label
-            aria-label="Выбрать изображение для публикации"
-            className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-lg border border-border-input bg-bg-input transition-colors hover:bg-bg-hover"
-            htmlFor={imageInputId}
-            role="img"
-          >
-            {imagePreviewUrl ? (
-              <Image
-                alt="telegram-publication-image-preview"
-                className="aspect-16/7 w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-                height={700}
-                src={imagePreviewUrl}
-                unoptimized
-                width={700}
-              />
-            ) : (
-              <span className="flex aspect-16/7 w-full items-center justify-center text-icon-secondary transition-colors group-hover:text-primary">
-                <ImageUploadPlaceholderIcon />
-              </span>
-            )}
-            <span className="flex flex-col gap-1 border-border-input border-t bg-bg-light p-4 text-text-heading">
-              <span className="font-semibold text-[18px] leading-none">
-                Добавить изображение
-              </span>
-              <span className="text-[13px] text-text-secondary leading-[1.35]">
-                Нажмите на обложку, чтобы выбрать файл
-              </span>
-            </span>
-          </label>
-          <input
-            accept="image/*"
-            className="sr-only"
-            id={imageInputId}
-            onChange={(event) =>
-              handleImageChange(event.currentTarget.files?.[0])
+          <ImageUploader
+            initialImageUrl={
+              vacancyQuery.data.telegramFileId
+                ? `/api/directus/assets/${vacancyQuery.data.telegramFileId}`
+                : null
             }
-            type="file"
+            onUploaded={setTelegramFileId}
+            variant="banner"
           />
         </div>
 

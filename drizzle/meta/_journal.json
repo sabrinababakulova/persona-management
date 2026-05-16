@@ -127,6 +127,13 @@
       "when": 1778580932821,
       "tag": "0017_sloppy_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778667332821,
+      "tag": "0018_vacancy_telegram_file_id",
+      "breakpoints": true
     }
   ]
 }

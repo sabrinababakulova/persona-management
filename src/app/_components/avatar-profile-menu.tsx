@@ -5,13 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
-import { LogoutIcon, ProfileOutlineIcon } from "~/app/_components/icons";
+import {
+  ImageUploadPlaceholderIcon,
+  LogoutIcon,
+  ProfileOutlineIcon,
+} from "~/app/_components/icons";
+import { api } from "~/trpc/react";
 import { usePresence } from "./use-presence";
-
-type AvatarProfileMenuProps = {
-  avatarSrc: string;
-  avatarAlt: string;
-};
 
 const AUTH_COOKIE_NAMES = [
   "authjs.session-token",
@@ -34,14 +34,14 @@ const clearClientStorage = () => {
   sessionStorage.clear();
 };
 
-export function AvatarProfileMenu({
-  avatarSrc,
-  avatarAlt,
-}: AvatarProfileMenuProps) {
+export function AvatarProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { shouldRender, isVisible } = usePresence(isOpen, 180);
+
+  const { data: avatar } = api.profile.getAvatar.useQuery();
+  const avatarSrc = avatar?.avatarUrl ?? "";
 
   useEffect(() => {
     if (!isOpen) {
@@ -97,13 +97,20 @@ export function AvatarProfileMenu({
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
-        <Image
-          alt={avatarAlt}
-          className="h-full w-full object-cover"
-          height={40}
-          src={avatarSrc}
-          width={40}
-        />
+        {avatarSrc ? (
+          <Image
+            alt="Профиль"
+            className="h-full w-full object-cover"
+            height={40}
+            src={avatarSrc}
+            unoptimized
+            width={40}
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-icon-secondary">
+            <ImageUploadPlaceholderIcon className="h-6 w-6" />
+          </span>
+        )}
       </button>
 
       {shouldRender && (

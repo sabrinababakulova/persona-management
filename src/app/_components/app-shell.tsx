@@ -5,14 +5,12 @@ import { Header } from "./header";
 import { Sidebar } from "./sidebar";
 
 type AppShellProps = {
-  avatarAlt: string;
-  avatarSrc: string;
   children: React.ReactNode;
 };
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
 
-export function AppShell({ avatarAlt, avatarSrc, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -46,8 +44,6 @@ export function AppShell({ avatarAlt, avatarSrc, children }: AppShellProps) {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
-          avatarAlt={avatarAlt}
-          avatarSrc={avatarSrc}
           isSidebarOpen={isSidebarOpen}
           onSidebarToggle={() => setIsSidebarOpen((current) => !current)}
         />

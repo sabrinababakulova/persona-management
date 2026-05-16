@@ -100,6 +100,7 @@ export const getVacancyProcedure = protectedProcedure
           companyId: userCompanyId,
           hhVacancyId,
           telegramPostId: null,
+          telegramFileId: null,
           publishedAt: hhVacancy.publishedAt,
           source: "hh.uz" as const,
           externalUrl: hhVacancy.externalUrl,

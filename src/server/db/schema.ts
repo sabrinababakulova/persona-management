@@ -227,6 +227,8 @@ export const vacancies = createTable(
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     hhVacancyId: d.varchar("hh_vacancy_id", { length: 100 }),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
+    /** Directus file id of the Telegram publication image, set via the image uploader. */
+    telegramFileId: d.varchar("telegram_file_id", { length: 255 }),
     /**
      * `true` when this row represents a per-channel publication rather than a base vacancy.
      * Replaces the deprecated `vacancy_publication` table.

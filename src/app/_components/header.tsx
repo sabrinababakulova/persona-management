@@ -11,15 +11,10 @@ import {
 } from "~/app/_components/icons";
 import type { HeaderProps } from "~/types/components/header-props";
 
-const DEFAULT_AVATAR_SRC =
-  "https://api.dicebear.com/7.x/avataaars/svg?seed=Kerim";
-
 export function Header({
   searchQuery,
   onSearchQueryChange,
   searchPlaceholder = "Что вы хотите найти?",
-  avatarSrc = DEFAULT_AVATAR_SRC,
-  avatarAlt = "Profile",
   isSidebarOpen = true,
   onSidebarToggle,
 }: HeaderProps) {
@@ -81,7 +76,7 @@ export function Header({
             <BellIcon className="h-5 w-5" />
           </button>
 
-          <AvatarProfileMenu avatarAlt={avatarAlt} avatarSrc={avatarSrc} />
+          <AvatarProfileMenu />
         </div>
       </div>
     </header>

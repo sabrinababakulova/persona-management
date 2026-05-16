@@ -40,6 +40,7 @@ import { sendPasswordResetCode } from "~/server/mail/send-password-reset-code";
 import {
   buildDirectusAssetUrl,
   deleteDirectusFileById,
+  getDirectusAssetUrl,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
 
@@ -356,6 +357,24 @@ export const profileRouter = createTRPCRouter({
         message: "Пароль успешно обновлен. Теперь вы можете войти.",
       };
     }),
+
+  getAvatar: protectedProcedure.query(async ({ ctx }) => {
+    const [currentUser] = await ctx.db
+      .select({
+        avatarFileId: users.avatarFileId,
+        image: users.image,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.session.user.id))
+      .limit(1);
+
+    return {
+      avatarUrl:
+        getDirectusAssetUrl(currentUser?.avatarFileId) ??
+        currentUser?.image ??
+        null,
+    };
+  }),
 
   updateAvatar: protectedProcedure
     .input(
