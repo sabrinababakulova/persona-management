@@ -6,6 +6,7 @@ import {
 } from "./assignments";
 import {
   getHhVacancyDetailProcedure,
+  getPublicationTelegramPostsProcedure,
   getVacancyFunnelProcedure,
   getVacancyProcedure,
   listVacancyPublicationsProcedure,
@@ -28,6 +29,7 @@ export const vacanciesRouter = createTRPCRouter({
   get: getVacancyProcedure,
   getFunnel: getVacancyFunnelProcedure,
   listPublications: listVacancyPublicationsProcedure,
+  getPublicationTelegramPosts: getPublicationTelegramPostsProcedure,
   getHhDetail: getHhVacancyDetailProcedure,
   searchCandidates: searchVacancyCandidatesProcedure,
   assignCandidate: assignCandidateProcedure,

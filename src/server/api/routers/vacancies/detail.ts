@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 
 import { getOptionalCompanyId } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
@@ -6,6 +7,7 @@ import {
   candidateStatusOptions,
   candidateVacancies,
   vacancies,
+  vacancyTelegramPosts,
 } from "~/server/db/schema";
 import {
   fetchHhVacancyApplicants,
@@ -303,6 +305,45 @@ export const listVacancyPublicationsProcedure = protectedProcedure
       .orderBy(desc(vacancies.createdAt));
 
     return rows;
+  });
+
+export const getPublicationTelegramPostsProcedure = protectedProcedure
+  .input(z.object({ publicationId: z.string().min(1).max(255) }))
+  .query(async ({ ctx, input }) => {
+    const userCompanyId = await getOptionalCompanyId(
+      ctx.db,
+      ctx.session.user.id,
+    );
+
+    if (!userCompanyId) {
+      return [];
+    }
+
+    // Confirm the publication belongs to the caller's company before exposing its posts.
+    const owns = await ctx.db
+      .select({ id: vacancies.id })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.publicationId),
+          eq(vacancies.companyId, userCompanyId),
+        ),
+      )
+      .limit(1);
+
+    if (!owns[0]) {
+      return [];
+    }
+
+    return ctx.db
+      .select({
+        id: vacancyTelegramPosts.id,
+        channelId: vacancyTelegramPosts.channelId,
+        messageUrl: vacancyTelegramPosts.messageUrl,
+        createdAt: vacancyTelegramPosts.createdAt,
+      })
+      .from(vacancyTelegramPosts)
+      .where(eq(vacancyTelegramPosts.publicationId, input.publicationId));
   });
 
 export const getVacancyFunnelProcedure = protectedProcedure

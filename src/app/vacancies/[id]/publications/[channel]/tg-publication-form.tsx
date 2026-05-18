@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
+import { Checkbox } from "~/app/_components/checkbox";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { ImageUploader } from "~/app/_components/image-uploader";
 import { Input } from "~/app/_components/input";
@@ -12,7 +13,7 @@ import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publication-confirmation-modal";
 
 type TelegramErrors = Partial<
-  Record<"title" | "description" | "_form", string>
+  Record<"title" | "description" | "channels" | "_form", string>
 >;
 
 function hasMeaningfulHtml(html: string): boolean {
@@ -29,7 +30,13 @@ export function TgPublicationForm({
   const router = useRouter();
   const utils = api.useUtils();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
+  const channelsQuery = api.integrations.getTelegramChannels.useQuery();
+  const telegramPostsQuery = api.vacancies.getPublicationTelegramPosts.useQuery(
+    { publicationId: pubId ?? "" },
+    { enabled: Boolean(pubId) },
+  );
   const [telegramFileId, setTelegramFileId] = useState<string | null>(null);
+  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<TelegramErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
@@ -54,6 +61,17 @@ export function TgPublicationForm({
     });
     setTelegramFileId(vacancy.telegramFileId ?? null);
   }, [setTelegramFields, vacancyQuery.data]);
+
+  // In edit mode, pre-fill the channel selection from the publication's existing posts.
+  useEffect(() => {
+    if (pubId && telegramPostsQuery.data) {
+      setSelectedChannelIds(
+        telegramPostsQuery.data
+          .map((post) => post.channelId)
+          .filter((id): id is string => id !== null),
+      );
+    }
+  }, [pubId, telegramPostsQuery.data]);
 
   const publishTelegram = api.vacancies.publishTelegram.useMutation({
     onSuccess: async (_result, variables) => {
@@ -89,7 +107,10 @@ export function TgPublicationForm({
           parentVacancyId: vacancyId,
         }),
       ]);
-      publishTelegram.mutate({ vacancyId: publication.id });
+      publishTelegram.mutate({
+        vacancyId: publication.id,
+        channelIds: selectedChannelIds,
+      });
     },
     onError: (error) => {
       setSavedMessage(null);
@@ -138,6 +159,22 @@ export function TgPublicationForm({
     });
   };
 
+  const toggleChannel = (channelId: string) => {
+    setSelectedChannelIds((prev) =>
+      prev.includes(channelId)
+        ? prev.filter((id) => id !== channelId)
+        : [...prev, channelId],
+    );
+    if (savedMessage) {
+      setSavedMessage(null);
+    }
+    setErrors((prev) =>
+      prev.channels || prev._form
+        ? { ...prev, channels: undefined, _form: undefined }
+        : prev,
+    );
+  };
+
   const validate = (): boolean => {
     const next: TelegramErrors = {};
     const title = fields.title.trim();
@@ -150,6 +187,11 @@ export function TgPublicationForm({
 
     if (!hasMeaningfulHtml(fields.description)) {
       next.description = "Заполните описание публикации";
+    }
+
+    // Channels are chosen only on create; edit mode keeps the original channels.
+    if (!pubId && selectedChannelIds.length === 0) {
+      next.channels = "Выберите хотя бы один канал";
     }
 
     if (Object.keys(next).length > 0) {
@@ -202,6 +244,12 @@ export function TgPublicationForm({
     createPublication.isPending ||
     updatePublication.isPending ||
     publishTelegram.isPending;
+
+  // Block publishing when the company has no channels — there's nowhere to post.
+  const hasNoChannels =
+    !pubId &&
+    !channelsQuery.isLoading &&
+    (channelsQuery.data?.length ?? 0) === 0;
 
   if (vacancyQuery.isLoading) {
     return (
@@ -291,6 +339,54 @@ export function TgPublicationForm({
                 </div>
               </ClosableSection>
             </div>
+
+            <div className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6">
+              <ClosableSection title="Каналы публикации">
+                {channelsQuery.isLoading ? (
+                  <p className="text-[14px] text-text-secondary leading-[1.4]">
+                    Загрузка каналов...
+                  </p>
+                ) : (channelsQuery.data?.length ?? 0) === 0 ? (
+                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                    Нет добавленных Telegram-каналов. Добавьте канал в
+                    настройках профиля.
+                  </p>
+                ) : (
+                  <div className="flex min-w-0 flex-col gap-3">
+                    {pubId && (
+                      <p className="text-[13px] text-text-placeholder leading-[1.4]">
+                        Каналы нельзя изменить после публикации.
+                      </p>
+                    )}
+                    {channelsQuery.data?.map((channel) => (
+                      <div
+                        className={`flex items-center gap-2 ${
+                          pubId ? "opacity-70" : ""
+                        }`}
+                        key={channel.id}
+                      >
+                        <Checkbox
+                          checked={selectedChannelIds.includes(channel.id)}
+                          onChange={() => {
+                            if (!pubId) {
+                              toggleChannel(channel.id);
+                            }
+                          }}
+                        />
+                        <span className="text-[14px] text-text-heading leading-[1.4]">
+                          {channel.label || channel.channelId}
+                        </span>
+                      </div>
+                    ))}
+                    {errors.channels && (
+                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                        {errors.channels}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </ClosableSection>
+            </div>
           </div>
 
           <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
@@ -319,7 +415,7 @@ export function TgPublicationForm({
                 </button>
                 <button
                   className="h-10 rounded-md bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasNoChannels}
                   onClick={handleSubmit}
                   type="button"
                 >

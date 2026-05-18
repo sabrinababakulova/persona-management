@@ -11,6 +11,7 @@ import {
   companies,
   companyTelegramChannels,
   vacancies,
+  vacancyTelegramPosts,
 } from "~/server/db/schema";
 import {
   archiveHhVacancy,
@@ -237,27 +238,77 @@ export const updateVacancyProcedure = protectedProcedure
       });
     }
 
-    // Deactivating a Telegram publication must first remove its channel post — only possible
-    // when the bot has the `can_delete_messages` admin right.
-    let clearTelegramPostId = false;
+    // Deactivating a Telegram publication must first remove its post from every channel it
+    // was published to — only possible when the bot has the `can_delete_messages` admin right.
+    let clearTelegramPosts = false;
     if (
       input.isActive === false &&
       existing.isActive &&
-      existing.destination === "telegram" &&
-      existing.telegramPostId
+      existing.destination === "telegram"
     ) {
-      const target = parseTelegramMessageUrl(existing.telegramPostId);
-      if (target) {
-        const canDelete = await canBotDeleteMessages(target.chatId);
-        if (!canDelete) {
+      const posts = await ctx.db
+        .select()
+        .from(vacancyTelegramPosts)
+        .where(eq(vacancyTelegramPosts.publicationId, existing.id));
+
+      // A post whose channel was removed from the company is frozen — the message
+      // there must stay published, so the whole publication can't be deactivated.
+      if (posts.some((post) => post.channelId === null)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Вы не можете деактивировать эту публикацию: один из каналов был удалён, и у вас нет прав на удаление сообщения в нём.",
+        });
+      }
+
+      // Legacy publications (created before per-channel tracking) only have `telegramPostId`.
+      const messageUrls =
+        posts.length > 0
+          ? posts.map((post) => post.messageUrl)
+          : existing.telegramPostId
+            ? [existing.telegramPostId]
+            : [];
+
+      const targets = messageUrls
+        .map((url) => parseTelegramMessageUrl(url))
+        .filter(
+          (target): target is NonNullable<typeof target> => target !== null,
+        );
+
+      if (targets.length > 0) {
+        // Pre-check delete permission for every distinct chat before deleting anything.
+        const distinctChatIds = [...new Set(targets.map((t) => t.chatId))];
+        const permissions = await Promise.all(
+          distinctChatIds.map(
+            async (chatId) =>
+              [chatId, await canBotDeleteMessages(chatId)] as const,
+          ),
+        );
+        if (permissions.some(([, canDelete]) => !canDelete)) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message:
               "Вы не можете деактивировать эту публикацию, так как её нельзя удалить в Telegram.",
           });
         }
-        await deleteTelegramMessage(target.chatId, target.messageId);
-        clearTelegramPostId = true;
+
+        const deleteErrors: string[] = [];
+        for (const target of targets) {
+          try {
+            await deleteTelegramMessage(target.chatId, target.messageId);
+          } catch (error) {
+            deleteErrors.push(
+              `${target.chatId}: ${error instanceof Error ? error.message : "ошибка"}`,
+            );
+          }
+        }
+        if (deleteErrors.length === targets.length) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Не удалось удалить сообщения в Telegram:\n${deleteErrors.join("\n")}`,
+          });
+        }
+        clearTelegramPosts = true;
       }
     }
 
@@ -366,7 +417,7 @@ export const updateVacancyProcedure = protectedProcedure
     ) {
       valuesToUpdate.isPublication = input.isPublication;
     }
-    if (clearTelegramPostId) {
+    if (clearTelegramPosts) {
       valuesToUpdate.telegramPostId = null;
     }
 
@@ -388,6 +439,12 @@ export const updateVacancyProcedure = protectedProcedure
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to update vacancy",
       });
+    }
+
+    if (clearTelegramPosts) {
+      await ctx.db
+        .delete(vacancyTelegramPosts)
+        .where(eq(vacancyTelegramPosts.publicationId, input.id));
     }
 
     const actorName =
@@ -459,7 +516,14 @@ export const getTelegramConfigProcedure = protectedProcedure.query(
 );
 
 export const publishTelegramProcedure = protectedProcedure
-  .input(z.object({ vacancyId: z.string().min(1).max(255) }))
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      channelIds: z
+        .array(z.string().min(1).max(255))
+        .min(1, "Выберите хотя бы один канал"),
+    }),
+  )
   .mutation(async ({ ctx, input }) => {
     if (!isTelegramConfigured()) {
       throw new TRPCError({
@@ -495,15 +559,27 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
-    const channels = await ctx.db
+    const companyChannels = await ctx.db
       .select()
       .from(companyTelegramChannels)
       .where(eq(companyTelegramChannels.companyId, companyId));
 
-    if (channels.length === 0) {
+    if (companyChannels.length === 0) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "У компании не настроены Telegram-каналы",
+      });
+    }
+
+    // Post only to the channels the user picked; reject ids that aren't this company's.
+    const channels = companyChannels.filter((channel) =>
+      input.channelIds.includes(channel.id),
+    );
+
+    if (channels.length !== input.channelIds.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Один или несколько выбранных каналов не принадлежат компании",
       });
     }
 
@@ -595,6 +671,12 @@ export const publishTelegramProcedure = protectedProcedure
 
     const errors: string[] = [];
     let firstMessageUrl: string | null = null;
+    const postRows: {
+      id: string;
+      publicationId: string;
+      channelId: string;
+      messageUrl: string;
+    }[] = [];
     for (const channel of channels) {
       try {
         const sent =
@@ -612,6 +694,12 @@ export const publishTelegramProcedure = protectedProcedure
         if (!firstMessageUrl) {
           firstMessageUrl = sent.messageUrl;
         }
+        postRows.push({
+          id: crypto.randomUUID(),
+          publicationId: vacancy.id,
+          channelId: channel.id,
+          messageUrl: sent.messageUrl,
+        });
       } catch (error) {
         errors.push(
           `Канал ${channel.channelId}: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
@@ -626,7 +714,12 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
+    if (postRows.length > 0) {
+      await ctx.db.insert(vacancyTelegramPosts).values(postRows);
+    }
+
     if (firstMessageUrl) {
+      // Keep `telegramPostId` set to the first URL for backward compatibility.
       await ctx.db
         .update(vacancies)
         .set({ telegramPostId: firstMessageUrl })

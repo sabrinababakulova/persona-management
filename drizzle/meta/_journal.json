@@ -148,6 +148,20 @@
       "when": 1778941363662,
       "tag": "0020_magical_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779101981468,
+      "tag": "0021_nosy_mongu",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779104106923,
+      "tag": "0022_petite_jubilee",
+      "breakpoints": true
     }
   ]
 }

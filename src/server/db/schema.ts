@@ -426,6 +426,37 @@ export const companyTelegramChannels = createTable(
   (t) => [index("company_tg_channel_company_id_idx").on(t.companyId)],
 );
 
+// Per-channel record of a vacancy publication posted to Telegram
+export const vacancyTelegramPosts = createTable(
+  "vacancy_telegram_post",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    publicationId: d
+      .varchar("publication_id", { length: 255 })
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    /**
+     * Channel the message was posted to. Set to `null` when the channel is later
+     * removed from the company — the post record is kept so the message stays
+     * tracked, and the publication can no longer be deactivated/deleted.
+     */
+    channelId: d
+      .varchar("channel_id", { length: 255 })
+      .references(() => companyTelegramChannels.id, { onDelete: "set null" }),
+    /** Public t.me URL of the posted message; self-sufficient for deletion. */
+    messageUrl: d.varchar("message_url", { length: 500 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [index("vacancy_tg_post_publication_id_idx").on(t.publicationId)],
+);
+
 // Company hh.uz (HeadHunter) accounts
 export const companyHhAccounts = createTable("company_hh_account", (d) => ({
   id: d
