@@ -3,7 +3,7 @@
 import Cookies from "js-cookie";
 import Image from "next/image";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import {
   ImageUploadPlaceholderIcon,
@@ -35,12 +35,15 @@ const clearClientStorage = () => {
 };
 
 export function AvatarProfileMenu() {
+  const { status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { shouldRender, isVisible } = usePresence(isOpen, 180);
 
-  const { data: avatar } = api.profile.getAvatar.useQuery();
+  const { data: avatar } = api.profile.getAvatar.useQuery(undefined, {
+    enabled: status === "authenticated",
+  });
   const avatarSrc = avatar?.avatarUrl ?? "";
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
@@ -9,10 +10,15 @@ type AppShellProps = {
 };
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
+const AUTH_SCREEN_ROUTES = ["/login", "/register", "/forgot-password"];
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const isAuthScreenRoute = AUTH_SCREEN_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
@@ -34,6 +40,10 @@ export function AppShell({ children }: AppShellProps) {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
+
+  if (isAuthScreenRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="relative flex min-h-screen bg-bg-light">
