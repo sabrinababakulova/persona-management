@@ -20,6 +20,7 @@ import {
   fetchHhVacancyById,
   prolongHhVacancy,
   publishHhVacancy,
+  saveHhVacancyDraft,
   updateHhVacancyContent,
 } from "~/server/services/hh";
 import {
@@ -67,6 +68,7 @@ export const createVacancyProcedure = protectedProcedure
         scheduleId: input.scheduleId ?? null,
         experienceId: input.experienceId ?? null,
         professionalRoleId: input.professionalRoleId ?? null,
+        vacancyTypeId: input.vacancyTypeId ?? null,
         billingTypeId: input.billingTypeId ?? null,
         salaryFrom: input.salaryFrom ?? null,
         salaryTo: input.salaryTo ?? null,
@@ -204,6 +206,7 @@ export const updateVacancyProcedure = protectedProcedure
         scheduleId: "",
         experienceId: "",
         professionalRoleId: "",
+        vacancyTypeId: "open",
         billingTypeId: "",
         salaryFrom: undefined,
         salaryTo: undefined,
@@ -211,6 +214,7 @@ export const updateVacancyProcedure = protectedProcedure
         descriptionHtml: "",
         contactPhone: "",
         companyId: userCompanyId,
+        hhDraftId: null,
         publishedAt: updated.publishedAt,
         source: "hh.uz" as const,
         externalUrl: updated.externalUrl,
@@ -266,6 +270,7 @@ export const updateVacancyProcedure = protectedProcedure
       scheduleId: string | null;
       experienceId: string | null;
       professionalRoleId: string | null;
+      vacancyTypeId: string | null;
       billingTypeId: string | null;
       salaryFrom: number | null;
       salaryTo: number | null;
@@ -274,6 +279,7 @@ export const updateVacancyProcedure = protectedProcedure
       contactPhone: string | null;
       telegramFileId: string | null;
       telegramPostId: string | null;
+      hhDraftId: string | null;
       isActive: boolean;
       isPublication: boolean;
     }> = {};
@@ -312,6 +318,11 @@ export const updateVacancyProcedure = protectedProcedure
       (input.professionalRoleId ?? "") !== (existing.professionalRoleId ?? "")
     )
       valuesToUpdate.professionalRoleId = input.professionalRoleId || null;
+    if (
+      input.vacancyTypeId !== undefined &&
+      (input.vacancyTypeId ?? "") !== (existing.vacancyTypeId ?? "")
+    )
+      valuesToUpdate.vacancyTypeId = input.vacancyTypeId || null;
     if (
       input.billingTypeId !== undefined &&
       (input.billingTypeId ?? "") !== (existing.billingTypeId ?? "")
@@ -682,6 +693,7 @@ export const getHhPublishLookupsProcedure = protectedProcedure.query(
       schedule: dictionaries.schedule,
       experience: dictionaries.experience,
       billingType: dictionaries.vacancy_billing_type,
+      vacancyType: dictionaries.vacancy_type,
       currency: dictionaries.currency,
       professionalRoles: roleCategories.flatMap((category) =>
         category.roles.map((role) => ({
@@ -716,6 +728,7 @@ export const publishHhProcedure = protectedProcedure
       scheduleId: z.string().min(1).max(50),
       experienceId: z.string().min(1).max(50),
       professionalRoleId: z.string().min(1).max(50),
+      vacancyTypeId: z.string().min(1).max(50),
       billingTypeId: z.string().min(1).max(50),
       salaryFrom: z.number().int().nonnegative().nullable().optional(),
       salaryTo: z.number().int().nonnegative().nullable().optional(),
@@ -791,6 +804,7 @@ export const publishHhProcedure = protectedProcedure
           scheduleId: input.scheduleId,
           experienceId: input.experienceId,
           professionalRoleId: input.professionalRoleId,
+          vacancyTypeId: input.vacancyTypeId,
           billingTypeId: input.billingTypeId,
           salaryFrom: input.salaryFrom ?? null,
           salaryTo: input.salaryTo ?? null,
@@ -821,6 +835,127 @@ export const publishHhProcedure = protectedProcedure
       hhVacancyId: result.id,
       url: result.alternateUrl,
     };
+  });
+
+export const saveHhDraftProcedure = protectedProcedure
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      name: z.string().min(1).max(500),
+      descriptionHtml: z.string().max(20000).optional(),
+      areaId: z.string().max(20).optional(),
+      employmentId: z.string().max(50).optional(),
+      scheduleId: z.string().max(50).optional(),
+      experienceId: z.string().max(50).optional(),
+      professionalRoleId: z.string().max(50).optional(),
+      vacancyTypeId: z.string().max(50).optional(),
+      billingTypeId: z.string().max(50).optional(),
+      salaryFrom: z.number().int().nonnegative().nullable().optional(),
+      salaryTo: z.number().int().nonnegative().nullable().optional(),
+      salaryCurrency: z.string().min(1).max(10).optional(),
+      contactPhone: hhPhoneSchema,
+    }),
+  )
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const vacancyRows = await ctx.db
+      .select({
+        id: vacancies.id,
+        hhDraftId: vacancies.hhDraftId,
+      })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.vacancyId),
+          eq(vacancies.companyId, companyId),
+        ),
+      )
+      .limit(1);
+
+    const vacancy = vacancyRows[0];
+    if (!vacancy) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    const hhAccount = await resolveCompanyHhAuth(ctx.db, companyId);
+    if (!hhAccount?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "hh.uz аккаунт не подключён. Подключите его в настройках интеграций.",
+      });
+    }
+
+    const contactName =
+      ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Контактное лицо";
+    const contactEmail = ctx.session?.user?.email;
+
+    let resolvedPhone = input.contactPhone ?? null;
+    if (!resolvedPhone) {
+      const companyRows = await ctx.db
+        .select({ phone: companies.phone })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1);
+      const rawPhone = companyRows[0]?.phone?.trim();
+      if (rawPhone) {
+        const parsed = parseHhPhone(rawPhone);
+        if (parsed) {
+          resolvedPhone = parsed;
+        }
+      }
+    }
+
+    try {
+      const result = await saveHhVacancyDraft(
+        {
+          name: input.name,
+          description: input.descriptionHtml,
+          areaId: input.areaId || undefined,
+          employmentId: input.employmentId || undefined,
+          scheduleId: input.scheduleId || undefined,
+          experienceId: input.experienceId || undefined,
+          professionalRoleId: input.professionalRoleId || undefined,
+          vacancyTypeId: input.vacancyTypeId || undefined,
+          billingTypeId: input.billingTypeId || undefined,
+          salaryFrom: input.salaryFrom ?? undefined,
+          salaryTo: input.salaryTo ?? undefined,
+          salaryCurrency: input.salaryCurrency,
+          contactName,
+          contactEmail: contactEmail ?? undefined,
+          contactPhone: resolvedPhone,
+        },
+        hhAccount.accessToken,
+        vacancy.hhDraftId,
+      );
+
+      await ctx.db
+        .update(vacancies)
+        .set({ hhDraftId: result.id })
+        .where(eq(vacancies.id, vacancy.id));
+
+      return {
+        success: true,
+        hhDraftId: result.id,
+        name: result.name,
+        publicationReady: result.publicationReady,
+        ignoredFields: result.ignoredFields,
+        validationErrors: result.validationErrors,
+        apiUrl: result.apiUrl,
+      };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          error instanceof Error
+            ? `hh.uz не сохранил черновик: ${error.message}`
+            : "Не удалось сохранить черновик на hh.uz",
+      });
+    }
   });
 
 function parseHhPhone(raw: string): {

@@ -36,6 +36,8 @@ export type HhPublicationFields = {
   experienceId: string;
   /** hh.uz professional role ID. */
   professionalRoleId: string;
+  /** hh.uz vacancy type ID (`open`, `closed`, `anonymous`, `direct`). */
+  vacancyTypeId: string;
   /** hh.uz billing type ID (free, paid premium, etc.). */
   billingTypeId: string;
   /** Vacancy description in hh.uz-compatible HTML. Must be ≥ 200 characters at submit. */
@@ -131,6 +133,7 @@ const EMPTY_HH: HhPublicationFields = {
   scheduleId: "",
   experienceId: "",
   professionalRoleId: "",
+  vacancyTypeId: "open",
   billingTypeId: "",
   descriptionHtml: "",
 };

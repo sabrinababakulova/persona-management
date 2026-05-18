@@ -19,6 +19,7 @@ import {
   getTelegramConfigProcedure,
   publishHhProcedure,
   publishTelegramProcedure,
+  saveHhDraftProcedure,
   updateVacancyProcedure,
 } from "./mutations";
 
@@ -38,4 +39,5 @@ export const vacanciesRouter = createTRPCRouter({
   getHhConfig: getHhConfigProcedure,
   getHhPublishLookups: getHhPublishLookupsProcedure,
   publishHh: publishHhProcedure,
+  saveHhDraft: saveHhDraftProcedure,
 });

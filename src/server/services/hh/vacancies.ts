@@ -367,6 +367,7 @@ export type HhDictionaries = {
   employment: HhDictionaryItem[];
   schedule: HhDictionaryItem[];
   experience: HhDictionaryItem[];
+  vacancy_type: HhDictionaryItem[];
   vacancy_billing_type: HhDictionaryItem[];
   currency: HhDictionaryItem[];
 };
@@ -376,6 +377,7 @@ export async function fetchHhDictionaries(): Promise<HhDictionaries> {
     employment?: HhDictionaryItem[];
     schedule?: HhDictionaryItem[];
     experience?: HhDictionaryItem[];
+    vacancy_type?: HhDictionaryItem[];
     vacancy_billing_type?: HhDictionaryItem[];
     currency?: { code: string; name: string }[];
   }>(`${HH_API_BASE_URL}/dictionaries?host=hh.uz`, {
@@ -387,6 +389,7 @@ export async function fetchHhDictionaries(): Promise<HhDictionaries> {
     employment: response.employment ?? [],
     schedule: response.schedule ?? [],
     experience: response.experience ?? [],
+    vacancy_type: response.vacancy_type ?? [],
     vacancy_billing_type: response.vacancy_billing_type ?? [],
     currency: (response.currency ?? []).map((c) => ({
       id: c.code,
@@ -443,6 +446,7 @@ export type PublishHhVacancyInput = {
   scheduleId: string;
   experienceId: string;
   professionalRoleId: string;
+  vacancyTypeId: string;
   billingTypeId: string;
   salaryFrom?: number | null;
   salaryTo?: number | null;
@@ -461,28 +465,43 @@ export type PublishHhVacancyResult = {
   alternateUrl: string;
 };
 
-export async function publishHhVacancy(
-  input: PublishHhVacancyInput,
-  accessToken: string,
-): Promise<PublishHhVacancyResult> {
-  const sanitizedDescription = sanitizeHhDescriptionHtml(input.description);
+function buildHhVacancyBody(input: Partial<PublishHhVacancyInput>) {
+  const body: Record<string, unknown> = {};
 
-  const body: Record<string, unknown> = {
-    name: input.name,
-    description: sanitizedDescription,
-    area: { id: input.areaId },
-    employment: { id: input.employmentId },
-    schedule: { id: input.scheduleId },
-    experience: { id: input.experienceId },
-    professional_roles: [{ id: input.professionalRoleId }],
-    billing_type: { id: input.billingTypeId },
-    type: { id: "open" },
-    contacts: {
+  if (input.name) {
+    body.name = input.name;
+  }
+  if (input.description) {
+    body.description = sanitizeHhDescriptionHtml(input.description);
+  }
+  if (input.areaId) {
+    body.area = { id: input.areaId };
+  }
+  if (input.employmentId) {
+    body.employment = { id: input.employmentId };
+  }
+  if (input.scheduleId) {
+    body.schedule = { id: input.scheduleId };
+  }
+  if (input.experienceId) {
+    body.experience = { id: input.experienceId };
+  }
+  if (input.professionalRoleId) {
+    body.professional_roles = [{ id: input.professionalRoleId }];
+  }
+  if (input.billingTypeId) {
+    body.billing_type = { id: input.billingTypeId };
+  }
+  if (input.vacancyTypeId) {
+    body.type = { id: input.vacancyTypeId };
+  }
+  if (input.contactName && input.contactEmail) {
+    body.contacts = {
       name: input.contactName,
       email: input.contactEmail,
       ...(input.contactPhone ? { phones: [input.contactPhone] } : {}),
-    },
-  };
+    };
+  }
 
   if (
     input.salaryFrom !== undefined ||
@@ -497,6 +516,14 @@ export async function publishHhVacancy(
     };
   }
 
+  return body;
+}
+
+export async function publishHhVacancy(
+  input: PublishHhVacancyInput,
+  accessToken: string,
+): Promise<PublishHhVacancyResult> {
+  const body = buildHhVacancyBody(input);
   const searchParams = new URLSearchParams({ host: "hh.uz" });
 
   const response = await fetch(`${HH_API_BASE_URL}/vacancies?${searchParams}`, {
@@ -533,6 +560,79 @@ export async function publishHhVacancy(
   };
 }
 
+export type SaveHhVacancyDraftInput = Partial<PublishHhVacancyInput> & {
+  name: string;
+};
+
+export type SaveHhVacancyDraftResult = {
+  id: string;
+  name: string;
+  publicationReady: boolean;
+  ignoredFields: string[];
+  validationErrors: Array<{ value: string; reason?: string }>;
+  apiUrl: string;
+};
+
+export async function saveHhVacancyDraft(
+  input: SaveHhVacancyDraftInput,
+  accessToken: string,
+  draftId?: string | null,
+): Promise<SaveHhVacancyDraftResult> {
+  const body = buildHhVacancyBody(input);
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+  const endpoint = draftId
+    ? `${HH_API_BASE_URL}/vacancies/drafts/${draftId}?${searchParams}`
+    : `${HH_API_BASE_URL}/vacancies/drafts?${searchParams}`;
+
+  const response = await fetch(endpoint, {
+    method: draftId ? "PUT" : "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!response.ok) {
+    if (draftId && response.status === 404) {
+      return saveHhVacancyDraft(input, accessToken);
+    }
+
+    const errorBody = await response.text();
+    throw new Error(
+      `HH vacancy draft save failed ${response.status}: ${errorBody}`,
+    );
+  }
+
+  const saved = (await response.json()) as {
+    id?: string;
+    name?: string;
+    publication_ready?: boolean;
+    ignored_fields?: string[];
+    validation_errors?: Array<{ value?: string; reason?: string }>;
+  };
+
+  if (!saved.id) {
+    throw new Error("HH vacancy draft save: missing id in response");
+  }
+
+  return {
+    id: saved.id,
+    name: saved.name ?? input.name,
+    publicationReady: saved.publication_ready ?? false,
+    ignoredFields: saved.ignored_fields ?? [],
+    validationErrors: (saved.validation_errors ?? [])
+      .map((error) => ({
+        value: error.value ?? "",
+        reason: error.reason,
+      }))
+      .filter((error) => error.value),
+    apiUrl: `${HH_API_BASE_URL}/vacancies/drafts/${saved.id}`,
+  };
+}
+
 export type HhVacancyDetail = {
   id: string;
   name: string;
@@ -548,6 +648,7 @@ export type HhVacancyDetail = {
   scheduleId: string | null;
   experienceId: string | null;
   professionalRoleIds: string[];
+  vacancyTypeId: string | null;
   billingTypeId: string | null;
   workFormats: string[];
   professionalRoles: string[];
@@ -627,7 +728,7 @@ type HhVacancyDetailRaw = {
   }> | null;
   key_skills?: Array<{ name?: string | null }> | null;
   billing_type?: { id?: string | null; name?: string | null } | null;
-  type?: { name?: string | null } | null;
+  type?: { id?: string | null; name?: string | null } | null;
   archived?: boolean | null;
   hidden?: boolean | null;
   published_at?: string | null;
@@ -729,6 +830,7 @@ export async function fetchHhVacancyDetail(
     professionalRoleIds: (raw.professional_roles ?? [])
       .map((item) => item.id?.trim())
       .filter((id): id is string => Boolean(id)),
+    vacancyTypeId: raw.type?.id?.trim() || null,
     billingTypeId: raw.billing_type?.id?.trim() || null,
     workFormats: (raw.work_format ?? [])
       .map((item) => item.name?.trim())

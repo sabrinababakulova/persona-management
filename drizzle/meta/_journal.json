@@ -134,6 +134,20 @@
       "when": 1778667332821,
       "tag": "0018_vacancy_telegram_file_id",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778940723990,
+      "tag": "0019_glossy_sebastian_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1778941363662,
+      "tag": "0020_magical_leader",
+      "breakpoints": true
     }
   ]
 }

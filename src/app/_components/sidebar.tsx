@@ -31,7 +31,6 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
       label: "Вакансии",
       href: "/vacancies",
       icon: <OutlineBriefcaseIcon className="h-6 w-6" />,
-      badge: 4,
     },
     {
       label: "Кандидаты",

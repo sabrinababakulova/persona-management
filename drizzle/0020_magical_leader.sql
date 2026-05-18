@@ -1,0 +1,1 @@
+ALTER TABLE "vacancy" ADD COLUMN "hh_draft_id" varchar(100);

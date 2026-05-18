@@ -189,6 +189,7 @@ export function PublicationsTable() {
       scheduleId: publication.scheduleId ?? undefined,
       experienceId: publication.experienceId ?? undefined,
       professionalRoleId: publication.professionalRoleId ?? undefined,
+      vacancyTypeId: publication.vacancyTypeId ?? undefined,
       billingTypeId: publication.billingTypeId ?? undefined,
       salaryFrom: publication.salaryFrom ?? undefined,
       salaryTo: publication.salaryTo ?? undefined,

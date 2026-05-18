@@ -218,6 +218,7 @@ export const vacancies = createTable(
     scheduleId: d.varchar("schedule_id", { length: 50 }),
     experienceId: d.varchar("experience_id", { length: 50 }),
     professionalRoleId: d.varchar("professional_role_id", { length: 50 }),
+    vacancyTypeId: d.varchar("vacancy_type_id", { length: 50 }),
     billingTypeId: d.varchar("billing_type_id", { length: 50 }),
     salaryFrom: d.integer("salary_from"),
     salaryTo: d.integer("salary_to"),
@@ -226,6 +227,7 @@ export const vacancies = createTable(
     contactPhone: d.varchar("contact_phone", { length: 50 }),
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     hhVacancyId: d.varchar("hh_vacancy_id", { length: 100 }),
+    hhDraftId: d.varchar("hh_draft_id", { length: 100 }),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),

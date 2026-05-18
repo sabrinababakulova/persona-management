@@ -26,6 +26,8 @@ export type {
   HhVacancyDetail,
   PublishHhVacancyInput,
   PublishHhVacancyResult,
+  SaveHhVacancyDraftInput,
+  SaveHhVacancyDraftResult,
 } from "./hh/vacancies";
 export {
   archiveHhVacancy,
@@ -38,5 +40,6 @@ export {
   fetchHhVacancyDetail,
   prolongHhVacancy,
   publishHhVacancy,
+  saveHhVacancyDraft,
   updateHhVacancyContent,
 } from "./hh/vacancies";

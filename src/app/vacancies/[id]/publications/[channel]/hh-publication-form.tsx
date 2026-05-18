@@ -17,6 +17,19 @@ import { PublicationConfirmationModal } from "./publication-confirmation-modal";
 
 /** Per-field error messages plus an optional `_form` entry for form-level errors. */
 type HhErrors = Partial<Record<keyof HhPublicationFields | "_form", string>>;
+type HhSubmitAction = "local" | "hhDraft" | "publish";
+
+const HH_SUBMIT_ACTION_OPTIONS: { value: HhSubmitAction; label: string }[] = [
+  { value: "local", label: "Сохранить в Persona" },
+  { value: "hhDraft", label: "Сохранить черновик на hh.uz" },
+  { value: "publish", label: "Опубликовать на hh.uz" },
+];
+
+const HH_SUBMIT_BUTTON_LABEL: Record<HhSubmitAction, string> = {
+  local: "Сохранить",
+  hhDraft: "Сохранить черновик",
+  publish: "Опубликовать",
+};
 
 /** Returns true when the supplied HTML contains visible text (ignores empty tags like `<p></p>`). */
 function hasMeaningfulHtml(html: string): boolean {
@@ -69,6 +82,7 @@ export function HhPublicationForm({
 
   const [errors, setErrors] = useState<HhErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [submitAction, setSubmitAction] = useState<HhSubmitAction>("hhDraft");
 
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
 
@@ -88,6 +102,7 @@ export function HhPublicationForm({
       scheduleId: v.scheduleId ?? "",
       experienceId: v.experienceId ?? "",
       professionalRoleId: v.professionalRoleId ?? "",
+      vacancyTypeId: v.vacancyTypeId ?? "open",
       billingTypeId: v.billingTypeId ?? "",
       descriptionHtml: v.descriptionHtml ?? "",
     });
@@ -153,6 +168,16 @@ export function HhPublicationForm({
       ),
     [hhLookupsQuery.data?.billingType],
   );
+  const vacancyTypeOptions = useMemo(
+    () =>
+      dedupeOptionsByValue(
+        (hhLookupsQuery.data?.vacancyType ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+      ),
+    [hhLookupsQuery.data?.vacancyType],
+  );
 
   const createPublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
@@ -166,7 +191,6 @@ export function HhPublicationForm({
         }),
       ]);
       setIsPublishConfirmOpen(false);
-      router.push(`/vacancies/${vacancyId}?step=publications`); // Redirect to vacancy page after saving
     },
     onError: (error) => {
       setSavedMessage(null);
@@ -190,7 +214,6 @@ export function HhPublicationForm({
         }),
       ]);
       setIsPublishConfirmOpen(false);
-      router.push(`/vacancies/${vacancyId}?step=publications`);
     },
     onError: (error) => {
       setSavedMessage(null);
@@ -207,11 +230,46 @@ export function HhPublicationForm({
       await utils.vacancies.listPublications.invalidate({
         parentVacancyId: vacancyId,
       });
-      router.push(`/vacancies/${vacancyId}?step=publications`); // Redirect to vacancy page after publishing
     },
     onError: (error) => {
       setErrors({
         _form: error.message || "Не удалось опубликовать на hh.uz",
+      });
+    },
+  });
+  const saveDraftToHH = api.vacancies.saveHhDraft.useMutation({
+    onSuccess: async (result) => {
+      setErrors({});
+      const details = [
+        result.publicationReady ? "готов к публикации" : "нужно дополнить",
+        result.ignoredFields.length > 0
+          ? `hh.uz не сохранил поля: ${result.ignoredFields.join(", ")}`
+          : null,
+        result.validationErrors.length > 0
+          ? `есть замечания: ${result.validationErrors
+              .map((item) => item.value)
+              .join(", ")}`
+          : null,
+      ].filter((item): item is string => Boolean(item));
+      setSavedMessage(
+        `Черновик hh.uz сохранён: ${result.hhDraftId}${
+          details.length > 0 ? ` (${details.join("; ")})` : ""
+        }`,
+      );
+      await Promise.all([
+        pubId
+          ? utils.vacancies.get.invalidate({ id: pubId })
+          : Promise.resolve(),
+        utils.vacancies.get.invalidate({ id: vacancyId }),
+        utils.vacancies.listPublications.invalidate({
+          parentVacancyId: vacancyId,
+        }),
+      ]);
+    },
+    onError: (error) => {
+      setSavedMessage(null);
+      setErrors({
+        _form: error.message || "Не удалось сохранить черновик на hh.uz",
       });
     },
   });
@@ -232,7 +290,7 @@ export function HhPublicationForm({
     });
   };
 
-  const validate = (): boolean => {
+  const validateDraft = (): boolean => {
     const next: HhErrors = {};
     const trimmedTitle = fields.title.trim();
 
@@ -240,6 +298,21 @@ export function HhPublicationForm({
       next.title = "Введите название публикации";
     } else if (trimmedTitle.length > 255) {
       next.title = "Название не должно быть длиннее 255 символов";
+    }
+
+    if (Object.keys(next).length > 0) {
+      setErrors(next);
+      return false;
+    }
+    setErrors({});
+    return true;
+  };
+
+  const validate = (): boolean => {
+    const next: HhErrors = {};
+
+    if (!validateDraft()) {
+      return false;
     }
 
     if (!fields.areaId) {
@@ -260,6 +333,9 @@ export function HhPublicationForm({
     if (!fields.billingTypeId) {
       next.billingTypeId = "Выберите тип публикации";
     }
+    if (!fields.vacancyTypeId) {
+      next.vacancyTypeId = "Выберите тип вакансии";
+    }
     if (!hasMeaningfulHtml(fields.descriptionHtml)) {
       next.descriptionHtml = "Заполните описание вакансии";
     } else if (fields.descriptionHtml.length < 200) {
@@ -274,39 +350,124 @@ export function HhPublicationForm({
     return true;
   };
 
-  const handleSave = ({ isActivePub }: { isActivePub: boolean }) => {
-    if (!validate() || !vacancyQuery.data) {
-      return;
-    }
-    if (pubId) {
-      updatePublication.mutate({
-        id: pubId,
-        ...fields,
-        title: fields.title.trim(),
-        isActive: isActivePub,
-        isPublication: true,
-      });
-      return;
-    }
-
-    createPublication.mutate({
-      parentId: vacancyId,
+  const ensureLocalPublication = async (isActivePub: boolean) => {
+    const payload = {
       ...fields,
       title: fields.title.trim(),
       isActive: isActivePub,
-      destination: "hh.uz",
       isPublication: true,
+    };
+
+    if (pubId) {
+      await updatePublication.mutateAsync({
+        id: pubId,
+        ...payload,
+      });
+      return pubId;
+    }
+
+    const created = await createPublication.mutateAsync({
+      parentId: vacancyId,
+      ...payload,
+      destination: "hh.uz",
     });
-    if (isActivePub) {
-      publishToHH.mutate({
+
+    return created.id;
+  };
+
+  const getSalaryPayload = () => {
+    const salaryFrom = vacancyQuery.data?.salaryFrom;
+    const salaryTo = vacancyQuery.data?.salaryTo;
+    const hasSalary = salaryFrom !== undefined || salaryTo !== undefined;
+
+    return {
+      salaryCurrency: hasSalary
+        ? (vacancyQuery.data?.salaryCurrency ?? "UZS")
+        : undefined,
+      salaryFrom,
+      salaryTo,
+    };
+  };
+  const getCurrentIsActive = () =>
+    vacancyQuery.data && "isActive" in vacancyQuery.data
+      ? vacancyQuery.data.isActive
+      : false;
+
+  const handleSave = async ({ isActivePub }: { isActivePub: boolean }) => {
+    if (!validate() || !vacancyQuery.data) {
+      return;
+    }
+
+    try {
+      await ensureLocalPublication(isActivePub);
+      router.push(`/vacancies/${vacancyId}?step=publications`);
+    } catch {
+      // Mutation handlers surface the error in the form.
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!validate() || !vacancyQuery.data) {
+      return;
+    }
+
+    try {
+      const localVacancyId = await ensureLocalPublication(true);
+      await publishToHH.mutateAsync({
         ...fields,
         name: fields.title.trim(),
-        vacancyId,
-        salaryCurrency: vacancyQuery.data.salaryCurrency ?? "UZS",
-        salaryFrom: vacancyQuery.data.salaryFrom ?? 0,
-        salaryTo: vacancyQuery.data.salaryTo ?? 0,
+        vacancyId: localVacancyId,
+        ...getSalaryPayload(),
       });
+      router.push(`/vacancies/${vacancyId}?step=publications`);
+    } catch {
+      // Mutation handlers surface the error in the form.
     }
+  };
+
+  const handleSaveHhDraft = async () => {
+    if (!validateDraft() || !vacancyQuery.data) {
+      return;
+    }
+
+    try {
+      const localVacancyId = await ensureLocalPublication(getCurrentIsActive());
+      await saveDraftToHH.mutateAsync({
+        ...fields,
+        name: fields.title.trim(),
+        vacancyId: localVacancyId,
+        descriptionHtml: fields.descriptionHtml || undefined,
+        areaId: fields.areaId || undefined,
+        employmentId: fields.employmentId || undefined,
+        scheduleId: fields.scheduleId || undefined,
+        experienceId: fields.experienceId || undefined,
+        professionalRoleId: fields.professionalRoleId || undefined,
+        vacancyTypeId: fields.vacancyTypeId || undefined,
+        billingTypeId: fields.billingTypeId || undefined,
+        ...getSalaryPayload(),
+      });
+      if (!pubId) {
+        router.replace(
+          `/vacancies/${vacancyId}/publications/hh.uz/${localVacancyId}`,
+        );
+      }
+    } catch {
+      // Mutation handlers surface the error in the form.
+    }
+  };
+
+  const handleSubmitAction = () => {
+    if (submitAction === "publish") {
+      setIsPublishConfirmOpen(true);
+      return;
+    }
+
+    if (submitAction === "hhDraft") {
+      void handleSaveHhDraft();
+      return;
+    }
+
+    void handleSave({ isActivePub: getCurrentIsActive() });
   };
 
   if (vacancyQuery.isLoading) {
@@ -471,6 +632,25 @@ export function HhPublicationForm({
 
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
+                      label="Тип вакансии"
+                      onChange={(value) =>
+                        handleFieldChange("vacancyTypeId", value)
+                      }
+                      options={vacancyTypeOptions}
+                      placeholder="Выберите тип вакансии"
+                      value={fields.vacancyTypeId}
+                    />
+                    {errors.vacancyTypeId && (
+                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                        {errors.vacancyTypeId}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <Dropdown
                       label="Тип публикации"
                       onChange={(value) =>
                         handleFieldChange("billingTypeId", value)
@@ -532,7 +712,14 @@ export function HhPublicationForm({
                   </p>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <Dropdown
+                  className="w-full min-w-[240px] sm:w-[260px]"
+                  label="Действие"
+                  onChange={(value) => setSubmitAction(value as HhSubmitAction)}
+                  options={HH_SUBMIT_ACTION_OPTIONS}
+                  value={submitAction}
+                />
                 <button
                   className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
                   onClick={() =>
@@ -545,14 +732,20 @@ export function HhPublicationForm({
                 <button
                   className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={
-                    createPublication.isPending || updatePublication.isPending
+                    createPublication.isPending ||
+                    updatePublication.isPending ||
+                    saveDraftToHH.isPending ||
+                    publishToHH.isPending
                   }
-                  onClick={() => setIsPublishConfirmOpen(true)}
+                  onClick={handleSubmitAction}
                   type="button"
                 >
-                  {createPublication.isPending || updatePublication.isPending
+                  {createPublication.isPending ||
+                  updatePublication.isPending ||
+                  saveDraftToHH.isPending ||
+                  publishToHH.isPending
                     ? "Сохранение..."
-                    : "Сохранить изменения"}
+                    : HH_SUBMIT_BUTTON_LABEL[submitAction]}
                 </button>
               </div>
             </div>
@@ -561,14 +754,20 @@ export function HhPublicationForm({
       </div>
 
       <PublicationConfirmationModal
+        confirmLabel="Опубликовать"
         description={
           "Публикация будет опубликована на hh.uz. Иначе текущая активная публикация будет в неактивном состоянии."
         }
         isOpen={isPublishConfirmOpen}
-        isPending={updatePublication.isPending}
+        isPending={
+          createPublication.isPending ||
+          updatePublication.isPending ||
+          publishToHH.isPending
+        }
         onClose={() => setIsPublishConfirmOpen(false)}
-        onConfirm={() => handleSave({ isActivePub: true })}
-        onReject={() => handleSave({ isActivePub: false })}
+        onConfirm={() => void handlePublish()}
+        onReject={() => setIsPublishConfirmOpen(false)}
+        rejectLabel="Отмена"
         title={"Опубликовать публикацию?"}
       />
     </main>

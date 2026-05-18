@@ -47,7 +47,8 @@ export const getVacancyProcedure = protectedProcedure
         // Fetch the full hh.uz detail in parallel with the slimmer "by id" payload (status,
         // responses, externalUrl) and the applicants list. The detail call gives us every
         // field the form needs (areaId, employmentId, scheduleId, experienceId,
-        // professionalRoleId, billingTypeId, salary range, descriptionHtml, contact phone)
+        // professionalRoleId, vacancyTypeId, billingTypeId, salary range, descriptionHtml,
+        // contact phone)
         // while `fetchHhVacancyById` still owns the canonical status/responses/externalUrl
         // mapping used elsewhere.
         const [hhVacancy, hhDetail, relatedCandidatesResult] =
@@ -91,6 +92,7 @@ export const getVacancyProcedure = protectedProcedure
           scheduleId: merged.scheduleId,
           experienceId: merged.experienceId,
           professionalRoleId: merged.professionalRoleId,
+          vacancyTypeId: merged.vacancyTypeId,
           billingTypeId: merged.billingTypeId,
           salaryFrom: merged.salaryFrom,
           salaryTo: merged.salaryTo,
@@ -99,6 +101,7 @@ export const getVacancyProcedure = protectedProcedure
           contactPhone: merged.contactPhone,
           companyId: userCompanyId,
           hhVacancyId,
+          hhDraftId: null,
           telegramPostId: null,
           telegramFileId: null,
           publishedAt: hhVacancy.publishedAt,
@@ -146,6 +149,7 @@ function mapHhDetailToVacancyShape(detail: HhVacancyDetail | null): {
   scheduleId: string;
   experienceId: string;
   professionalRoleId: string;
+  vacancyTypeId: string;
   billingTypeId: string;
   salaryFrom: number | undefined;
   salaryTo: number | undefined;
@@ -160,6 +164,7 @@ function mapHhDetailToVacancyShape(detail: HhVacancyDetail | null): {
       scheduleId: "",
       experienceId: "",
       professionalRoleId: "",
+      vacancyTypeId: "open",
       billingTypeId: "",
       salaryFrom: undefined,
       salaryTo: undefined,
@@ -183,6 +188,7 @@ function mapHhDetailToVacancyShape(detail: HhVacancyDetail | null): {
     scheduleId: detail.scheduleId ?? "",
     experienceId: detail.experienceId ?? "",
     professionalRoleId: detail.professionalRoleIds[0] ?? "",
+    vacancyTypeId: detail.vacancyTypeId ?? "open",
     billingTypeId: detail.billingTypeId ?? "",
     salaryFrom: detail.salary?.from ?? undefined,
     salaryTo: detail.salary?.to ?? undefined,
@@ -281,6 +287,7 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         scheduleId: vacancies.scheduleId,
         experienceId: vacancies.experienceId,
         professionalRoleId: vacancies.professionalRoleId,
+        vacancyTypeId: vacancies.vacancyTypeId,
         billingTypeId: vacancies.billingTypeId,
         salaryFrom: vacancies.salaryFrom,
         salaryTo: vacancies.salaryTo,
