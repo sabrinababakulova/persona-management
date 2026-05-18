@@ -15,28 +15,28 @@ export function NoCandidates({ className, ...props }: IconProps) {
       <g opacity="0.7">
         <path
           d="M116.807 190C167.138 190 207.942 149.196 207.942 98.6845C207.942 48.1735 166.958 7.36914 116.807 7.36914C66.4759 7.36914 25.6719 48.1735 25.6719 98.6845C25.6719 149.196 66.4759 190 116.807 190Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M202.009 38.8278C206.079 38.8278 209.378 35.5281 209.378 31.4578C209.378 27.3875 206.079 24.0879 202.009 24.0879C197.938 24.0879 194.639 27.3875 194.639 31.4578C194.639 35.5281 197.938 38.8278 202.009 38.8278Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M212.795 10.0663C215.574 10.0663 217.828 7.81285 217.828 5.03313C217.828 2.25341 215.574 0 212.795 0C210.015 0 207.762 2.25341 207.762 5.03313C207.762 7.81285 210.015 10.0663 212.795 10.0663Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M30.5253 38.6483C33.305 38.6483 35.5584 36.3949 35.5584 33.6152C35.5584 30.8354 33.305 28.582 30.5253 28.582C27.7456 28.582 25.4922 30.8354 25.4922 33.6152C25.4922 36.3949 27.7456 38.6483 30.5253 38.6483Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M9.34717 147.449C14.5095 147.449 18.6943 143.264 18.6943 138.102C18.6943 132.94 14.5095 128.755 9.34717 128.755C4.18487 128.755 0 132.94 0 138.102C0 143.264 4.18487 147.449 9.34717 147.449Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <g filter="url(#filter0_d_429_3508)">
           <path
             d="M213.798 139.361H186.15C184.842 139.361 183.721 138.52 183.348 137.399C180.639 129.366 174.661 127.405 160.183 121.707C159.342 121.333 159.249 120.212 160.09 119.745C164.293 117.69 163.546 115.916 163.546 103.586C163.359 103.399 163.172 103.119 163.079 102.932C162.145 101.531 161.491 99.8498 161.304 98.1685L160.37 97.7014C157.568 98.3553 157.755 95.3663 157.007 89.5751C156.727 87.1465 157.101 86.6795 158.128 86.3058L159.062 85.0916C153.551 72.7619 156.353 65.0092 161.771 62.207C159.996 58.2839 159.903 56.8828 159.903 56.8828C159.903 56.8828 171.392 58.8443 175.315 58.0037C180.359 56.9762 188.018 58.1905 190.914 64.8224C195.677 66.6905 197.545 69.7729 198.012 72.9487C198.666 78.1795 195.771 83.8773 195.21 86.119C195.304 86.2124 195.304 86.3058 195.397 86.3992C196.144 86.7729 196.425 87.4267 196.144 89.4817C195.49 94.9926 195.584 98.4487 192.782 97.608L190.26 101.998C190.166 102.559 190.073 102.745 190.073 103.026C189.98 103.866 189.98 105.454 189.98 114.608C189.98 115.729 190.26 116.756 190.82 117.597C191.381 118.624 192.315 119.372 193.436 119.839H193.529C200.067 122.548 204.738 124.322 208.194 125.723C215.853 128.806 217.161 129.646 217.814 134.784C218.001 137.306 216.227 139.361 213.798 139.361Z"
-            fill="var(--color-white)"
+            fill="white"
           />
         </g>
         <path
@@ -45,7 +45,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
         />
         <path
           d="M210.899 139.359C213.795 134.876 212.674 130.672 208.004 125.722C215.663 128.804 216.971 129.645 217.625 134.782C217.998 137.117 216.13 139.266 213.702 139.266H210.899V139.359Z"
-          fill="var(--color-illustration-muted)"
+          fill="#9AA2B2"
           opacity="0.1"
         />
         <path
@@ -55,7 +55,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
         <g filter="url(#filter1_d_429_3508)">
           <path
             d="M70.8862 118.531C66.4028 118.438 65.9357 117.597 65.9357 117.597V110.125C70.6994 106.202 74.7159 101.625 75.8367 95.6468C78.8257 94.9929 80.6938 92.2841 80.4136 89.2951C80.3202 87.9874 79.4796 86.7732 79.3862 85.3721C79.3862 84.7182 79.3862 84.0644 79.3862 83.4105C79.3862 82.9435 79.3862 82.5699 79.2927 82.1028C79.2927 81.6358 79.1993 81.1688 79.1993 80.7017C78.9191 78.46 78.3587 76.1248 76.8642 73.416C73.128 66.4106 65.7489 61.7402 57.4358 61.7402C55.7545 61.7402 54.0732 61.927 52.4853 62.3007C49.4963 62.9545 46.7876 64.2622 44.359 66.1303C43.892 66.504 43.425 66.8776 42.9579 67.2512C42.8645 67.3446 42.7711 67.438 42.5843 67.5314C39.969 69.96 37.914 73.0424 36.7932 76.4985C35.6723 79.9545 35.3921 83.5039 35.8591 87.0534C35.8591 87.1468 35.8591 87.2402 35.8591 87.3336C35.8591 87.427 35.8591 87.5204 35.8591 87.6138C35.9525 88.2677 36.1393 88.1743 35.6723 88.7347C35.5789 88.9215 35.3921 89.1083 35.2987 89.3885C34.7383 90.416 34.2712 91.8171 34.9251 93.4984C36.0459 96.6742 38.2877 96.2072 40.3426 97.9819C40.2492 98.0753 40.0624 98.1687 39.969 98.1687H39.8756L37.5404 98.916C23.5296 103.306 21.9417 118.158 36.3261 120.867C35.2987 120.96 34.3646 121.52 33.7108 121.987C29.1339 125.537 26.2383 130.954 25.4911 136.279C25.2109 137.866 26.5186 139.361 28.1999 139.361H50.4304C50.8974 139.361 51.3645 138.987 51.5513 138.52C53.6062 131.048 58.2765 128.432 67.9907 124.509L73.595 122.268C74.5291 121.894 75.5565 121.52 76.6774 121.053C77.7049 120.68 77.6114 119.185 76.4906 118.905C75.3697 118.625 74.2488 118.531 73.128 118.438C72.1939 118.531 71.4467 118.531 70.8862 118.531ZM42.3975 109.004C42.3975 108.07 43.0514 107.042 44.4524 105.921C45.0129 106.669 45.7601 107.509 46.6008 108.257C47.2546 108.817 47.9084 109.378 48.6557 109.938C49.1227 110.218 49.5898 110.592 50.0568 110.965C50.1502 111.059 50.2436 111.152 50.337 111.152C50.4304 111.246 50.6172 111.339 50.7106 111.432V116.009C50.6172 115.916 50.5238 115.823 50.4304 115.823C49.9634 115.449 49.5898 115.075 49.2161 114.795C48.5623 114.328 47.9084 113.954 47.2546 113.581C46.9744 113.394 46.7876 113.301 46.6008 113.114C44.4524 111.713 42.4909 110.405 42.3975 109.004Z"
-            fill="var(--color-white)"
+            fill="white"
           />
         </g>
         <path
@@ -68,7 +68,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
         />
         <path
           d="M44.7305 106.201C45.2909 106.948 45.9447 107.602 46.5052 108.163C45.8513 107.602 45.1975 106.948 44.7305 106.201Z"
-          fill="var(--color-illustration-accent-blue)"
+          fill="#3973F4"
         />
         <path
           d="M53.5137 129.833C51.739 132.075 48.3764 132.168 45.5742 132.075C48.5632 129.179 46.8819 119.745 36.4204 120.866H36.327C21.9426 118.157 23.5305 103.305 37.4479 98.9152L39.783 98.168C39.9699 98.2614 40.0633 98.3548 40.1567 98.5416C41.2775 101.437 42.772 103.866 44.3599 105.827C38.6622 110.591 46.6017 112.086 50.4313 115.728C53.7939 117.69 56.5961 125.91 53.5137 129.833Z"
@@ -76,12 +76,12 @@ export function NoCandidates({ className, ...props }: IconProps) {
         />
         <path
           d="M44.6399 106.202C44.5465 106.109 44.4531 106.015 44.4531 105.922C44.4531 105.922 44.5465 106.109 44.6399 106.202Z"
-          fill="var(--color-illustration-accent-blue)"
+          fill="#3973F4"
         />
         <g filter="url(#filter2_d_429_3508)">
           <path
             d="M178.024 143.657C178.491 147.113 175.782 150.289 172.233 150.289H62.7616C59.2122 150.289 56.5034 147.113 56.9704 143.657C57.9979 136.465 59.5858 134.97 70.234 130.673L72.8494 129.646C77.7999 127.684 84.2449 125.256 92.9316 121.613C94.8931 120.772 96.481 119.278 97.3217 117.316C97.7887 116.289 98.0689 115.074 98.0689 113.86V97.514C97.7887 97.1404 97.5085 96.8602 97.3217 96.4865C95.9206 94.4316 94.9865 92.003 94.7063 89.3877L93.3052 88.7338C89.102 89.7613 89.4756 85.2778 88.3547 76.6844C87.8877 73.1349 88.4481 72.3877 90.036 71.8273L91.3437 70.0525C83.3108 51.8383 87.3273 40.4427 95.2668 36.4262C92.8382 30.635 92.6514 28.5801 92.6514 28.5801C92.6514 28.5801 109.558 31.3823 115.349 30.2614C122.728 28.7669 134.124 30.5416 138.327 40.3493C145.332 43.1515 148.041 47.5416 148.695 52.3987C149.722 60.058 145.332 68.4646 144.492 71.7338C144.585 71.9207 144.585 72.0141 144.678 72.1075C145.799 72.6679 146.173 73.602 145.799 76.6844C144.772 84.8107 145.052 89.8547 140.849 88.7338L137.112 95.2723C136.926 96.0195 136.926 96.2997 136.832 96.8602C136.645 98.0745 136.739 100.503 136.739 113.86C136.739 115.448 137.206 117.036 138.047 118.25C138.981 119.651 140.288 120.866 141.876 121.519C141.97 121.519 141.97 121.519 142.063 121.613C151.684 125.629 158.596 128.245 163.64 130.206C175.129 134.69 176.903 136.091 178.024 143.657Z"
-            fill="var(--color-white)"
+            fill="white"
           />
         </g>
         <path
@@ -90,7 +90,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
         />
         <path
           d="M168.121 150.195C172.418 143.657 170.736 137.492 163.824 130.206C175.126 134.69 176.994 136.091 178.022 143.563C178.489 147.019 175.78 150.195 172.231 150.195H168.121Z"
-          fill="var(--color-illustration-muted)"
+          fill="#9AA2B2"
           opacity="0.1"
         />
         <path
@@ -103,12 +103,12 @@ export function NoCandidates({ className, ...props }: IconProps) {
         />
         <path
           d="M130.461 159.083H123.939V152.561C123.939 151.256 122.924 150.097 121.475 150.097C120.171 150.097 119.011 151.111 119.011 152.561V159.083H112.489C111.185 159.083 110.025 160.097 110.025 161.546C110.025 162.996 111.04 164.01 112.489 164.01H119.011V170.532C119.011 171.837 120.026 172.996 121.475 172.996C122.779 172.996 123.939 171.982 123.939 170.532V164.01H130.461C131.765 164.01 132.925 162.996 132.925 161.546C132.925 160.097 131.765 159.083 130.461 159.083Z"
-          fill="var(--color-white)"
+          fill="white"
         />
       </g>
       <defs>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="126.478"
           id="filter0_d_429_3508"
@@ -116,7 +116,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="134.068"
           y="45.8828"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -125,16 +125,24 @@ export function NoCandidates({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feDropShadow
-            dx="0"
-            dy="11"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.27"
-            stdDeviation="11"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3508"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3508"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="121.621"
           id="filter1_d_429_3508"
@@ -142,7 +150,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="3.45312"
           y="50.7402"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -151,16 +159,24 @@ export function NoCandidates({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feDropShadow
-            dx="0"
-            dy="11"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.27"
-            stdDeviation="11"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3508"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3508"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="165.709"
           id="filter2_d_429_3508"
@@ -168,7 +184,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="34.918"
           y="17.5801"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -177,12 +193,20 @@ export function NoCandidates({ className, ...props }: IconProps) {
           />
           <feOffset dy="11" />
           <feGaussianBlur stdDeviation="11" />
-          <feDropShadow
-            dx="0"
-            dy="11"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.27"
-            stdDeviation="11"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.27 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3508"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3508"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <linearGradient
@@ -193,8 +217,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="71.4094"
           y2="71.4094"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -204,8 +228,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="119.943"
           y2="110.269"
         >
-          <stop stopColor="var(--color-white)" />
-          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
+          <stop stop-color="white" />
+          <stop offset="1" stop-color="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -215,8 +239,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="123"
           y2="115.899"
         >
-          <stop stopColor="var(--color-white)" />
-          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
+          <stop stop-color="white" />
+          <stop offset="1" stop-color="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -226,8 +250,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="74.5858"
           y2="74.5858"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -237,8 +261,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="115.136"
           y2="115.136"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -248,8 +272,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="50.1617"
           y2="50.1617"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -259,8 +283,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="121.584"
           y2="107.33"
         >
-          <stop stopColor="var(--color-white)" />
-          <stop offset="1" stopColor="var(--color-illustration-highlight)" />
+          <stop stop-color="white" />
+          <stop offset="1" stop-color="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -270,8 +294,8 @@ export function NoCandidates({ className, ...props }: IconProps) {
           y1="161.544"
           y2="161.544"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
       </defs>
     </svg>

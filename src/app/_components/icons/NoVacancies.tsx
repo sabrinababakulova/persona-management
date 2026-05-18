@@ -15,23 +15,23 @@ export function NoVacancies({ className, ...props }: IconProps) {
       <g opacity="0.6">
         <path
           d="M219.208 98.685C219.208 124.21 208.795 147.219 192.098 163.756C175.761 180.113 153.14 190 128.185 190C103.409 190 80.7884 179.934 64.2714 163.756C47.575 147.219 37.1621 124.21 37.1621 98.685C37.1621 48.1742 77.9159 7.37012 128.185 7.37012C178.454 7.37012 219.208 48.354 219.208 98.685Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M228.64 64.0474C232.705 64.0474 236.001 60.7478 236.001 56.6775C236.001 52.6072 232.705 49.3076 228.64 49.3076C224.575 49.3076 221.279 52.6072 221.279 56.6775C221.279 60.7478 224.575 64.0474 228.64 64.0474Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M222.082 10.0662C224.858 10.0662 227.108 7.81281 227.108 5.0331C227.108 2.2534 224.858 0 222.082 0C219.305 0 217.055 2.2534 217.055 5.0331C217.055 7.81281 219.305 10.0662 222.082 10.0662Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M40.0367 38.6468C42.8129 38.6468 45.0636 36.3934 45.0636 33.6137C45.0636 30.834 42.8129 28.5806 40.0367 28.5806C37.2604 28.5806 35.0098 30.834 35.0098 33.6137C35.0098 36.3934 37.2604 38.6468 40.0367 38.6468Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M9.33566 135.715C14.4916 135.715 18.6713 131.53 18.6713 126.368C18.6713 121.205 14.4916 117.021 9.33566 117.021C4.17972 117.021 0 121.205 0 126.368C0 131.53 4.17972 135.715 9.33566 135.715Z"
-          fill="var(--color-illustration-surface)"
+          fill="#EAEEF9"
         />
         <path
           d="M197.205 44.9261L189.718 99.3788L180.359 166.662C178.176 167.914 175.68 168.853 173.184 168.853H65.2448C60.5653 168.853 56.5098 167.288 53.0782 164.785C52.1423 164.159 51.2064 163.22 50.2705 162.281C46.527 158.526 44.0312 152.893 44.0312 146.947V30.5305C44.0312 25.2104 48.3987 21.1421 53.3902 21.1421H86.1463C88.3301 21.1421 90.5138 22.0809 92.3856 23.9586L102.992 35.5377C104.552 37.1024 106.736 38.0412 108.92 38.0412H190.966C194.71 38.0412 197.517 41.1707 197.205 44.9261Z"
@@ -57,7 +57,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
         </g>
         <path
           d="M157.619 158.617C157.003 161.235 156.081 164.007 155.004 166.316C152.082 172.013 147.469 176.479 141.778 179.404C135.934 182.33 129.014 183.562 122.094 182.022C105.792 178.635 95.3344 162.621 98.7177 146.299C102.101 129.977 117.941 119.353 134.243 122.894C140.087 124.126 145.162 127.052 149.468 131.055C156.696 138.292 159.772 148.763 157.619 158.617Z"
-          fill="var(--color-white)"
+          fill="white"
         />
         <g filter="url(#filter3_d_429_3063)">
           <path
@@ -68,7 +68,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
       </g>
       <defs>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="127.654"
           id="filter0_d_429_3063"
@@ -76,7 +76,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="45.9395"
           y="39.3076"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -85,16 +85,24 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
           <feOffset dx="-4" />
           <feGaussianBlur stdDeviation="5" />
-          <feDropShadow
-            dx="-4"
-            dy="0"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.15"
-            stdDeviation="5"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.15 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3063"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3063"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="102.931"
           id="filter1_d_429_3063"
@@ -102,7 +110,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="49.9961"
           y="63.7173"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -111,16 +119,24 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
           <feOffset dx="-4" />
           <feGaussianBlur stdDeviation="5" />
-          <feDropShadow
-            dx="-4"
-            dy="0"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.15"
-            stdDeviation="5"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.15 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3063"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3063"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="90.4263"
           id="filter2_d_429_3063"
@@ -128,7 +144,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="38.0801"
           y="88.4263"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -137,16 +153,24 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
           <feOffset dx="-5" />
           <feGaussianBlur stdDeviation="5" />
-          <feDropShadow
-            dx="-5"
-            dy="0"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.2"
-            stdDeviation="5"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.2 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3063"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3063"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <filter
-          colorInterpolationFilters="sRGB"
+          color-interpolation-filters="sRGB"
           filterUnits="userSpaceOnUse"
           height="44.3286"
           id="filter3_d_429_3063"
@@ -154,7 +178,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="101.096"
           y="130.293"
         >
-          <feFlood floodOpacity="0" result="BackgroundImageFix" />
+          <feFlood flood-opacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -163,12 +187,20 @@ export function NoVacancies({ className, ...props }: IconProps) {
           />
           <feOffset dx="-5" />
           <feGaussianBlur stdDeviation="5" />
-          <feDropShadow
-            dx="-5"
-            dy="0"
-            floodColor="var(--color-shadow-illustration)"
-            floodOpacity="0.2"
-            stdDeviation="5"
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.397708 0 0 0 0 0.47749 0 0 0 0 0.575 0 0 0 0.2 0"
+          />
+          <feBlend
+            in2="BackgroundImageFix"
+            mode="normal"
+            result="effect1_dropShadow_429_3063"
+          />
+          <feBlend
+            in="SourceGraphic"
+            in2="effect1_dropShadow_429_3063"
+            mode="normal"
+            result="shape"
           />
         </filter>
         <linearGradient
@@ -179,8 +211,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="26.2734"
           y2="109.182"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -190,11 +222,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="46.8175"
           y2="158.122"
         >
-          <stop stopColor="var(--color-illustration-paper-start)" />
-          <stop
-            offset="0.9964"
-            stopColor="var(--color-illustration-paper-end)"
-          />
+          <stop stop-color="#FDFEFF" />
+          <stop offset="0.9964" stop-color="#ECF0F5" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -204,11 +233,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="71.799"
           y2="157.542"
         >
-          <stop stopColor="var(--color-illustration-paper-start)" />
-          <stop
-            offset="0.9964"
-            stopColor="var(--color-illustration-paper-end)"
-          />
+          <stop stop-color="#FDFEFF" />
+          <stop offset="0.9964" stop-color="#ECF0F5" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -218,8 +244,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="100.873"
           y2="140.402"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -229,8 +255,8 @@ export function NoVacancies({ className, ...props }: IconProps) {
           y1="141.139"
           y2="154.794"
         >
-          <stop stopColor="var(--color-illustration-metal)" />
-          <stop offset="1" stopColor="var(--color-illustration-metal-strong)" />
+          <stop stop-color="#B0BACC" />
+          <stop offset="1" stop-color="#969EAE" />
         </linearGradient>
       </defs>
     </svg>
