@@ -206,11 +206,15 @@ function VacancyStageCandidateCard({
   isDragOverlay = false,
   isDragging = false,
   isHhSource,
+  vacancyId,
+  vacancyTitle,
 }: {
   candidate: FunnelCandidate;
   isDragOverlay?: boolean;
   isDragging?: boolean;
   isHhSource?: boolean;
+  vacancyId: string;
+  vacancyTitle: string;
 }) {
   const subtitleTokens = compactValues([
     candidate.city.toUpperCase(),
@@ -232,6 +236,12 @@ function VacancyStageCandidateCard({
     candidate.contacts.telegram,
     candidate.contacts.email,
   ]);
+  const candidateDetailId = isHhSource ? `hh_${candidate.id}` : candidate.id;
+  const candidateDetailParams = new URLSearchParams({
+    fromVacancyId: vacancyId,
+    fromVacancyTitle: vacancyTitle,
+  });
+  const candidateDetailHref = `/candidates/${candidateDetailId}?${candidateDetailParams.toString()}`;
 
   return (
     <article
@@ -266,18 +276,16 @@ function VacancyStageCandidateCard({
             </button>
           </div>
 
-          {isHhSource ? (
-            <Link
-              className="font-semibold text-[16px] text-primary-blue leading-[1.1] tracking-[-0.32px] transition-colors hover:text-primary-blue-hover"
-              href={`/candidates/hh_${candidate.id}`}
-            >
-              {candidate.fullName}
-            </Link>
-          ) : (
-            <h3 className="font-semibold text-[16px] text-text-heading leading-[1.1] tracking-[-0.32px]">
-              {candidate.fullName}
-            </h3>
-          )}
+          <Link
+            className={`font-semibold text-[16px] leading-[1.1] tracking-[-0.32px] transition-colors ${
+              isHhSource
+                ? "text-primary-blue hover:text-primary-blue-hover"
+                : "text-text-heading hover:text-primary-blue"
+            }`}
+            href={candidateDetailHref}
+          >
+            {candidate.fullName}
+          </Link>
         </div>
 
         <div className="rounded-[5px] bg-status-offer-bg p-2 text-status-offer">
@@ -429,12 +437,16 @@ function DraggableCandidateCard({
   disabled,
   isHhSource,
   stageValue,
+  vacancyId,
+  vacancyTitle,
 }: {
   activeCandidateId: string | null;
   candidate: FunnelCandidate;
   disabled: boolean;
   isHhSource?: boolean;
   stageValue: string;
+  vacancyId: string;
+  vacancyTitle: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -460,6 +472,8 @@ function DraggableCandidateCard({
         candidate={candidate}
         isDragging={isDragging || activeCandidateId === candidate.id}
         isHhSource={isHhSource}
+        vacancyId={vacancyId}
+        vacancyTitle={vacancyTitle}
       />
     </div>
   );
@@ -474,6 +488,8 @@ function VacancyStageSection({
   label,
   onAddCandidate,
   stageValue,
+  vacancyId,
+  vacancyTitle,
 }: {
   activeCandidateId: string | null;
   candidates: FunnelCandidate[];
@@ -483,6 +499,8 @@ function VacancyStageSection({
   label: string;
   onAddCandidate: () => void;
   stageValue: string;
+  vacancyId: string;
+  vacancyTitle: string;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: stageValue,
@@ -539,6 +557,8 @@ function VacancyStageSection({
               isHhSource={isHhSource}
               key={candidate.id}
               stageValue={stageValue}
+              vacancyId={vacancyId}
+              vacancyTitle={vacancyTitle}
             />
           ))
         )}
@@ -743,6 +763,8 @@ export default function VacancyFunnelPage() {
                   })
                 }
                 stageValue={stage.value}
+                vacancyId={data.id}
+                vacancyTitle={data.title}
               />
             ))}
           </div>
@@ -752,6 +774,8 @@ export default function VacancyFunnelPage() {
                 candidate={activeCandidate}
                 isDragOverlay
                 isHhSource={isHhVacancy}
+                vacancyId={data.id}
+                vacancyTitle={data.title}
               />
             ) : null}
           </DragOverlay>

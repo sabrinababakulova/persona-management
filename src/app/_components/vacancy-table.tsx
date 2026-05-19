@@ -342,11 +342,7 @@ export function VacancyTable({
 
                     <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
                       <Link
-                        className={`flex items-center gap-1 text-[14px] leading-none ${
-                          isHhVacancy
-                            ? "text-text-secondary hover:text-text-heading"
-                            : "text-primary-blue hover:text-primary-blue-hover"
-                        }`}
+                        className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
                         href={getFunnelPath(item)}
                       >
                         <FunnelIcon className="h-3.5 w-3.5" />

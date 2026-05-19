@@ -1,15 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import {
-  ArrowLeftIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
-} from "~/app/_components/icons";
+import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
+import { PencilIcon, PlusIcon, TrashIcon } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
@@ -18,7 +13,10 @@ import { api } from "~/trpc/react";
 
 export default function CandidateDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const candidateId = typeof params.id === "string" ? params.id : "";
+  const fromVacancyId = searchParams.get("fromVacancyId")?.trim() || "";
+  const fromVacancyTitle = searchParams.get("fromVacancyTitle")?.trim() || "";
   const utils = api.useUtils();
   const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
@@ -80,20 +78,34 @@ export default function CandidateDetailPage() {
     );
   }
 
+  const fromRelatedVacancy = fromVacancyId
+    ? candidate.relatedVacancies.find((vacancy) => vacancy.id === fromVacancyId)
+    : undefined;
+  const hasFunnelSource = fromVacancyId.length > 0;
+  const funnelVacancyTitle =
+    fromVacancyTitle || fromRelatedVacancy?.title || "Вакансия";
+
   return (
     <>
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Page Content */}
         <div className="p-4 lg:p-8">
-          {/* Back Link */}
-          <Link
-            className="mb-4 inline-flex items-center gap-2 text-text-secondary hover:text-text-heading"
-            href="/candidates"
-          >
-            <ArrowLeftIcon className="h-4 w-4" />
-            <span>Назад к кандидатам</span>
-          </Link>
+          <div className="mb-4">
+            <Breadcrumbs
+              label={candidate.name}
+              parent={
+                hasFunnelSource
+                  ? {
+                      href: `/vacancies/${fromVacancyId}/funnel`,
+                      label: `${funnelVacancyTitle} / Воронка`,
+                    }
+                  : undefined
+              }
+              rootHref={hasFunnelSource ? "/vacancies" : "/candidates"}
+              rootLabel={hasFunnelSource ? "Вакансии" : "Кандидаты"}
+            />
+          </div>
 
           {/* Page Title */}
           <h1 className="mb-6 font-bold text-2xl text-text-heading lg:text-3xl">
