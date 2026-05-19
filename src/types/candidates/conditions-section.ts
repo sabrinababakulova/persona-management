@@ -1,8 +1,13 @@
-import type { LanguageItem, SelectOption } from "~/types/candidates/components";
+import type {
+  Errors,
+  LanguageItem,
+  SelectOption,
+} from "~/types/candidates/components";
 
 export interface ConditionsSectionProps {
   isOpen: boolean;
   onToggle: () => void;
+  errors: Errors;
   salaryExpectation?: number;
   salaryCurrency: "UZS" | "USD";
   onSalaryChange: (value?: number) => void;

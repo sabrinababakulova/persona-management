@@ -1,6 +1,17 @@
 import { mastra } from "~/mastra";
+import { recordAiUsage } from "~/server/ai/usage-logging";
 
 export type CandidateAiAnalysisStatus = "success" | "failed";
+
+type Database = typeof import("~/server/db").db;
+
+type AiUsageContext = {
+  db: Database;
+  userId?: string | null;
+  companyId?: string | null;
+  candidateId?: string | null;
+  operation?: string;
+};
 
 export type CandidateAiAnalysisResult = {
   text: string;
@@ -39,6 +50,7 @@ function truncateToWordLimit(value: string, wordLimit: number) {
 
 export async function generateCandidateAiAnalysis(
   input: CandidateAiAnalysisInput,
+  usageContext?: AiUsageContext,
 ): Promise<CandidateAiAnalysisResult> {
   if (
     !process.env.GOOGLE_API_KEY &&
@@ -103,11 +115,34 @@ ${resumeText}`,
     const normalizedText = truncateToWordLimit(rawText, MAX_ANALYSIS_WORDS);
 
     if (!normalizedText) {
+      if (usageContext) {
+        await recordAiUsage({
+          ...usageContext,
+          model: "gemini-2.5-flash",
+          agent: "candidateResumeSummary",
+          operation: usageContext.operation ?? "candidate_resume_ai_analysis",
+          status: "failed",
+          usage: result.totalUsage ?? result.usage,
+          errorMessage: "AI вернул пустой текст для резюме-анализа",
+        });
+      }
+
       return {
         text: "",
         status: "failed",
         errorMessage: "AI вернул пустой текст для резюме-анализа",
       };
+    }
+
+    if (usageContext) {
+      await recordAiUsage({
+        ...usageContext,
+        model: "gemini-2.5-flash",
+        agent: "candidateResumeSummary",
+        operation: usageContext.operation ?? "candidate_resume_ai_analysis",
+        status: "success",
+        usage: result.totalUsage ?? result.usage,
+      });
     }
 
     return {
@@ -116,6 +151,21 @@ ${resumeText}`,
     };
   } catch (error) {
     console.error("Failed to generate candidate AI analysis", error);
+    if (usageContext) {
+      await recordAiUsage({
+        ...usageContext,
+        model: "gemini-2.5-flash",
+        agent: "candidateResumeSummary",
+        operation: usageContext.operation ?? "candidate_resume_ai_analysis",
+        status: "failed",
+        usage: null,
+        errorMessage:
+          error instanceof Error
+            ? error.message
+            : "Не удалось сгенерировать AI-анализ резюме",
+      });
+    }
+
     return {
       text: "",
       status: "failed",

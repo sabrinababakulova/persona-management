@@ -3,6 +3,7 @@ import {
   type CandidateResumePrefillData,
   candidateResumePrefillSchema,
 } from "~/schemas/resume-analysis";
+import { recordAiUsage } from "~/server/ai/usage-logging";
 import {
   EMPTY_LOOKUP_OPTIONS,
   hasAnyPrefillData,
@@ -12,6 +13,15 @@ import {
 } from "~/utils/resume-prefill-helpers";
 
 export type ResumePrefillExtractionStatus = "success" | "no_data" | "failed";
+
+type Database = typeof import("~/server/db").db;
+
+type AiUsageContext = {
+  db: Database;
+  userId?: string | null;
+  companyId?: string | null;
+  candidateId?: string | null;
+};
 
 export type ResumePrefillExtractionResult = {
   prefillData: CandidateResumePrefillData;
@@ -30,6 +40,8 @@ const EMPTY_RESUME_PREFILL: CandidateResumePrefillData = {
   currentPosition: "",
   skills: [],
   languages: [],
+  workExperience: [],
+  education: [],
   status: "",
 };
 
@@ -37,10 +49,12 @@ export async function extractCandidateResumePrefillData({
   fileBuffer,
   fileName,
   lookupOptions = EMPTY_LOOKUP_OPTIONS,
+  usageContext,
 }: {
   fileBuffer: Buffer;
   fileName: string;
   lookupOptions?: ResumeLookupOptions;
+  usageContext?: AiUsageContext;
 }): Promise<ResumePrefillExtractionResult> {
   if (
     !process.env.GOOGLE_API_KEY &&
@@ -87,22 +101,36 @@ export async function extractCandidateResumePrefillData({
 - fullName: string
 - city: string
 - contacts: [{ type: string, value: string }]
-- source: string
 - salaryExpectation: number | null
 - salaryCurrency: "UZS" | "USD"
 - vacancyLevel: string
 - currentPosition: string
 - skills: string[]
 - languages: [{ name: string, level: string }]
+- workExperience: [{ company: string, position: string, period: string, description: string[] }]
+- education: [{ institution: string, gpa: string, period: string }]
 - status: string
 
 Если поле отсутствует в резюме:
 - string -> ""
 - array -> []
+- workExperience -> []
+- education -> []
 - salaryExpectation -> null
 - salaryCurrency -> "UZS"
 - vacancyLevel -> ""
 - status -> ""
+
+Для workExperience:
+- company: название компании
+- position: должность
+- period: период работы в свободном виде, например "Январь 2021 - Март 2024" или "2020 - 2022"
+- description: обязанности/достижения, каждый пункт отдельной строкой массива
+
+Для education:
+- institution: учебное заведение
+- gpa: GPA, оценка, степень или специальность, если указано; иначе ""
+- period: период обучения или год окончания
 `;
 
     const result = await resumeAnalyzerAgent.generate(
@@ -131,6 +159,18 @@ export async function extractCandidateResumePrefillData({
     );
 
     if (!result.object || typeof result.object !== "object") {
+      if (usageContext) {
+        await recordAiUsage({
+          ...usageContext,
+          model: "gemini-2.5-flash",
+          agent: "candidateResumeAnalyzer",
+          operation: "candidate_resume_prefill",
+          status: "failed",
+          usage: result.totalUsage ?? result.usage,
+          errorMessage: "AI вернул пустой или некорректный structured output",
+        });
+      }
+
       return {
         prefillData: EMPTY_RESUME_PREFILL,
         status: "failed",
@@ -139,12 +179,38 @@ export async function extractCandidateResumePrefillData({
     }
 
     const prefillData = toResumePrefillData(result.object, lookupOptions);
+    if (usageContext) {
+      await recordAiUsage({
+        ...usageContext,
+        model: "gemini-2.5-flash",
+        agent: "candidateResumeAnalyzer",
+        operation: "candidate_resume_prefill",
+        status: "success",
+        usage: result.totalUsage ?? result.usage,
+      });
+    }
+
     return {
       prefillData,
       status: hasAnyPrefillData(prefillData) ? "success" : "no_data",
     };
   } catch (error) {
     console.error("Failed to analyze resume with Mastra agent", error);
+    if (usageContext) {
+      await recordAiUsage({
+        ...usageContext,
+        model: "gemini-2.5-flash",
+        agent: "candidateResumeAnalyzer",
+        operation: "candidate_resume_prefill",
+        status: "failed",
+        usage: null,
+        errorMessage:
+          error instanceof Error
+            ? error.message
+            : "Не удалось проанализировать резюме",
+      });
+    }
+
     return {
       prefillData: EMPTY_RESUME_PREFILL,
       status: "failed",

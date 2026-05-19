@@ -199,6 +199,66 @@ export const candidates = createTable(
   ],
 );
 
+export const aiUsageLogs = createTable(
+  "ai_usage_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
+    companyId: d
+      .varchar("company_id", { length: 255 })
+      .references(() => companies.id, { onDelete: "set null" }),
+    candidateId: d.varchar("candidate_id", { length: 255 }),
+    provider: d.varchar({ length: 50 }).notNull().default("google"),
+    model: d.varchar({ length: 100 }).notNull(),
+    agent: d.varchar({ length: 100 }).notNull(),
+    operation: d.varchar({ length: 100 }).notNull(),
+    status: d.varchar({ length: 50 }).notNull(),
+    inputTokens: d.integer("input_tokens").notNull().default(0),
+    outputTokens: d.integer("output_tokens").notNull().default(0),
+    totalTokens: d.integer("total_tokens").notNull().default(0),
+    reasoningTokens: d.integer("reasoning_tokens").notNull().default(0),
+    cachedInputTokens: d.integer("cached_input_tokens").notNull().default(0),
+    inputRateUsdPerMillion: d
+      .numeric("input_rate_usd_per_million", { precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    outputRateUsdPerMillion: d
+      .numeric("output_rate_usd_per_million", { precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    inputCostUsd: d
+      .numeric("input_cost_usd", { precision: 14, scale: 8 })
+      .notNull()
+      .default("0"),
+    outputCostUsd: d
+      .numeric("output_cost_usd", { precision: 14, scale: 8 })
+      .notNull()
+      .default("0"),
+    totalCostUsd: d
+      .numeric("total_cost_usd", { precision: 14, scale: 8 })
+      .notNull()
+      .default("0"),
+    errorMessage: d.text("error_message"),
+    createdAt: d
+      .timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    index("ai_usage_log_created_at_idx").on(t.createdAt),
+    index("ai_usage_log_company_id_idx").on(t.companyId),
+    index("ai_usage_log_user_id_idx").on(t.userId),
+    index("ai_usage_log_candidate_id_idx").on(t.candidateId),
+    index("ai_usage_log_agent_idx").on(t.agent),
+  ],
+);
+
 // Vacancies table — schema mirrors the hh.uz publish payload so a vacancy can be created
 // in the form, persisted here, and published to hh.uz without an extra translation layer.
 export const vacancies = createTable(

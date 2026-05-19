@@ -12,6 +12,7 @@ export const CANDIDATE_SOURCES: LookupOption[] = [
   { value: "linkedin", label: "LinkedIn" },
   { value: "telegram", label: "Telegram" },
   { value: "referral", label: "Реферал" },
+  { value: "local", label: "Локальная" },
   { value: "other", label: "Другое" },
 ];
 

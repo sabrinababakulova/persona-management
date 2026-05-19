@@ -70,10 +70,19 @@ export const getCandidateProcedure = protectedProcedure
 
         // Generate AI analysis once and reuse the stored text on later reads.
         if (!aiAnalysis) {
-          const aiAnalysisResult = await generateCandidateAiAnalysis({
-            resumeText: formatHhCandidateForAiAnalysis(hhCandidate),
-            sourceLabel: "резюме hh.uz",
-          });
+          const aiAnalysisResult = await generateCandidateAiAnalysis(
+            {
+              resumeText: formatHhCandidateForAiAnalysis(hhCandidate),
+              sourceLabel: "резюме hh.uz",
+            },
+            {
+              db: ctx.db,
+              userId: ctx.session.user.id,
+              companyId: userCompanyId,
+              candidateId: input.id,
+              operation: "hh_candidate_resume_ai_analysis",
+            },
+          );
 
           if (aiAnalysisResult.status === "success") {
             aiAnalysis = aiAnalysisResult.text;

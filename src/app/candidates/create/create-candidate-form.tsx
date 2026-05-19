@@ -345,10 +345,20 @@ export function CreateCandidateForm() {
       }))
       .filter((item) => item.institution || item.gpa || item.period);
 
+    // Drop fully-empty rows before validation so the default blank
+    // contact/language rows can't silently block submission.
+    const normalizedContacts = contacts
+      .map((c) => ({ type: c.type.trim(), value: c.value.trim() }))
+      .filter((c) => c.value !== "");
+
+    const normalizedLanguages = languages
+      .map((l) => ({ name: l.name.trim(), level: l.level.trim() }))
+      .filter((l) => l.name !== "" || l.level !== "");
+
     const dataToValidate = {
       ...formData,
-      contacts: contacts.map((c) => ({ type: c.type, value: c.value })),
-      languages: languages.map((l) => ({ name: l.name, level: l.level })),
+      contacts: normalizedContacts,
+      languages: normalizedLanguages,
       workExperience: normalizedWorkExperience,
       education: normalizedEducation,
     };
@@ -361,7 +371,13 @@ export function CreateCandidateForm() {
         const path = error.path.join(".");
         newErrors[path] = error.message;
       }
+      newErrors._form =
+        "Не удалось сохранить: проверьте выделенные поля ниже.";
       setErrors(newErrors);
+      // Expand every section so the highlighted fields are visible.
+      setBasicInfoOpen(true);
+      setRequirementsOpen(true);
+      setBackgroundOpen(true);
       return;
     }
 
@@ -386,6 +402,7 @@ export function CreateCandidateForm() {
       ),
     };
 
+    setErrors({});
     createCandidate.mutate({
       ...cleanedData,
       id: candidateDraftId,
@@ -429,7 +446,7 @@ export function CreateCandidateForm() {
       city: prefillData.city || prev.city,
       contacts:
         prefillData.contacts.length > 0 ? prefillData.contacts : prev.contacts,
-      source: prefillData.source || prev.source,
+      source: "local", // Source is always "local" for resume uploads
       salaryExpectation:
         prefillData.salaryExpectation ?? prev.salaryExpectation,
       salaryCurrency: prefillData.salaryCurrency || prev.salaryCurrency,
@@ -439,6 +456,14 @@ export function CreateCandidateForm() {
         prefillData.languages.length > 0
           ? prefillData.languages
           : prev.languages,
+      workExperience:
+        prefillData.workExperience.length > 0
+          ? prefillData.workExperience
+          : prev.workExperience,
+      education:
+        prefillData.education.length > 0
+          ? prefillData.education
+          : prev.education,
       status: prefillData.status || prev.status,
     }));
 
@@ -462,11 +487,39 @@ export function CreateCandidateForm() {
       );
     }
 
+    if (prefillData.workExperience.length > 0) {
+      setWorkExperience(
+        prefillData.workExperience.map((item) => ({
+          id: generateId(),
+          company: item.company,
+          position: item.position,
+          period: item.period,
+          description: item.description.join("\n"),
+        })),
+      );
+    }
+
+    if (prefillData.education.length > 0) {
+      setEducation(
+        prefillData.education.map((item) => ({
+          id: generateId(),
+          institution: item.institution,
+          gpa: item.gpa,
+          period: item.period,
+        })),
+      );
+    }
+
     setErrors((prev) => {
       const nextErrors = { ...prev };
       delete nextErrors.fullName;
       delete nextErrors.city;
       delete nextErrors.salaryExpectation;
+      for (const key of Object.keys(nextErrors)) {
+        if (key.startsWith("workExperience.") || key.startsWith("education.")) {
+          delete nextErrors[key];
+        }
+      }
       return nextErrors;
     });
   };
@@ -540,6 +593,7 @@ export function CreateCandidateForm() {
         />
 
         <ConditionsSection
+          errors={errors}
           isOpen={requirementsOpen}
           languageLevelOptions={candidateLookups.languageLevels}
           languageOptions={candidateLookups.languages}

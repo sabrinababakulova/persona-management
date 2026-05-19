@@ -159,6 +159,23 @@ create_field_if_missing() {
   fi
 }
 
+database_table_exists() {
+  local table="$1"
+  local exists
+
+  exists=$(psql "$DATABASE_URL" -t -A -c "SELECT to_regclass('public.$table') IS NOT NULL;" 2>/dev/null || true)
+  [ "$exists" = "t" ]
+}
+
+database_column_exists() {
+  local table="$1"
+  local column="$2"
+  local exists
+
+  exists=$(psql "$DATABASE_URL" -t -A -c "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '$table' AND column_name = '$column');" 2>/dev/null || true)
+  [ "$exists" = "t" ]
+}
+
 upsert_relation() {
   local collection="$1"
   local field="$2"
@@ -188,6 +205,193 @@ upsert_relation() {
     echo "OK"
   else
     echo "HTTP $response"
+  fi
+}
+
+configure_readonly_collection_permissions() {
+  local collection="$1"
+  local label="$2"
+
+  echo -n "Configuring read-only permissions for '$label'... "
+
+  if DIRECTUS_URL="$DIRECTUS_URL" DIRECTUS_TOKEN="$TOKEN" COLLECTION="$collection" python3 <<'PYEOF'
+import json
+import os
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+BASE_URL = os.environ["DIRECTUS_URL"].rstrip("/")
+TOKEN = os.environ["DIRECTUS_TOKEN"]
+COLLECTION = os.environ["COLLECTION"]
+
+READ_ACTION = "read"
+WRITE_ACTIONS = {"create", "update", "delete"}
+
+def request(method, path, payload=None):
+    data = None
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    req = urllib.request.Request(
+        f"{BASE_URL}{path}",
+        data=data,
+        headers=headers,
+        method=method,
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            body = response.read()
+            if not body:
+                return {}
+            return json.loads(body)
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"{method} {path} failed with HTTP {error.code}: {body}"
+        ) from error
+
+def data_list(payload):
+    data = payload.get("data", [])
+    return data if isinstance(data, list) else []
+
+def get_all(path):
+    separator = "&" if "?" in path else "?"
+    return data_list(request("GET", f"{path}{separator}limit=-1"))
+
+def try_get_all(path):
+    try:
+        return get_all(path)
+    except Exception:
+        return []
+
+def is_public_policy(policy):
+    name = str(policy.get("name", "")).lower()
+    return name in {"public", "$t:public_label", "administrator"}
+
+def is_non_admin_policy(policy):
+    return bool(policy and policy.get("id") and not policy.get("admin_access") and not is_public_policy(policy))
+
+def upsert_permission(identity_key, identity_id, existing_permissions):
+    read_permission = next(
+        (
+            permission
+            for permission in existing_permissions
+            if permission.get(identity_key) == identity_id
+            and permission.get("collection") == COLLECTION
+            and permission.get("action") == READ_ACTION
+        ),
+        None,
+    )
+    base_payload = {
+        identity_key: identity_id,
+        "collection": COLLECTION,
+        "action": READ_ACTION,
+        "permissions": {},
+        "fields": ["*"],
+    }
+
+    payload_variants = [
+        {**base_payload, "validation": {}, "presets": None},
+        {**base_payload, "validation": {}, "presets": {}},
+        base_payload,
+    ]
+
+    path = f"/permissions/{read_permission['id']}" if read_permission else "/permissions"
+    method = "PATCH" if read_permission else "POST"
+    last_error = None
+    for payload in payload_variants:
+        try:
+            request(method, path, payload)
+            return
+        except RuntimeError as error:
+            last_error = error
+
+    raise last_error
+
+def delete_write_permissions(identity_key, identity_ids, existing_permissions):
+    for permission in existing_permissions:
+        if permission.get("collection") != COLLECTION:
+            continue
+        if permission.get("action") not in WRITE_ACTIONS:
+            continue
+        if permission.get(identity_key) not in identity_ids:
+            continue
+        try:
+            request("DELETE", f"/permissions/{permission['id']}")
+        except RuntimeError as error:
+            print(error, file=sys.stderr)
+
+policies = try_get_all("/policies")
+policy_by_id = {policy["id"]: policy for policy in policies if policy.get("id")}
+access_rows = try_get_all("/access")
+access_by_id = {access["id"]: access for access in access_rows if access.get("id")}
+permissions = get_all("/permissions")
+
+if policies:
+    roles = try_get_all("/roles")
+    admin_role_ids = {
+        access.get("role")
+        for access in access_rows
+        if access.get("role")
+        and policy_by_id.get(access.get("policy"), {}).get("admin_access")
+    }
+    role_ids = {
+        role["id"]
+        for role in roles
+        if role.get("id")
+        and role.get("name") != "Administrator"
+        and role.get("id") not in admin_role_ids
+    }
+
+    policy_ids = set()
+    for access in access_rows:
+        policy_id = access.get("policy")
+        policy = policy_by_id.get(policy_id)
+        if policy_id and is_non_admin_policy(policy) and (
+            access.get("role") in role_ids or access.get("user")
+        ):
+            policy_ids.add(policy_id)
+
+    for role in roles:
+        if role.get("id") not in role_ids:
+            continue
+        for related in role.get("policies") or []:
+            related_id = related.get("id") if isinstance(related, dict) else related
+            access_policy_id = access_by_id.get(related_id, {}).get("policy")
+            policy_id = access_policy_id or related_id
+            if is_non_admin_policy(policy_by_id.get(policy_id)):
+                policy_ids.add(policy_id)
+
+    if not policy_ids:
+        policy_ids = {
+            policy["id"]
+            for policy in policies
+            if is_non_admin_policy(policy)
+        }
+
+    for policy_id in policy_ids:
+        upsert_permission("policy", policy_id, permissions)
+    delete_write_permissions("policy", set(policy_ids), get_all("/permissions"))
+else:
+    roles = [
+        role
+        for role in try_get_all("/roles")
+        if role.get("id") and role.get("name") != "Administrator"
+    ]
+    role_ids = [role["id"] for role in roles]
+    for role_id in role_ids:
+        upsert_permission("role", role_id, permissions)
+    delete_write_permissions("role", set(role_ids), get_all("/permissions"))
+PYEOF
+  then
+    echo "OK"
+  else
+    echo "FAILED"
   fi
 }
 
@@ -583,6 +787,255 @@ upsert_relation "vacancy_telegram_post" "channel_id" '{
       "one_field": null
     }
   }' "vacancy_telegram_post.channel_id"
+
+if database_table_exists "ai_usage_log" && database_column_exists "ai_usage_log" "total_cost_usd"; then
+patch_collection "ai_usage_log" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "query_stats",
+      "note": "Read-only log of Gemini/Mastra token usage per AI request."
+    }
+  }' "ai_usage_log"
+
+patch_field "ai_usage_log" "id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 1,
+      "width": "half",
+      "note": "Internal log id."
+    }
+  }' "ai_usage_log.id"
+
+patch_field "ai_usage_log" "created_at" '{
+    "type": "timestamp",
+    "meta": {
+      "interface": "datetime",
+      "readonly": true,
+      "sort": 2,
+      "width": "half",
+      "note": "When the AI request finished."
+    }
+  }' "ai_usage_log.created_at"
+
+patch_field "ai_usage_log" "user_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 3,
+      "width": "half",
+      "note": "User that triggered the AI request."
+    }
+  }' "ai_usage_log.user_id"
+
+patch_field "ai_usage_log" "company_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 4,
+      "width": "half",
+      "note": "Company scope for the AI request."
+    }
+  }' "ai_usage_log.company_id"
+
+patch_field "ai_usage_log" "candidate_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 5,
+      "width": "half",
+      "note": "Candidate or imported hh.uz resume related to the request."
+    }
+  }' "ai_usage_log.candidate_id"
+
+patch_field "ai_usage_log" "provider" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 6,
+      "width": "half"
+    }
+  }' "ai_usage_log.provider"
+
+patch_field "ai_usage_log" "model" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 7,
+      "width": "half"
+    }
+  }' "ai_usage_log.model"
+
+patch_field "ai_usage_log" "agent" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 8,
+      "width": "half"
+    }
+  }' "ai_usage_log.agent"
+
+patch_field "ai_usage_log" "operation" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 9,
+      "width": "half"
+    }
+  }' "ai_usage_log.operation"
+
+patch_field "ai_usage_log" "status" '{
+    "type": "string",
+    "meta": {
+      "interface": "select-dropdown",
+      "options": {
+        "choices": [
+          { "text": "Success", "value": "success" },
+          { "text": "Failed", "value": "failed" }
+        ],
+        "allowOther": false,
+        "allowNone": false
+      },
+      "readonly": true,
+      "sort": 10,
+      "width": "half"
+    }
+  }' "ai_usage_log.status"
+
+patch_field "ai_usage_log" "input_tokens" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 11,
+      "width": "half",
+      "note": "Prompt/input tokens."
+    }
+  }' "ai_usage_log.input_tokens"
+
+patch_field "ai_usage_log" "output_tokens" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 12,
+      "width": "half",
+      "note": "Generated response tokens."
+    }
+  }' "ai_usage_log.output_tokens"
+
+patch_field "ai_usage_log" "total_tokens" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 13,
+      "width": "half",
+      "note": "Total tokens reported by the model/provider."
+    }
+  }' "ai_usage_log.total_tokens"
+
+patch_field "ai_usage_log" "reasoning_tokens" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 14,
+      "width": "half",
+      "note": "Thinking/reasoning tokens when exposed for Gemini 2.5."
+    }
+  }' "ai_usage_log.reasoning_tokens"
+
+patch_field "ai_usage_log" "cached_input_tokens" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 15,
+      "width": "half",
+      "note": "Cached input tokens when provider reports cache usage."
+    }
+  }' "ai_usage_log.cached_input_tokens"
+
+patch_field "ai_usage_log" "input_rate_usd_per_million" '{
+    "type": "decimal",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 16,
+      "width": "half",
+      "note": "USD rate per 1M input tokens used for this estimate."
+    }
+  }' "ai_usage_log.input_rate_usd_per_million"
+
+patch_field "ai_usage_log" "output_rate_usd_per_million" '{
+    "type": "decimal",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 17,
+      "width": "half",
+      "note": "USD rate per 1M output tokens used for this estimate."
+    }
+  }' "ai_usage_log.output_rate_usd_per_million"
+
+patch_field "ai_usage_log" "input_cost_usd" '{
+    "type": "decimal",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 18,
+      "width": "half",
+      "note": "Estimated USD cost for input tokens."
+    }
+  }' "ai_usage_log.input_cost_usd"
+
+patch_field "ai_usage_log" "output_cost_usd" '{
+    "type": "decimal",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 19,
+      "width": "half",
+      "note": "Estimated USD cost for output and reasoning tokens."
+    }
+  }' "ai_usage_log.output_cost_usd"
+
+patch_field "ai_usage_log" "total_cost_usd" '{
+    "type": "decimal",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "sort": 20,
+      "width": "half",
+      "note": "Estimated total USD cost for the AI request."
+    }
+  }' "ai_usage_log.total_cost_usd"
+
+patch_field "ai_usage_log" "error_message" '{
+    "type": "text",
+    "meta": {
+      "interface": "input-multiline",
+      "readonly": true,
+      "sort": 21,
+      "width": "full",
+      "note": "Failure reason when the AI request did not complete successfully."
+    }
+  }' "ai_usage_log.error_message"
+
+configure_readonly_collection_permissions "ai_usage_log" "ai_usage_log"
+else
+  echo "Skipping 'ai_usage_log' Directus metadata: database table or cost columns are missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+fi
 
 patch_field "vacancy" "is_active" '{
     "type": "boolean",

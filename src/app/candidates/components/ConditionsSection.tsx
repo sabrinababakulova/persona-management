@@ -8,6 +8,7 @@ import { Input } from "../../_components/input";
 export function ConditionsSection({
   isOpen,
   onToggle,
+  errors,
   salaryExpectation,
   salaryCurrency,
   onSalaryChange,
@@ -136,46 +137,59 @@ export function ConditionsSection({
                 <PlusIcon className="h-5 w-5" />
               </button>
             </div>
-            {languages.map((language) => (
-              <div className="flex items-center gap-2" key={language.id}>
-                <Dropdown
-                  className="flex-1"
-                  hideLabel
-                  iconClassName="h-5 w-5 text-text-placeholder"
-                  label="Язык"
-                  onChange={(value) =>
-                    onLanguageChange(language.id, "name", value)
-                  }
-                  options={languageOptions.map((lang) => ({
-                    value: lang.label,
-                    label: lang.label,
-                  }))}
-                  placeholder="Выберите язык"
-                  value={language.name}
-                />
-                <Dropdown
-                  className="w-40"
-                  hideLabel
-                  iconClassName="h-5 w-5 text-text-placeholder"
-                  label="Уровень"
-                  onChange={(value) =>
-                    onLanguageChange(language.id, "level", value)
-                  }
-                  options={languageLevelOptions}
-                  placeholder="Уровень"
-                  value={language.level}
-                />
-                {languages.length > 1 && (
-                  <button
-                    className="text-text-disabled hover:text-accent-red"
-                    onClick={() => onRemoveLanguage(language.id)}
-                    type="button"
-                  >
-                    <CloseIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            ))}
+            {languages.map((language, index) => {
+              const languageError =
+                errors[`languages.${index}.name`] ??
+                errors[`languages.${index}.level`];
+
+              return (
+                <div className="flex flex-col gap-1" key={language.id}>
+                  <div className="flex items-center gap-2">
+                    <Dropdown
+                      className="flex-1"
+                      hideLabel
+                      iconClassName="h-5 w-5 text-text-placeholder"
+                      label="Язык"
+                      onChange={(value) =>
+                        onLanguageChange(language.id, "name", value)
+                      }
+                      options={languageOptions.map((lang) => ({
+                        value: lang.label,
+                        label: lang.label,
+                      }))}
+                      placeholder="Выберите язык"
+                      value={language.name}
+                    />
+                    <Dropdown
+                      className="w-40"
+                      hideLabel
+                      iconClassName="h-5 w-5 text-text-placeholder"
+                      label="Уровень"
+                      onChange={(value) =>
+                        onLanguageChange(language.id, "level", value)
+                      }
+                      options={languageLevelOptions}
+                      placeholder="Уровень"
+                      value={language.level}
+                    />
+                    {languages.length > 1 && (
+                      <button
+                        className="text-text-disabled hover:text-accent-red"
+                        onClick={() => onRemoveLanguage(language.id)}
+                        type="button"
+                      >
+                        <CloseIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  {languageError && (
+                    <p className="text-[12px] text-danger-red">
+                      {languageError}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

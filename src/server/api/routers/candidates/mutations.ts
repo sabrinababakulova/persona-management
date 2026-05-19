@@ -126,13 +126,13 @@ export const uploadResumeProcedure = protectedProcedure
       });
     }
 
+    const userCompanyId = await getRequiredCompanyId(
+      ctx.db,
+      ctx.session?.user?.id,
+    );
+
     let resumeFileId: string;
     try {
-      const userCompanyId = await getRequiredCompanyId(
-        ctx.db,
-        ctx.session?.user?.id,
-      );
-
       // Validate the storage key before uploading to Directus.
       getCandidateResumeStorageKey(input.candidateId);
       const [candidate] = await ctx.db
@@ -266,11 +266,26 @@ export const uploadResumeProcedure = protectedProcedure
         fileBuffer,
         fileName: resumeFileName,
         lookupOptions,
+        usageContext: {
+          db: ctx.db,
+          userId: ctx.session?.user?.id,
+          companyId: userCompanyId,
+          candidateId: input.candidateId,
+        },
       }),
-      generateCandidateAiAnalysis({
-        fileBuffer,
-        fileName: resumeFileName,
-      }),
+      generateCandidateAiAnalysis(
+        {
+          fileBuffer,
+          fileName: resumeFileName,
+        },
+        {
+          db: ctx.db,
+          userId: ctx.session?.user?.id,
+          companyId: userCompanyId,
+          candidateId: input.candidateId,
+          operation: "candidate_resume_ai_analysis",
+        },
+      ),
     ]);
 
     await ctx.db

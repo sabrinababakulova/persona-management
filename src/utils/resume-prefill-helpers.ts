@@ -88,6 +88,69 @@ function toLanguages(value: unknown) {
     );
 }
 
+function toWorkExperience(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const experience = item as Record<string, unknown>;
+      const company = toStringValue(experience.company);
+      const position = toStringValue(experience.position);
+      const period = toStringValue(experience.period);
+      const description = toStringArray(experience.description);
+
+      if (!company && !position && !period && description.length === 0) {
+        return null;
+      }
+
+      return { company, position, period, description };
+    })
+    .filter(
+      (
+        item,
+      ): item is {
+        company: string;
+        position: string;
+        period: string;
+        description: string[];
+      } => Boolean(item),
+    );
+}
+
+function toEducation(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const education = item as Record<string, unknown>;
+      const institution = toStringValue(education.institution);
+      const gpa = toStringValue(education.gpa);
+      const period = toStringValue(education.period);
+
+      if (!institution && !gpa && !period) {
+        return null;
+      }
+
+      return { institution, gpa, period };
+    })
+    .filter(
+      (item): item is { institution: string; gpa: string; period: string } =>
+        Boolean(item),
+    );
+}
+
 function parseSalaryExpectation(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     return Math.round(value);
@@ -246,6 +309,8 @@ export function toResumePrefillData(
       lookupOptions.languages,
       lookupOptions.languageLevels,
     ).slice(0, 20),
+    workExperience: toWorkExperience(payload.workExperience).slice(0, 20),
+    education: toEducation(payload.education).slice(0, 20),
     status: toLookupValue(payload.status, lookupOptions.statusOptions),
   };
 }
@@ -261,6 +326,8 @@ export function hasAnyPrefillData(prefillData: CandidateResumePrefillData) {
       prefillData.currentPosition ||
       prefillData.skills.length > 0 ||
       prefillData.languages.length > 0 ||
+      prefillData.workExperience.length > 0 ||
+      prefillData.education.length > 0 ||
       prefillData.status,
   );
 }

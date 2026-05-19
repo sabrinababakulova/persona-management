@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
@@ -21,6 +22,7 @@ import {
   ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
+  ImageUploadPlaceholderIcon,
   MoreIcon,
   NoCandidates,
   SearchIcon,
@@ -46,6 +48,12 @@ const CANDIDATE_STATUS_VALUES: CandidateStatus[] = [
   "hired",
   "rejected",
 ];
+
+const CANDIDATE_SOURCE_ICONS = {
+  "hh.uz": { src: "/hh.svg", label: "hh.uz" },
+  linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
+  telegram: { src: "/telegram.svg", label: "Telegram" },
+};
 
 const statusToneConfig: Record<
   CandidateStatus,
@@ -86,6 +94,38 @@ function isCandidateStatus(value: string): value is CandidateStatus {
 
 function mapStatusOptions(options: LookupOption[]): LookupOption[] {
   return options.filter((option) => isCandidateStatus(option.value));
+}
+
+function CandidateSourceIcon({ source }: { source?: string | null }) {
+  const normalizedSource = source?.trim() || undefined;
+  const meta = normalizedSource
+    ? CANDIDATE_SOURCE_ICONS[
+        normalizedSource as keyof typeof CANDIDATE_SOURCE_ICONS
+      ]
+    : undefined;
+  const label = meta?.label ?? normalizedSource ?? "Не указан";
+
+  if (meta) {
+    return (
+      <Image
+        alt={label}
+        className="h-5 w-5"
+        height={16}
+        src={meta.src}
+        title={label}
+        unoptimized
+        width={16}
+      />
+    );
+  }
+
+  return (
+    <ImageUploadPlaceholderIcon
+      aria-label={label}
+      className="-ml-1.75 h-9 w-9 text-text-placeholder"
+      role="img"
+    />
+  );
 }
 
 export default function CandidatesPage() {
@@ -199,6 +239,13 @@ export default function CandidatesPage() {
     shouldIncludeHhCandidates &&
     hhLimit > 0 &&
     isFetchingHhCandidates;
+
+  // Candidates shown in the table: local candidates first, then hh.uz
+  // candidates filling the remaining slots for the current page.
+  const visibleCandidates: Candidate[] = [
+    ...localItems,
+    ...(hhCandidatesData?.items ?? []),
+  ];
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -523,139 +570,137 @@ export default function CandidatesPage() {
                 ) : (
                   <>
                     <div className="min-h-0 flex-1 overflow-auto">
-                      {(hhCandidatesData?.items ?? []).map(
-                        (candidate: Candidate, index) => {
-                          const statusTone =
-                            statusToneConfig[candidate.status] ??
-                            statusToneConfig.new;
-                          const isHhCandidate = candidate.source === "hh.uz";
-                          const isStatusPending =
-                            !isHhCandidate &&
-                            updateCandidateStatus.isPending &&
-                            updateCandidateStatus.variables?.id ===
-                              candidate.id;
+                      {visibleCandidates.map((candidate: Candidate, index) => {
+                        const statusTone =
+                          statusToneConfig[candidate.status] ??
+                          statusToneConfig.new;
+                        const isHhCandidate = candidate.source === "hh.uz";
+                        const isStatusPending =
+                          !isHhCandidate &&
+                          updateCandidateStatus.isPending &&
+                          updateCandidateStatus.variables?.id === candidate.id;
 
-                          return (
-                            <div
-                              className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
-                                index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
-                              }`}
-                              key={candidate.id}
-                            >
-                              <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
-                                <Checkbox
-                                  //TODO: fix it when selection will be implemented
-                                  checked={false}
-                                  onChange={() => {}}
-                                />
-                                <div className="min-w-0">
-                                  {isHhCandidate ? (
-                                    <Link
-                                      className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                      href={`/candidates/${candidate.id}`}
-                                    >
-                                      {candidate.name}
-                                    </Link>
-                                  ) : (
-                                    <button
-                                      className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
-                                      onClick={() =>
-                                        openQuickOverview(candidate.id)
-                                      }
-                                      type="button"
-                                    >
-                                      {candidate.name}
-                                    </button>
-                                  )}
-                                  <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
-                                    {candidate.patronymic}
-                                  </div>
+                        return (
+                          <div
+                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
+                              index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
+                            }`}
+                            key={candidate.id}
+                          >
+                            <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
+                              <Checkbox
+                                //TODO: fix it when selection will be implemented
+                                checked={false}
+                                onChange={() => {}}
+                              />
+                              <div className="min-w-0">
+                                {isHhCandidate ? (
+                                  <Link
+                                    className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    href={`/candidates/${candidate.id}`}
+                                  >
+                                    {candidate.name}
+                                  </Link>
+                                ) : (
+                                  <button
+                                    className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    onClick={() =>
+                                      openQuickOverview(candidate.id)
+                                    }
+                                    type="button"
+                                  >
+                                    {candidate.name}
+                                  </button>
+                                )}
+                                <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                                  {candidate.patronymic}
                                 </div>
                               </div>
-
-                              <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                                {isHhCandidate ? (
-                                  <span
-                                    className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
-                                  >
-                                    {statusOptions.find(
-                                      (o) => o.value === candidate.status,
-                                    )?.label ?? candidate.status}
-                                  </span>
-                                ) : (
-                                  <div
-                                    className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                                  >
-                                    <select
-                                      aria-label={`Статус кандидата ${candidate.name}`}
-                                      className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                                      disabled={isStatusPending}
-                                      onChange={(event) => {
-                                        handleStatusChange(
-                                          candidate.id,
-                                          event.target.value,
-                                        );
-                                      }}
-                                      value={candidate.status}
-                                    >
-                                      {statusOptions.map((option) => (
-                                        <option
-                                          key={option.value}
-                                          value={option.value}
-                                        >
-                                          {option.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <ChevronDownIcon
-                                      className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                                {candidate.city || "-"}
-                              </div>
-
-                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                                {candidate.createdAt || "-"}
-                              </div>
-
-                              <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
-                                {candidate.source || "-"}
-                              </div>
-
-                              <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
-                                <Link
-                                  className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
-                                  href={`/candidates/${candidate.id}`}
-                                >
-                                  <span className="hidden xl:inline">
-                                    детали
-                                  </span>
-                                </Link>
-                                <button
-                                  className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
-                                  type="button"
-                                >
-                                  <MoreIcon className="h-4 w-4" />
-                                </button>
-                              </div>
-
-                              <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
-                                <span>Город: {candidate.city || "-"}</span>
-                                <span>
-                                  Создан: {candidate.createdAt || "-"}
-                                </span>
-                                <span>Источник: {candidate.source || "-"}</span>
-                              </div>
                             </div>
-                          );
-                        },
-                      )}
 
-                      {(hhCandidatesData?.items ?? []).length === 0 && (
+                            <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
+                              {isHhCandidate ? (
+                                <span
+                                  className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
+                                >
+                                  {statusOptions.find(
+                                    (o) => o.value === candidate.status,
+                                  )?.label ?? candidate.status}
+                                </span>
+                              ) : (
+                                <div
+                                  className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
+                                >
+                                  <select
+                                    aria-label={`Статус кандидата ${candidate.name}`}
+                                    className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
+                                    disabled={isStatusPending}
+                                    onChange={(event) => {
+                                      handleStatusChange(
+                                        candidate.id,
+                                        event.target.value,
+                                      );
+                                    }}
+                                    value={candidate.status}
+                                  >
+                                    {statusOptions.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <ChevronDownIcon
+                                    className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                              {candidate.city || "-"}
+                            </div>
+
+                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                              {candidate.createdAt || "-"}
+                            </div>
+
+                            <div className="hidden lg:col-span-2 lg:flex lg:items-center">
+                              <CandidateSourceIcon source={candidate.source} />
+                            </div>
+
+                            <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
+                              <Link
+                                className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
+                                href={`/candidates/${candidate.id}`}
+                              >
+                                <span className="hidden xl:inline">детали</span>
+                              </Link>
+                              <button
+                                className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
+                                type="button"
+                              >
+                                <MoreIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
+                              <span>Город: {candidate.city || "-"}</span>
+                              <span>Создан: {candidate.createdAt || "-"}</span>
+                              <span className="flex items-center gap-1.5">
+                                Источник:
+                                <CandidateSourceIcon
+                                  source={candidate.source}
+                                />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {visibleCandidates.length === 0 && (
                         <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
                           Кандидаты не найдены
                         </div>
