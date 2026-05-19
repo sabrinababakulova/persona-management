@@ -12,7 +12,6 @@ import {
   iterateHhVacancyApplicantBatches,
 } from "~/server/services/hh";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
-import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import type { CandidateStatus } from "~/types/server/candidates";
 
 import { candidateListInputSchema } from "./schemas";
@@ -106,9 +105,9 @@ export const listCandidatesProcedure = protectedProcedure
 /**
  * Lists hh.uz applicants that have not yet been imported as stored candidates.
  *
- * This endpoint is available only for the default company while hh.uz is
- * configured. Unsupported local filters return an empty page because hh.uz
- * applicants do not map cleanly to every local candidate filter.
+ * This endpoint is available when the current user has hh.uz connected.
+ * Unsupported local filters return an empty page because hh.uz applicants do
+ * not map cleanly to every local candidate filter.
  */
 export const listHhCandidatesProcedure = protectedProcedure
   .input(candidateListInputSchema)
@@ -124,11 +123,7 @@ export const listHhCandidatesProcedure = protectedProcedure
     const limit = input?.limit ?? 50;
     const offset = input?.offset ?? 0;
 
-    if (
-      !userCompanyId ||
-      userCompanyId !== DEFAULT_COMPANY_ID ||
-      !isHhConfigured()
-    ) {
+    if (!userCompanyId || !isHhConfigured()) {
       return { items: [], total: 0 };
     }
 

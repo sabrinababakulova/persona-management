@@ -10,7 +10,6 @@ import {
   fetchCompanyHhVacanciesPage,
 } from "~/server/services/hh";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
-import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 import { vacancyListInputSchema } from "./schemas";
 import {
@@ -97,7 +96,7 @@ export const listVacanciesProcedure = protectedProcedure
         .map((row) => formatVacancy(row, responseCounts.get(row.id) ?? 0));
     }
 
-    if (userCompanyId !== DEFAULT_COMPANY_ID || !includeHh) {
+    if (!includeHh) {
       return {
         items: localVacancies.slice(offset, offset + limit),
         total: localVacancies.length,
