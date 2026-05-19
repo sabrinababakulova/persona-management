@@ -371,8 +371,7 @@ export function CreateCandidateForm() {
         const path = error.path.join(".");
         newErrors[path] = error.message;
       }
-      newErrors._form =
-        "Не удалось сохранить: проверьте выделенные поля ниже.";
+      newErrors._form = "Не удалось сохранить: проверьте выделенные поля ниже.";
       setErrors(newErrors);
       // Expand every section so the highlighted fields are visible.
       setBasicInfoOpen(true);
