@@ -18,12 +18,8 @@ export function isHhConfigured() {
   return !!(env.HH_CLIENT_ID && env.HH_CLIENT_SECRET);
 }
 
-export function buildHhConnectState(input: {
-  companyId: string;
-  userId: string;
-}) {
+export function buildHhConnectState(input: { userId: string }) {
   const payload: HhConnectStatePayload = {
-    companyId: input.companyId,
     userId: input.userId,
     issuedAt: Date.now(),
   };

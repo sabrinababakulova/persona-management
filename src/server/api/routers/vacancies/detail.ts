@@ -16,7 +16,7 @@ import {
   type HhVacancyDetail,
 } from "~/server/services/hh";
 import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 
 import {
@@ -39,7 +39,7 @@ export const getVacancyProcedure = protectedProcedure
 
     if (isHhVacancyId(input.id)) {
       const hhVacancyId = input.id.slice(3);
-      const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
 
       if (!hhAccount?.accessToken) {
         return null;
@@ -235,7 +235,7 @@ export const getHhVacancyDetailProcedure = protectedProcedure
       return null;
     }
 
-    const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+    const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     if (!hhAccount?.accessToken) {
       return null;
     }
@@ -371,7 +371,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
 
     if (isHhVacancyId(input.id)) {
       const hhVacancyId = input.id.slice(3);
-      const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
 
       if (!hhAccount?.accessToken) {
         return null;

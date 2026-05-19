@@ -9,7 +9,7 @@ import {
 import { protectedProcedure } from "~/server/api/trpc";
 import {
   companies,
-  companyTelegramChannels,
+  userTelegramChannels,
   vacancies,
   vacancyTelegramPosts,
 } from "~/server/db/schema";
@@ -25,8 +25,8 @@ import {
   updateHhVacancyContent,
 } from "~/server/services/hh";
 import {
-  getCompanyHhAccount,
-  resolveCompanyHhAuth,
+  getUserHhAccount,
+  resolveUserHhAuth,
 } from "~/server/services/hh-company-account";
 import {
   canBotDeleteMessages,
@@ -116,7 +116,7 @@ export const updateVacancyProcedure = protectedProcedure
 
     if (isHhVacancyId(input.id)) {
       const hhVacancyId = input.id.slice(3);
-      const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
 
       if (!hhAccount?.accessToken) {
         throw new TRPCError({
@@ -500,15 +500,10 @@ export const getTelegramConfigProcedure = protectedProcedure.query(
       return { enabled: false };
     }
 
-    const companyId = await getOptionalCompanyId(ctx.db, ctx.session?.user?.id);
-    if (!companyId) {
-      return { enabled: false };
-    }
-
     const channels = await ctx.db
-      .select({ id: companyTelegramChannels.id })
-      .from(companyTelegramChannels)
-      .where(eq(companyTelegramChannels.companyId, companyId))
+      .select({ id: userTelegramChannels.id })
+      .from(userTelegramChannels)
+      .where(eq(userTelegramChannels.userId, ctx.session.user.id))
       .limit(1);
 
     return { enabled: channels.length > 0 };
@@ -559,27 +554,28 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
-    const companyChannels = await ctx.db
+    const userChannels = await ctx.db
       .select()
-      .from(companyTelegramChannels)
-      .where(eq(companyTelegramChannels.companyId, companyId));
+      .from(userTelegramChannels)
+      .where(eq(userTelegramChannels.userId, ctx.session.user.id));
 
-    if (companyChannels.length === 0) {
+    if (userChannels.length === 0) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "У компании не настроены Telegram-каналы",
+        message: "У пользователя не настроены Telegram-каналы",
       });
     }
 
-    // Post only to the channels the user picked; reject ids that aren't this company's.
-    const channels = companyChannels.filter((channel) =>
+    // Post only to the channels the user picked; reject ids that aren't theirs.
+    const channels = userChannels.filter((channel) =>
       input.channelIds.includes(channel.id),
     );
 
     if (channels.length !== input.channelIds.length) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Один или несколько выбранных каналов не принадлежат компании",
+        message:
+          "Один или несколько выбранных каналов не принадлежат пользователю",
       });
     }
 
@@ -752,17 +748,16 @@ export const publishTelegramProcedure = protectedProcedure
 export const getHhConfigProcedure = protectedProcedure.query(
   async ({ ctx }) => {
     const companyId = await getOptionalCompanyId(ctx.db, ctx.session?.user?.id);
-    if (!companyId) {
-      return { enabled: false, companyPhone: null as string | null };
-    }
 
     const [account, companyRows] = await Promise.all([
-      getCompanyHhAccount(ctx.db, companyId),
-      ctx.db
-        .select({ phone: companies.phone })
-        .from(companies)
-        .where(eq(companies.id, companyId))
-        .limit(1),
+      getUserHhAccount(ctx.db, ctx.session.user.id),
+      companyId
+        ? ctx.db
+            .select({ phone: companies.phone })
+            .from(companies)
+            .where(eq(companies.id, companyId))
+            .limit(1)
+        : Promise.resolve([]),
     ]);
 
     return {
@@ -851,7 +846,7 @@ export const publishHhProcedure = protectedProcedure
       });
     }
 
-    const hhAccount = await resolveCompanyHhAuth(ctx.db, companyId);
+    const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     if (!hhAccount?.accessToken) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -974,7 +969,7 @@ export const saveHhDraftProcedure = protectedProcedure
       });
     }
 
-    const hhAccount = await resolveCompanyHhAuth(ctx.db, companyId);
+    const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     if (!hhAccount?.accessToken) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",

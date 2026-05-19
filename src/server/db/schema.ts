@@ -403,8 +403,8 @@ export const vacancyWorkTypes = createTable(
   }),
 );
 
-// Company Telegram channels (for vacancy posting)
-export const companyTelegramChannels = createTable(
+// User Telegram channels (for vacancy posting)
+export const userTelegramChannels = createTable(
   "company_telegram_channel",
   (d) => ({
     id: d
@@ -412,10 +412,10 @@ export const companyTelegramChannels = createTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    companyId: d
+    userId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => companies.id),
+      .references(() => users.id),
     channelId: d.varchar({ length: 255 }).notNull(),
     label: d.varchar({ length: 255 }),
     createdAt: d
@@ -423,7 +423,7 @@ export const companyTelegramChannels = createTable(
       .$defaultFn(() => new Date())
       .notNull(),
   }),
-  (t) => [index("company_tg_channel_company_id_idx").on(t.companyId)],
+  (t) => [index("user_tg_channel_user_id_idx").on(t.userId)],
 );
 
 // Per-channel record of a vacancy publication posted to Telegram
@@ -441,12 +441,12 @@ export const vacancyTelegramPosts = createTable(
       .references(() => vacancies.id, { onDelete: "cascade" }),
     /**
      * Channel the message was posted to. Set to `null` when the channel is later
-     * removed from the company — the post record is kept so the message stays
+     * removed by the user — the post record is kept so the message stays
      * tracked, and the publication can no longer be deactivated/deleted.
      */
     channelId: d
       .varchar("channel_id", { length: 255 })
-      .references(() => companyTelegramChannels.id, { onDelete: "set null" }),
+      .references(() => userTelegramChannels.id, { onDelete: "set null" }),
     /** Public t.me URL of the posted message; self-sufficient for deletion. */
     messageUrl: d.varchar("message_url", { length: 500 }).notNull(),
     createdAt: d
@@ -457,17 +457,17 @@ export const vacancyTelegramPosts = createTable(
   (t) => [index("vacancy_tg_post_publication_id_idx").on(t.publicationId)],
 );
 
-// Company hh.uz (HeadHunter) accounts
-export const companyHhAccounts = createTable("company_hh_account", (d) => ({
+// User hh.uz (HeadHunter) accounts
+export const userHhAccounts = createTable("company_hh_account", (d) => ({
   id: d
     .varchar({ length: 255 })
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  companyId: d
+  userId: d
     .varchar({ length: 255 })
     .notNull()
-    .references(() => companies.id)
+    .references(() => users.id)
     .unique(),
   clientId: d.varchar({ length: 255 }),
   clientSecret: d.varchar({ length: 500 }),

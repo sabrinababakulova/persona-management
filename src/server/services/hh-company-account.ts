@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { companyHhAccounts } from "~/server/db/schema";
+import { userHhAccounts } from "~/server/db/schema";
 import {
   isHhConfigured,
   refreshHhAccessToken,
@@ -9,30 +9,24 @@ import {
 
 type DatabaseClient = typeof import("~/server/db").db;
 
-export async function getCompanyHhAccount(
-  db: DatabaseClient,
-  companyId: string,
-) {
+export async function getUserHhAccount(db: DatabaseClient, userId: string) {
   const rows = await db
     .select({
-      id: companyHhAccounts.id,
-      accessToken: companyHhAccounts.accessToken,
-      refreshToken: companyHhAccounts.refreshToken,
-      employerId: companyHhAccounts.employerId,
-      email: companyHhAccounts.email,
+      id: userHhAccounts.id,
+      accessToken: userHhAccounts.accessToken,
+      refreshToken: userHhAccounts.refreshToken,
+      employerId: userHhAccounts.employerId,
+      email: userHhAccounts.email,
     })
-    .from(companyHhAccounts)
-    .where(eq(companyHhAccounts.companyId, companyId))
+    .from(userHhAccounts)
+    .where(eq(userHhAccounts.userId, userId))
     .limit(1);
 
   return rows[0] ?? null;
 }
 
-export async function resolveCompanyHhAuth(
-  db: DatabaseClient,
-  companyId: string,
-) {
-  const account = await getCompanyHhAccount(db, companyId);
+export async function resolveUserHhAuth(db: DatabaseClient, userId: string) {
+  const account = await getUserHhAccount(db, userId);
   if (!account) {
     return null;
   }
@@ -48,15 +42,15 @@ export async function resolveCompanyHhAuth(
       refreshToken = refreshed.refreshToken ?? undefined;
 
       await db
-        .update(companyHhAccounts)
+        .update(userHhAccounts)
         .set({
           accessToken: refreshed.accessToken,
           refreshToken: refreshed.refreshToken,
         })
-        .where(eq(companyHhAccounts.id, account.id));
+        .where(eq(userHhAccounts.id, account.id));
     } catch (error) {
       console.error("Failed to refresh HH access token", {
-        companyId,
+        userId,
         error,
       });
     }
@@ -69,12 +63,12 @@ export async function resolveCompanyHhAuth(
       employerId = resolvedAccount.employerId;
 
       await db
-        .update(companyHhAccounts)
+        .update(userHhAccounts)
         .set({
           email: resolvedAccount.email,
           employerId: resolvedAccount.employerId,
         })
-        .where(eq(companyHhAccounts.id, account.id));
+        .where(eq(userHhAccounts.id, account.id));
     } catch (resolveError) {
       if (refreshToken) {
         try {
@@ -87,23 +81,23 @@ export async function resolveCompanyHhAuth(
           employerId = resolvedAccount.employerId;
 
           await db
-            .update(companyHhAccounts)
+            .update(userHhAccounts)
             .set({
               accessToken: refreshed.accessToken,
               refreshToken: refreshed.refreshToken,
               email: resolvedAccount.email,
               employerId: resolvedAccount.employerId,
             })
-            .where(eq(companyHhAccounts.id, account.id));
+            .where(eq(userHhAccounts.id, account.id));
         } catch (refreshError) {
           console.error("Failed to resolve HH employer after refresh", {
-            companyId,
+            userId,
             error: refreshError,
           });
         }
       } else {
         console.error("Failed to resolve HH employer", {
-          companyId,
+          userId,
           error: resolveError,
         });
       }

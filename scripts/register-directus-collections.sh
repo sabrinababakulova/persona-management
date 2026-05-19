@@ -42,6 +42,26 @@ patch_field() {
   fi
 }
 
+patch_collection() {
+  local collection="$1"
+  local payload="$2"
+  local label="$3"
+
+  echo -n "Configuring '$label' collection... "
+  local response
+  response=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH \
+    "$DIRECTUS_URL/collections/$collection" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$payload")
+
+  if [ "$response" = "200" ]; then
+    echo "OK"
+  else
+    echo "HTTP $response"
+  fi
+}
+
 get_field_config() {
   local collection="$1"
   local field="$2"
@@ -338,7 +358,231 @@ EOF
 echo ""
 echo "Configuring Directus field metadata..."
 
+patch_collection "company_hh_account" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "person",
+      "note": "hh.uz OAuth аккаунты, привязанные к конкретным пользователям. Название таблицы legacy: company_hh_account.",
+      "display_template": "{{email}} — {{employerId}}"
+    }
+  }' "user hh.uz accounts"
+
+patch_collection "company_telegram_channel" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "send",
+      "note": "Telegram каналы, привязанные к конкретным пользователям. Название таблицы legacy: company_telegram_channel.",
+      "display_template": "{{channelId}}"
+    }
+  }' "user Telegram channels"
+
+patch_collection "vacancy_telegram_post" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "mark_chat_read",
+      "note": "Отправленные Telegram публикации. channel_id ссылается на Telegram канал пользователя и может быть пустым, если канал удалён.",
+      "display_template": "{{message_url}}"
+    }
+  }' "vacancy Telegram posts"
+
 configure_hash_field "user" "password" "user.password as hash field"
+
+patch_field "company_hh_account" "userId" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{email}}"
+      },
+      "sort": 1,
+      "width": "half",
+      "note": "Владелец hh.uz аккаунта. Интеграция принадлежит пользователю, не компании."
+    }
+  }' "company_hh_account.userId"
+
+upsert_relation "company_hh_account" "userId" '{
+    "collection": "company_hh_account",
+    "field": "userId",
+    "related_collection": "user",
+    "schema": {
+      "table": "company_hh_account",
+      "column": "userId",
+      "foreign_key_table": "user",
+      "foreign_key_column": "id",
+      "constraint_name": "company_hh_account_userId_user_id_fk"
+    },
+    "meta": {
+      "many_collection": "company_hh_account",
+      "many_field": "userId",
+      "one_collection": "user",
+      "one_field": null
+    }
+  }' "company_hh_account.userId"
+
+patch_field "company_hh_account" "clientId" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 2,
+      "width": "half",
+      "note": "Legacy поле. Сейчас OAuth client ID берётся из серверных переменных окружения."
+    }
+  }' "company_hh_account.clientId"
+
+patch_field "company_hh_account" "clientSecret" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "options": {
+        "masked": true
+      },
+      "sort": 3,
+      "width": "half",
+      "note": "Legacy поле. Сейчас OAuth client secret берётся из серверных переменных окружения."
+    }
+  }' "company_hh_account.clientSecret"
+
+patch_field "company_hh_account" "email" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 4,
+      "width": "half",
+      "note": "Email подключенного hh.uz пользователя."
+    }
+  }' "company_hh_account.email"
+
+patch_field "company_hh_account" "employerId" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 5,
+      "width": "half",
+      "note": "Employer ID, полученный от hh.uz для этого пользователя."
+    }
+  }' "company_hh_account.employerId"
+
+patch_field "company_hh_account" "accessToken" '{
+    "type": "text",
+    "meta": {
+      "interface": "input-multiline",
+      "options": {
+        "masked": true
+      },
+      "sort": 6,
+      "width": "full",
+      "note": "Access token пользователя для hh.uz."
+    }
+  }' "company_hh_account.accessToken"
+
+patch_field "company_hh_account" "refreshToken" '{
+    "type": "text",
+    "meta": {
+      "interface": "input-multiline",
+      "options": {
+        "masked": true
+      },
+      "sort": 7,
+      "width": "full",
+      "note": "Refresh token пользователя для hh.uz."
+    }
+  }' "company_hh_account.refreshToken"
+
+patch_field "company_telegram_channel" "userId" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{email}}"
+      },
+      "sort": 1,
+      "width": "half",
+      "note": "Владелец Telegram канала. Канал принадлежит пользователю, не компании."
+    }
+  }' "company_telegram_channel.userId"
+
+upsert_relation "company_telegram_channel" "userId" '{
+    "collection": "company_telegram_channel",
+    "field": "userId",
+    "related_collection": "user",
+    "schema": {
+      "table": "company_telegram_channel",
+      "column": "userId",
+      "foreign_key_table": "user",
+      "foreign_key_column": "id",
+      "constraint_name": "company_telegram_channel_userId_user_id_fk"
+    },
+    "meta": {
+      "many_collection": "company_telegram_channel",
+      "many_field": "userId",
+      "one_collection": "user",
+      "one_field": null
+    }
+  }' "company_telegram_channel.userId"
+
+patch_field "company_telegram_channel" "channelId" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "options": {
+        "placeholder": "@channelname или -1001234567890"
+      },
+      "sort": 2,
+      "width": "half",
+      "note": "Telegram chat/channel ID для публикации вакансий от имени пользователя."
+    }
+  }' "company_telegram_channel.channelId"
+
+patch_field "company_telegram_channel" "label" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 3,
+      "width": "half",
+      "note": "Понятное название канала в интерфейсе."
+    }
+  }' "company_telegram_channel.label"
+
+patch_field "vacancy_telegram_post" "channel_id" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{channelId}}"
+      },
+      "sort": 2,
+      "width": "half",
+      "note": "Telegram канал пользователя, куда было отправлено сообщение. Может быть пустым после удаления канала."
+    }
+  }' "vacancy_telegram_post.channel_id"
+
+upsert_relation "vacancy_telegram_post" "channel_id" '{
+    "collection": "vacancy_telegram_post",
+    "field": "channel_id",
+    "related_collection": "company_telegram_channel",
+    "schema": {
+      "table": "vacancy_telegram_post",
+      "column": "channel_id",
+      "foreign_key_table": "company_telegram_channel",
+      "foreign_key_column": "id",
+      "constraint_name": "vacancy_telegram_post_channel_id_user_telegram_channel_id_fk"
+    },
+    "meta": {
+      "many_collection": "vacancy_telegram_post",
+      "many_field": "channel_id",
+      "one_collection": "company_telegram_channel",
+      "one_field": null
+    }
+  }' "vacancy_telegram_post.channel_id"
 
 patch_field "vacancy" "is_active" '{
     "type": "boolean",

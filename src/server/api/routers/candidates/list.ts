@@ -11,7 +11,7 @@ import {
   isHhConfigured,
   iterateHhVacancyApplicantBatches,
 } from "~/server/services/hh";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import type { CandidateStatus } from "~/types/server/candidates";
 
@@ -144,7 +144,7 @@ export const listHhCandidatesProcedure = protectedProcedure
       return { items: [], total: 0 };
     }
 
-    const hhAuth = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+    const hhAuth = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     const accessToken = hhAuth?.accessToken;
     const employerId = hhAuth?.employerId;
 

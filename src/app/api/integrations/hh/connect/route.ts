@@ -5,7 +5,6 @@ import {
   buildHhConnectState,
   isHhConfigured,
 } from "~/server/services/hh";
-import { ensureUserCompanyId } from "~/server/utils/ensure-user-company";
 import { buildAppUrl } from "~/server/utils/request-url";
 
 export async function GET(request: Request) {
@@ -22,18 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(buildAppUrl("/login", request));
   }
 
-  const companyId = await ensureUserCompanyId(session.user.id);
-  if (!companyId) {
-    console.info("[hh.uz] connect skipped because user companyId is missing", {
-      userId: session.user.id,
-    });
-    return NextResponse.redirect(
-      buildAppUrl("/my-profile?section=company-settings", request),
-    );
-  }
-
   const state = buildHhConnectState({
-    companyId,
     userId: session.user.id,
   });
   const authorizeUrl = buildHhAuthorizeUrl({
@@ -43,7 +31,6 @@ export async function GET(request: Request) {
 
   console.info("[hh.uz] redirecting user to HH authorize page", {
     userId: session.user.id,
-    companyId,
     authorizeOrigin: new URL(authorizeUrl).origin,
   });
 

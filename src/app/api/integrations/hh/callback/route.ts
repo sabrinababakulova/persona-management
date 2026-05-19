@@ -2,13 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { companyHhAccounts } from "~/server/db/schema";
+import { userHhAccounts } from "~/server/db/schema";
 import {
   exchangeHhAuthorizationCode,
   parseHhConnectState,
   resolveHhEmployerFromAccessToken,
 } from "~/server/services/hh";
-import { ensureUserCompanyId } from "~/server/utils/ensure-user-company";
 import { buildAppUrl } from "~/server/utils/request-url";
 
 function redirectToCompanySettings(request: Request) {
@@ -48,16 +47,6 @@ export async function GET(request: Request) {
     return redirectToCompanySettings(request);
   }
 
-  const companyId = await ensureUserCompanyId(session.user.id);
-  if (!companyId || companyId !== parsedState.companyId) {
-    console.info("[hh.uz] callback company validation failed", {
-      sessionUserId: session.user.id,
-      companyId,
-      stateCompanyId: parsedState.companyId,
-    });
-    return redirectToCompanySettings(request);
-  }
-
   try {
     const tokens = await exchangeHhAuthorizationCode({
       code,
@@ -68,14 +57,14 @@ export async function GET(request: Request) {
     );
 
     const existingRows = await db
-      .select({ id: companyHhAccounts.id })
-      .from(companyHhAccounts)
-      .where(eq(companyHhAccounts.companyId, companyId))
+      .select({ id: userHhAccounts.id })
+      .from(userHhAccounts)
+      .where(eq(userHhAccounts.userId, session.user.id))
       .limit(1);
 
     if (existingRows[0]) {
       await db
-        .update(companyHhAccounts)
+        .update(userHhAccounts)
         .set({
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
@@ -84,17 +73,17 @@ export async function GET(request: Request) {
         })
         .where(
           and(
-            eq(companyHhAccounts.id, existingRows[0].id),
-            eq(companyHhAccounts.companyId, companyId),
+            eq(userHhAccounts.id, existingRows[0].id),
+            eq(userHhAccounts.userId, session.user.id),
           ),
         );
     } else {
-      await db.insert(companyHhAccounts).values({
+      await db.insert(userHhAccounts).values({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         email: connectedAccount.email,
         employerId: connectedAccount.employerId,
-        companyId,
+        userId: session.user.id,
       });
     }
   } catch (callbackError) {

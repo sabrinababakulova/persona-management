@@ -9,7 +9,7 @@ import {
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
 } from "~/server/services/hh";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 import { vacancyListInputSchema } from "./schemas";
@@ -104,7 +104,7 @@ export const listVacanciesProcedure = protectedProcedure
       };
     }
 
-    const hhAccount = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+    const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     if (!hhAccount?.accessToken || !hhAccount.employerId) {
       return {
         items: localVacancies.slice(offset, offset + limit),

@@ -69,7 +69,6 @@ export type HhTokenResponse = {
 };
 
 export type HhConnectStatePayload = {
-  companyId: string;
   userId: string;
   issuedAt: number;
 };
@@ -396,7 +395,6 @@ export function decodeState(state: string): HhConnectStatePayload | null {
     ) as HhConnectStatePayload;
 
     if (
-      typeof payload.companyId !== "string" ||
       typeof payload.userId !== "string" ||
       typeof payload.issuedAt !== "number"
     ) {

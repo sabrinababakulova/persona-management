@@ -13,7 +13,7 @@ import { protectedProcedure } from "~/server/api/trpc";
 import { candidates } from "~/server/db/schema";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import { fetchHhResumeById } from "~/server/services/hh";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 
 import { candidateIdInputSchema, candidateNoteInputSchema } from "./schemas";
 import {
@@ -50,7 +50,7 @@ export const getCandidateProcedure = protectedProcedure
     if (input.id.startsWith("hh_")) {
       const resumeId = input.id.slice(3);
 
-      const hhAuth = await resolveCompanyHhAuth(ctx.db, userCompanyId);
+      const hhAuth = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
       const accessToken = hhAuth?.accessToken;
 
       if (!accessToken) {

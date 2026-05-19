@@ -3,23 +3,17 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
-import {
-  ensureUserCompanyId,
-  getRequiredCompanyId,
-} from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { companyHhAccounts, companyTelegramChannels } from "~/server/db/schema";
+import { userHhAccounts, userTelegramChannels } from "~/server/db/schema";
 
 export const integrationsRouter = createTRPCRouter({
   // ── Telegram channels ──────────────────────────────────────────────
 
   getTelegramChannels: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await ensureUserCompanyId(ctx.session.user.id);
-
     return ctx.db
       .select()
-      .from(companyTelegramChannels)
-      .where(eq(companyTelegramChannels.companyId, companyId));
+      .from(userTelegramChannels)
+      .where(eq(userTelegramChannels.userId, ctx.session.user.id));
   }),
 
   addTelegramChannel: protectedProcedure
@@ -30,12 +24,10 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const companyId = await ensureUserCompanyId(ctx.session.user.id);
-
       const rows = await ctx.db
-        .insert(companyTelegramChannels)
+        .insert(userTelegramChannels)
         .values({
-          companyId,
+          userId: ctx.session.user.id,
           channelId: input.channelId,
           label: input.label ?? null,
         })
@@ -47,14 +39,12 @@ export const integrationsRouter = createTRPCRouter({
   removeTelegramChannel: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await ensureUserCompanyId(ctx.session.user.id);
-
       const deleted = await ctx.db
-        .delete(companyTelegramChannels)
+        .delete(userTelegramChannels)
         .where(
           and(
-            eq(companyTelegramChannels.id, input.id),
-            eq(companyTelegramChannels.companyId, companyId),
+            eq(userTelegramChannels.id, input.id),
+            eq(userTelegramChannels.userId, ctx.session.user.id),
           ),
         )
         .returning();
@@ -72,12 +62,10 @@ export const integrationsRouter = createTRPCRouter({
   // ── hh.uz account ─────────────────────────────────────────────────
 
   getHhAccount: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await ensureUserCompanyId(ctx.session.user.id);
-
     const rows = await ctx.db
       .select()
-      .from(companyHhAccounts)
-      .where(eq(companyHhAccounts.companyId, companyId))
+      .from(userHhAccounts)
+      .where(eq(userHhAccounts.userId, ctx.session.user.id))
       .limit(1);
 
     const account = rows[0];
@@ -86,7 +74,7 @@ export const integrationsRouter = createTRPCRouter({
     // Mask secrets for display
     return {
       id: account.id,
-      companyId: account.companyId,
+      userId: account.userId,
       clientId: account.clientId,
       clientSecret: account.clientSecret
         ? `${"•".repeat(8)}${account.clientSecret.slice(-4)}`
@@ -110,28 +98,26 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const companyId = await ensureUserCompanyId(ctx.session.user.id);
-
-      // Upsert — one hh account per company
+      // Upsert — one hh account per user
       const existing = await ctx.db
-        .select({ id: companyHhAccounts.id })
-        .from(companyHhAccounts)
-        .where(eq(companyHhAccounts.companyId, companyId))
+        .select({ id: userHhAccounts.id })
+        .from(userHhAccounts)
+        .where(eq(userHhAccounts.userId, ctx.session.user.id))
         .limit(1);
 
       if (existing[0]) {
         await ctx.db
-          .update(companyHhAccounts)
+          .update(userHhAccounts)
           .set({
             clientId: input.clientId,
             clientSecret: input.clientSecret,
             employerId: input.employerId,
             email: input.email ?? null,
           })
-          .where(eq(companyHhAccounts.id, existing[0].id));
+          .where(eq(userHhAccounts.id, existing[0].id));
       } else {
-        await ctx.db.insert(companyHhAccounts).values({
-          companyId,
+        await ctx.db.insert(userHhAccounts).values({
+          userId: ctx.session.user.id,
           clientId: input.clientId,
           clientSecret: input.clientSecret,
           employerId: input.employerId,
@@ -143,11 +129,9 @@ export const integrationsRouter = createTRPCRouter({
     }),
 
   removeHhAccount: protectedProcedure.mutation(async ({ ctx }) => {
-    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
-
     await ctx.db
-      .delete(companyHhAccounts)
-      .where(eq(companyHhAccounts.companyId, companyId));
+      .delete(userHhAccounts)
+      .where(eq(userHhAccounts.userId, ctx.session.user.id));
 
     return { success: true };
   }),
