@@ -38,6 +38,51 @@ const ACTIVE_STATUS_OPTIONS = [
   { value: "inactive", label: "Неактивна" },
 ];
 
+type PublicationState = "published" | "draft" | "local";
+
+const PUBLICATION_STATE_LABEL: Record<PublicationState, string> = {
+  published: "Опубликовано",
+  draft: "Черновик",
+  local: "Локально",
+};
+
+const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
+  published: "bg-status-active-bg text-status-active",
+  draft: "bg-status-closed-bg text-status-closed",
+  local: "bg-bg-input text-text-placeholder",
+};
+
+function getPublicationState(publication: {
+  hhVacancyId?: string | null;
+  hhDraftId?: string | null;
+}): PublicationState {
+  if (publication.hhVacancyId) {
+    return "published";
+  }
+  if (publication.hhDraftId) {
+    return "draft";
+  }
+  return "local";
+}
+
+/**
+ * Returns the external URL where the published vacancy can be viewed, or `null` for publications
+ * that have no public destination yet (drafts, local-only).
+ */
+function getPublicationExternalUrl(publication: {
+  destination?: string | null;
+  hhVacancyId?: string | null;
+  telegramPostId?: string | null;
+}): string | null {
+  if (publication.destination === "hh.uz" && publication.hhVacancyId) {
+    return `https://hh.uz/vacancy/${publication.hhVacancyId}`;
+  }
+  if (publication.destination === "telegram" && publication.telegramPostId) {
+    return publication.telegramPostId;
+  }
+  return null;
+}
+
 const VACANCY_STATUSES = new Set([
   "active",
   "archive",
@@ -281,12 +326,16 @@ export function PublicationsTable() {
       <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
         <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-[14px] text-text-placeholder lg:grid">
           <div className="col-span-1" />
-          <div className="col-span-4 flex items-center gap-1">
+          <div className="col-span-3 flex items-center gap-1">
             <span>Название</span>
             <SortIcon className="h-4 w-4" />
           </div>
-          <div className="col-span-2 flex items-center gap-1">
+          <div className="col-span-1 flex items-center gap-1">
             <span>Канал</span>
+            <SortIcon className="h-4 w-4" />
+          </div>
+          <div className="col-span-2 flex items-center gap-1">
+            <span>Состояние</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-2 flex items-center gap-1">
@@ -304,6 +353,8 @@ export function PublicationsTable() {
           const platform = pub.destination;
           const icon = platform ? CHANNEL_ICONS[platform] : undefined;
           const dateLabel = formatDate(pub.createdAt);
+          const state = getPublicationState(pub);
+          const externalUrl = getPublicationExternalUrl(pub);
           return (
             <div
               className="grid grid-cols-12 items-center gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
@@ -315,10 +366,21 @@ export function PublicationsTable() {
                   onChange={() => toggle(pub.id)}
                 />
               </div>
-              <div className="col-span-11 truncate font-medium text-[14px] text-text-heading lg:col-span-4">
-                {pub.title}
+              <div className="col-span-11 truncate font-medium text-[14px] text-text-heading lg:col-span-3">
+                {externalUrl ? (
+                  <a
+                    className="hover:text-primary-blue hover:underline"
+                    href={externalUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {pub.title}
+                  </a>
+                ) : (
+                  pub.title
+                )}
               </div>
-              <div className="col-span-1 lg:col-span-2">
+              <div className="col-span-1 lg:col-span-1">
                 {icon && (
                   <Image
                     alt={icon.label}
@@ -331,7 +393,14 @@ export function PublicationsTable() {
                   />
                 )}
               </div>
-              <div className="col-span-5 lg:col-span-2">
+              <div className="col-span-3 lg:col-span-2">
+                <span
+                  className={`inline-flex items-center rounded-[6px] px-2 py-1 font-semibold text-[13px] leading-none ${PUBLICATION_STATE_CLASS[state]}`}
+                >
+                  {PUBLICATION_STATE_LABEL[state]}
+                </span>
+              </div>
+              <div className="col-span-2 lg:col-span-2">
                 <Dropdown
                   className="w-full max-w-35"
                   disabled={updatePublicationStatus.isPending}

@@ -299,6 +299,9 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         isActive: vacancies.isActive,
         createdAt: vacancies.createdAt,
         destination: vacancies.destination,
+        hhVacancyId: vacancies.hhVacancyId,
+        hhDraftId: vacancies.hhDraftId,
+        telegramPostId: vacancies.telegramPostId,
       })
       .from(vacancies)
       .where(and(...conditions))
