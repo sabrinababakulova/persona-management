@@ -102,11 +102,15 @@ export function isHhVacancyId(value: string) {
   return value.startsWith("hh_");
 }
 
-export async function getVacancyRelatedCandidates(
+export async function getVacanciesRelatedCandidates(
   db: DatabaseClient,
-  vacancyId: string,
+  vacancyIds: string[],
   companyId: string,
 ) {
+  if (vacancyIds.length === 0) {
+    return [];
+  }
+
   return db
     .select({
       id: candidates.id,
@@ -131,7 +135,7 @@ export async function getVacancyRelatedCandidates(
     .innerJoin(candidates, eq(candidateVacancies.candidateId, candidates.id))
     .where(
       and(
-        eq(candidateVacancies.vacancyId, vacancyId),
+        inArray(candidateVacancies.vacancyId, vacancyIds),
         eq(candidates.companyId, companyId),
       ),
     )

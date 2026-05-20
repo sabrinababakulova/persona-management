@@ -23,7 +23,7 @@ import {
   vacancyIdInputSchema,
   vacancyPublicationListInputSchema,
 } from "./schemas";
-import { getVacancyRelatedCandidates, isHhVacancyId } from "./shared";
+import { getVacanciesRelatedCandidates, isHhVacancyId } from "./shared";
 
 export const getVacancyProcedure = protectedProcedure
   .input(vacancyIdInputSchema)
@@ -456,14 +456,32 @@ export const getVacancyFunnelProcedure = protectedProcedure
       return null;
     }
 
-    const candidateRows = await getVacancyRelatedCandidates(
+    const funnelVacancyRows = await ctx.db
+      .select({ id: vacancies.id })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.parentId, input.id),
+          eq(vacancies.companyId, userCompanyId),
+        ),
+      );
+    const funnelVacancyIds = funnelVacancyRows.map((row) => row.id);
+    const scopedVacancyIds =
+      funnelVacancyIds.length > 0 ? funnelVacancyIds : [vacancy.id];
+
+    const candidateRows = await getVacanciesRelatedCandidates(
       ctx.db,
-      vacancy.id,
+      scopedVacancyIds,
       userCompanyId,
     );
+    const uniqueCandidateRows = [
+      ...new Map(
+        candidateRows.map((candidate) => [candidate.id, candidate]),
+      ).values(),
+    ];
 
     const relatedVacancyRows =
-      candidateRows.length > 0
+      uniqueCandidateRows.length > 0
         ? await ctx.db
             .select({
               candidateId: candidateVacancies.candidateId,
@@ -479,7 +497,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
               and(
                 inArray(
                   candidateVacancies.candidateId,
-                  candidateRows.map((candidate) => candidate.id),
+                  uniqueCandidateRows.map((candidate) => candidate.id),
                 ),
                 eq(vacancies.companyId, userCompanyId),
               ),
@@ -491,9 +509,10 @@ export const getVacancyFunnelProcedure = protectedProcedure
       string,
       { id: string; title: string }[]
     >();
+    const scopedVacancyIdSet = new Set(scopedVacancyIds);
 
     for (const row of relatedVacancyRows) {
-      if (row.vacancyId === vacancy.id) {
+      if (scopedVacancyIdSet.has(row.vacancyId)) {
         continue;
       }
 
@@ -502,7 +521,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
       relatedVacanciesByCandidate.set(row.candidateId, existing);
     }
 
-    const normalizedCandidates = candidateRows.map((candidate) => {
+    const normalizedCandidates = uniqueCandidateRows.map((candidate) => {
       const contacts = candidate.contacts ?? [];
       const phone = contacts.find((item) => item.type === "phone")?.value ?? "";
       const telegram =
