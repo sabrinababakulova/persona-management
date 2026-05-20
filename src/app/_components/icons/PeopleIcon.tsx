@@ -117,7 +117,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           x="149.953"
           y="51.5725"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -151,7 +151,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           x="6.04395"
           y="56.9139"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -185,7 +185,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           x="40.71"
           y="20.4389"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"

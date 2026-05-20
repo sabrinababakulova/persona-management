@@ -76,7 +76,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="45.9395"
           y="39.3076"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -110,7 +110,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="49.9961"
           y="63.7173"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -144,7 +144,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="38.0801"
           y="88.4263"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -178,7 +178,7 @@ export function NoVacancies({ className, ...props }: IconProps) {
           x="101.096"
           y="130.293"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"

@@ -239,6 +239,10 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK).
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy)
 
+**Integration tables**:
+- `company_hh_account` (Drizzle export: `userHhAccounts`) — hh.uz OAuth tokens and employer metadata, **per user**. Despite the legacy table name, the FK is `userId` (references `user.id`) with a UNIQUE constraint on `userId`. Two users in the same company connect to hh.uz independently. See `src/server/services/hh-company-account.ts` (`getUserHhAccount`, `resolveUserHhAuth`) and `src/app/api/integrations/hh/callback/route.ts` for the OAuth upsert flow.
+- `company_telegram_channel` (Drizzle export: `userTelegramChannels`) — Telegram channels configured per user (same per-user pattern; legacy table name retained).
+
 **Multi-tenancy**:
 - `companies` table holds company records (seeded with a "Default Company" via `bun run db:seed`)
 - `users.companyId`, `candidates.companyId`, `vacancies.companyId` — all reference `companies.id`

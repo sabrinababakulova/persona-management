@@ -207,6 +207,36 @@ async function fetchHhVacanciesBatch(input: {
   return { items, total };
 }
 
+async function fetchHhVacanciesTotal(input: {
+  accessToken?: string;
+  employerId: string;
+  kind: "active" | "archived";
+}): Promise<number> {
+  if (!input.accessToken) {
+    return 0;
+  }
+
+  const searchParams = new URLSearchParams({
+    host: "hh.uz",
+    page: "0",
+    per_page: "1",
+    ...(input.kind === "active" ? { all_accessible: "true" } : {}),
+  });
+
+  const payload = await fetchHhJson<HhVacancySearchResponse>(
+    `${HH_API_BASE_URL}/employers/${input.employerId}/vacancies/${input.kind}?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${input.accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  return getTotalFromSearchPayload(payload);
+}
+
 export async function fetchCompanyHhVacanciesPage(input: {
   accessToken?: string;
   employerId: string;
@@ -222,13 +252,23 @@ export async function fetchCompanyHhVacanciesPage(input: {
   let activeTotal = 0;
 
   if (includeActive) {
-    const activeBatch = await fetchHhVacanciesBatch({
-      accessToken: input.accessToken,
-      employerId: input.employerId,
-      kind: "active",
-      limit: input.limit,
-      offset: input.offset,
-    });
+    const activeBatch =
+      input.limit > 0
+        ? await fetchHhVacanciesBatch({
+            accessToken: input.accessToken,
+            employerId: input.employerId,
+            kind: "active",
+            limit: input.limit,
+            offset: input.offset,
+          })
+        : {
+            items: [],
+            total: await fetchHhVacanciesTotal({
+              accessToken: input.accessToken,
+              employerId: input.employerId,
+              kind: "active",
+            }),
+          };
 
     activeItems = activeBatch.items;
     activeTotal = activeBatch.total;
@@ -241,13 +281,23 @@ export async function fetchCompanyHhVacanciesPage(input: {
     const archivedOffset = Math.max(0, input.offset - activeTotal);
     const archivedLimit = Math.max(0, input.limit - activeItems.length);
 
-    const archivedBatch = await fetchHhVacanciesBatch({
-      accessToken: input.accessToken,
-      employerId: input.employerId,
-      kind: "archived",
-      limit: archivedLimit,
-      offset: archivedOffset,
-    });
+    const archivedBatch =
+      archivedLimit > 0
+        ? await fetchHhVacanciesBatch({
+            accessToken: input.accessToken,
+            employerId: input.employerId,
+            kind: "archived",
+            limit: archivedLimit,
+            offset: archivedOffset,
+          })
+        : {
+            items: [],
+            total: await fetchHhVacanciesTotal({
+              accessToken: input.accessToken,
+              employerId: input.employerId,
+              kind: "archived",
+            }),
+          };
 
     archivedItems = archivedBatch.items;
     archivedTotal = archivedBatch.total;

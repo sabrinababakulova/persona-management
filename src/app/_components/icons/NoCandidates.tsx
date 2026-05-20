@@ -116,7 +116,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="134.068"
           y="45.8828"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -150,7 +150,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="3.45312"
           y="50.7402"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"
@@ -184,7 +184,7 @@ export function NoCandidates({ className, ...props }: IconProps) {
           x="34.918"
           y="17.5801"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             result="hardAlpha"

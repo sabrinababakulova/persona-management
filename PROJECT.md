@@ -40,7 +40,7 @@ Core database tables:
 - `vacancy_candidate` - many-to-many assignment between local vacancies and candidates.
 - `vacancy_publication` - publication metadata and `sources` JSON array with platform/url pairs.
 - `company_telegram_channel` - configured Telegram channels per company.
-- `company_hh_account` - hh.uz OAuth tokens and employer metadata per company.
+- `company_hh_account` - hh.uz OAuth tokens and employer metadata per user. The table name is historical; the FK is now `userId` (references `user.id`) with a unique constraint on `userId`, so each user has at most one connected hh.uz account.
 - Lookup tables - candidate and vacancy dropdown data.
 - `recent_activity_log` - append-only activity feed used by dashboard and candidate detail.
 
@@ -97,7 +97,7 @@ Session invalidation:
 Candidate list:
 
 - Local candidates are fetched from Postgres, company-scoped, filtered by period/search/status/city/source, and paginated.
-- hh.uz candidates are fetched separately through hh.uz applicant APIs, but only for `DEFAULT_COMPANY_ID` and only when hh.uz is configured.
+- hh.uz candidates are fetched separately through hh.uz applicant APIs, scoped to the current user's connected hh.uz account (per-user, no longer gated on `DEFAULT_COMPANY_ID`).
 - Imported hh.uz candidates are excluded from the external list by ID.
 
 Candidate creation:
@@ -130,7 +130,7 @@ Candidate detail:
 Vacancy list:
 
 - Local vacancies are fetched from Postgres and response counts are derived from `vacancy_candidate`.
-- hh.uz vacancies are fetched through hh.uz employer vacancy APIs, but only for `DEFAULT_COMPANY_ID`.
+- hh.uz vacancies are fetched through hh.uz employer vacancy APIs, scoped to the current user's connected hh.uz account.
 - Local rows with `hhVacancyId` are used to dedupe hh.uz list results.
 
 Vacancy create:
@@ -202,10 +202,11 @@ Telegram:
 
 hh.uz:
 
-- OAuth connect route builds a signed state with user ID and company ID.
-- Callback exchanges code, resolves employer, and upserts account tokens.
+- OAuth connect route builds a signed state with the user ID.
+- Callback exchanges code, resolves employer, and upserts account tokens keyed by `userId`.
 - Account metadata can also be manually saved through the integrations router.
 - Token refresh is attempted mainly when access token is missing or employer resolution fails.
+- hh.uz accounts are per-user: two users in the same company connect independently.
 
 ### Dashboard
 
@@ -304,8 +305,8 @@ Missing or partial:
 18. Should archiving/closing a local vacancy archive the hh.uz vacancy automatically?
 19. Should prolonging/reactivating an hh.uz vacancy be a separate user action with billing confirmation?
 20. What should happen if hh.uz token refresh fails: disconnect account, show banner, retry later, or block publication only?
-21. Why are hh.uz lists limited to `DEFAULT_COMPANY_ID` when `company_hh_account` is per company?
-22. Should all companies be allowed to connect and use their own hh.uz account?
+21. hh.uz accounts are now per-user (the `company_hh_account` table is keyed on `userId`, despite its legacy name). Should the table be renamed to `user_hh_account` to match?
+22. If two users in the same company both connect hh.uz, whose account should drive company-level dashboards, vacancy lists, and applicant counts?
 23. Should hh.uz applicants count as vacancy responses before they are imported into local candidates?
 
 ### Publication records

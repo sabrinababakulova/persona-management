@@ -1,4 +1,4 @@
-import { and, eq, gte, ilike, inArray, or } from "drizzle-orm";
+import { and, eq, gte, ilike, inArray, isNotNull, or } from "drizzle-orm";
 
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
@@ -37,16 +37,30 @@ export const listVacanciesProcedure = protectedProcedure
       ctx.session?.user?.id,
     );
 
-    const includeLocal = sources.length === 0 || sources.includes("local");
-    const includeHh = sources.length === 0 || sources.includes("hh.uz");
+    const wantsLocalSource = sources.length === 0 || sources.includes("local");
+    const wantsHhSource = sources.length === 0 || sources.includes("hh.uz");
+    const includeLocal = wantsLocalSource || sources.includes("hh.uz");
+    const includeHh = wantsHhSource;
 
     let localVacancies: ReturnType<typeof formatVacancy>[] = [];
 
     if (includeLocal) {
-      const localConditions = [
-        eq(vacancies.companyId, userCompanyId),
-        eq(vacancies.isPublication, false),
-      ];
+      const localConditions = [eq(vacancies.companyId, userCompanyId)];
+
+      if (!wantsLocalSource && wantsHhSource) {
+        localConditions.push(isNotNull(vacancies.hhVacancyId));
+      } else if (wantsLocalSource && wantsHhSource && sources.length > 0) {
+        const sourceCondition = or(
+          eq(vacancies.isPublication, false),
+          isNotNull(vacancies.hhVacancyId),
+        );
+
+        if (sourceCondition) {
+          localConditions.push(sourceCondition);
+        }
+      } else {
+        localConditions.push(eq(vacancies.isPublication, false));
+      }
 
       if (shouldApplyPeriod) {
         localConditions.push(gte(vacancies.createdAt, createdAtCutoff));
@@ -127,7 +141,8 @@ export const listVacanciesProcedure = protectedProcedure
     );
     const hhOffset = Math.max(0, offset - localVacancies.length);
     const hhLimit = Math.max(0, limit - paginatedLocalVacancies.length);
-    const shouldUsePaginatedHhFetch = !normalizedSearch && !normalizedCity;
+    const shouldUsePaginatedHhFetch =
+      !sources.includes("hh.uz") && !normalizedSearch && !normalizedCity;
     const includeActiveHhStatuses =
       statuses.length === 0 || statuses.includes("active");
     const includeArchivedHhStatuses =
@@ -147,7 +162,7 @@ export const listVacanciesProcedure = protectedProcedure
         const dedupedHhItems = hhPage.items.filter(
           (vacancy) => !linkedHhVacancyIds.has(vacancy.id),
         );
-        const droppedCount = hhPage.items.length - dedupedHhItems.length;
+        const linkedHhCount = Math.min(linkedHhVacancyIds.size, hhPage.total);
 
         return {
           items: [
@@ -156,7 +171,7 @@ export const listVacanciesProcedure = protectedProcedure
               formatHhVacancy(vacancy, userCompanyId),
             ),
           ],
-          total: localVacancies.length + hhPage.total - droppedCount,
+          total: localVacancies.length + hhPage.total - linkedHhCount,
         };
       }
 
