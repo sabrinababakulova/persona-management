@@ -183,6 +183,13 @@
       "when": 1779183825509,
       "tag": "0025_cultured_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779281446691,
+      "tag": "0026_majestic_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

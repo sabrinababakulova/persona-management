@@ -828,7 +828,11 @@ export const publishHhProcedure = protectedProcedure
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
 
     const vacancyRows = await ctx.db
-      .select({ id: vacancies.id, title: vacancies.title })
+      .select({
+        id: vacancies.id,
+        title: vacancies.title,
+        parentId: vacancies.parentId,
+      })
       .from(vacancies)
       .where(
         and(
@@ -917,6 +921,18 @@ export const publishHhProcedure = protectedProcedure
       .update(vacancies)
       .set({ hhVacancyId: result.id })
       .where(eq(vacancies.id, vacancy.id));
+
+    if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
+      await ctx.db
+        .update(vacancies)
+        .set({ hhVacancyId: result.id })
+        .where(
+          and(
+            eq(vacancies.id, vacancy.parentId),
+            eq(vacancies.companyId, companyId),
+          ),
+        );
+    }
 
     return {
       success: true,

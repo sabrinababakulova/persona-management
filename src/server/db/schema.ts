@@ -1,10 +1,5 @@
 import { relations } from "drizzle-orm";
-import {
-  index,
-  pgTableCreator,
-  primaryKey,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
 export const createTable = pgTableCreator((name) => name);
@@ -314,7 +309,7 @@ export const vacancies = createTable(
     index("vacancy_status_idx").on(t.status),
     index("vacancy_company_id_idx").on(t.companyId),
     index("vacancy_parent_id_idx").on(t.parentId),
-    uniqueIndex("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
+    index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
   ],
 );
 
