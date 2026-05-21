@@ -239,9 +239,23 @@ export function HhPublicationForm({
       });
     },
     onError: (error) => {
+      setSavedMessage(null);
       setErrors({
         _form: error.message || "Не удалось опубликовать на hh.uz",
       });
+    },
+  });
+
+  // Used to roll back a publication that was created only so hh.uz had a
+  // vacancy id to attach to, when hh.uz then rejects it.
+  const deletePublication = api.vacancies.deletePublication.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.vacancies.list.invalidate(),
+        utils.vacancies.listPublications.invalidate({
+          parentVacancyId: vacancyId,
+        }),
+      ]);
     },
   });
   const saveDraftToHH = api.vacancies.saveHhDraft.useMutation({
@@ -419,13 +433,47 @@ export function HhPublicationForm({
     }
 
     try {
-      const localVacancyId = await ensureLocalPublication(true);
-      await publishToHH.mutateAsync({
-        ...fields,
-        name: fields.title.trim(),
-        vacancyId: localVacancyId,
-        ...getSalaryPayload(),
-      });
+      if (pubId) {
+        // Existing publication: publish to hh.uz first, then persist the field
+        // edits locally — a rejection leaves the saved publication untouched.
+        await publishToHH.mutateAsync({
+          ...fields,
+          name: fields.title.trim(),
+          vacancyId: pubId,
+          ...getSalaryPayload(),
+        });
+        await updatePublication.mutateAsync({
+          id: pubId,
+          ...fields,
+          title: fields.title.trim(),
+          isActive: true,
+          isPublication: true,
+        });
+      } else {
+        // New publication: hh.uz needs a vacancy id, so the row is created
+        // first and removed again if hh.uz rejects it — nothing stays saved.
+        const created = await createPublication.mutateAsync({
+          parentId: vacancyId,
+          ...fields,
+          title: fields.title.trim(),
+          isActive: true,
+          isPublication: true,
+          destination: "hh.uz",
+        });
+        try {
+          await publishToHH.mutateAsync({
+            ...fields,
+            name: fields.title.trim(),
+            vacancyId: created.id,
+            ...getSalaryPayload(),
+          });
+        } catch (error) {
+          await deletePublication
+            .mutateAsync({ id: created.id })
+            .catch(() => undefined);
+          throw error;
+        }
+      }
       router.push(`/vacancies/${vacancyId}?step=publications`);
     } catch {
       // Mutation handlers surface the error in the form.
@@ -437,25 +485,54 @@ export function HhPublicationForm({
       return;
     }
 
+    const buildDraftPayload = (localVacancyId: string) => ({
+      ...fields,
+      name: fields.title.trim(),
+      vacancyId: localVacancyId,
+      descriptionHtml: fields.descriptionHtml || undefined,
+      areaId: fields.areaId || undefined,
+      employmentId: fields.employmentId || undefined,
+      scheduleId: fields.scheduleId || undefined,
+      experienceId: fields.experienceId || undefined,
+      professionalRoleId: fields.professionalRoleId || undefined,
+      vacancyTypeId: fields.vacancyTypeId || undefined,
+      billingTypeId: fields.billingTypeId || undefined,
+      ...getSalaryPayload(),
+    });
+
     try {
-      const localVacancyId = await ensureLocalPublication(getCurrentIsActive());
-      await saveDraftToHH.mutateAsync({
-        ...fields,
-        name: fields.title.trim(),
-        vacancyId: localVacancyId,
-        descriptionHtml: fields.descriptionHtml || undefined,
-        areaId: fields.areaId || undefined,
-        employmentId: fields.employmentId || undefined,
-        scheduleId: fields.scheduleId || undefined,
-        experienceId: fields.experienceId || undefined,
-        professionalRoleId: fields.professionalRoleId || undefined,
-        vacancyTypeId: fields.vacancyTypeId || undefined,
-        billingTypeId: fields.billingTypeId || undefined,
-        ...getSalaryPayload(),
-      });
-      if (!pubId) {
+      if (pubId) {
+        // Existing publication: save the hh.uz draft first, then persist the
+        // local field edits — a rejection leaves the publication untouched.
+        await saveDraftToHH.mutateAsync(buildDraftPayload(pubId));
+        await updatePublication.mutateAsync({
+          id: pubId,
+          ...fields,
+          title: fields.title.trim(),
+          isActive: getCurrentIsActive(),
+          isPublication: true,
+        });
+      } else {
+        // New publication: hh.uz needs a vacancy id, so the row is created
+        // first and removed again if hh.uz rejects the draft.
+        const created = await createPublication.mutateAsync({
+          parentId: vacancyId,
+          ...fields,
+          title: fields.title.trim(),
+          isActive: getCurrentIsActive(),
+          isPublication: true,
+          destination: "hh.uz",
+        });
+        try {
+          await saveDraftToHH.mutateAsync(buildDraftPayload(created.id));
+        } catch (error) {
+          await deletePublication
+            .mutateAsync({ id: created.id })
+            .catch(() => undefined);
+          throw error;
+        }
         router.replace(
-          `/vacancies/${vacancyId}/publications/hh.uz/${localVacancyId}`,
+          `/vacancies/${vacancyId}/publications/hh.uz/${created.id}`,
         );
       }
     } catch {
