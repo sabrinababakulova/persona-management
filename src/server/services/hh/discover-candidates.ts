@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 
 import { writeRecentActivityLog } from "~/server/activity/recent-activity";
 import {
@@ -12,7 +12,8 @@ import {
   type HhNegotiation,
   iterateHhVacancyNegotiationPages,
 } from "./negotiations";
-import { isHhAccessError } from "./shared";
+import { type HhVacancy, isHhAccessError } from "./shared";
+import { fetchCompanyHhVacancies } from "./vacancies";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -49,9 +50,11 @@ function parseHhDate(value: string | null): Date | null {
 /**
  * Discovers new hh.uz candidates for a company (Layer 1).
  *
- * For every hh.uz-linked vacancy this polls negotiations newest-first, stops
- * once a page falls entirely below the watermark, upserts a candidate stub plus
- * an application row, and enqueues an enrichment job for each genuinely new
+ * Fetches the employer's **active** hh.uz vacancies (archived/closed vacancies
+ * and their applicants are intentionally skipped), ensures each has a local
+ * vacancy row, then for every one polls negotiations newest-first, stops once a
+ * page falls entirely below the watermark, upserts a candidate stub plus an
+ * application row, and enqueues an enrichment job for each genuinely new
  * candidate. Resume PDFs and full profiles are NOT fetched here — that is the
  * enrichment worker's job.
  *
@@ -61,8 +64,9 @@ export async function discoverHhCandidates(input: {
   db: DatabaseClient;
   companyId: string;
   accessToken: string;
+  employerId: string;
 }): Promise<DiscoverHhCandidatesResult> {
-  const { db, companyId, accessToken } = input;
+  const { db, companyId, accessToken, employerId } = input;
 
   const empty: DiscoverHhCandidatesResult = {
     ranSync: false,
@@ -83,20 +87,29 @@ export async function discoverHhCandidates(input: {
   }
 
   try {
-    const hhVacancies = await db
-      .select({ id: vacancies.id, hhVacancyId: vacancies.hhVacancyId })
-      .from(vacancies)
-      .where(
-        and(
-          eq(vacancies.companyId, companyId),
-          isNotNull(vacancies.hhVacancyId),
-        ),
-      );
+    // Only ACTIVE hh.uz vacancies are synced — archived/closed vacancies and
+    // their applicants are intentionally excluded.
+    const activeHhVacancies = (
+      await fetchCompanyHhVacancies(employerId, accessToken)
+    ).filter((vacancy) => vacancy.status === "active");
 
     const result: DiscoverHhCandidatesResult = { ...empty, ranSync: true };
 
-    for (const vacancy of hhVacancies) {
-      if (!vacancy.hhVacancyId) {
+    for (const hhVacancy of activeHhVacancies) {
+      let localVacancyId: string;
+      try {
+        localVacancyId = await resolveLocalVacancy({
+          db,
+          companyId,
+          hhVacancy,
+        });
+      } catch (error) {
+        result.vacanciesFailed += 1;
+        console.error("hh discovery failed to resolve local vacancy", {
+          companyId,
+          hhVacancyId: hhVacancy.id,
+          error,
+        });
         continue;
       }
 
@@ -105,8 +118,8 @@ export async function discoverHhCandidates(input: {
           db,
           companyId,
           accessToken,
-          localVacancyId: vacancy.id,
-          hhVacancyId: vacancy.hhVacancyId,
+          localVacancyId,
+          hhVacancyId: hhVacancy.id,
         });
         result.vacanciesProcessed += 1;
         result.newCandidates += counts.newCandidates;
@@ -119,14 +132,14 @@ export async function discoverHhCandidates(input: {
         if (!isHhAccessError(error)) {
           console.error("hh discovery failed for vacancy", {
             companyId,
-            vacancyId: vacancy.id,
+            hhVacancyId: hhVacancy.id,
             error,
           });
         }
         await db
           .insert(hhVacancySyncState)
           .values({
-            vacancyId: vacancy.id,
+            vacancyId: localVacancyId,
             lastSyncStartedAt: new Date(),
             lastSyncFinishedAt: new Date(),
             lastSyncError: message,
@@ -144,6 +157,46 @@ export async function discoverHhCandidates(input: {
       sql`SELECT pg_advisory_unlock(${advisoryLockKey(companyId)})`,
     );
   }
+}
+
+/**
+ * Returns the local vacancy row id for an hh.uz vacancy, creating a base
+ * vacancy row when none exists yet so candidates can be tied to it.
+ */
+async function resolveLocalVacancy(input: {
+  db: DatabaseClient;
+  companyId: string;
+  hhVacancy: HhVacancy;
+}): Promise<string> {
+  const { db, companyId, hhVacancy } = input;
+
+  const existing = await db
+    .select({ id: vacancies.id })
+    .from(vacancies)
+    .where(
+      and(
+        eq(vacancies.companyId, companyId),
+        eq(vacancies.hhVacancyId, hhVacancy.id),
+      ),
+    )
+    .limit(1);
+
+  const existingId = existing[0]?.id;
+  if (existingId) {
+    return existingId;
+  }
+
+  // A base vacancy self-references via parentId.
+  const id = crypto.randomUUID();
+  await db.insert(vacancies).values({
+    id,
+    parentId: id,
+    title: hhVacancy.title,
+    status: "active",
+    companyId,
+    hhVacancyId: hhVacancy.id,
+  });
+  return id;
 }
 
 async function discoverVacancy(input: {
@@ -254,48 +307,84 @@ async function upsertNegotiation(input: {
   let candidateInserted = false;
 
   if (negotiation.resumeId) {
-    // Identified resume → dedupe on (companyId, hhResumeId).
-    const inserted = await db
-      .insert(candidates)
-      .values({
-        companyId,
-        hhResumeId: negotiation.resumeId,
-        hhResumeUrl: negotiation.resumeUrl,
-        fullName: negotiation.fullName,
-        source: "hh.uz",
-        status: "new",
-        hhSyncedAt: new Date(),
-      })
-      .onConflictDoNothing({
-        target: [candidates.companyId, candidates.hhResumeId],
-        where: isNotNull(candidates.hhResumeId),
-      })
-      .returning({ id: candidates.id });
+    const resumeId = negotiation.resumeId;
 
-    if (inserted[0]) {
-      candidateId = inserted[0].id;
-      candidateInserted = true;
-    } else {
-      const existing = await db
-        .select({ id: candidates.id })
-        .from(candidates)
-        .where(
-          and(
-            eq(candidates.companyId, companyId),
-            eq(candidates.hhResumeId, negotiation.resumeId),
+    // Find any candidate already representing this resume: the canonical row
+    // keyed by `hhResumeId`, and/or a legacy row stored with primary key
+    // `hh_<resumeId>` from before this sync existed.
+    const existingRows = await db
+      .select({ id: candidates.id, hhResumeId: candidates.hhResumeId })
+      .from(candidates)
+      .where(
+        and(
+          eq(candidates.companyId, companyId),
+          or(
+            eq(candidates.hhResumeId, resumeId),
+            eq(candidates.id, `hh_${resumeId}`),
           ),
-        )
-        .limit(1);
-      const existingId = existing[0]?.id;
-      if (!existingId) {
-        // Lost a race or the row vanished; nothing safe to link.
-        return {
-          candidateInserted: false,
-          applicationInserted: false,
-          jobEnqueued: false,
-        };
+        ),
+      );
+
+    const canonical = existingRows.find((row) => row.hhResumeId === resumeId);
+    const legacy = existingRows.find(
+      (row) => row.id === `hh_${resumeId}` && !row.hhResumeId,
+    );
+
+    if (canonical) {
+      candidateId = canonical.id;
+    } else if (legacy) {
+      // Adopt the legacy row so this and future syncs dedupe onto it instead
+      // of creating an empty duplicate. (The migration backfills the same
+      // column, but `db:push` deployments skip migration SQL.)
+      await db
+        .update(candidates)
+        .set({ hhResumeId: resumeId, hhSyncedAt: new Date() })
+        .where(eq(candidates.id, legacy.id));
+      candidateId = legacy.id;
+    } else {
+      const inserted = await db
+        .insert(candidates)
+        .values({
+          companyId,
+          hhResumeId: resumeId,
+          hhResumeUrl: negotiation.resumeUrl,
+          fullName: negotiation.fullName,
+          source: "hh.uz",
+          status: "new",
+          hhSyncedAt: new Date(),
+        })
+        .onConflictDoNothing({
+          target: [candidates.companyId, candidates.hhResumeId],
+          where: isNotNull(candidates.hhResumeId),
+        })
+        .returning({ id: candidates.id });
+
+      const insertedId = inserted[0]?.id;
+      if (insertedId) {
+        candidateId = insertedId;
+        candidateInserted = true;
+      } else {
+        // Conflicted with a row created concurrently — re-read it.
+        const reSelect = await db
+          .select({ id: candidates.id })
+          .from(candidates)
+          .where(
+            and(
+              eq(candidates.companyId, companyId),
+              eq(candidates.hhResumeId, resumeId),
+            ),
+          )
+          .limit(1);
+        const reSelectedId = reSelect[0]?.id;
+        if (!reSelectedId) {
+          return {
+            candidateInserted: false,
+            applicationInserted: false,
+            jobEnqueued: false,
+          };
+        }
+        candidateId = reSelectedId;
       }
-      candidateId = existingId;
     }
   } else {
     // Anonymous/hidden resume: no stable per-person key, so one candidate row

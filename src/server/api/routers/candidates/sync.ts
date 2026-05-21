@@ -25,8 +25,9 @@ export const syncHhCandidatesProcedure = protectedProcedure.mutation(
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
     const hhAuth = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     const accessToken = hhAuth?.accessToken;
+    const employerId = hhAuth?.employerId;
 
-    if (!accessToken) {
+    if (!accessToken || !employerId) {
       return {
         ranSync: false,
         vacanciesProcessed: 0,
@@ -41,6 +42,7 @@ export const syncHhCandidatesProcedure = protectedProcedure.mutation(
       db: ctx.db,
       companyId,
       accessToken,
+      employerId,
     });
 
     // Warm up: enrich the first few discovered candidates immediately so the
