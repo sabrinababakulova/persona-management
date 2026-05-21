@@ -6,6 +6,7 @@ import {
   type HhNegotiationsCollectionInfo,
   type HhNegotiationsListResponse,
   type HhVacancyApplicant,
+  isHhAccessError,
   toHhVacancyApplicant,
 } from "./shared";
 
@@ -108,6 +109,12 @@ export async function fetchHhVacancyApplicants(
       }
     }
   } catch (error) {
+    // A permission / not-found error means the connected account cannot read this
+    // vacancy's negotiations at all — surface it so callers can warn the user instead
+    // of silently rendering an empty funnel.
+    if (isHhAccessError(error)) {
+      throw error;
+    }
     console.error("Failed to fetch HH vacancy applicants", {
       vacancyId,
       error,

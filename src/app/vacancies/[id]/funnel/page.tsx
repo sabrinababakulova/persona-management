@@ -740,6 +740,14 @@ export default function VacancyFunnelPage() {
           </div>
         ) : null}
 
+        {data.hhAccessDenied ? (
+          <div className="rounded-[8px] border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-[14px] text-danger-red">
+            У вашего аккаунта hh.uz нет доступа к откликам этой вакансии.
+            Кандидаты с hh.uz не отображаются в воронке. Проверьте права
+            менеджера или подключённый аккаунт hh.uz.
+          </div>
+        ) : null}
+
         <DndContext
           collisionDetection={pointerWithin}
           onDragEnd={handleDragEnd}

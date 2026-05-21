@@ -14,6 +14,7 @@ import {
   fetchHhVacancyById,
   fetchHhVacancyDetail,
   type HhVacancyDetail,
+  isHhAccessError,
 } from "~/server/services/hh";
 import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
@@ -385,10 +386,16 @@ export const getVacancyFunnelProcedure = protectedProcedure
           hhVacancyId,
           hhAccount.accessToken,
         );
+        let hhAccessDenied = false;
         const relatedCandidates = await fetchHhVacancyApplicants(
           hhVacancyId,
           hhAccount.accessToken,
-        ).catch(() => []);
+        ).catch((error: unknown) => {
+          if (isHhAccessError(error)) {
+            hhAccessDenied = true;
+          }
+          return [];
+        });
 
         const normalizedCandidates = relatedCandidates.map((candidate) => ({
           id: candidate.id,
@@ -421,6 +428,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
           areaId: "",
           experienceId: "",
           source: "hh.uz" as const,
+          hhAccessDenied,
           candidates: normalizedCandidates,
           stages: stageRows.map((stage) => ({
             value: stage.value,
@@ -570,6 +578,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
     });
 
     const hhApplicantCandidates: typeof normalizedCandidates = [];
+    let hhAccessDenied = false;
     if (hhChildVacancyIds.length > 0) {
       const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
       if (hhAccount?.accessToken) {
@@ -586,7 +595,19 @@ export const getVacancyFunnelProcedure = protectedProcedure
 
         const batches = await Promise.all(
           hhChildVacancyIds.map((hhVacancyId) =>
-            fetchHhVacancyApplicants(hhVacancyId, accessToken).catch(() => []),
+            fetchHhVacancyApplicants(hhVacancyId, accessToken).catch(
+              (error: unknown) => {
+                if (isHhAccessError(error)) {
+                  hhAccessDenied = true;
+                } else {
+                  console.error("Failed to fetch HH vacancy applicants", {
+                    hhVacancyId,
+                    error,
+                  });
+                }
+                return [];
+              },
+            ),
           ),
         );
 
@@ -636,6 +657,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
       areaId: vacancy.areaId ?? "",
       experienceId: vacancy.experienceId ?? "",
       source: "local" as const,
+      hhAccessDenied,
       candidates: allCandidates,
       stages: stageRows.map((stage) => ({
         value: stage.value,

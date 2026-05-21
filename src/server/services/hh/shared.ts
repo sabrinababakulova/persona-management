@@ -411,6 +411,49 @@ export function decodeState(state: string): HhConnectStatePayload | null {
   }
 }
 
+/**
+ * Error thrown for any non-2xx hh.uz API response. Carries the HTTP status and the
+ * `errors[].type` values from the JSON body (e.g. `"not_found"`, `"forbidden"`) so callers
+ * can tell a permission failure apart from a transient outage.
+ */
+export class HhApiError extends Error {
+  readonly status: number;
+  readonly errorTypes: string[];
+
+  constructor(status: number, body: string) {
+    super(`HH API error ${status}: ${body}`);
+    this.name = "HhApiError";
+    this.status = status;
+    this.errorTypes = parseHhErrorTypes(body);
+  }
+}
+
+function parseHhErrorTypes(body: string): string[] {
+  try {
+    const parsed = JSON.parse(body) as { errors?: { type?: unknown }[] };
+    return (parsed.errors ?? [])
+      .map((entry) => entry.type)
+      .filter((type): type is string => typeof type === "string");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * True when an hh.uz error means the connected account is not allowed to see the resource.
+ * hh.uz returns `403 forbidden` for explicit permission denials and masks others as
+ * `404 not_found` — e.g. requesting negotiations of a vacancy the account does not manage.
+ */
+export function isHhAccessError(error: unknown): boolean {
+  if (!(error instanceof HhApiError)) {
+    return false;
+  }
+  if (error.status === 403) {
+    return true;
+  }
+  return error.status === 404 && error.errorTypes.includes("not_found");
+}
+
 export async function fetchHhJson<T>(url: string, init?: RequestInit) {
   const response = await fetch(url, {
     cache: "no-store",
@@ -419,7 +462,7 @@ export async function fetchHhJson<T>(url: string, init?: RequestInit) {
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`HH API error ${response.status}: ${body}`);
+    throw new HhApiError(response.status, body);
   }
 
   return (await response.json()) as T;

@@ -12,6 +12,7 @@ export {
   resolveHhEmployerFromAccessToken,
 } from "./hh/oauth";
 export { fetchHhResumeById } from "./hh/resumes";
+export { HhApiError, isHhAccessError } from "./hh/shared";
 export type {
   HhConnectedAccount,
   HhResumeCandidate,
