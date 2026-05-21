@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
@@ -86,15 +86,22 @@ export function HhPublicationForm({
 
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
 
-  // Hydrate the store from server data once per vacancy. We don't want to clobber
-  // user edits if they're navigating around within the same vacancy, but we DO want
-  // to overwrite when opening a different vacancy.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: update should happen when pub or vacancy is updated
+  // Hydrate the store from server data once per vacancy/publication id. A
+  // refetch — e.g. after a failed hh.uz save invalidates `vacancies.get` — must
+  // NOT re-run hydration: that would clobber the user's filled-in fields with
+  // the server row, which for a not-yet-saved publication is empty. We still
+  // re-hydrate when the id changes (opening a different vacancy/publication).
+  const hydratedForId = useRef<string | null>(null);
   useEffect(() => {
     const v = vacancyQuery.data;
     if (!v) {
       return;
     }
+    const currentId = pubId ?? vacancyId;
+    if (hydratedForId.current === currentId) {
+      return;
+    }
+    hydratedForId.current = currentId;
     setHhFields({
       title: v.title ?? "",
       areaId: v.areaId ?? "",
