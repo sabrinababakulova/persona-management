@@ -1,4 +1,5 @@
-import { and, eq, gte, ilike, inArray, isNotNull, or } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNotNull, or } from "drizzle-orm";
 
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
@@ -8,6 +9,7 @@ import { vacancies } from "~/server/db/schema";
 import {
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
+  fetchHhVacancyResponseCounts,
 } from "~/server/services/hh";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 
@@ -18,12 +20,77 @@ import {
   getVacancyResponseCounts,
 } from "./shared";
 
+/**
+ * Builds the SQL predicate that restricts local `vacancies` rows to the requested sources:
+ *
+ * - **hh.uz only** — rows linked to an hh.uz vacancy (`hhVacancyId` is set).
+ * - **both sources explicitly selected** — base vacancies or hh.uz-linked rows.
+ * - **default / local only** — base vacancies (`isPublication = false`).
+ */
+function localSourceCondition(
+  wantsLocalSource: boolean,
+  wantsHhSource: boolean,
+  sourceCount: number,
+): SQL | undefined {
+  if (wantsHhSource && !wantsLocalSource) {
+    return isNotNull(vacancies.hhVacancyId);
+  }
+  if (wantsLocalSource && wantsHhSource && sourceCount > 0) {
+    return or(
+      eq(vacancies.isPublication, false),
+      isNotNull(vacancies.hhVacancyId),
+    );
+  }
+  return eq(vacancies.isPublication, false);
+}
+
+/**
+ * Overrides each local vacancy's response count with the live hh.uz counter, looked up by
+ * `hhVacancyId` in `hhResponsesById`.
+ *
+ * A linked hh.uz vacancy is deduped out of the merged list, so without this its response
+ * count — which only hh.uz tracks accurately — would never reach the client. Copying it
+ * onto the local vacancy keeps the displayed counter correct.
+ */
+function withHhResponseCounts(
+  localVacancies: ReturnType<typeof formatVacancy>[],
+  hhResponsesById: Map<string, number>,
+) {
+  if (hhResponsesById.size === 0) {
+    return localVacancies;
+  }
+  return localVacancies.map((vacancy) => {
+    const hhResponses = vacancy.hhVacancyId
+      ? hhResponsesById.get(vacancy.hhVacancyId)
+      : undefined;
+    return hhResponses === undefined
+      ? vacancy
+      : { ...vacancy, responses: hhResponses };
+  });
+}
+
+/**
+ * `vacancies.list` — paginated vacancy list for the signed-in user's company.
+ *
+ * Results are merged from two sources, selected through the `sources` filter (an empty
+ * filter means "any source"):
+ *
+ * - **Local** — vacancies stored in our own database.
+ * - **hh.uz** — vacancies fetched live from the hh.uz API.
+ *
+ * Local vacancies are listed first, then hh.uz vacancies. An hh.uz vacancy already linked
+ * to a local vacancy (matched by `hhVacancyId`) is dropped so it is not shown twice — but
+ * its hh.uz response counter is copied onto the local vacancy first.
+ * `limit`/`offset` paginate the merged list. If the hh.uz API call fails, the procedure
+ * degrades gracefully and returns only the local results.
+ *
+ * Supported filters: `search` (title / description), `statuses`, `city` (matched against an
+ * hh.uz `areaId`) and `period`. `period` is ignored while a text search is active.
+ */
 export const listVacanciesProcedure = protectedProcedure
   .input(vacancyListInputSchema)
   .query(async ({ ctx, input }) => {
-    const period = input?.period ?? "week";
     const search = input?.search?.trim();
-    const shouldApplyPeriod = !search;
     const normalizedSearch = search?.toLowerCase() ?? "";
     const statuses = input?.statuses?.filter(Boolean) ?? [];
     const city = input?.city?.trim();
@@ -31,196 +98,188 @@ export const listVacanciesProcedure = protectedProcedure
     const sources = input?.sources?.filter(Boolean) ?? [];
     const limit = input?.limit ?? 50;
     const offset = input?.offset ?? 0;
-    const createdAtCutoff = getPeriodDateCutoff(period);
+
     const userCompanyId = await getRequiredCompanyId(
       ctx.db,
       ctx.session?.user?.id,
     );
 
+    // An empty `sources` filter means "any source".
     const wantsLocalSource = sources.length === 0 || sources.includes("local");
     const wantsHhSource = sources.length === 0 || sources.includes("hh.uz");
+    // Local rows are also needed for an hh.uz-only request: they identify which hh.uz
+    // vacancies are already linked locally and must be deduped out of the hh.uz feed.
     const includeLocal = wantsLocalSource || sources.includes("hh.uz");
-    const includeHh = wantsHhSource;
 
+    /** Applies the request's `limit`/`offset` window to a result list. */
+    const paginate = <T>(items: T[]) => items.slice(offset, offset + limit);
+
+    // --- Local vacancies ------------------------------------------------------------
     let localVacancies: ReturnType<typeof formatVacancy>[] = [];
 
     if (includeLocal) {
-      const localConditions = [eq(vacancies.companyId, userCompanyId)];
-
-      if (!wantsLocalSource && wantsHhSource) {
-        localConditions.push(isNotNull(vacancies.hhVacancyId));
-      } else if (wantsLocalSource && wantsHhSource && sources.length > 0) {
-        const sourceCondition = or(
-          eq(vacancies.isPublication, false),
-          isNotNull(vacancies.hhVacancyId),
-        );
-
-        if (sourceCondition) {
-          localConditions.push(sourceCondition);
-        }
-      } else {
-        localConditions.push(eq(vacancies.isPublication, false));
-      }
-
-      if (shouldApplyPeriod) {
-        localConditions.push(gte(vacancies.createdAt, createdAtCutoff));
-      }
+      const conditions: (SQL | undefined)[] = [
+        eq(vacancies.companyId, userCompanyId),
+        localSourceCondition(wantsLocalSource, wantsHhSource, sources.length),
+      ];
 
       if (search) {
-        const searchCondition = or(
-          ilike(vacancies.title, `%${escapeLike(search)}%`),
-          ilike(vacancies.descriptionHtml, `%${escapeLike(search)}%`),
+        conditions.push(
+          or(
+            ilike(vacancies.title, `%${escapeLike(search)}%`),
+            ilike(vacancies.descriptionHtml, `%${escapeLike(search)}%`),
+          ),
         );
-
-        if (searchCondition) {
-          localConditions.push(searchCondition);
-        }
+      } else {
+        // The `period` window only applies when there is no text search.
+        conditions.push(
+          gte(
+            vacancies.createdAt,
+            getPeriodDateCutoff(input?.period ?? "week"),
+          ),
+        );
       }
-
       if (statuses.length > 0) {
-        localConditions.push(inArray(vacancies.status, statuses));
+        conditions.push(inArray(vacancies.status, statuses));
       }
-
       if (city) {
-        // The `city` filter input now matches an hh.uz `areaId` since the schema no longer
-        // stores a free-text city. Existing FilterModal city options will only filter local
-        // vacancies whose stored areaId equals the supplied value.
-        localConditions.push(eq(vacancies.areaId, city));
+        // `city` carries an hh.uz `areaId` — the schema no longer stores a free-text city.
+        conditions.push(eq(vacancies.areaId, city));
       }
 
       const rows = await ctx.db
         .select()
         .from(vacancies)
-        .where(and(...localConditions))
-        .orderBy(vacancies.createdAt);
+        .where(and(...conditions))
+        .orderBy(desc(vacancies.createdAt));
 
-      const localIds = rows.map((row) => row.id);
-      const responseCounts = await getVacancyResponseCounts(ctx.db, localIds);
-
-      localVacancies = rows
-        .sort((left, right) => {
-          const leftTime = left.createdAt
-            ? new Date(left.createdAt).getTime()
-            : 0;
-          const rightTime = right.createdAt
-            ? new Date(right.createdAt).getTime()
-            : 0;
-          return rightTime - leftTime;
-        })
-        .map((row) => formatVacancy(row, responseCounts.get(row.id) ?? 0));
+      const responseCounts = await getVacancyResponseCounts(
+        ctx.db,
+        rows.map((row) => row.id),
+      );
+      localVacancies = rows.map((row) =>
+        formatVacancy(row, responseCounts.get(row.id) ?? 0),
+      );
     }
 
-    if (!includeHh) {
-      return {
-        items: localVacancies.slice(offset, offset + limit),
-        total: localVacancies.length,
-      };
+    const localOnlyResult = {
+      items: paginate(localVacancies),
+      total: localVacancies.length,
+    };
+
+    // --- hh.uz vacancies ------------------------------------------------------------
+    // Bail out to local-only results when hh.uz is not requested or not connected.
+    if (!wantsHhSource) {
+      return localOnlyResult;
     }
 
     const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
     if (!hhAccount?.accessToken || !hhAccount.employerId) {
-      return {
-        items: localVacancies.slice(offset, offset + limit),
-        total: localVacancies.length,
-      };
+      return localOnlyResult;
     }
 
-    const linkedHhVacancyRows = await ctx.db
+    // Every hh.uz id already mirrored by a local vacancy — used to dedupe the hh.uz feed.
+    const linkedRows = await ctx.db
       .select({ hhVacancyId: vacancies.hhVacancyId })
       .from(vacancies)
       .where(eq(vacancies.companyId, userCompanyId));
     const linkedHhVacancyIds = new Set(
-      linkedHhVacancyRows
+      linkedRows
         .map((row) => row.hhVacancyId)
         .filter((id): id is string => Boolean(id)),
     );
 
-    const paginatedLocalVacancies = localVacancies.slice(
-      offset,
-      offset + limit,
-    );
-    const hhOffset = Math.max(0, offset - localVacancies.length);
-    const hhLimit = Math.max(0, limit - paginatedLocalVacancies.length);
-    const shouldUsePaginatedHhFetch =
-      !sources.includes("hh.uz") && !normalizedSearch && !normalizedCity;
     const includeActiveHhStatuses =
       statuses.length === 0 || statuses.includes("active");
     const includeArchivedHhStatuses =
       statuses.length === 0 || statuses.includes("archive");
 
     try {
-      if (shouldUsePaginatedHhFetch) {
-        const hhPage = await fetchCompanyHhVacanciesPage({
-          accessToken: hhAccount.accessToken,
-          employerId: hhAccount.employerId,
-          includeActive: includeActiveHhStatuses,
-          includeArchived: includeArchivedHhStatuses,
-          limit: hhLimit,
-          offset: hhOffset,
-        });
+      // Fast path: let hh.uz paginate server-side. Only possible when no search / city
+      // filter is active (hh.uz pagination cannot express those) and the caller did not
+      // explicitly ask for the hh.uz source on its own.
+      const canPaginateOnHhSide =
+        !sources.includes("hh.uz") && !normalizedSearch && !normalizedCity;
 
-        const dedupedHhItems = hhPage.items.filter(
-          (vacancy) => !linkedHhVacancyIds.has(vacancy.id),
-        );
+      if (canPaginateOnHhSide) {
+        const paginatedLocal = paginate(localVacancies);
+        // The paginated hh.uz page rarely contains the hh.uz vacancies linked to the local
+        // rows on this page, so their response counters are fetched directly by id.
+        const linkedIdsOnPage = paginatedLocal
+          .map((vacancy) => vacancy.hhVacancyId)
+          .filter((id): id is string => Boolean(id));
+
+        const [hhPage, hhResponsesById] = await Promise.all([
+          fetchCompanyHhVacanciesPage({
+            accessToken: hhAccount.accessToken,
+            employerId: hhAccount.employerId,
+            includeActive: includeActiveHhStatuses,
+            includeArchived: includeArchivedHhStatuses,
+            // Ask hh.uz only for the rows left over after the local slice.
+            offset: Math.max(0, offset - localVacancies.length),
+            limit: Math.max(0, limit - paginatedLocal.length),
+          }),
+          fetchHhVacancyResponseCounts(linkedIdsOnPage, hhAccount.accessToken),
+        ]);
+
+        const hhItems = hhPage.items
+          .filter((vacancy) => !linkedHhVacancyIds.has(vacancy.id))
+          .map((vacancy) => formatHhVacancy(vacancy, userCompanyId));
         const linkedHhCount = Math.min(linkedHhVacancyIds.size, hhPage.total);
 
         return {
           items: [
-            ...paginatedLocalVacancies,
-            ...dedupedHhItems.map((vacancy) =>
-              formatHhVacancy(vacancy, userCompanyId),
-            ),
+            ...withHhResponseCounts(paginatedLocal, hhResponsesById),
+            ...hhItems,
           ],
           total: localVacancies.length + hhPage.total - linkedHhCount,
         };
       }
 
+      // Slow path: hh.uz cannot filter by search / city, so fetch every hh.uz vacancy and
+      // filter it in memory before merging with the local results.
       const hhVacancies = await fetchCompanyHhVacancies(
         hhAccount.employerId,
         hhAccount.accessToken,
       );
-      const filteredHhVacancies = hhVacancies
-        .filter((vacancy) => !linkedHhVacancyIds.has(vacancy.id))
-        .map((vacancy) => ({
-          formatted: formatHhVacancy(vacancy, userCompanyId),
-          // hh.uz items still ship display labels we use for keyword matching.
-          searchHaystack:
-            `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.workType}`.toLowerCase(),
-          cityName: vacancy.city.trim().toLowerCase(),
-        }))
-        .filter(({ formatted, searchHaystack, cityName }) => {
-          if (statuses.length > 0 && !statuses.includes(formatted.status)) {
+      const hhItems = hhVacancies
+        .filter((vacancy) => {
+          if (linkedHhVacancyIds.has(vacancy.id)) {
             return false;
           }
-
-          if (normalizedCity && cityName !== normalizedCity) {
+          if (statuses.length > 0 && !statuses.includes(vacancy.status)) {
             return false;
           }
-
-          if (!normalizedSearch) {
-            return true;
+          if (
+            normalizedCity &&
+            vacancy.city.trim().toLowerCase() !== normalizedCity
+          ) {
+            return false;
           }
-
-          return searchHaystack.includes(normalizedSearch);
+          if (normalizedSearch) {
+            const haystack =
+              `${vacancy.title} ${vacancy.level} ${vacancy.city} ${vacancy.workType}`.toLowerCase();
+            return haystack.includes(normalizedSearch);
+          }
+          return true;
         })
-        .map(({ formatted }) => formatted);
+        .map((vacancy) => formatHhVacancy(vacancy, userCompanyId));
 
-      const items = [...localVacancies, ...filteredHhVacancies];
-
-      return {
-        items: items.slice(offset, offset + limit),
-        total: items.length,
-      };
+      // The full hh.uz feed already carries counters, so no extra by-id fetch is needed.
+      const hhResponsesById = new Map(
+        hhVacancies.map((vacancy) => [vacancy.id, vacancy.responses]),
+      );
+      const items = [
+        ...withHhResponseCounts(localVacancies, hhResponsesById),
+        ...hhItems,
+      ];
+      return { items: paginate(items), total: items.length };
     } catch (error) {
       console.error("Failed to fetch hh.uz vacancies for company", {
         companyId: userCompanyId,
         employerId: hhAccount.employerId,
         error,
       });
-
-      return {
-        items: localVacancies.slice(offset, offset + limit),
-        total: localVacancies.length,
-      };
+      return localOnlyResult;
     }
   });

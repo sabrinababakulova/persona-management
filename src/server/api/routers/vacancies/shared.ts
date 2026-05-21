@@ -1,10 +1,6 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 
-import {
-  candidates,
-  candidateVacancies,
-  type vacancies,
-} from "~/server/db/schema";
+import { candidates, candidateVacancies, vacancies } from "~/server/db/schema";
 import type { HhVacancy } from "~/server/services/hh";
 
 type DatabaseClient = typeof import("~/server/db").db;
@@ -142,10 +138,34 @@ export async function getVacanciesRelatedCandidates(
     .orderBy(desc(candidateVacancies.id));
 }
 
+/**
+ * Returns the response (отклики) total for each supplied base vacancy id, rolling up the
+ * responses of its per-channel publications.
+ *
+ * A base vacancy self-references (`parentId === id`) and each publication points back at it
+ * via `parentId`, so selecting every row whose `parentId` is a base vacancy id yields the base
+ * vacancy plus all of its publications. Candidate links against any of those ids count toward
+ * the base vacancy's total.
+ */
 export async function getVacancyResponseCounts(
   db: DatabaseClient,
-  vacancyIds: string[],
+  baseVacancyIds: string[],
 ) {
+  if (baseVacancyIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const vacancyRows = await db
+    .select({ id: vacancies.id, parentId: vacancies.parentId })
+    .from(vacancies)
+    .where(inArray(vacancies.parentId, baseVacancyIds));
+
+  const baseIdByVacancyId = new Map<string, string>();
+  for (const row of vacancyRows) {
+    baseIdByVacancyId.set(row.id, row.parentId);
+  }
+
+  const vacancyIds = [...baseIdByVacancyId.keys()];
   if (vacancyIds.length === 0) {
     return new Map<string, number>();
   }
@@ -159,5 +179,14 @@ export async function getVacancyResponseCounts(
     .where(inArray(candidateVacancies.vacancyId, vacancyIds))
     .groupBy(candidateVacancies.vacancyId);
 
-  return new Map(rows.map((row) => [row.vacancyId, row.total]));
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const baseId = baseIdByVacancyId.get(row.vacancyId);
+    if (!baseId) {
+      continue;
+    }
+    totals.set(baseId, (totals.get(baseId) ?? 0) + row.total);
+  }
+
+  return totals;
 }

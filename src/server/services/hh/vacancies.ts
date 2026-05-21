@@ -66,6 +66,49 @@ export async function fetchHhVacancyById(
   };
 }
 
+/**
+ * Fetches the live response counter for each hh.uz vacancy id, keyed by id.
+ *
+ * hh.uz exposes no bulk-counter endpoint, so this issues one `GET /vacancies/{id}` per id
+ * in parallel. Ids whose request fails are omitted from the result rather than failing the
+ * whole batch.
+ */
+export async function fetchHhVacancyResponseCounts(
+  vacancyIds: string[],
+  accessToken: string,
+): Promise<Map<string, number>> {
+  const uniqueIds = [...new Set(vacancyIds)];
+
+  const entries = await Promise.all(
+    uniqueIds.map(async (id): Promise<[string, number] | null> => {
+      try {
+        const vacancy = await fetchHhJson<HhVacancyItem>(
+          `${HH_API_BASE_URL}/vacancies/${encodeURIComponent(id)}?host=hh.uz`,
+          {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        const counters = vacancy.counters;
+        return [id, counters?.total_responses ?? counters?.responses ?? 0];
+      } catch (error) {
+        console.error("Failed to fetch hh.uz vacancy response counter", {
+          vacancyId: id,
+          error,
+        });
+        return null;
+      }
+    }),
+  );
+
+  return new Map(
+    entries.filter((entry): entry is [string, number] => entry !== null),
+  );
+}
+
 export async function fetchCompanyHhVacancies(
   employerId: string,
   accessToken?: string,

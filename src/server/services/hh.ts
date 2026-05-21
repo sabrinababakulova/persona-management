@@ -39,6 +39,7 @@ export {
   fetchHhProfessionalRoles,
   fetchHhVacancyById,
   fetchHhVacancyDetail,
+  fetchHhVacancyResponseCounts,
   prolongHhVacancy,
   publishHhVacancy,
   saveHhVacancyDraft,

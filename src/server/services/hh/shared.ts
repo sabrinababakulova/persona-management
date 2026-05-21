@@ -257,7 +257,7 @@ export function toHhVacancy(item: HhVacancyItem): HhVacancy {
     level: item.experience?.name?.trim() || "",
     workType: toWorkType(item),
     status: toHhVacancyStatus(item),
-    responses: item.counters?.responses ?? item.counters?.total_responses ?? 0,
+    responses: item.counters?.total_responses ?? item.counters?.responses ?? 0,
     publishedAt: item.published_at?.trim() || undefined,
     externalUrl: item.alternate_url?.trim() || undefined,
   };
