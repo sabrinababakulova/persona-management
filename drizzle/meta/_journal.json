@@ -190,6 +190,13 @@
       "when": 1779281446691,
       "tag": "0026_majestic_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1779365312945,
+      "tag": "0027_steady_talos",
+      "breakpoints": true
     }
   ]
 }

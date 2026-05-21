@@ -479,9 +479,6 @@ export const getVacancyFunnelProcedure = protectedProcedure
     const funnelVacancyIds = funnelVacancyRows.map((row) => row.id);
     const scopedVacancyIds =
       funnelVacancyIds.length > 0 ? funnelVacancyIds : [vacancy.id];
-    const hhChildVacancyIds = funnelVacancyRows
-      .map((row) => row.hhVacancyId)
-      .filter((id): id is string => Boolean(id));
 
     const candidateRows = await getVacanciesRelatedCandidates(
       ctx.db,
@@ -577,92 +574,20 @@ export const getVacancyFunnelProcedure = protectedProcedure
       };
     });
 
-    const hhApplicantCandidates: typeof normalizedCandidates = [];
-    let hhAccessDenied = false;
-    if (hhChildVacancyIds.length > 0) {
-      const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
-      if (hhAccount?.accessToken) {
-        const accessToken = hhAccount.accessToken;
-        // Imported HH applicants are stored locally with id `hh_<applicantId>`.
-        // Strip the prefix to dedupe against the live HH applicant feed.
-        const importedApplicantIds = new Set(
-          normalizedCandidates
-            .map((c) => c.id)
-            .filter((id) => id.startsWith("hh_"))
-            .map((id) => id.slice(3)),
-        );
-        const seen = new Set<string>();
-
-        const batches = await Promise.all(
-          hhChildVacancyIds.map((hhVacancyId) =>
-            fetchHhVacancyApplicants(hhVacancyId, accessToken).catch(
-              (error: unknown) => {
-                if (isHhAccessError(error)) {
-                  hhAccessDenied = true;
-                } else {
-                  console.error("Failed to fetch HH vacancy applicants", {
-                    hhVacancyId,
-                    error,
-                  });
-                }
-                return [];
-              },
-            ),
-          ),
-        );
-
-        for (const batch of batches) {
-          for (const applicant of batch) {
-            if (
-              importedApplicantIds.has(applicant.id) ||
-              seen.has(applicant.id)
-            ) {
-              continue;
-            }
-            seen.add(applicant.id);
-            hhApplicantCandidates.push({
-              id: `hh_${applicant.id}`,
-              fullName: applicant.fullName,
-              status: applicant.status ?? "new",
-              city: "",
-              experience: "",
-              matchScore: 0,
-              aiAnalysis: "",
-              currentPosition: "",
-              currentCompany: "",
-              contacts: {
-                phone: "",
-                telegram: "",
-                email: "",
-              },
-              languages: [],
-              skills: [],
-              salaryExpectation: 0,
-              salaryCurrency: "UZS",
-              tags: [],
-              source: "hh.uz",
-              resumeUrl: "",
-              relatedVacancies: [],
-            });
-          }
-        }
-      }
-    }
-
-    const allCandidates = [...normalizedCandidates, ...hhApplicantCandidates];
-
+    // hh.uz applicants are persisted by the candidate sync, so they arrive via
+    // `getVacanciesRelatedCandidates` like any other candidate — no live fetch.
     return {
       id: vacancy.id,
       title: vacancy.title,
       areaId: vacancy.areaId ?? "",
       experienceId: vacancy.experienceId ?? "",
       source: "local" as const,
-      hhAccessDenied,
-      candidates: allCandidates,
+      hhAccessDenied: false,
+      candidates: normalizedCandidates,
       stages: stageRows.map((stage) => ({
         value: stage.value,
         label: stage.label,
-        candidates: allCandidates.filter(
+        candidates: normalizedCandidates.filter(
           (candidate) => candidate.status === stage.value,
         ),
       })),

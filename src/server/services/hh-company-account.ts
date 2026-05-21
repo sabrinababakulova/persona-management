@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
-import { userHhAccounts } from "~/server/db/schema";
+import { userHhAccounts, users } from "~/server/db/schema";
 import {
   isHhConfigured,
   refreshHhAccessToken,
@@ -110,4 +110,35 @@ export async function resolveUserHhAuth(db: DatabaseClient, userId: string) {
     refreshToken,
     employerId,
   };
+}
+
+/**
+ * Resolves an hh.uz access token usable for a whole company.
+ *
+ * hh accounts are stored per user; the enrichment worker runs outside any user
+ * session, so it picks any connected account belonging to the company. hh.uz
+ * resume ids are global, so any valid employer token can read them.
+ */
+export async function resolveCompanyHhAuth(
+  db: DatabaseClient,
+  companyId: string,
+) {
+  const rows = await db
+    .select({ userId: userHhAccounts.userId })
+    .from(userHhAccounts)
+    .innerJoin(users, eq(users.id, userHhAccounts.userId))
+    .where(
+      and(
+        eq(users.companyId, companyId),
+        isNotNull(userHhAccounts.refreshToken),
+      ),
+    )
+    .limit(1);
+
+  const userId = rows[0]?.userId;
+  if (!userId) {
+    return null;
+  }
+
+  return resolveUserHhAuth(db, userId);
 }
