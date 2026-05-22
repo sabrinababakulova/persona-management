@@ -204,6 +204,13 @@
       "when": 1779444627630,
       "tag": "0028_puzzling_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1779452782540,
+      "tag": "0029_goofy_misty_knight",
+      "breakpoints": true
     }
   ]
 }

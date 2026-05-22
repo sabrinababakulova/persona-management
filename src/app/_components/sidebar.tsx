@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import {
   BrandLogoIcon,
   CloseIcon,
@@ -10,6 +11,7 @@ import {
   SettingsIcon,
   UsersIcon,
 } from "~/app/_components/icons";
+import { api } from "~/trpc/react";
 import type { NavItem } from "~/types/components/sidebar-nav-item";
 
 type SidebarProps = {
@@ -20,6 +22,29 @@ type SidebarProps = {
 
 export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const utils = api.useUtils();
+
+  // "New since you last looked" counts for the Vacancies / Candidates badges.
+  // Polled so freshly synced rows surface without a page reload.
+  const { data: counts } = api.sidebar.counts.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
+
+  const markSeen = api.sidebar.markSeen.useMutation({
+    onSuccess: () => {
+      void utils.sidebar.counts.invalidate();
+    },
+  });
+  const markSeenMutate = markSeen.mutate;
+
+  // Opening a section clears its badge.
+  useEffect(() => {
+    if (pathname.startsWith("/candidates")) {
+      markSeenMutate({ section: "candidates" });
+    } else if (pathname.startsWith("/vacancies")) {
+      markSeenMutate({ section: "vacancies" });
+    }
+  }, [pathname, markSeenMutate]);
 
   const navItems: NavItem[] = [
     {
@@ -31,11 +56,13 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
       label: "Вакансии",
       href: "/vacancies",
       icon: <OutlineBriefcaseIcon className="h-6 w-6" />,
+      badge: counts?.newVacancies || undefined,
     },
     {
       label: "Кандидаты",
       href: "/candidates",
       icon: <UsersIcon className="h-6 w-6" />,
+      badge: counts?.newCandidates || undefined,
     },
     {
       label: "Настройки",
@@ -106,8 +133,8 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
               <span className="flex-1">{item.label}</span>
 
               {item.badge && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-badge-red font-semibold text-bg-light text-xs">
-                  {item.badge}
+                <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-badge-red px-1.5 font-semibold text-bg-light text-xs">
+                  {item.badge > 99 ? "99+" : item.badge}
                 </span>
               )}
             </Link>

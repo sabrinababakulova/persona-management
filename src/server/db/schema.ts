@@ -48,6 +48,16 @@ export const users = createTable("user", (d) => ({
   image: d.varchar({ length: 255 }),
   avatarFileId: d.varchar({ length: 255 }),
   companyId: d.varchar({ length: 255 }).references(() => companies.id),
+  /** Last time the user opened the Candidates page — drives the sidebar badge. */
+  candidatesSeenAt: d
+    .timestamp("candidates_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  /** Last time the user opened the Vacancies page — drives the sidebar badge. */
+  vacanciesSeenAt: d
+    .timestamp("vacancies_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
