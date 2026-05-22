@@ -438,18 +438,19 @@ async function upsertNegotiation(input: {
   const applicationInserted = applicationRows[0]?.inserted ?? false;
 
   let jobEnqueued = false;
-  if (candidateInserted) {
-    // Only resume-backed candidates can be enriched (anonymous ones have no
-    // resume to fetch).
-    if (negotiation.resumeId) {
-      const job = await db
-        .insert(hhEnrichmentJobs)
-        .values({ candidateId })
-        .onConflictDoNothing({ target: hhEnrichmentJobs.candidateId })
-        .returning({ id: hhEnrichmentJobs.id });
-      jobEnqueued = Boolean(job[0]);
-    }
+  // Only resume-backed candidates can be enriched (anonymous ones have no
+  // resume to fetch). Ensure existing/adopted legacy rows also get a job; older
+  // syncs created `hh_<resumeId>` candidates before the queue existed.
+  if (negotiation.resumeId) {
+    const job = await db
+      .insert(hhEnrichmentJobs)
+      .values({ candidateId })
+      .onConflictDoNothing({ target: hhEnrichmentJobs.candidateId })
+      .returning({ id: hhEnrichmentJobs.id });
+    jobEnqueued = Boolean(job[0]);
+  }
 
+  if (candidateInserted) {
     await writeRecentActivityLog(db, {
       entityType: "candidate",
       entityId: candidateId,

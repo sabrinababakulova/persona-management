@@ -139,6 +139,7 @@ async function processJob(
         };
 
     let aiAnalysis = candidate.aiAnalysis?.trim() ?? "";
+    let aiErrorMessage: string | null = null;
     if (!aiAnalysis) {
       const analysis = await generateCandidateAiAnalysis(
         {
@@ -155,6 +156,9 @@ async function processJob(
       );
       if (analysis.status === "success") {
         aiAnalysis = analysis.text;
+      } else {
+        aiErrorMessage =
+          analysis.errorMessage || "Failed to generate candidate AI analysis";
       }
     }
 
@@ -168,6 +172,10 @@ async function processJob(
         ...(aiAnalysis ? { aiAnalysis } : {}),
       })
       .where(eq(candidates.id, candidate.id));
+
+    if (aiErrorMessage) {
+      return retryJob(db, job, aiErrorMessage);
+    }
 
     return finishJob(db, job, "done", null);
   } catch (error) {
