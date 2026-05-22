@@ -5,10 +5,13 @@ import {
 } from "~/server/api/routers/candidates/shared";
 import { candidates, hhEnrichmentJobs } from "~/server/db/schema";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
-import { resolveCompanyHhAuth } from "~/server/services/hh-company-account";
+import {
+  type CompanyHhAccount,
+  resolveCompanyHhAccounts,
+} from "~/server/services/hh-company-account";
 
 import { fetchHhResumeById } from "./resumes";
-import { isHhAccessError } from "./shared";
+import { type HhResumeCandidate, isHhAccessError } from "./shared";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -74,11 +77,11 @@ export async function drainHhEnrichmentJobs(input: {
     failed: 0,
   };
 
-  // Resolve each company's token at most once per drain.
-  const tokenByCompany = new Map<string, string | null>();
+  // Resolve each company's connected hh.uz accounts at most once per drain.
+  const accountsByCompany = new Map<string, CompanyHhAccount[]>();
 
   for (const job of claimedRows) {
-    const outcome = await processJob(db, job, tokenByCompany);
+    const outcome = await processJob(db, job, accountsByCompany);
     result[outcome] += 1;
   }
 
@@ -88,7 +91,7 @@ export async function drainHhEnrichmentJobs(input: {
 async function processJob(
   db: DatabaseClient,
   job: ClaimedJob,
-  tokenByCompany: Map<string, string | null>,
+  accountsByCompany: Map<string, CompanyHhAccount[]>,
 ): Promise<"enriched" | "retried" | "failed"> {
   try {
     const candidateRows = await db
@@ -109,17 +112,44 @@ async function processJob(
       return finishJob(db, job, "failed", "Candidate has no hh.uz resume id");
     }
 
-    if (!tokenByCompany.has(candidate.companyId)) {
-      const auth = await resolveCompanyHhAuth(db, candidate.companyId);
-      tokenByCompany.set(candidate.companyId, auth?.accessToken ?? null);
+    if (!accountsByCompany.has(candidate.companyId)) {
+      accountsByCompany.set(
+        candidate.companyId,
+        await resolveCompanyHhAccounts(db, candidate.companyId),
+      );
     }
-    const accessToken = tokenByCompany.get(candidate.companyId) ?? null;
-    if (!accessToken) {
+    const accounts = accountsByCompany.get(candidate.companyId) ?? [];
+    if (accounts.length === 0) {
       // hh.uz disconnected — retry later, this is not the candidate's fault.
       return retryJob(db, job, "hh.uz account is not connected");
     }
 
-    const resume = await fetchHhResumeById(candidate.hhResumeId, accessToken);
+    // A resume is only readable by the employer whose vacancy the candidate
+    // applied to. With several employers connected, try each until one can
+    // read it; an access error just means "wrong employer", so move on.
+    let resume: HhResumeCandidate | null = null;
+    for (const account of accounts) {
+      try {
+        resume = await fetchHhResumeById(
+          candidate.hhResumeId,
+          account.accessToken,
+        );
+        break;
+      } catch (error) {
+        if (isHhAccessError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    if (!resume) {
+      return finishJob(
+        db,
+        job,
+        "failed",
+        "No connected hh.uz account can access this resume",
+      );
+    }
 
     const profileUpdate = candidate.profileLocked
       ? {}

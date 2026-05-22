@@ -63,10 +63,9 @@ function parseHhDate(value: string | null): Date | null {
 export async function discoverHhCandidates(input: {
   db: DatabaseClient;
   companyId: string;
-  accessToken: string;
-  employerId: string;
+  employers: Array<{ accessToken: string; employerId: string }>;
 }): Promise<DiscoverHhCandidatesResult> {
-  const { db, companyId, accessToken, employerId } = input;
+  const { db, companyId, employers } = input;
 
   const empty: DiscoverHhCandidatesResult = {
     ranSync: false,
@@ -76,6 +75,10 @@ export async function discoverHhCandidates(input: {
     newApplications: 0,
     jobsEnqueued: 0,
   };
+
+  if (employers.length === 0) {
+    return empty;
+  }
 
   const lockRows = (await db.execute(
     sql`SELECT pg_try_advisory_lock(${advisoryLockKey(companyId)}) AS locked`,
@@ -87,67 +90,86 @@ export async function discoverHhCandidates(input: {
   }
 
   try {
-    // Only ACTIVE hh.uz vacancies are synced — archived/closed vacancies and
-    // their applicants are intentionally excluded.
-    const activeHhVacancies = (
-      await fetchCompanyHhVacancies(employerId, accessToken)
-    ).filter((vacancy) => vacancy.status === "active");
-
     const result: DiscoverHhCandidatesResult = { ...empty, ranSync: true };
 
-    for (const hhVacancy of activeHhVacancies) {
-      let localVacancyId: string;
+    // Every hh.uz employer connected within the company is synced. Vacancies
+    // and candidates are deduped by the (companyId, hhVacancyId) and
+    // (companyId, hhResumeId) unique indexes, so a candidate who applied to
+    // several employers is stored once and enriched once.
+    for (const employer of employers) {
+      // Only ACTIVE hh.uz vacancies are synced — archived/closed vacancies and
+      // their applicants are intentionally excluded.
+      let activeHhVacancies: HhVacancy[];
       try {
-        localVacancyId = await resolveLocalVacancy({
-          db,
-          companyId,
-          hhVacancy,
-        });
+        activeHhVacancies = (
+          await fetchCompanyHhVacancies(
+            employer.employerId,
+            employer.accessToken,
+          )
+        ).filter((vacancy) => vacancy.status === "active");
       } catch (error) {
-        result.vacanciesFailed += 1;
-        console.error("hh discovery failed to resolve local vacancy", {
+        console.error("hh discovery failed to list employer vacancies", {
           companyId,
-          hhVacancyId: hhVacancy.id,
+          employerId: employer.employerId,
           error,
         });
         continue;
       }
 
-      try {
-        const counts = await discoverVacancy({
-          db,
-          companyId,
-          accessToken,
-          localVacancyId,
-          hhVacancyId: hhVacancy.id,
-        });
-        result.vacanciesProcessed += 1;
-        result.newCandidates += counts.newCandidates;
-        result.newApplications += counts.newApplications;
-        result.jobsEnqueued += counts.jobsEnqueued;
-      } catch (error) {
-        result.vacanciesFailed += 1;
-        const message =
-          error instanceof Error ? error.message : "Unknown sync error";
-        if (!isHhAccessError(error)) {
-          console.error("hh discovery failed for vacancy", {
+      for (const hhVacancy of activeHhVacancies) {
+        let localVacancyId: string;
+        try {
+          localVacancyId = await resolveLocalVacancy({
+            db,
+            companyId,
+            hhVacancy,
+          });
+        } catch (error) {
+          result.vacanciesFailed += 1;
+          console.error("hh discovery failed to resolve local vacancy", {
             companyId,
             hhVacancyId: hhVacancy.id,
             error,
           });
+          continue;
         }
-        await db
-          .insert(hhVacancySyncState)
-          .values({
-            vacancyId: localVacancyId,
-            lastSyncStartedAt: new Date(),
-            lastSyncFinishedAt: new Date(),
-            lastSyncError: message,
-          })
-          .onConflictDoUpdate({
-            target: hhVacancySyncState.vacancyId,
-            set: { lastSyncFinishedAt: new Date(), lastSyncError: message },
+
+        try {
+          const counts = await discoverVacancy({
+            db,
+            companyId,
+            accessToken: employer.accessToken,
+            localVacancyId,
+            hhVacancyId: hhVacancy.id,
           });
+          result.vacanciesProcessed += 1;
+          result.newCandidates += counts.newCandidates;
+          result.newApplications += counts.newApplications;
+          result.jobsEnqueued += counts.jobsEnqueued;
+        } catch (error) {
+          result.vacanciesFailed += 1;
+          const message =
+            error instanceof Error ? error.message : "Unknown sync error";
+          if (!isHhAccessError(error)) {
+            console.error("hh discovery failed for vacancy", {
+              companyId,
+              hhVacancyId: hhVacancy.id,
+              error,
+            });
+          }
+          await db
+            .insert(hhVacancySyncState)
+            .values({
+              vacancyId: localVacancyId,
+              lastSyncStartedAt: new Date(),
+              lastSyncFinishedAt: new Date(),
+              lastSyncError: message,
+            })
+            .onConflictDoUpdate({
+              target: hhVacancySyncState.vacancyId,
+              set: { lastSyncFinishedAt: new Date(), lastSyncError: message },
+            });
+        }
       }
     }
 

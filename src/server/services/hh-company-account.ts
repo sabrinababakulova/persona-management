@@ -112,17 +112,20 @@ export async function resolveUserHhAuth(db: DatabaseClient, userId: string) {
   };
 }
 
+/** A connected hh.uz employer account usable for company-wide sync. */
+export type CompanyHhAccount = { accessToken: string; employerId: string };
+
 /**
- * Resolves an hh.uz access token usable for a whole company.
+ * Resolves every hh.uz employer account connected within a company.
  *
- * hh accounts are stored per user; the enrichment worker runs outside any user
- * session, so it picks any connected account belonging to the company. hh.uz
- * resume ids are global, so any valid employer token can read them.
+ * A company can have several users, each connecting their own hh.uz employer
+ * account. Sync must cover them all. Accounts are deduped by `employerId` so
+ * the same employer connected by two users is only processed once.
  */
-export async function resolveCompanyHhAuth(
+export async function resolveCompanyHhAccounts(
   db: DatabaseClient,
   companyId: string,
-) {
+): Promise<CompanyHhAccount[]> {
   const rows = await db
     .select({ userId: userHhAccounts.userId })
     .from(userHhAccounts)
@@ -132,13 +135,37 @@ export async function resolveCompanyHhAuth(
         eq(users.companyId, companyId),
         isNotNull(userHhAccounts.refreshToken),
       ),
-    )
-    .limit(1);
+    );
 
-  const userId = rows[0]?.userId;
-  if (!userId) {
-    return null;
+  const byEmployer = new Map<string, CompanyHhAccount>();
+  for (const row of rows) {
+    const auth = await resolveUserHhAuth(db, row.userId);
+    if (
+      auth?.accessToken &&
+      auth.employerId &&
+      !byEmployer.has(auth.employerId)
+    ) {
+      byEmployer.set(auth.employerId, {
+        accessToken: auth.accessToken,
+        employerId: auth.employerId,
+      });
+    }
   }
 
-  return resolveUserHhAuth(db, userId);
+  return [...byEmployer.values()];
+}
+
+/** Ids of every company that has at least one connected hh.uz account. */
+export async function listHhConnectedCompanyIds(
+  db: DatabaseClient,
+): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ companyId: users.companyId })
+    .from(userHhAccounts)
+    .innerJoin(users, eq(users.id, userHhAccounts.userId))
+    .where(isNotNull(userHhAccounts.refreshToken));
+
+  return rows
+    .map((row) => row.companyId)
+    .filter((id): id is string => Boolean(id));
 }

@@ -10,7 +10,7 @@ import {
   discoverHhCandidates,
   drainHhEnrichmentJobs,
 } from "~/server/services/hh";
-import { resolveUserHhAuth } from "~/server/services/hh-company-account";
+import { resolveCompanyHhAccounts } from "~/server/services/hh-company-account";
 
 /**
  * Runs hh.uz candidate discovery for the current company (sync Layer 1).
@@ -23,11 +23,10 @@ import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 export const syncHhCandidatesProcedure = protectedProcedure.mutation(
   async ({ ctx }) => {
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
-    const hhAuth = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
-    const accessToken = hhAuth?.accessToken;
-    const employerId = hhAuth?.employerId;
+    // Every hh.uz employer connected by any user in the company is synced.
+    const employers = await resolveCompanyHhAccounts(ctx.db, companyId);
 
-    if (!accessToken || !employerId) {
+    if (employers.length === 0) {
       return {
         ranSync: false,
         vacanciesProcessed: 0,
@@ -41,8 +40,7 @@ export const syncHhCandidatesProcedure = protectedProcedure.mutation(
     const discovery = await discoverHhCandidates({
       db: ctx.db,
       companyId,
-      accessToken,
-      employerId,
+      employers,
     });
 
     // Warm up: enrich the first few discovered candidates immediately so the
