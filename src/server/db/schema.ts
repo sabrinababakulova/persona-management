@@ -372,10 +372,7 @@ export const candidateVacancies = createTable(
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    createdAt: d.timestamp({ withTimezone: true }).defaultNow().notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [
@@ -399,8 +396,12 @@ export const hhVacancySyncState = createTable("hh_vacancy_sync_state", (d) => ({
     .notNull()
     .primaryKey()
     .references(() => vacancies.id, { onDelete: "cascade" }),
-  /** `created_at` of the newest negotiation processed so far (the cursor). */
+  /** `created_at` of the newest negotiation processed by discovery (the cursor). */
   lastNegotiationAt: d.timestamp("last_negotiation_at", { withTimezone: true }),
+  /** `updated_at` of the newest negotiation processed by status sync (its cursor). */
+  lastStatusNegotiationAt: d.timestamp("last_status_negotiation_at", {
+    withTimezone: true,
+  }),
   lastSyncStartedAt: d.timestamp("last_sync_started_at", {
     withTimezone: true,
   }),

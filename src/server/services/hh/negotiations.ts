@@ -22,10 +22,14 @@ export type HhNegotiation = {
   /** Resume id — the stable per-person key. Null for anonymous/hidden resumes. */
   resumeId: string | null;
   fullName: string;
-  /** ISO timestamp of the response; the discovery watermark cursor. */
+  /** ISO timestamp the response was created; the discovery watermark cursor. */
   createdAt: string | null;
-  /** hh.uz employer_state / funnel_stage — reference-only pipeline status. */
+  /** ISO timestamp of the last change; the status-sync watermark cursor. */
+  updatedAt: string | null;
+  /** hh.uz employer_state / funnel_stage display name — stored for reference. */
   hhStage: string | null;
+  /** Machine-readable state id (e.g. `discard`), used to map to a platform status. */
+  hhStageId: string | null;
   /** Link to the resume on hh.uz, when exposed. */
   resumeUrl: string | null;
 };
@@ -44,24 +48,26 @@ function toHhNegotiation(item: unknown): HhNegotiation | null {
     return null;
   }
 
-  const hhStage =
-    getNestedString(record, ["employer_state", "name"]) ??
+  const hhStageId =
     getNestedString(record, ["employer_state", "id"]) ??
-    getNestedString(record, ["funnel_stage", "state", "name"]) ??
     getNestedString(record, ["funnel_stage", "state", "id"]) ??
-    getNestedString(record, ["state", "name"]) ??
     getNestedString(record, ["state", "id"]) ??
     null;
+
+  const hhStage =
+    getNestedString(record, ["employer_state", "name"]) ??
+    getNestedString(record, ["funnel_stage", "state", "name"]) ??
+    getNestedString(record, ["state", "name"]) ??
+    hhStageId;
 
   return {
     negotiationId,
     resumeId: getNestedString(record, ["resume", "id"]) ?? null,
     fullName: toHhApplicantFullName(record),
-    createdAt:
-      getNestedString(record, ["created_at"]) ??
-      getNestedString(record, ["updated_at"]) ??
-      null,
+    createdAt: getNestedString(record, ["created_at"]) ?? null,
+    updatedAt: getNestedString(record, ["updated_at"]) ?? null,
     hhStage,
+    hhStageId,
     resumeUrl: getNestedString(record, ["resume", "alternate_url"]) ?? null,
   };
 }
@@ -96,15 +102,16 @@ async function fetchHhNegotiationCollections(
 }
 
 /**
- * Yields negotiation pages for a vacancy, newest-first within each collection.
+ * Yields negotiation pages for a vacancy, sorted newest-first by `orderBy`.
  *
- * `order_by=created_at` is requested so the discovery watermark can stop paging
- * early; hh.uz ignores unknown params, and every item still carries `createdAt`
- * so the caller can filter defensively regardless of server-side ordering.
+ * hh.uz sorts negotiations by `created_at` or `updated_at` (`order=desc`), so a
+ * watermark cursor can stop paging early. Every item also carries both
+ * timestamps, so the caller can filter defensively regardless of ordering.
  */
 export async function* iterateHhVacancyNegotiationPages(input: {
   accessToken: string;
   vacancyId: string;
+  orderBy?: "created_at" | "updated_at";
 }): AsyncGenerator<HhNegotiation[]> {
   const collections = await fetchHhNegotiationCollections(
     input.vacancyId,
@@ -122,7 +129,8 @@ export async function* iterateHhVacancyNegotiationPages(input: {
     while (page < totalPages) {
       const searchParams = new URLSearchParams({
         host: "hh.uz",
-        order_by: "created_at",
+        order: "desc",
+        order_by: input.orderBy ?? "created_at",
         page: String(page),
         per_page: String(HH_API_NEGOTIATIONS_PER_PAGE),
         vacancy_id: input.vacancyId,
