@@ -5,6 +5,7 @@ import {
   HH_API_ACTIVE_PER_PAGE,
   HH_API_ARCHIVED_PER_PAGE,
   HH_API_BASE_URL,
+  HhApiError,
   type HhVacancy,
   type HhVacancyItem,
   type HhVacancyPage,
@@ -112,7 +113,9 @@ export async function fetchHhVacancyResponseCounts(
 export async function fetchCompanyHhVacancies(
   employerId: string,
   accessToken?: string,
+  options?: { includeArchived?: boolean },
 ): Promise<HhVacancy[]> {
+  const includeArchived = options?.includeArchived ?? true;
   const vacancies = new Map<string, HhVacancy>();
 
   const fetchKind = async (
@@ -173,14 +176,16 @@ export async function fetchCompanyHhVacancies(
     });
   }
 
-  try {
-    await fetchKind("archived", HH_API_ARCHIVED_PER_PAGE);
-  } catch (error) {
-    console.error("Failed to fetch archived hh.uz vacancies", {
-      employerId,
-      error,
-      hasAccessToken: Boolean(accessToken),
-    });
+  if (includeArchived) {
+    try {
+      await fetchKind("archived", HH_API_ARCHIVED_PER_PAGE);
+    } catch (error) {
+      console.error("Failed to fetch archived hh.uz vacancies", {
+        employerId,
+        error,
+        hasAccessToken: Boolean(accessToken),
+      });
+    }
   }
 
   return [...vacancies.values()];
@@ -1015,6 +1020,13 @@ export async function fetchHhVacancyDetail(
   };
 }
 
+/**
+ * Calls `POST /vacancies/{vacancy_id}/prolongate` to extend a vacancy's publication
+ * period. For an archived vacancy this brings it back to active when the employer still
+ * has quota / purchased services to spend; otherwise hh.uz returns 403 with one of the
+ * `errors[].value` discriminators (e.g. `unavailable_for_archived`, `quota_exceeded`)
+ * which the caller can pull off the thrown {@link HhApiError}.
+ */
 export async function prolongHhVacancy(vacancyId: string, accessToken: string) {
   const searchParams = new URLSearchParams({ host: "hh.uz" });
 
@@ -1032,8 +1044,6 @@ export async function prolongHhVacancy(vacancyId: string, accessToken: string) {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(
-      `HH vacancy prolongation failed ${response.status}: ${errorBody}`,
-    );
+    throw new HhApiError(response.status, errorBody);
   }
 }

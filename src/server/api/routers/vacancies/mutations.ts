@@ -19,6 +19,8 @@ import {
   fetchHhDictionaries,
   fetchHhProfessionalRoles,
   fetchHhVacancyById,
+  fetchHhVacancyDetail,
+  HhApiError,
   prolongHhVacancy,
   publishHhVacancy,
   saveHhVacancyDraft,
@@ -46,6 +48,39 @@ import {
   vacancyUpdateInputSchema,
 } from "./schemas";
 import { formatVacancy, isHhVacancyId, type SalaryCurrency } from "./shared";
+
+/**
+ * Per the hh.uz `vacancy-prolongation` schema, a 403 response can carry one of these
+ * `errors[].value` discriminators. We translate them to user-facing Russian messages so
+ * the UI can show the recruiter what to do next instead of a raw API failure.
+ */
+const HH_PROLONGATE_ERROR_MESSAGES: Record<string, string> = {
+  unavailable_for_archived:
+    "hh.uz не позволяет восстановить эту вакансию из архива.",
+  not_enough_purchased_services:
+    "Недостаточно купленных услуг для повторной публикации вакансии.",
+  quota_exceeded: "Исчерпана квота на публикацию вакансий этого типа.",
+  prolongation_forbidden:
+    "У этого менеджера нет прав на восстановление вакансии.",
+  too_early: "Восстановить вакансию пока нельзя — попробуйте позже.",
+  not_premoderated:
+    "Вакансия ещё не прошла модерацию hh.uz — восстановление будет доступно позже.",
+};
+
+function describeHhProlongateError(error: unknown): string {
+  if (error instanceof HhApiError) {
+    for (const value of error.errorValues) {
+      const message = HH_PROLONGATE_ERROR_MESSAGES[value];
+      if (message) {
+        return message;
+      }
+    }
+    if (error.status === 404) {
+      return "Вакансия не найдена в hh.uz или нет прав на просмотр.";
+    }
+  }
+  return "Не удалось восстановить вакансию из архива. Попробуйте позже.";
+}
 
 export const createVacancyProcedure = protectedProcedure
   .input(vacancyCreateInputSchema)
@@ -236,6 +271,129 @@ export const updateVacancyProcedure = protectedProcedure
         code: "NOT_FOUND",
         message: "Vacancy not found",
       });
+    }
+
+    // Archived hh.uz-linked rows are read-only stubs (the discovery cron stores only id,
+    // title, status="archive"). The one allowed write is flipping `status` back to "active",
+    // which is performed via the hh.uz prolongation endpoint and then mirrored locally.
+    if (existing.status === "archive" && existing.hhVacancyId) {
+      const otherFieldsTouched = (
+        Object.keys(input) as (keyof typeof input)[]
+      ).some(
+        (key) => key !== "id" && key !== "status" && input[key] !== undefined,
+      );
+      const isUnarchiveRequest =
+        input.status === "active" && !otherFieldsTouched;
+
+      if (!isUnarchiveRequest) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Эта вакансия в архиве. Чтобы внести изменения, переведите её в активный статус.",
+        });
+      }
+
+      const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
+      if (!hhAccount?.accessToken) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "hh.uz аккаунт не подключён",
+        });
+      }
+
+      try {
+        await prolongHhVacancy(existing.hhVacancyId, hhAccount.accessToken);
+      } catch (error) {
+        if (!(error instanceof HhApiError)) {
+          console.error("hh.uz prolongation request failed", {
+            hhVacancyId: existing.hhVacancyId,
+            error,
+          });
+        }
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: describeHhProlongateError(error),
+        });
+      }
+
+      // Now that the vacancy is active again, hydrate the stub with the canonical hh.uz
+      // detail so the form has something to render. A failure here is non-fatal — we still
+      // mark the row active locally and let the next discovery sync fill in the rest.
+      const hhDetail = await fetchHhVacancyDetail(
+        existing.hhVacancyId,
+        hhAccount.accessToken,
+      ).catch((error: unknown) => {
+        console.error(
+          "Failed to hydrate restored hh.uz vacancy from /vacancies/{id}",
+          { hhVacancyId: existing.hhVacancyId, error },
+        );
+        return null;
+      });
+
+      const restoreUpdate: Partial<typeof vacancies.$inferInsert> = {
+        status: "active",
+      };
+      if (hhDetail) {
+        if (hhDetail.name) {
+          restoreUpdate.title = hhDetail.name;
+        }
+        if (hhDetail.descriptionHtml) {
+          restoreUpdate.descriptionHtml = hhDetail.descriptionHtml;
+        }
+        restoreUpdate.areaId = hhDetail.areaId ?? null;
+        restoreUpdate.employmentId = hhDetail.employmentId ?? null;
+        restoreUpdate.scheduleId = hhDetail.scheduleId ?? null;
+        restoreUpdate.experienceId = hhDetail.experienceId ?? null;
+        restoreUpdate.professionalRoleId =
+          hhDetail.professionalRoleIds[0] ?? null;
+        restoreUpdate.vacancyTypeId = hhDetail.vacancyTypeId ?? null;
+        restoreUpdate.billingTypeId = hhDetail.billingTypeId ?? null;
+        restoreUpdate.salaryFrom = hhDetail.salary?.from ?? null;
+        restoreUpdate.salaryTo = hhDetail.salary?.to ?? null;
+        restoreUpdate.salaryCurrency =
+          hhDetail.salary?.currency === "USD" ? "USD" : "UZS";
+        const phone = hhDetail.contacts?.phones?.[0];
+        restoreUpdate.contactPhone = phone
+          ? (phone.formatted ??
+            [phone.country, phone.city, phone.number]
+              .filter((part): part is string => Boolean(part))
+              .join(" "))
+          : null;
+      }
+
+      const restoredRows = await ctx.db
+        .update(vacancies)
+        .set(restoreUpdate)
+        .where(
+          and(
+            eq(vacancies.id, input.id),
+            eq(vacancies.companyId, userCompanyId),
+          ),
+        )
+        .returning();
+
+      const restored = restoredRows[0];
+      if (!restored) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update vacancy",
+        });
+      }
+
+      const actorName =
+        ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+      await writeRecentActivityLog(ctx.db, {
+        entityType: "vacancy",
+        entityId: restored.id,
+        companyId: userCompanyId,
+        actorUserId: ctx.session?.user?.id ?? null,
+        actorName,
+        action: "Восстановил(а) вакансию из архива",
+        targetName: restored.title,
+        targetStatus: "active",
+      });
+
+      return formatVacancy(restored);
     }
 
     // Deactivating a Telegram publication must first remove its post from every channel it

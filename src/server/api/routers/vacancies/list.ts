@@ -84,6 +84,11 @@ function withHhResponseCounts(
  * `limit`/`offset` paginate the merged list. If the hh.uz API call fails, the procedure
  * degrades gracefully and returns only the local results.
  *
+ * Archived hh.uz vacancies live entirely in the local DB — the discovery cron persists them
+ * as stubs (id, title, status="archive") and this procedure never asks the hh.uz API for
+ * them. Active hh.uz vacancies still pass through the live API merge so brand-new ones
+ * appear before the next sync run.
+ *
  * Supported filters: `search` (title / description), `statuses`, `city` (matched against an
  * hh.uz `areaId`) and `period`. `period` is ignored while a text search is active.
  */
@@ -179,8 +184,14 @@ export const listVacanciesProcedure = protectedProcedure
     }
 
     // Every hh.uz id already mirrored by a local vacancy — used to dedupe the hh.uz feed.
+    // Archived stubs are tracked separately because they are never returned by the
+    // active-only hh.uz fetches below, so they must be excluded from the linked-count math
+    // that prevents double-counting active hh.uz vacancies against the local total.
     const linkedRows = await ctx.db
-      .select({ hhVacancyId: vacancies.hhVacancyId })
+      .select({
+        hhVacancyId: vacancies.hhVacancyId,
+        status: vacancies.status,
+      })
       .from(vacancies)
       .where(eq(vacancies.companyId, userCompanyId));
     const linkedHhVacancyIds = new Set(
@@ -188,11 +199,15 @@ export const listVacanciesProcedure = protectedProcedure
         .map((row) => row.hhVacancyId)
         .filter((id): id is string => Boolean(id)),
     );
+    const linkedActiveHhVacancyIds = new Set(
+      linkedRows
+        .filter((row) => row.status !== "archive")
+        .map((row) => row.hhVacancyId)
+        .filter((id): id is string => Boolean(id)),
+    );
 
     const includeActiveHhStatuses =
       statuses.length === 0 || statuses.includes("active");
-    const includeArchivedHhStatuses =
-      statuses.length === 0 || statuses.includes("archive");
 
     try {
       // Fast path: let hh.uz paginate server-side. Only possible when no search / city
@@ -214,7 +229,8 @@ export const listVacanciesProcedure = protectedProcedure
             accessToken: hhAccount.accessToken,
             employerId: hhAccount.employerId,
             includeActive: includeActiveHhStatuses,
-            includeArchived: includeArchivedHhStatuses,
+            // Archived hh.uz vacancies live in our local table now — never ask hh.uz.
+            includeArchived: false,
             // Ask hh.uz only for the rows left over after the local slice.
             offset: Math.max(0, offset - localVacancies.length),
             limit: Math.max(0, limit - paginatedLocal.length),
@@ -225,7 +241,12 @@ export const listVacanciesProcedure = protectedProcedure
         const hhItems = hhPage.items
           .filter((vacancy) => !linkedHhVacancyIds.has(vacancy.id))
           .map((vacancy) => formatHhVacancy(vacancy, userCompanyId));
-        const linkedHhCount = Math.min(linkedHhVacancyIds.size, hhPage.total);
+        // `hhPage.total` is the number of ACTIVE hh.uz vacancies. Subtract only the
+        // active-linked rows that are already counted via `localVacancies`.
+        const linkedHhCount = Math.min(
+          linkedActiveHhVacancyIds.size,
+          hhPage.total,
+        );
 
         return {
           items: [
@@ -236,11 +257,13 @@ export const listVacanciesProcedure = protectedProcedure
         };
       }
 
-      // Slow path: hh.uz cannot filter by search / city, so fetch every hh.uz vacancy and
-      // filter it in memory before merging with the local results.
+      // Slow path: hh.uz cannot filter by search / city, so fetch every active hh.uz
+      // vacancy and filter it in memory before merging with the local results. Archived
+      // hh.uz vacancies are served exclusively from `localVacancies`.
       const hhVacancies = await fetchCompanyHhVacancies(
         hhAccount.employerId,
         hhAccount.accessToken,
+        { includeArchived: false },
       );
       const hhItems = hhVacancies
         .filter((vacancy) => {

@@ -50,13 +50,14 @@ function parseHhDate(value: string | null): Date | null {
 /**
  * Discovers new hh.uz candidates for a company (Layer 1).
  *
- * Fetches the employer's **active** hh.uz vacancies (archived/closed vacancies
- * and their applicants are intentionally skipped), ensures each has a local
- * vacancy row, then for every one polls negotiations newest-first, stops once a
- * page falls entirely below the watermark, upserts a candidate stub plus an
- * application row, and enqueues an enrichment job for each genuinely new
- * candidate. Resume PDFs and full profiles are NOT fetched here — that is the
- * enrichment worker's job.
+ * Fetches every hh.uz vacancy the employer has ever had (active + archived)
+ * and ensures each has a local vacancy row. Active vacancies poll negotiations
+ * newest-first, stop once a page falls entirely below the watermark, upsert a
+ * candidate stub plus an application row, and enqueue an enrichment job for
+ * each genuinely new candidate. Archived vacancies are stored as stubs (id,
+ * title, status="archive") so the list view can show them locally — their
+ * applicants are intentionally NOT synced. Resume PDFs and full profiles are
+ * NOT fetched here — that is the enrichment worker's job.
  *
  * Concurrency-safe: a per-company advisory lock prevents overlapping runs.
  */
@@ -97,16 +98,16 @@ export async function discoverHhCandidates(input: {
     // (companyId, hhResumeId) unique indexes, so a candidate who applied to
     // several employers is stored once and enriched once.
     for (const employer of employers) {
-      // Only ACTIVE hh.uz vacancies are synced — archived/closed vacancies and
-      // their applicants are intentionally excluded.
-      let activeHhVacancies: HhVacancy[];
+      // Every hh.uz vacancy the employer has ever had is mirrored locally so
+      // the vacancies list can render archived rows without a live API call.
+      // Only ACTIVE vacancies trigger applicant sync — archived vacancies are
+      // stored as stubs and their applicants are intentionally skipped.
+      let hhVacancies: HhVacancy[];
       try {
-        activeHhVacancies = (
-          await fetchCompanyHhVacancies(
-            employer.employerId,
-            employer.accessToken,
-          )
-        ).filter((vacancy) => vacancy.status === "active");
+        hhVacancies = await fetchCompanyHhVacancies(
+          employer.employerId,
+          employer.accessToken,
+        );
       } catch (error) {
         console.error("hh discovery failed to list employer vacancies", {
           companyId,
@@ -116,7 +117,7 @@ export async function discoverHhCandidates(input: {
         continue;
       }
 
-      for (const hhVacancy of activeHhVacancies) {
+      for (const hhVacancy of hhVacancies) {
         let localVacancyId: string;
         try {
           localVacancyId = await resolveLocalVacancy({
@@ -131,6 +132,12 @@ export async function discoverHhCandidates(input: {
             hhVacancyId: hhVacancy.id,
             error,
           });
+          continue;
+        }
+
+        if (hhVacancy.status !== "active") {
+          // Stub-only: no applicants are stored for archived vacancies.
+          result.vacanciesProcessed += 1;
           continue;
         }
 
@@ -183,7 +190,10 @@ export async function discoverHhCandidates(input: {
 
 /**
  * Returns the local vacancy row id for an hh.uz vacancy, creating a base
- * vacancy row when none exists yet so candidates can be tied to it.
+ * vacancy row when none exists yet so candidates can be tied to it. When a row
+ * already exists, its `status` is reconciled with hh.uz so a vacancy that flips
+ * to archived on hh.uz is reflected locally. Existing candidate links are
+ * preserved on archive — historical applications stay attached.
  */
 async function resolveLocalVacancy(input: {
   db: DatabaseClient;
@@ -193,7 +203,10 @@ async function resolveLocalVacancy(input: {
   const { db, companyId, hhVacancy } = input;
 
   const existing = await db
-    .select({ id: vacancies.id })
+    .select({
+      id: vacancies.id,
+      status: vacancies.status,
+    })
     .from(vacancies)
     .where(
       and(
@@ -203,9 +216,15 @@ async function resolveLocalVacancy(input: {
     )
     .limit(1);
 
-  const existingId = existing[0]?.id;
-  if (existingId) {
-    return existingId;
+  const existingRow = existing[0];
+  if (existingRow) {
+    if (existingRow.status !== hhVacancy.status) {
+      await db
+        .update(vacancies)
+        .set({ status: hhVacancy.status })
+        .where(eq(vacancies.id, existingRow.id));
+    }
+    return existingRow.id;
   }
 
   // A base vacancy self-references via parentId.
@@ -214,7 +233,7 @@ async function resolveLocalVacancy(input: {
     id,
     parentId: id,
     title: hhVacancy.title,
-    status: "active",
+    status: hhVacancy.status,
     companyId,
     hhVacancyId: hhVacancy.id,
   });
