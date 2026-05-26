@@ -275,12 +275,16 @@ async function discoverVacancy(input: {
   let newApplications = 0;
   let jobsEnqueued = 0;
 
+  // `since: cutoff` is per-collection — see iterateHhVacancyNegotiationPages.
+  // The cross-collection break that lived here previously was unsound: hh.uz
+  // partitions negotiations into multiple collections, so an old `response`
+  // page tells us nothing about whether other collections have fresh items.
   for await (const page of iterateHhVacancyNegotiationPages({
     accessToken,
     vacancyId: hhVacancyId,
+    orderBy: "created_at",
+    since: cutoff,
   })) {
-    let pageHasNewItem = false;
-
     for (const negotiation of page) {
       if (seenNegotiationIds.has(negotiation.negotiationId)) {
         continue;
@@ -298,7 +302,6 @@ async function discoverVacancy(input: {
       if (!isNew) {
         continue;
       }
-      pageHasNewItem = true;
 
       const outcome = await upsertNegotiation({
         db,
@@ -315,12 +318,6 @@ async function discoverVacancy(input: {
       if (outcome.jobEnqueued) {
         jobsEnqueued += 1;
       }
-    }
-
-    // Early termination: once a full page sits entirely below the cutoff there
-    // are no newer negotiations left to find.
-    if (cutoff && page.length > 0 && !pageHasNewItem) {
-      break;
     }
   }
 

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 
 import {
   candidateStatusOptions,
@@ -12,8 +12,7 @@ import {
   type HhNegotiation,
   iterateHhVacancyNegotiationPages,
 } from "./negotiations";
-import type { HhVacancy } from "./shared";
-import { fetchCompanyHhVacancies } from "./vacancies";
+import { isHhAccessError } from "./shared";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -87,6 +86,13 @@ function parseHhDate(value: string | null): Date | null {
  * later on hh.uz never gets updated. This rewrites the application stage and
  * candidate status from hh.uz — hh.uz is the source of truth for status.
  *
+ * Iteration is driven by the local `vacancies` table (every row with an
+ * `hhVacancyId` for the company, active OR archived). Status changes can
+ * happen on archived vacancies too — e.g. a recruiter declining a backlog
+ * candidate after the vacancy was closed — so filtering to active would silently
+ * drop those updates. Vacancies we have never synced are absent from the local
+ * table and therefore have no application rows to reconcile.
+ *
  * It is incremental: hh.uz sorts negotiations by `updated_at desc`, and a
  * status change bumps `updated_at`, so a per-vacancy watermark lets each run
  * touch only negotiations changed since the last run. It never creates
@@ -126,62 +132,71 @@ export async function syncHhCandidateStatuses(input: {
       .where(eq(candidateStatusOptions.isActive, true));
     const validStatuses = new Set(statusRows.map((row) => row.value));
 
+    // Pull every hh.uz-linked vacancy persisted for this company. Each is
+    // tried against every connected employer token until one returns
+    // negotiations — the alternative (one negotiations call per vacancy *
+    // employer) would multiply requests for the common single-employer case.
+    const localRows = await db
+      .select({
+        id: vacancies.id,
+        hhVacancyId: vacancies.hhVacancyId,
+      })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.companyId, companyId),
+          isNotNull(vacancies.hhVacancyId),
+        ),
+      );
+
     const result: SyncHhStatusesResult = { ...empty, ranSync: true };
 
-    for (const employer of employers) {
-      let activeHhVacancies: HhVacancy[];
-      try {
-        activeHhVacancies = (
-          await fetchCompanyHhVacancies(
-            employer.employerId,
-            employer.accessToken,
-          )
-        ).filter((vacancy) => vacancy.status === "active");
-      } catch (error) {
-        console.error("hh status sync failed to list employer vacancies", {
-          companyId,
-          employerId: employer.employerId,
-          error,
-        });
+    for (const row of localRows) {
+      const hhVacancyId = row.hhVacancyId;
+      if (!hhVacancyId) {
         continue;
       }
 
-      for (const hhVacancy of activeHhVacancies) {
-        // Status sync only updates existing data — it never creates a vacancy.
-        const localRows = await db
-          .select({ id: vacancies.id })
-          .from(vacancies)
-          .where(
-            and(
-              eq(vacancies.companyId, companyId),
-              eq(vacancies.hhVacancyId, hhVacancy.id),
-            ),
-          )
-          .limit(1);
-        const localVacancyId = localRows[0]?.id;
-        if (!localVacancyId) {
-          continue;
-        }
+      let syncedThisRow = false;
 
+      for (const employer of employers) {
         try {
           const counts = await syncVacancyStatuses({
             db,
             companyId,
             accessToken: employer.accessToken,
-            localVacancyId,
-            hhVacancyId: hhVacancy.id,
+            localVacancyId: row.id,
+            hhVacancyId,
             validStatuses,
           });
           result.vacanciesProcessed += 1;
           result.applicationsUpdated += counts.applicationsUpdated;
           result.statusesApplied += counts.statusesApplied;
+          syncedThisRow = true;
+          break;
         } catch (error) {
+          // Try the next employer when this token has no access to the
+          // vacancy (vacancies may belong to a different manager / employer
+          // among the company's connected accounts).
+          if (isHhAccessError(error)) {
+            continue;
+          }
           console.error("hh status sync failed for vacancy", {
             companyId,
-            hhVacancyId: hhVacancy.id,
+            employerId: employer.employerId,
+            hhVacancyId,
             error,
           });
+          syncedThisRow = true;
+          break;
         }
+      }
+
+      if (!syncedThisRow) {
+        console.warn("hh status sync: no employer token had access", {
+          companyId,
+          hhVacancyId,
+        });
       }
     }
 
@@ -228,15 +243,17 @@ async function syncVacancyStatuses(input: {
   let applicationsUpdated = 0;
   let statusesApplied = 0;
 
-  // Sorted by `updated_at desc`: a status change bumps `updated_at`, so once a
-  // full page sits below the cutoff there are no further changes to find.
+  // `since: cutoff` is the per-collection cursor. The generator stops paging
+  // within a collection once it falls entirely below the cutoff, but moves on
+  // to the next collection — a candidate moved to `discard` lives in a
+  // different collection than where it was previously, and we still need to
+  // see its bumped `updated_at`.
   for await (const page of iterateHhVacancyNegotiationPages({
     accessToken,
     vacancyId: hhVacancyId,
     orderBy: "updated_at",
+    since: cutoff,
   })) {
-    let pageHasNewItem = false;
-
     for (const negotiation of page) {
       if (seenNegotiationIds.has(negotiation.negotiationId)) {
         continue;
@@ -252,7 +269,6 @@ async function syncVacancyStatuses(input: {
       if (!isChanged) {
         continue;
       }
-      pageHasNewItem = true;
 
       const outcome = await reconcileNegotiation({
         db,
@@ -267,10 +283,6 @@ async function syncVacancyStatuses(input: {
       if (outcome.statusApplied) {
         statusesApplied += 1;
       }
-    }
-
-    if (cutoff && page.length > 0 && !pageHasNewItem) {
-      break;
     }
   }
 

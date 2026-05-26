@@ -101,22 +101,42 @@ async function fetchHhNegotiationCollections(
   );
 }
 
+function parseHhTimestamp(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /**
  * Yields negotiation pages for a vacancy, sorted newest-first by `orderBy`.
  *
- * hh.uz sorts negotiations by `created_at` or `updated_at` (`order=desc`), so a
- * watermark cursor can stop paging early. Every item also carries both
- * timestamps, so the caller can filter defensively regardless of ordering.
+ * hh.uz partitions negotiations into multiple collections (e.g. `response`,
+ * `discard`, and any custom employer states) plus `generated_collections`, and
+ * paginates each collection independently. A status change moves a negotiation
+ * between collections AND bumps its `updated_at`, so the canonical "sort desc,
+ * stop once a full page is older than the watermark" cursor only makes sense
+ * **within** a single collection — across collections an older response page
+ * tells us nothing about whether a discard collection has fresh items.
+ *
+ * Passing `since` lets the generator skip the rest of the current collection
+ * once a page falls entirely below the cutoff while still moving on to the
+ * next collection, so a candidate that was just moved to e.g. `discard`
+ * is still observed even when the `response` collection looks stale.
  */
 export async function* iterateHhVacancyNegotiationPages(input: {
   accessToken: string;
   vacancyId: string;
   orderBy?: "created_at" | "updated_at";
+  since?: Date | null;
 }): AsyncGenerator<HhNegotiation[]> {
   const collections = await fetchHhNegotiationCollections(
     input.vacancyId,
     input.accessToken,
   );
+  const orderBy = input.orderBy ?? "created_at";
+  const cutoff = input.since ?? null;
 
   for (const collection of collections) {
     if (!collection.id) {
@@ -130,7 +150,7 @@ export async function* iterateHhVacancyNegotiationPages(input: {
       const searchParams = new URLSearchParams({
         host: "hh.uz",
         order: "desc",
-        order_by: input.orderBy ?? "created_at",
+        order_by: orderBy,
         page: String(page),
         per_page: String(HH_API_NEGOTIATIONS_PER_PAGE),
         vacancy_id: input.vacancyId,
@@ -158,6 +178,24 @@ export async function* iterateHhVacancyNegotiationPages(input: {
 
       if (items.length === 0) {
         break;
+      }
+
+      // Per-collection cursor: once the newest item on this page is below the
+      // cutoff, every later page of this collection is even older. Other
+      // collections still get scanned because they have independent cursors.
+      if (cutoff) {
+        const newestInPage = items.reduce<Date | null>((acc, item) => {
+          const ts = parseHhTimestamp(
+            orderBy === "updated_at" ? item.updatedAt : item.createdAt,
+          );
+          if (!ts) {
+            return acc;
+          }
+          return !acc || ts > acc ? ts : acc;
+        }, null);
+        if (newestInPage && newestInPage <= cutoff) {
+          break;
+        }
       }
     }
   }
