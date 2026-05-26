@@ -1037,6 +1037,24 @@ else
   echo "Skipping 'ai_usage_log' Directus metadata: database table or cost columns are missing. Run 'bun run db:migrate' or 'bun run db:push' first."
 fi
 
+# Per-application AI match score (0–100), written by the candidateVacancyMatch
+# agent during enrichment. Surface it in Directus so admins can audit, sort, or
+# override the value — the enrichment worker will re-write it on the next run.
+patch_field "vacancy_candidate" "match_score" '{
+    "type": "integer",
+    "meta": {
+      "interface": "input",
+      "options": {
+        "min": 0,
+        "max": 100,
+        "iconLeft": "trending_up"
+      },
+      "sort": 10,
+      "width": "half",
+      "note": "0–100 оценка соответствия кандидата вакансии от AI-агента candidateVacancyMatch. Перезаписывается при следующем прогоне воркера обогащения."
+    }
+  }' "vacancy_candidate.match_score"
+
 patch_field "vacancy" "is_active" '{
     "type": "boolean",
     "meta": {
