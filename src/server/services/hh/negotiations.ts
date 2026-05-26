@@ -128,7 +128,7 @@ function parseHhTimestamp(value: string | null): Date | null {
 export async function* iterateHhVacancyNegotiationPages(input: {
   accessToken: string;
   vacancyId: string;
-  orderBy?: "created_at" | "updated_at";
+  orderBy?: "created_at" | "last_change_time_except_employer_inbox";
   since?: Date | null;
 }): AsyncGenerator<HhNegotiation[]> {
   const collections = await fetchHhNegotiationCollections(
@@ -186,7 +186,7 @@ export async function* iterateHhVacancyNegotiationPages(input: {
       if (cutoff) {
         const newestInPage = items.reduce<Date | null>((acc, item) => {
           const ts = parseHhTimestamp(
-            orderBy === "updated_at" ? item.updatedAt : item.createdAt,
+            orderBy === "created_at" ? item.createdAt : item.updatedAt,
           );
           if (!ts) {
             return acc;

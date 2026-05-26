@@ -28,5 +28,10 @@ fi
 
 PORT="${PORT:-3000}"
 
-curl -fsS "http://localhost:${PORT}/api/cron/hh-discover" \
-  -H "Authorization: Bearer ${AUTH_SECRET}" >/dev/null
+if ! response="$(curl -fsS "http://localhost:${PORT}/api/cron/hh-discover" \
+  -H "Authorization: Bearer ${AUTH_SECRET}" 2>&1)"; then
+  printf '%s hh-discover failed: %s\n' "$(date -Is)" "$response" >&2
+  exit 1
+fi
+
+printf '%s hh-discover %s\n' "$(date -Is)" "$response"

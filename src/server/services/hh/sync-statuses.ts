@@ -93,10 +93,11 @@ function parseHhDate(value: string | null): Date | null {
  * drop those updates. Vacancies we have never synced are absent from the local
  * table and therefore have no application rows to reconcile.
  *
- * It is incremental: hh.uz sorts negotiations by `updated_at desc`, and a
- * status change bumps `updated_at`, so a per-vacancy watermark lets each run
- * touch only negotiations changed since the last run. It never creates
- * candidates or vacancies; missing rows are left for discovery.
+ * It is incremental: hh.uz sorts employer negotiations by
+ * `last_change_time_except_employer_inbox desc`; the response items still
+ * expose `updated_at`, so the per-vacancy watermark is stored from that field.
+ * It never creates candidates or vacancies; missing rows are left for
+ * discovery.
  * Concurrency-safe via a per-company advisory lock.
  */
 export async function syncHhCandidateStatuses(input: {
@@ -132,22 +133,29 @@ export async function syncHhCandidateStatuses(input: {
       .where(eq(candidateStatusOptions.isActive, true));
     const validStatuses = new Set(statusRows.map((row) => row.value));
 
-    // Pull every hh.uz-linked vacancy persisted for this company. Each is
-    // tried against every connected employer token until one returns
-    // negotiations — the alternative (one negotiations call per vacancy *
-    // employer) would multiply requests for the common single-employer case.
+    // Pull hh.uz-linked vacancies that have local hh applications. Status sync
+    // only reconciles existing application rows, so vacancies without a local
+    // negotiation cannot produce any writes and should not spend hh.uz calls.
     const localRows = await db
       .select({
         id: vacancies.id,
         hhVacancyId: vacancies.hhVacancyId,
       })
       .from(vacancies)
+      .innerJoin(
+        candidateVacancies,
+        and(
+          eq(candidateVacancies.vacancyId, vacancies.id),
+          isNotNull(candidateVacancies.hhNegotiationId),
+        ),
+      )
       .where(
         and(
           eq(vacancies.companyId, companyId),
           isNotNull(vacancies.hhVacancyId),
         ),
-      );
+      )
+      .groupBy(vacancies.id);
 
     const result: SyncHhStatusesResult = { ...empty, ranSync: true };
 
@@ -251,7 +259,7 @@ async function syncVacancyStatuses(input: {
   for await (const page of iterateHhVacancyNegotiationPages({
     accessToken,
     vacancyId: hhVacancyId,
-    orderBy: "updated_at",
+    orderBy: "last_change_time_except_employer_inbox",
     since: cutoff,
   })) {
     for (const negotiation of page) {
