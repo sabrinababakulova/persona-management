@@ -107,6 +107,11 @@ export async function getVacanciesRelatedCandidates(
     return [];
   }
 
+  // `matchScore` is read from `candidateVacancies` (per-application) so the
+  // funnel reflects the fit for THIS vacancy, not the candidate's best score
+  // against a different one. Falls back to the candidate's global score (the
+  // denormalised maximum written by enrichment) so older rows that predate the
+  // per-application column still render something.
   return db
     .select({
       id: candidates.id,
@@ -114,7 +119,8 @@ export async function getVacanciesRelatedCandidates(
       status: candidates.status,
       city: candidates.city,
       experience: candidates.experience,
-      matchScore: candidates.matchScore,
+      matchScore: candidateVacancies.matchScore,
+      candidateMatchScore: candidates.matchScore,
       aiAnalysis: candidates.aiAnalysis,
       currentPosition: candidates.currentPosition,
       contacts: candidates.contacts,

@@ -379,6 +379,12 @@ export const candidateVacancies = createTable(
       .varchar("application_state", { length: 20 })
       .notNull()
       .default("active"),
+    /**
+     * 0–100 fit score from the candidate-vacancy match agent. Per-application,
+     * not per-candidate: the same candidate can be a strong fit for one role
+     * and weak for another. Refreshed by enrichment, null until first run.
+     */
+    matchScore: d.integer("match_score"),
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.

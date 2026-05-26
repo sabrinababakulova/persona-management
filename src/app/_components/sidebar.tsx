@@ -66,7 +66,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
     },
     {
       label: "Настройки",
-      href: "/settings",
+      href: "/my-profile?section=company-settings",
       icon: <SettingsIcon className="h-6 w-6" />,
     },
   ];
@@ -107,7 +107,10 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
       <nav className="flex flex-col gap-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          // Strip the query string before comparing — the Settings link points at
+          // `/my-profile?section=company-settings` but `pathname` is just `/my-profile`.
+          const itemPath = item.href.split("?")[0];
+          const isActive = pathname === itemPath;
 
           return (
             <Link

@@ -211,6 +211,13 @@
       "when": 1779452782540,
       "tag": "0029_goofy_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1779779240450,
+      "tag": "0030_add_match_score_to_candidate_vacancies",
+      "breakpoints": true
     }
   ]
 }

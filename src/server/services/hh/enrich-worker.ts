@@ -1,10 +1,16 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import {
   formatHhCandidateForAiAnalysis,
   toStoredCandidateContacts,
 } from "~/server/api/routers/candidates/shared";
-import { candidates, hhEnrichmentJobs } from "~/server/db/schema";
+import {
+  candidates,
+  candidateVacancies,
+  hhEnrichmentJobs,
+  vacancies,
+} from "~/server/db/schema";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
+import { generateCandidateVacancyMatch } from "~/server/resume/generate-candidate-vacancy-match";
 import {
   type CompanyHhAccount,
   resolveCompanyHhAccounts,
@@ -203,6 +209,17 @@ async function processJob(
       })
       .where(eq(candidates.id, candidate.id));
 
+    // Match scoring runs alongside AI analysis — it shares the same source data
+    // (the parsed hh.uz resume) and the same observability surface. Archived
+    // vacancies are intentionally skipped via the `vacancies.status` filter so
+    // we never spend tokens on a stub the recruiter has already retired.
+    await computeMatchScores({
+      db,
+      candidateId: candidate.id,
+      companyId: candidate.companyId,
+      resume,
+    });
+
     if (aiErrorMessage) {
       return retryJob(db, job, aiErrorMessage);
     }
@@ -243,6 +260,125 @@ async function retryJob(
     .where(eq(hhEnrichmentJobs.id, job.id));
 
   return "retried";
+}
+
+/**
+ * Scores the candidate against every non-archived vacancy they have applied
+ * to and persists each score on `candidateVacancies.matchScore`. The maximum
+ * across the candidate's active applications is also mirrored onto
+ * `candidates.matchScore` so the candidate-detail card (which has no vacancy
+ * context) has a sensible default value to render.
+ *
+ * Failures for one (candidate, vacancy) pair never abort the others — the
+ * enrichment job has already done its expensive work (resume + AI summary) so
+ * we degrade gracefully and let the next sync run retry the gaps.
+ */
+async function computeMatchScores(input: {
+  db: DatabaseClient;
+  candidateId: string;
+  companyId: string;
+  resume: HhResumeCandidate;
+}): Promise<void> {
+  const { db, candidateId, companyId, resume } = input;
+
+  const pairs = await db
+    .select({
+      applicationId: candidateVacancies.id,
+      vacancyId: vacancies.id,
+      title: vacancies.title,
+      descriptionHtml: vacancies.descriptionHtml,
+      areaId: vacancies.areaId,
+      employmentId: vacancies.employmentId,
+      scheduleId: vacancies.scheduleId,
+      experienceId: vacancies.experienceId,
+      professionalRoleId: vacancies.professionalRoleId,
+      vacancyTypeId: vacancies.vacancyTypeId,
+      salaryFrom: vacancies.salaryFrom,
+      salaryTo: vacancies.salaryTo,
+      salaryCurrency: vacancies.salaryCurrency,
+    })
+    .from(candidateVacancies)
+    .innerJoin(vacancies, eq(candidateVacancies.vacancyId, vacancies.id))
+    .where(
+      and(
+        eq(candidateVacancies.candidateId, candidateId),
+        eq(vacancies.companyId, companyId),
+        // Archived vacancies are intentionally excluded — recruiter retired them.
+        ne(vacancies.status, "archive"),
+      ),
+    );
+
+  if (pairs.length === 0) {
+    return;
+  }
+
+  const candidatePayload = {
+    fullName: resume.fullName,
+    city: resume.city,
+    experience: resume.experience,
+    currentPosition: resume.currentPosition,
+    skills: resume.skills,
+    languages: resume.languages,
+    workExperience: resume.workExperience,
+    education: resume.education,
+    salaryExpectation:
+      resume.salaryExpectation > 0 ? resume.salaryExpectation : null,
+    salaryCurrency: resume.salaryCurrency,
+  };
+
+  let bestScore: number | null = null;
+
+  for (const pair of pairs) {
+    const matchResult = await generateCandidateVacancyMatch(
+      {
+        vacancy: {
+          title: pair.title,
+          descriptionHtml: pair.descriptionHtml,
+          areaId: pair.areaId,
+          employmentId: pair.employmentId,
+          scheduleId: pair.scheduleId,
+          experienceId: pair.experienceId,
+          professionalRoleId: pair.professionalRoleId,
+          vacancyTypeId: pair.vacancyTypeId,
+          salaryFrom: pair.salaryFrom,
+          salaryTo: pair.salaryTo,
+          salaryCurrency: pair.salaryCurrency,
+        },
+        candidate: candidatePayload,
+      },
+      {
+        db,
+        companyId,
+        candidateId,
+        operation: "hh_candidate_vacancy_match",
+      },
+    );
+
+    if (matchResult.status !== "success") {
+      console.error("Candidate-vacancy match failed", {
+        candidateId,
+        vacancyId: pair.vacancyId,
+        errorMessage: matchResult.errorMessage,
+      });
+      continue;
+    }
+
+    await db
+      .update(candidateVacancies)
+      .set({ matchScore: matchResult.score })
+      .where(eq(candidateVacancies.id, pair.applicationId));
+
+    if (bestScore === null || matchResult.score > bestScore) {
+      bestScore = matchResult.score;
+    }
+  }
+
+  if (bestScore !== null) {
+    await db
+      .update(candidates)
+      .set({ matchScore: bestScore })
+      .where(eq(candidates.id, candidateId));
+  }
 }
 
 async function finishJob(

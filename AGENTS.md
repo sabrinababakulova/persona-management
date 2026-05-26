@@ -62,6 +62,7 @@
 │   │   └── agents/           # Individual agent configs
 │   │       ├── candidate-resume-analyzer.ts  # Extracts structured data from resumes
 │   │       ├── candidate-resume-summary.ts   # Generates candidate assessments
+│   │       ├── candidate-vacancy-match.ts    # Scores candidate ↔ vacancy fit (0–100)
 │   │       └── hr-assistant.ts               # General HR chatbot
 │   ├── server/               # All server-side logic
 │   │   ├── api/
@@ -88,7 +89,8 @@
 │   │   │   └── send-registration-code.ts  # Nodemailer SMTP (Yandex)
 │   │   ├── resume/           # AI-powered resume processing
 │   │   │   ├── extract-candidate-resume-prefill.ts  # Form prefill from PDF
-│   │   │   └── generate-candidate-ai-analysis.ts    # AI summary generation
+│   │   │   ├── generate-candidate-ai-analysis.ts    # AI summary generation
+│   │   │   └── generate-candidate-vacancy-match.ts  # Candidate ↔ vacancy match score
 │   │   ├── services/
 │   │   │   ├── telegram.ts   # Telegram Bot API integration
 │   │   │   ├── hh-company-account.ts   # hh.uz token resolution (per user / per company)
@@ -107,7 +109,8 @@
 │   ├── schemas/              # Zod validation schemas
 │   │   ├── register.ts       # registerSchema, registerFormSchema
 │   │   ├── change-password.ts  # changePasswordSchema
-│   │   └── resume-analysis.ts  # AI output validation schemas
+│   │   ├── resume-analysis.ts  # AI output validation schemas
+│   │   └── candidate-vacancy-match.ts  # { score: 0-100, reasoning } from the match agent
 │   ├── shared/               # Code shared between client and server
 │   │   └── candidate-lookups.ts  # DEFAULT_CANDIDATE_LOOKUPS fallback data
 │   ├── stores/               # Zustand client-side stores
@@ -253,8 +256,8 @@ Tables use their plain schema names with no `persona-management_` prefix.
 **Domain tables**:
 - `companies` — id (UUID), name. Each user belongs to a company; vacancies and candidates are scoped to a company.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for any active hh.uz vacancy not published from the app.
-- `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally.
+- `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy)
 
 **Integration tables**:
@@ -396,13 +399,16 @@ Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID` env vars. Both are optio
 hh.uz applicants are **persisted** into the `candidates` / `vacancy_candidate` tables (no longer fetched live per request). The sync has three layers, all under `src/server/services/hh/`.
 
 ### Layer 1 — Discovery (`discover-candidates.ts`)
-For every active hh.uz vacancy of every connected employer in a company: creates a local base vacancy row if missing, polls negotiations newest-first by `created_at`, and upserts a candidate **stub** + an application row. Incremental — a per-vacancy watermark (`lastNegotiationAt`) means a no-new-applicants run is ~one page per vacancy. Each genuinely new candidate enqueues an enrichment job. Archived/closed hh.uz vacancies are skipped. Per-company `pg_advisory_lock`.
+For **every** hh.uz vacancy of every connected employer in a company — active AND archived: creates/reconciles a local base vacancy row (with the real hh.uz status), then polls negotiations newest-first by `created_at`, upserting a candidate **stub** + an application row. Archived vacancies stop after the row write — their applicants are intentionally **not** stored. Incremental — a per-vacancy watermark (`lastNegotiationAt`) means a no-new-applicants run is ~one page per vacancy. Each genuinely new candidate enqueues an enrichment job. Per-company `pg_advisory_lock`.
 
 ### Layer 2 — Enrichment (`enrich-worker.ts`)
-Drains `hh_enrichment_job` with `FOR UPDATE SKIP LOCKED`. Per job: fetches the **structured** hh.uz resume (no PDF) trying each connected employer token until one can read it, fills the candidate profile, and runs AI analysis once. Exponential backoff/retry; stale-lock reaper.
+Drains `hh_enrichment_job` with `FOR UPDATE SKIP LOCKED`. Per job: fetches the **structured** hh.uz resume (no PDF) trying each connected employer token until one can read it, fills the candidate profile, runs AI analysis once, and — **at the same time** — runs the candidate ↔ vacancy match agent against every non-archived application the candidate has, writing each score to `vacancy_candidate.matchScore` and the maximum to `candidates.matchScore`. Exponential backoff/retry; stale-lock reaper.
 
 ### Layer 3 — Status reconciliation (`sync-statuses.ts`)
-Re-walks negotiations ordered by `updated_at` (incremental, watermark `lastStatusNegotiationAt`) and maps the hh.uz state → platform status (`mapHhStateToStatus`). **hh.uz is the source of truth for status** — it overwrites `vacancy_candidate.stage` and `candidates.status`, so a rejection on hh.uz surfaces in the funnel.
+Driven by the local `vacancies` table (every row with `hhVacancyId`, active **or** archived — a recruiter declining a backlog candidate after archiving still gets reconciled). Tries each connected employer token until one has access, then re-walks negotiations ordered by `updated_at` (incremental, watermark `lastStatusNegotiationAt`) and maps the hh.uz state → platform status (`mapHhStateToStatus`). **hh.uz is the source of truth for status** — it overwrites `vacancy_candidate.stage` and `candidates.status`, so a rejection on hh.uz surfaces in the funnel.
+
+### Negotiations pager (`negotiations.ts`)
+`iterateHhVacancyNegotiationPages` accepts `since?: Date | null` and applies the "stop paging once a page falls below the cutoff" cursor **per collection**. hh.uz partitions negotiations into multiple collections (response, discard, custom employer states, plus `generated_collections`); a status change moves a negotiation between collections AND bumps `updated_at`, so the cursor only makes sense within a single collection. Consumers no longer break across collections.
 
 ### Dedup
 Storing-once and AI-once is guaranteed by the unique indexes (`candidates(companyId,hhResumeId)`, `vacancy_candidate(vacancyId,hhNegotiationId)`) plus enqueue-on-insert-only and `hh_enrichment_job.candidateId UNIQUE`.
@@ -430,6 +436,7 @@ The hh.uz OAuth callback redirects with `?hh_connected=1`; `company-settings-sec
 Uses Google Gemini 2.5 Flash via the Mastra framework:
 - **Resume Analyzer** — extracts structured candidate data (name, contacts, skills, languages, experience, salary) from PDF resumes, validates against lookup tables
 - **Resume Summary** — generates a ~150-word candidate assessment
+- **Candidate Vacancy Match** — scores how well a candidate fits a specific vacancy on a 0–100 scale using a Workable / Greenhouse / Jobvite-style rubric (skills ~30%, role + industry ~20%, experience ~20%, languages ~10%, location ~10%, education ~5%, salary ~5%). Returns structured JSON validated against `candidateVacancyMatchSchema`
 - **HR Assistant** — general-purpose HR chatbot
 
 ### Resume Pipeline (`src/server/resume/`)
@@ -437,6 +444,9 @@ Uses Google Gemini 2.5 Flash via the Mastra framework:
 2. File stored in Directus via `src/server/storage/resume-storage.ts`
 3. AI extraction + analysis run in parallel
 4. Prefill data returned to form; AI summary stored in `candidates.aiAnalysis`
+
+### Match Scoring
+The candidate ↔ vacancy match agent is invoked from the hh.uz enrichment worker (`src/server/services/hh/enrich-worker.ts`) **at the same time** as the AI summary — both share the same parsed hh.uz resume and the same `recordAiUsage` observability surface. For each non-archived application the candidate holds, `generateCandidateVacancyMatch` (in `src/server/resume/`) sends a structured prompt to the agent and writes the clamped 0–100 score back to `vacancy_candidate.matchScore`. The maximum across active applications is mirrored onto `candidates.matchScore` so the candidate-detail card (no vacancy context) renders a sensible default; the vacancy funnel reads the per-application column so the badge reflects fit for **that** vacancy. Archived vacancies are skipped at the query level — no tokens spent on stubs.
 
 ### API Route
 - `POST /api/candidates/[candidateId]/resume` — upload endpoint
