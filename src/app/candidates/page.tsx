@@ -352,7 +352,15 @@ export default function CandidatesPage() {
       shouldIncludeHhCandidates &&
       hhLimit > 0 &&
       (isLoadingHhCandidates || isFetchingHhCandidates));
-  const showCandidatesTable = hasCandidates || isTableLoading;
+  // A search or filter is "active" when the user has narrowed the result set in any way —
+  // typed search, modal filters, or a non-default period. Keep the table mounted in those
+  // cases so an empty result shows "Кандидаты не найдены" rather than the onboarding CTA.
+  const hasActiveSearchOrFilters =
+    searchQuery.trim().length > 0 ||
+    activeFilterCount > 0 ||
+    selectedPeriod !== DEFAULT_CANDIDATE_PERIOD;
+  const showCandidatesTable =
+    hasCandidates || isTableLoading || hasActiveSearchOrFilters;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
     if (!isCandidateStatus(nextStatus)) {

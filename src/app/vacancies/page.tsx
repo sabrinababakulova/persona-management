@@ -169,8 +169,17 @@ export default function VacanciesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
+  // Keep the table mounted whenever the user has narrowed results (search, modal filters,
+  // or a non-default period) so an empty response shows the inline "not found" state
+  // instead of dropping back to the onboarding CTA.
+  const hasActiveSearchOrFilters =
+    searchQuery.trim().length > 0 ||
+    activeFilterCount > 0 ||
+    selectedPeriod !== "year";
   const showVacanciesTable =
-    (vacanciesData?.items?.length ?? 0) > 0 || isLoading;
+    (vacanciesData?.items?.length ?? 0) > 0 ||
+    isLoading ||
+    hasActiveSearchOrFilters;
 
   return (
     <>
