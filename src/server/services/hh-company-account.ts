@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
-import { userHhAccounts } from "~/server/db/schema";
+import { userHhAccounts, users } from "~/server/db/schema";
 import {
   isHhConfigured,
   refreshHhAccessToken,
@@ -110,4 +110,62 @@ export async function resolveUserHhAuth(db: DatabaseClient, userId: string) {
     refreshToken,
     employerId,
   };
+}
+
+/** A connected hh.uz employer account usable for company-wide sync. */
+export type CompanyHhAccount = { accessToken: string; employerId: string };
+
+/**
+ * Resolves every hh.uz employer account connected within a company.
+ *
+ * A company can have several users, each connecting their own hh.uz employer
+ * account. Sync must cover them all. Accounts are deduped by `employerId` so
+ * the same employer connected by two users is only processed once.
+ */
+export async function resolveCompanyHhAccounts(
+  db: DatabaseClient,
+  companyId: string,
+): Promise<CompanyHhAccount[]> {
+  const rows = await db
+    .select({ userId: userHhAccounts.userId })
+    .from(userHhAccounts)
+    .innerJoin(users, eq(users.id, userHhAccounts.userId))
+    .where(
+      and(
+        eq(users.companyId, companyId),
+        isNotNull(userHhAccounts.refreshToken),
+      ),
+    );
+
+  const byEmployer = new Map<string, CompanyHhAccount>();
+  for (const row of rows) {
+    const auth = await resolveUserHhAuth(db, row.userId);
+    if (
+      auth?.accessToken &&
+      auth.employerId &&
+      !byEmployer.has(auth.employerId)
+    ) {
+      byEmployer.set(auth.employerId, {
+        accessToken: auth.accessToken,
+        employerId: auth.employerId,
+      });
+    }
+  }
+
+  return [...byEmployer.values()];
+}
+
+/** Ids of every company that has at least one connected hh.uz account. */
+export async function listHhConnectedCompanyIds(
+  db: DatabaseClient,
+): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ companyId: users.companyId })
+    .from(userHhAccounts)
+    .innerJoin(users, eq(users.id, userHhAccounts.userId))
+    .where(isNotNull(userHhAccounts.refreshToken));
+
+  return rows
+    .map((row) => row.companyId)
+    .filter((id): id is string => Boolean(id));
 }

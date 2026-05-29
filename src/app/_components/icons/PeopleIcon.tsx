@@ -109,7 +109,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
       />
       <defs>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="134.725"
           id="filter0_d_429_2608"
@@ -143,7 +143,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="129.383"
           id="filter1_d_429_2608"
@@ -177,7 +177,7 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           />
         </filter>
         <filter
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
           filterUnits="userSpaceOnUse"
           height="177.879"
           id="filter2_d_429_2608"
@@ -218,8 +218,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="78.5516"
           y2="78.5516"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -229,8 +229,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="131.94"
           y2="121.298"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -240,8 +240,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="135.299"
           y2="127.488"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -251,8 +251,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="82.0445"
           y2="82.0445"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -262,8 +262,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="126.65"
           y2="126.65"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -273,8 +273,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="55.1786"
           y2="55.1786"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -284,8 +284,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="133.742"
           y2="118.063"
         >
-          <stop stop-color="white" />
-          <stop offset="1" stop-color="#E2E5EC" />
+          <stop stopColor="white" />
+          <stop offset="1" stopColor="#E2E5EC" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -295,8 +295,8 @@ export function PeopleIcon({ className, ...props }: IconProps) {
           y1="177.699"
           y2="177.699"
         >
-          <stop stop-color="#B0BACC" />
-          <stop offset="1" stop-color="#969EAE" />
+          <stop stopColor="#B0BACC" />
+          <stop offset="1" stopColor="#969EAE" />
         </linearGradient>
       </defs>
     </svg>

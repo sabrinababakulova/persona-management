@@ -3,6 +3,7 @@ import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { integrationsRouter } from "~/server/api/routers/integrations";
 import { lookupsRouter } from "~/server/api/routers/lookups";
 import { profileRouter } from "~/server/api/routers/profile";
+import { sidebarRouter } from "~/server/api/routers/sidebar";
 import { storageRouter } from "~/server/api/routers/storage";
 import { vacanciesRouter } from "~/server/api/routers/vacancies";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -20,6 +21,7 @@ export const appRouter = createTRPCRouter({
   profile: profileRouter,
   integrations: integrationsRouter,
   storage: storageRouter,
+  sidebar: sidebarRouter,
 });
 
 /**

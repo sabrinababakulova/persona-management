@@ -19,17 +19,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {
+  countActiveFilters,
+  EMPTY_FILTER_MODAL_FILTERS,
+  FilterModal,
+  type FilterModalFilters,
+} from "~/app/_components/filter-modal";
+import {
   AIGenerationIcon,
   ChevronRightIcon,
   DollarIcon,
   DownloadIcon,
+  FilterIcon,
   MailIcon,
   MoreIcon,
   OutlineBriefcaseIcon,
   PlusIcon,
+  SearchIcon,
   SortIcon,
   VacancyResponsesIcon,
 } from "~/app/_components/icons";
+import { useDebouncedValue } from "~/app/_components/use-debounced-value";
 import { api } from "~/trpc/react";
 
 function compactValues(values: string[]) {
@@ -584,6 +593,20 @@ export default function VacancyFunnelPage() {
     null,
   );
   const previousStagesRef = useRef<FunnelStage[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 300);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
+    EMPTY_FILTER_MODAL_FILTERS,
+  );
+  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
+  const { data: vacancyLookups } =
+    api.lookups.getVacancyCreateOptions.useQuery();
+  const statusOptions = useMemo(
+    () => lookups?.statusOptions ?? [],
+    [lookups?.statusOptions],
+  );
+  const activeFilterCount = countActiveFilters(appliedFilters);
 
   useEffect(() => {
     if (data?.stages) {
@@ -622,6 +645,56 @@ export default function VacancyFunnelPage() {
   );
 
   const stages = localStages ?? data?.stages ?? [];
+  const displayStages = useMemo<FunnelStage[]>(() => {
+    const normalizedQuery = debouncedSearchQuery.toLowerCase();
+    const cityFilter = appliedFilters.city.trim().toLowerCase();
+    const sourcesFilter = appliedFilters.sources;
+    const statusesFilter = appliedFilters.statuses;
+
+    return stages
+      .filter(
+        (stage) =>
+          statusesFilter.length === 0 || statusesFilter.includes(stage.value),
+      )
+      .map((stage) => {
+        const filtered = stage.candidates.filter((candidate) => {
+          if (normalizedQuery) {
+            const haystack = [
+              candidate.fullName,
+              candidate.currentPosition,
+              candidate.currentCompany,
+            ]
+              .join(" ")
+              .toLowerCase();
+            if (!haystack.includes(normalizedQuery)) {
+              return false;
+            }
+          }
+          if (cityFilter && !candidate.city.toLowerCase().includes(cityFilter)) {
+            return false;
+          }
+          if (
+            sourcesFilter.length > 0 &&
+            !sourcesFilter.includes(candidate.source)
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        const sorted = [...filtered].sort(
+          (a, b) => b.matchScore - a.matchScore,
+        );
+
+        return { ...stage, candidates: sorted };
+      });
+  }, [
+    stages,
+    debouncedSearchQuery,
+    appliedFilters.city,
+    appliedFilters.sources,
+    appliedFilters.statuses,
+  ]);
   const activeCandidate = useMemo<FunnelCandidate | null>(() => {
     if (!activeCandidateId) {
       return null;
@@ -748,6 +821,40 @@ export default function VacancyFunnelPage() {
           </div>
         ) : null}
 
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
+            <input
+              className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-text-label placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Поиск кандидатов"
+              type="text"
+              value={searchQuery}
+            />
+          </div>
+          <button
+            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-text-label transition-colors hover:bg-bg-light ${
+              activeFilterCount > 0
+                ? "border-primary-blue bg-primary-blue/5"
+                : "border-border-light bg-bg-light"
+            }`}
+            onClick={() => setIsFilterModalOpen(true)}
+            type="button"
+          >
+            <FilterIcon className="h-5 w-5" />
+            <span>Добавить фильтры</span>
+            <span
+              className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                activeFilterCount > 0
+                  ? "bg-primary-blue text-bg-light"
+                  : "bg-border-light text-text-label"
+              }`}
+            >
+              {activeFilterCount > 0 ? activeFilterCount : "+"}
+            </span>
+          </button>
+        </div>
+
         <DndContext
           collisionDetection={pointerWithin}
           onDragEnd={handleDragEnd}
@@ -755,7 +862,7 @@ export default function VacancyFunnelPage() {
           sensors={sensors}
         >
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {stages.map((stage) => (
+            {displayStages.map((stage) => (
               <VacancyStageSection
                 activeCandidateId={activeCandidateId}
                 canAddCandidate={!isHhVacancy}
@@ -789,6 +896,19 @@ export default function VacancyFunnelPage() {
           </DragOverlay>
         </DndContext>
       </div>
+
+      <FilterModal
+        cityOptions={vacancyLookups?.cities}
+        initialFilters={appliedFilters}
+        isOpen={isFilterModalOpen}
+        onApply={(filters) => {
+          setAppliedFilters(filters);
+          setIsFilterModalOpen(false);
+        }}
+        onClose={() => setIsFilterModalOpen(false)}
+        sourceOptions={lookups?.sources}
+        statusOptions={statusOptions}
+      />
 
       <AssignCandidateToVacancyModal
         errorMessage={assignCandidateToVacancy.error?.message}

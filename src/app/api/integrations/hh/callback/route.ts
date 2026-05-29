@@ -10,9 +10,12 @@ import {
 } from "~/server/services/hh";
 import { buildAppUrl } from "~/server/utils/request-url";
 
-function redirectToCompanySettings(request: Request) {
+function redirectToCompanySettings(request: Request, connected = false) {
+  // `hh_connected=1` tells the company-settings screen to run the candidate
+  // data migration (initial hh.uz sync) and show its loading screen.
+  const suffix = connected ? "&hh_connected=1" : "";
   return NextResponse.redirect(
-    buildAppUrl("/my-profile?section=company-settings", request),
+    buildAppUrl(`/my-profile?section=company-settings${suffix}`, request),
   );
 }
 
@@ -47,6 +50,7 @@ export async function GET(request: Request) {
     return redirectToCompanySettings(request);
   }
 
+  let connected = false;
   try {
     const tokens = await exchangeHhAuthorizationCode({
       code,
@@ -86,9 +90,10 @@ export async function GET(request: Request) {
         userId: session.user.id,
       });
     }
+    connected = true;
   } catch (callbackError) {
     console.error("Failed to complete HH OAuth callback", callbackError);
   }
 
-  return redirectToCompanySettings(request);
+  return redirectToCompanySettings(request, connected);
 }

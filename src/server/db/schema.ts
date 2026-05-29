@@ -1,5 +1,10 @@
-import { relations } from "drizzle-orm";
-import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  index,
+  pgTableCreator,
+  primaryKey,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
 export const createTable = pgTableCreator((name) => name);
@@ -43,6 +48,16 @@ export const users = createTable("user", (d) => ({
   image: d.varchar({ length: 255 }),
   avatarFileId: d.varchar({ length: 255 }),
   companyId: d.varchar({ length: 255 }).references(() => companies.id),
+  /** Last time the user opened the Candidates page — drives the sidebar badge. */
+  candidatesSeenAt: d
+    .timestamp("candidates_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  /** Last time the user opened the Vacancies page — drives the sidebar badge. */
+  vacanciesSeenAt: d
+    .timestamp("vacancies_seen_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -180,6 +195,25 @@ export const candidates = createTable(
       >()
       .default([]),
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
+    /**
+     * hh.uz resume id — the stable per-resume external key. Set on candidates
+     * sourced from hh.uz; null for manually created candidates. Uniqueness is
+     * enforced per company by `candidate_hh_resume_id_idx`.
+     */
+    hhResumeId: d.varchar("hh_resume_id", { length: 100 }),
+    /** Link to the candidate's resume on hh.uz (the hh.uz `alternate_url`). */
+    hhResumeUrl: d.varchar("hh_resume_url", { length: 500 }),
+    /** When the full hh.uz resume was last fetched; null means the row is a stub. */
+    hhResumeFetchedAt: d.timestamp("hh_resume_fetched_at", {
+      withTimezone: true,
+    }),
+    /** Last time a sync run touched this row. */
+    hhSyncedAt: d.timestamp("hh_synced_at", { withTimezone: true }),
+    /**
+     * Set once a recruiter edits the profile of an hh.uz candidate. While true,
+     * sync stops overwriting raw profile fields for this candidate.
+     */
+    profileLocked: d.boolean("profile_locked").notNull().default(false),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
@@ -191,6 +225,11 @@ export const candidates = createTable(
     index("candidate_city_idx").on(t.city),
     index("candidate_created_at_idx").on(t.createdAt),
     index("candidate_company_id_idx").on(t.companyId),
+    // One candidate row per (company, hh.uz resume): the upsert conflict target
+    // for sync and the per-company dedup guarantee.
+    uniqueIndex("candidate_hh_resume_id_idx")
+      .on(t.companyId, t.hhResumeId)
+      .where(sql`${t.hhResumeId} is not null`),
   ],
 );
 
@@ -313,6 +352,10 @@ export const vacancies = createTable(
   ],
 );
 
+/**
+ * A candidate's application to a vacancy. Carries the per-vacancy pipeline
+ * state — status in recruiting is per application, not per person.
+ */
 export const candidateVacancies = createTable(
   "vacancy_candidate",
   (d) => ({
@@ -325,11 +368,99 @@ export const candidateVacancies = createTable(
       .varchar("vacancy_id", { length: 255 })
       .notNull()
       .references(() => vacancies.id, { onDelete: "cascade" }),
+    /** hh.uz negotiation id — one per (vacancy, candidate). Null for manual links. */
+    hhNegotiationId: d.varchar("hh_negotiation_id", { length: 100 }),
+    /** Recruiter-owned funnel stage. Never written by sync. */
+    stage: d.varchar({ length: 50 }).notNull().default("new"),
+    /** hh.uz employer_state / funnel_stage. Reference-only, refreshed by sync. */
+    hhStage: d.varchar("hh_stage", { length: 50 }),
+    /** `active` | `withdrawn` | `archived`. Sync-owned. */
+    applicationState: d
+      .varchar("application_state", { length: 20 })
+      .notNull()
+      .default("active"),
+    /**
+     * 0–100 fit score from the candidate-vacancy match agent. Per-application,
+     * not per-candidate: the same candidate can be a strong fit for one role
+     * and weak for another. Refreshed by enrichment, null until first run.
+     */
+    matchScore: d.integer("match_score"),
+    appliedAt: d.timestamp("applied_at", { withTimezone: true }),
+    // DB-level default so `db:push` can add this NOT NULL column to the
+    // already-populated vacancy_candidate table without a manual backfill.
+    createdAt: d.timestamp({ withTimezone: true }).defaultNow().notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [
     index("vacancy_candidate_candidate_id_idx").on(t.candidateId),
     index("vacancy_candidate_vacancy_id_idx").on(t.vacancyId),
+    // One application row per (vacancy, hh.uz negotiation): the upsert conflict
+    // target for sync.
+    uniqueIndex("vacancy_candidate_hh_negotiation_idx")
+      .on(t.vacancyId, t.hhNegotiationId)
+      .where(sql`${t.hhNegotiationId} is not null`),
   ],
+);
+
+/**
+ * Per-vacancy discovery watermark. One row per hh.uz-linked vacancy; lets the
+ * sync poll only negotiations newer than the last run instead of the full list.
+ */
+export const hhVacancySyncState = createTable("hh_vacancy_sync_state", (d) => ({
+  vacancyId: d
+    .varchar("vacancy_id", { length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => vacancies.id, { onDelete: "cascade" }),
+  /** `created_at` of the newest negotiation processed by discovery (the cursor). */
+  lastNegotiationAt: d.timestamp("last_negotiation_at", { withTimezone: true }),
+  /** `updated_at` of the newest negotiation processed by status sync (its cursor). */
+  lastStatusNegotiationAt: d.timestamp("last_status_negotiation_at", {
+    withTimezone: true,
+  }),
+  lastSyncStartedAt: d.timestamp("last_sync_started_at", {
+    withTimezone: true,
+  }),
+  lastSyncFinishedAt: d.timestamp("last_sync_finished_at", {
+    withTimezone: true,
+  }),
+  lastSyncError: d.text("last_sync_error"),
+}));
+
+/**
+ * Enrichment queue: one job per newly discovered hh.uz candidate. Drained by a
+ * worker with `FOR UPDATE SKIP LOCKED` — no external queue infrastructure.
+ */
+export const hhEnrichmentJobs = createTable(
+  "hh_enrichment_job",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    candidateId: d
+      .varchar("candidate_id", { length: 255 })
+      .notNull()
+      .unique()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    /** `pending` | `processing` | `done` | `failed`. */
+    status: d.varchar({ length: 20 }).notNull().default("pending"),
+    attempts: d.integer().notNull().default(0),
+    /** Earliest time the job may be claimed; also the retry-backoff timestamp. */
+    runAfter: d
+      .timestamp("run_after", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    lockedAt: d.timestamp("locked_at", { withTimezone: true }),
+    lastError: d.text("last_error"),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [index("hh_enrichment_job_claim_idx").on(t.status, t.runAfter)],
 );
 
 // Activity log table for dashboard "Recent actions" feed

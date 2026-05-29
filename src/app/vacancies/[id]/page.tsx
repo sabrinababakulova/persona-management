@@ -2,6 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { ChevronDownIcon } from "~/app/_components/icons";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { SIDE_MENU_ITEMS } from "~/shared/vacancy-side-menu";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -51,11 +52,19 @@ export default function VacancyDetailPage() {
   const { id: vacancyId } = useParams() as { id: string };
   const router = useRouter();
   const searchParams = useSearchParams();
+  const utils = api.useUtils();
 
   const { data: vacancy, isLoading } = api.vacancies.get.useQuery(
     { id: vacancyId },
     { enabled: Boolean(vacancyId) },
   );
+
+  const restoreFromArchive = api.vacancies.update.useMutation({
+    onSuccess: () => {
+      void utils.vacancies.get.invalidate({ id: vacancyId });
+      void utils.vacancies.list.invalidate();
+    },
+  });
 
   const initialData = useMemo(
     () => (vacancy ? buildInitialData(vacancy) : undefined),
@@ -92,28 +101,62 @@ export default function VacancyDetailPage() {
     );
   }
   // Archived hh.uz vacancies are read-only: hh.uz only accepts edits to active vacancies, so
-  // we lock the form and tell the user how to unblock it.
+  // we lock the form and tell the user how to unblock it. Synced archived stubs live in our
+  // own table (source === "local") but still carry `hhVacancyId`, so we lock those too.
   const isArchivedHh =
-    vacancy.source === "hh.uz" && vacancy.status === "archive";
+    vacancy.status === "archive" && Boolean(vacancy.hhVacancyId);
+
+  const handleStatusChange = (nextStatus: string) => {
+    if (nextStatus === vacancy.status || restoreFromArchive.isPending) {
+      return;
+    }
+    if (nextStatus === "active") {
+      restoreFromArchive.mutate({ id: vacancyId, status: "active" });
+    }
+  };
 
   const archivedBanner = isArchivedHh ? (
     <section
       aria-live="polite"
-      className="flex items-start gap-3 rounded-[8px] border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-[14px] text-text-heading"
+      className="flex flex-col gap-3 rounded-[8px] border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-[14px] text-text-heading sm:flex-row sm:items-start sm:justify-between"
       role="alert"
     >
-      <span
-        aria-hidden="true"
-        className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-[12px] text-bg-light leading-none"
-      >
-        !
-      </span>
-      <div>
-        <p className="font-semibold leading-[1.4]">Эта вакансия в архиве.</p>
-        <p className="mt-1 text-text-secondary leading-[1.4]">
-          Чтобы внести изменения, переведите её в активный статус.
-        </p>
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-[12px] text-bg-light leading-none"
+        >
+          !
+        </span>
+        <div>
+          <p className="font-semibold leading-[1.4]">Эта вакансия в архиве.</p>
+          <p className="mt-1 text-text-secondary leading-[1.4]">
+            Переведите её в активный статус, чтобы продолжить редактирование на
+            hh.uz.
+          </p>
+          {restoreFromArchive.error && (
+            <p className="mt-2 text-accent-red leading-[1.4]">
+              {restoreFromArchive.error.message}
+            </p>
+          )}
+        </div>
       </div>
+      <label className="flex shrink-0 items-center gap-2 text-[12px] text-text-secondary uppercase tracking-[-0.24px]">
+        <span className="sr-only">Статус вакансии</span>
+        <div className="relative inline-flex min-w-[140px] items-center overflow-hidden rounded-[6px] border border-status-outline-border bg-bg-light">
+          <select
+            aria-label="Статус вакансии"
+            className="h-[36px] w-full appearance-none bg-transparent px-3 pr-8 font-semibold text-[12px] text-text-heading uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={restoreFromArchive.isPending}
+            onChange={(event) => handleStatusChange(event.target.value)}
+            value={vacancy.status ?? "archive"}
+          >
+            <option value="archive">В архиве</option>
+            <option value="active">Активна</option>
+          </select>
+          <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-text-heading" />
+        </div>
+      </label>
     </section>
   ) : null;
 

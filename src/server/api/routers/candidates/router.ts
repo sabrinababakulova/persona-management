@@ -7,6 +7,7 @@ import {
   updateCandidateProcedure,
   uploadResumeProcedure,
 } from "./mutations";
+import { hhSyncStatusProcedure, syncHhCandidatesProcedure } from "./sync";
 
 /**
  * Candidate router exposed under `api.candidates`.
@@ -22,4 +23,6 @@ export const candidatesRouter = createTRPCRouter({
   create: createCandidateProcedure,
   update: updateCandidateProcedure,
   uploadResume: uploadResumeProcedure,
+  syncHh: syncHhCandidatesProcedure,
+  hhSyncStatus: hhSyncStatusProcedure,
 });

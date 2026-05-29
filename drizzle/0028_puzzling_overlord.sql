@@ -1,0 +1,2 @@
+ALTER TABLE "vacancy_candidate" ALTER COLUMN "createdAt" SET DEFAULT now();--> statement-breakpoint
+ALTER TABLE "hh_vacancy_sync_state" ADD COLUMN "last_status_negotiation_at" timestamp with time zone;

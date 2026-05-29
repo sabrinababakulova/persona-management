@@ -1,6 +1,41 @@
 # Persona Management Project Review
 
-Generated: 2026-05-05
+Generated: 2026-05-05 · Revised: 2026-05-26
+
+> **2026-05-22 update.** An hh.uz **candidate sync engine** has been added — see the
+> new "hh.uz Candidate Sync" section below. It resolves several items previously
+> listed under Open Questions: hh.uz applicants are now persisted and deduped
+> (29–31, 35), candidate stage is per-application (`vacancy_candidate.stage`),
+> hh.uz status is reconciled back into the app, sync covers **all** of a company's
+> connected employers (22), and external fetches run in a background queue (62).
+>
+> **2026-05-26 update.** Four follow-on changes worth flagging:
+> 1. **Archived hh.uz vacancies are now persisted as stubs.** Discovery iterates
+>    active *and* archived vacancies, writes a stub row (id, title,
+>    `status="archive"`) for archived ones, and reconciles `status` on every run.
+>    `vacancies.list` reads archived rows from the local DB and never asks hh.uz
+>    for them. Applicants are still *not* synced for archived vacancies; existing
+>    candidate links are preserved when a vacancy flips to archived. From the
+>    detail page, a recruiter can unarchive via the hh.uz `/vacancies/{id}/prolongate`
+>    endpoint; on success the local row is hydrated from `fetchHhVacancyDetail`.
+> 2. **Cross-collection bug in `iterateHhVacancyNegotiationPages` fixed.** hh.uz
+>    partitions a vacancy's negotiations into multiple collections (response /
+>    discard / custom states / generated_collections). The "stop paging once
+>    a page is older than the watermark" cursor used to break across collections,
+>    so a candidate declined on hh.uz (moved from `response` → `discard`) never
+>    got reconciled. The cursor now lives inside the generator and applies per
+>    collection. Status sync is also driven from the local `vacancies` table (no
+>    longer filtered to active-only) so archived backlog reconciliations work.
+> 3. **Candidate ↔ vacancy match scoring** (`candidates.matchScore` / new
+>    `vacancy_candidate.matchScore`) is computed by a new Mastra agent
+>    (`candidateVacancyMatch`, gemini-2.5-flash, structured output via
+>    `candidateVacancyMatchSchema`). The agent runs alongside AI analysis inside
+>    the enrichment worker, per non-archived application. Funnel reads the
+>    per-application score; candidate detail reads the denormalised max. Closes
+>    open question 67 (new — see below).
+> 4. **Sidebar "Настройки"** now points at `/my-profile?section=company-settings`
+>    instead of a non-existent `/settings` route; the active-state matcher
+>    strips the query string before comparing.
 
 ## Scope
 
@@ -37,12 +72,16 @@ Core database tables:
 - `company` - company profile. Most users are assigned to `DEFAULT_COMPANY_ID` unless otherwise set.
 - `candidate` - candidate profile, contacts, skills, languages, work experience, education, notes, activities, resume metadata, AI analysis, company scope.
 - `vacancy` - local vacancy profile, local status, salary, description fields, company scope, optional `hhVacancyId`.
-- `vacancy_candidate` - many-to-many assignment between local vacancies and candidates.
+- `vacancy_candidate` - a candidate's **application** to a vacancy. No longer a bare join: it carries per-application state — `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state), `applicationState`, `matchScore` (0–100, written by the candidate ↔ vacancy match agent), `appliedAt`, timestamps — with a partial unique index on `(vacancyId, hhNegotiationId)`.
 - `vacancy_publication` - publication metadata and `sources` JSON array with platform/url pairs.
 - `company_telegram_channel` - configured Telegram channels per company.
 - `company_hh_account` - hh.uz OAuth tokens and employer metadata per user. The table name is historical; the FK is now `userId` (references `user.id`) with a unique constraint on `userId`, so each user has at most one connected hh.uz account.
+- `hh_vacancy_sync_state` - per-vacancy sync cursors: `lastNegotiationAt` (discovery watermark) and `lastStatusNegotiationAt` (status-sync watermark), plus run timestamps/errors.
+- `hh_enrichment_job` - the enrichment queue (one row per candidate, drained with `FOR UPDATE SKIP LOCKED`).
 - Lookup tables - candidate and vacancy dropdown data.
 - `recent_activity_log` - append-only activity feed used by dashboard and candidate detail.
+
+The `candidate` table gained hh.uz sync columns (`hhResumeId`, `hhResumeUrl`, `hhResumeFetchedAt`, `hhSyncedAt`, `profileLocked`) with a partial unique index on `(companyId, hhResumeId)`; `user` gained `candidatesSeenAt` / `vacanciesSeenAt` for the sidebar "new" badges.
 
 Important modeling observation: several product concepts are split or incomplete. A local vacancy has its own fields, hh.uz has its own required lookup IDs, and `vacancy_publication` has source URLs but does not store platform-specific message IDs, external IDs, payload versions, sync state, or errors.
 
@@ -52,10 +91,12 @@ tRPC routers are registered in `src/server/api/root.ts`:
 
 - `dashboard`
 - `vacancies`
-- `candidates`
+- `candidates` (incl. `syncHh`, `hhSyncStatus`)
 - `lookups`
 - `profile`
 - `integrations`
+- `storage`
+- `sidebar` (`counts`, `markSeen` — new candidate/vacancy badge counts)
 
 The protected procedure middleware requires an authenticated session. Most data access then resolves the current user's `companyId`.
 
@@ -264,19 +305,132 @@ Missing or partial:
 
 ### hh.uz Applicants
 
-Current lifecycle:
+Replaced by the **hh.uz Candidate Sync** engine (see the dedicated section below).
+hh.uz applicants are now persisted into `candidate` / `vacancy_candidate` rather than
+fetched live; the funnel reads them from the DB. The previous gaps are addressed:
+applicants are stored and deduped, profiles re-enrich on a TTL, and candidate status
+is reconciled from hh.uz on a schedule.
 
-1. App lists hh.uz vacancy applicants.
-2. Opening a `hh_` candidate fetches the resume from hh.uz.
-3. The app upserts that candidate into local Postgres.
-4. Imported hh candidates no longer appear in the external list.
+Still partial:
+- The dashboard still counts only local data and is not yet sync-aware.
+- The funnel groups by the per-candidate `candidates.status`; the per-application
+  `vacancy_candidate.stage` exists but the funnel UI is not yet wired to it, so a
+  candidate applying to several vacancies shows one shared status.
 
-Missing or partial:
+## hh.uz Candidate Sync (added 2026-05-22)
 
-- No explicit import/reject workflow.
-- No reconciliation if the hh.uz resume changes later.
-- Candidate status from hh.uz collections is noted as TODO in code.
-- Dashboard does not count unimported hh.uz applicants.
+A three-layer sync persists hh.uz applicants into the database. All layers live in
+`src/server/services/hh/`; the design doc is `docs/hh-candidate-sync-plan.md`.
+
+**Layer 1 — Discovery** (`discover-candidates.ts`). For each company it resolves
+**every** connected hh.uz employer account (`resolveCompanyHhAccounts`), lists
+**every** vacancy (active *and* archived, as of 2026-05-26), creates a local base
+vacancy row for any that is missing, and reconciles the `status` column on rows
+that already exist so an archive flip propagates locally. Active vacancies then
+poll negotiations newest-first by `created_at`; archived vacancies stop after the
+row write — applicants are intentionally *not* stored for them. A per-vacancy
+watermark (`hh_vacancy_sync_state.lastNegotiationAt`) makes a no-new-applicants
+run cost ~one page per vacancy. Each new candidate is upserted as a **stub** plus
+an application row, and an enrichment job is enqueued. Guarded by a per-company
+advisory lock.
+
+**Layer 2 — Enrichment** (`enrich-worker.ts`). Drains `hh_enrichment_job` with
+`FOR UPDATE SKIP LOCKED`. Each job fetches the structured hh.uz resume (no PDF
+download), trying each connected employer's token until one can read it, fills the
+candidate profile, and runs both the AI analysis agent and the candidate ↔ vacancy
+match agent once (2026-05-26: see "AI Match Scoring" below). Exponential
+backoff/retry; a reaper re-queues jobs abandoned by a crashed worker.
+
+**Layer 3 — Status reconciliation** (`sync-statuses.ts`). Driven by the local
+`vacancies` table (every row with `hhVacancyId`, active **or** archived — fixed
+2026-05-26 so backlog reconciliations on archived vacancies still work). Tries
+each connected employer's token until one has access (skipping `403` / masked
+`404`), then re-walks negotiations ordered by `updated_at` — incremental via the
+`lastStatusNegotiationAt` watermark — maps the hh.uz state to a platform status
+(`mapHhStateToStatus`), and overwrites `vacancy_candidate.stage` and
+`candidates.status`. **hh.uz is the source of truth for status**, so a rejection
+on hh.uz surfaces in the platform within minutes.
+
+**Negotiations pager** (`negotiations.ts`, fixed 2026-05-26). hh.uz partitions a
+vacancy's negotiations into multiple collections (`response`, `discard`, custom
+employer states, plus `generated_collections`). A status change moves a
+negotiation between collections AND bumps `updated_at`. The "stop paging when a
+page falls below the watermark" cursor previously lived in the consumer and
+broke iteration across **all** collections — so a candidate moved from
+`response` → `discard` was never observed. The cursor now lives inside
+`iterateHhVacancyNegotiationPages` as a `since: Date | null` argument and stops
+paging only within the current collection, then continues to the next.
+
+**Dedup.** A candidate/vacancy is stored once and AI-analysed once, guaranteed by
+the partial unique indexes (`candidate(companyId,hhResumeId)`,
+`vacancy_candidate(vacancyId,hhNegotiationId)`), enqueue-on-insert-only, and the
+`hh_enrichment_job.candidateId` unique constraint. Legacy `hh_<resumeId>` candidate
+rows are adopted by discovery rather than duplicated.
+
+**Triggers.** Discovery runs on hh.uz connect/reconnect (the OAuth callback adds
+`?hh_connected=1`, and `company-settings-section.tsx` runs `candidates.syncHh`
+behind `DataMigrationLoadingScreen`). Ongoing sync is driven by three cron routes,
+each bearer-authorized with `AUTH_SECRET` and hit by `scripts/hh-*-cron.sh`:
+`/api/cron/hh-enrich` (≈1 min), `/api/cron/hh-discover` (≈20 min),
+`/api/cron/hh-status` (≈5 min).
+
+**Known limitations.** Discovery's first run per vacancy is a full backfill. The
+funnel still groups by `candidates.status`, so the per-application `stage` is not
+fully surfaced for multi-vacancy candidates. hh.uz state → platform status mapping
+is keyword-based; an unmapped custom funnel stage leaves the status untouched.
+
+## AI Match Scoring (added 2026-05-26)
+
+A fourth Mastra agent — `candidateVacancyMatch` (gemini-2.5-flash) — scores how
+well a candidate fits a specific vacancy on a 0–100 scale. The instructions
+encode the rubric used by Workable / Greenhouse / Jobvite-style ATS engines:
+skills + stack (~30%), role + industry similarity (~20%), experience (~20%),
+languages (~10%), location/format (~10%), education (~5%), salary alignment
+(~5%). The agent returns structured JSON validated by
+`candidateVacancyMatchSchema` (`{ score: 0-100, reasoning: ≤400 chars }`); the
+score is clamped server-side before write so a misbehaving model can't poison
+the column.
+
+Match scoring is invoked from the hh.uz enrichment worker (`enrich-worker.ts`)
+**alongside** the AI analysis — same job, same parsed hh.uz resume, same
+`recordAiUsage` plumbing. After AI analysis writes `candidates.aiAnalysis`,
+`computeMatchScores` joins `vacancy_candidate → vacancies` for the candidate,
+filters out `status = 'archive'` (no tokens spent on retired stubs), and runs
+the match agent per surviving pair. Each score is written to the new
+`vacancy_candidate.matchScore` column; the maximum across active applications is
+mirrored onto `candidates.matchScore` as a denormalised "best fit" so the
+candidate-detail card (which has no vacancy context) has a sensible default. The
+vacancy funnel (`getVacanciesRelatedCandidates`) reads the per-application
+column with a coalesce fallback to the candidate global score for rows that
+predate enrichment.
+
+## Archived hh.uz Vacancy Stubs (added 2026-05-26)
+
+Discovery now persists every hh.uz vacancy the employer has ever had. Active
+rows are fully synced; archived rows are stored as **stubs** carrying only the
+hh.uz id, the title, and `status = 'archive'`. The `vacancies.list` procedure
+reads archived rows from the local DB and never asks hh.uz for them — both the
+fast and slow paths pass `includeArchived: false` to `fetchCompanyHhVacancies` /
+`fetchCompanyHhVacanciesPage`, and the linked-count math uses a separate
+"active-linked" set so archived stubs don't double-count against `hhPage.total`.
+
+The vacancy detail page (`/vacancies/[id]`) detects archived hh-linked rows via
+`status === "archive" && hhVacancyId !== null` and renders the existing
+read-only banner. Inside the banner is a small status selector
+(Архив → Активна); selecting "Активна" calls `vacancies.update` with a
+status-only payload, which the mutation routes to `prolongHhVacancy`
+(`POST /vacancies/{id}/prolongate`). On 403 the mutation maps hh.uz
+`errors[].value` to friendly Russian messages — `unavailable_for_archived`,
+`not_enough_purchased_services`, `quota_exceeded`, `prolongation_forbidden`,
+`too_early`, `not_premoderated`. `HhApiError` now exposes `errorValues` (in
+addition to `errorTypes`) so any future caller can pattern-match on the
+discriminator. On success the local row is hydrated from `fetchHhVacancyDetail`
+(title, description, area, employment, salary, contacts, etc.) so the stub
+becomes a real editable vacancy immediately.
+
+Mutations refuse any other write to an archived hh-linked row — the only
+allowed change is the status-only unarchive — so a stale form submit from an
+archived row can't diverge from the upstream archive.
 
 ## Open Product and Architecture Questions
 
@@ -303,10 +457,10 @@ Missing or partial:
 16. Which hh.uz fields must be synced on edit besides name/description/salary: area, role, employment, schedule, experience, billing type, contacts, key skills?
 17. How should the app handle hh.uz API validation errors: raw API message, mapped Russian field errors, or both?
 18. Should archiving/closing a local vacancy archive the hh.uz vacancy automatically?
-19. Should prolonging/reactivating an hh.uz vacancy be a separate user action with billing confirmation?
+19. Should prolonging/reactivating an hh.uz vacancy be a separate user action with billing confirmation? **(2026-05-26: the vacancy detail page now offers an explicit status selector on archived hh-linked rows that calls `/vacancies/{id}/prolongate`. Billing/quota errors come back as mapped Russian messages — `not_enough_purchased_services`, `quota_exceeded`, etc. — but no billing-confirmation modal is shown before the call.)**
 20. What should happen if hh.uz token refresh fails: disconnect account, show banner, retry later, or block publication only?
 21. hh.uz accounts are now per-user (the `company_hh_account` table is keyed on `userId`, despite its legacy name). Should the table be renamed to `user_hh_account` to match?
-22. If two users in the same company both connect hh.uz, whose account should drive company-level dashboards, vacancy lists, and applicant counts?
+22. If two users in the same company both connect hh.uz, whose account should drive company-level dashboards, vacancy lists, and applicant counts? **(2026-05-22: the candidate sync now ingests every connected employer in the company; dashboards/vacancy lists are still local-only.)**
 23. Should hh.uz applicants count as vacancy responses before they are imported into local candidates?
 
 ### Publication records
@@ -319,9 +473,9 @@ Missing or partial:
 
 ### Candidate pipeline
 
-29. Candidate status is stored globally on `candidate`. What happens when one candidate is in different stages for two different vacancies?
-30. Should `vacancy_candidate` have its own stage/status, assigned date, source, notes, and rejection reason?
-31. Should `vacancy_candidate` have a database unique constraint on `(vacancyId, candidateId)` to prevent race-condition duplicates?
+29. Candidate status is stored globally on `candidate`. What happens when one candidate is in different stages for two different vacancies? **(2026-05-22: `vacancy_candidate.stage` now holds per-application stage; the funnel UI still reads the global `candidates.status`, so wiring it to `stage` is the remaining step.)**
+30. Should `vacancy_candidate` have its own stage/status, assigned date, source, notes, and rejection reason? **(2026-05-22: added `stage`, `hhStage`, `applicationState`, `appliedAt`, and timestamps. Notes/rejection reason still absent.)**
+31. Should `vacancy_candidate` have a database unique constraint on `(vacancyId, candidateId)` to prevent race-condition duplicates? **(2026-05-22: a partial unique index on `(vacancyId, hhNegotiationId)` was added for synced applications; manual non-hh links are still unconstrained.)**
 32. How does a user unassign a candidate from a vacancy?
 33. How does a user move a candidate through a vacancy funnel without changing their global candidate status?
 34. Should assigning a candidate write recent activity?
@@ -343,6 +497,7 @@ Missing or partial:
 44. Should users be able to review and selectively apply AI-prefilled fields instead of automatic merge?
 45. Should non-PDF resumes be supported later, or is PDF-only a product requirement?
 46. Directus resume replacement deletes the existing file before uploading the new one. Should upload be transactional so a failed new upload does not remove the old file?
+67. Match scoring runs only from the hh.uz enrichment worker — manual candidate creation and ad-hoc candidate-to-vacancy assignments do not currently invoke the match agent. Should the score also be (re)computed on manual assignment, on vacancy edit (since the requirements changed), or expose a "Rescore" button? **(2026-05-26: deferred — the `candidate_vacancy_match` operation is wired through `recordAiUsage` so the call site can be extended without touching observability.)**
 
 ### Files and security
 
@@ -370,7 +525,7 @@ Missing or partial:
 ### Operational questions
 
 61. What is the expected failure handling for partial external publication: local vacancy created, hh.uz failed, Telegram succeeded?
-62. Should external API calls be queued/backgrounded instead of running directly inside tRPC mutations?
+62. Should external API calls be queued/backgrounded instead of running directly inside tRPC mutations? **(2026-05-22: hh.uz candidate enrichment now runs through the `hh_enrichment_job` queue drained by a cron worker; publish/Telegram calls still run inline.)**
 63. Should there be idempotency keys for publish actions to avoid duplicate Telegram/hh.uz posts from double clicks or retries?
 64. How should the app observe and alert on failed Telegram/hh.uz/Directus/mail/API calls?
 65. Should `bun run check` be required to pass before deploy, and who owns existing Biome failures?
@@ -379,7 +534,7 @@ Missing or partial:
 
 - `README.md` is still mostly the default T3 template and is less accurate than `AGENTS.md`.
 - Full `bun run check` has known existing failures unrelated to this document: a raw `<img>` in `hh-vacancy-preview.tsx`, an unused parameter in `src/server/services/hh/shared.ts`, and Drizzle metadata formatting.
-- `src/server/services/hh/shared.ts` contains a TODO about showing actual hh.uz applicant status.
+- `src/server/services/hh/shared.ts` still has a TODO about hh.uz applicant status in the legacy `toHhVacancyApplicant` (live-applicant path). The candidate sync handles real status properly — `toHhNegotiation` reads `employer_state`/`funnel_stage` and `sync-statuses.ts` reconciles it.
 - `vacancy_publication` procedures exist but the create flow mainly uses direct Telegram/hh publish mutations; the product boundary between "publication draft" and "external publish result" is not fully defined.
 - hh.uz support is a mix of live external records (`hh_` IDs) and local records linked by `hhVacancyId`; update logic differs between those paths.
 

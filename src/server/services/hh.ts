@@ -3,6 +3,18 @@ export {
   iterateHhVacancyApplicantBatches,
 } from "./hh/applicants";
 export {
+  type DiscoverHhCandidatesResult,
+  discoverHhCandidates,
+} from "./hh/discover-candidates";
+export {
+  type DrainHhEnrichmentResult,
+  drainHhEnrichmentJobs,
+} from "./hh/enrich-worker";
+export {
+  type HhNegotiation,
+  iterateHhVacancyNegotiationPages,
+} from "./hh/negotiations";
+export {
   buildHhAuthorizeUrl,
   buildHhConnectState,
   exchangeHhAuthorizationCode,
@@ -12,13 +24,17 @@ export {
   resolveHhEmployerFromAccessToken,
 } from "./hh/oauth";
 export { fetchHhResumeById } from "./hh/resumes";
-export { HhApiError, isHhAccessError } from "./hh/shared";
 export type {
   HhConnectedAccount,
   HhResumeCandidate,
   HhVacancy,
   HhVacancyApplicant,
 } from "./hh/shared";
+export { HhApiError, isHhAccessError } from "./hh/shared";
+export {
+  type SyncHhStatusesResult,
+  syncHhCandidateStatuses,
+} from "./hh/sync-statuses";
 export type {
   HhArea,
   HhDictionaries,

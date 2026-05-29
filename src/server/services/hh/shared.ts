@@ -412,28 +412,33 @@ export function decodeState(state: string): HhConnectStatePayload | null {
 }
 
 /**
- * Error thrown for any non-2xx hh.uz API response. Carries the HTTP status and the
- * `errors[].type` values from the JSON body (e.g. `"not_found"`, `"forbidden"`) so callers
- * can tell a permission failure apart from a transient outage.
+ * Error thrown for any non-2xx hh.uz API response. Carries the HTTP status, the
+ * `errors[].type` strings (e.g. `"not_found"`, `"forbidden"`) and the `errors[].value`
+ * discriminators (e.g. `"unavailable_for_archived"`) from the JSON body so callers can
+ * distinguish specific failure reasons within a single error type.
  */
 export class HhApiError extends Error {
   readonly status: number;
   readonly errorTypes: string[];
+  readonly errorValues: string[];
 
   constructor(status: number, body: string) {
     super(`HH API error ${status}: ${body}`);
     this.name = "HhApiError";
     this.status = status;
-    this.errorTypes = parseHhErrorTypes(body);
+    this.errorTypes = parseHhErrorField(body, "type");
+    this.errorValues = parseHhErrorField(body, "value");
   }
 }
 
-function parseHhErrorTypes(body: string): string[] {
+function parseHhErrorField(body: string, field: "type" | "value"): string[] {
   try {
-    const parsed = JSON.parse(body) as { errors?: { type?: unknown }[] };
+    const parsed = JSON.parse(body) as {
+      errors?: Array<Record<string, unknown>>;
+    };
     return (parsed.errors ?? [])
-      .map((entry) => entry.type)
-      .filter((type): type is string => typeof type === "string");
+      .map((entry) => entry[field])
+      .filter((value): value is string => typeof value === "string");
   } catch {
     return [];
   }
