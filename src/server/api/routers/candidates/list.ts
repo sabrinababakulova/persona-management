@@ -4,7 +4,6 @@ import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
 import { escapeLike } from "~/server/api/router-utils/sql";
 import { protectedProcedure } from "~/server/api/trpc";
 import { candidates } from "~/server/db/schema";
-import type { CandidateStatus } from "~/types/server/candidates";
 
 import { candidateListInputSchema } from "./schemas";
 
@@ -76,7 +75,7 @@ export const listCandidatesProcedure = protectedProcedure
           name: parts.slice(0, 2).join(" "),
           patronymic: parts.slice(2).join(" "),
           city: candidate.city ?? "",
-          status: (candidate.status ?? "new") as CandidateStatus,
+          status: candidate.status ?? "new",
           createdAt: candidate.createdAt
             ? new Date(candidate.createdAt).toLocaleDateString("ru-RU", {
                 day: "2-digit",

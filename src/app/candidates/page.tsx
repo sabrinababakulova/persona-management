@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "~/trpc/react";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
-import type { CandidateStatus } from "~/types/server/candidates";
-import type { LookupOption } from "~/types/shared/candidate-lookups";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
 
 type Candidate = RouterOutputs["candidates"]["list"]["items"][number];
@@ -40,32 +38,24 @@ import { QuickOverview } from "./components/quickOverview";
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 const DEFAULT_CANDIDATE_PERIOD = "year" as const;
 
-const CANDIDATE_STATUS_VALUES: CandidateStatus[] = [
-  "new",
-  "screening",
-  "interview",
-  "offer",
-  "hired",
-  "rejected",
-];
-
 const CANDIDATE_SOURCE_ICONS = {
   "hh.uz": { src: "/hh.svg", label: "hh.uz" },
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
 };
 
-const statusToneConfig: Record<
-  CandidateStatus,
-  {
-    containerClassName: string;
-    textClassName: string;
-  }
-> = {
-  new: {
-    containerClassName: "border border-status-outline-border bg-bg-light",
-    textClassName: "text-text-placeholder",
-  },
+type StatusTone = {
+  containerClassName: string;
+  textClassName: string;
+};
+
+const defaultStatusTone: StatusTone = {
+  containerClassName: "border border-status-outline-border bg-bg-light",
+  textClassName: "text-text-placeholder",
+};
+
+const statusToneConfig: Record<string, StatusTone> = {
+  new: defaultStatusTone,
   screening: {
     containerClassName: "bg-status-neutral-bg",
     textClassName: "text-status-neutral",
@@ -87,14 +77,6 @@ const statusToneConfig: Record<
     textClassName: "text-accent-red",
   },
 };
-
-function isCandidateStatus(value: string): value is CandidateStatus {
-  return CANDIDATE_STATUS_VALUES.includes(value as CandidateStatus);
-}
-
-function mapStatusOptions(options: LookupOption[]): LookupOption[] {
-  return options.filter((option) => isCandidateStatus(option.value));
-}
 
 function CandidateSourceIcon({ source }: { source?: string | null }) {
   const normalizedSource = source?.trim() || undefined;
@@ -158,8 +140,12 @@ export default function CandidatesPage() {
     api.lookups.getVacancyCreateOptions.useQuery();
 
   const statusOptions = useMemo(
-    () => mapStatusOptions(lookups?.statusOptions ?? []),
+    () => lookups?.statusOptions ?? [],
     [lookups?.statusOptions],
+  );
+  const availableStatusValues = useMemo(
+    () => new Set(statusOptions.map((option) => option.value)),
+    [statusOptions],
   );
   const defaultStatus = statusOptions[0]?.value;
   const candidateQueryInput = useMemo(
@@ -302,15 +288,13 @@ export default function CandidatesPage() {
       const previousCandidates =
         utils.candidates.list.getData(candidateQueryInput);
 
-      if (status && isCandidateStatus(status)) {
+      if (status && availableStatusValues.has(status)) {
         utils.candidates.list.setData(candidateQueryInput, (existing) =>
           existing
             ? {
                 ...existing,
                 items: existing.items.map((candidate) =>
-                  candidate.id === id
-                    ? { ...candidate, status: status as CandidateStatus }
-                    : candidate,
+                  candidate.id === id ? { ...candidate, status } : candidate,
                 ),
               }
             : existing,
@@ -363,7 +347,7 @@ export default function CandidatesPage() {
     hasCandidates || isTableLoading || hasActiveSearchOrFilters;
 
   const handleStatusChange = (candidateId: string, nextStatus: string) => {
-    if (!isCandidateStatus(nextStatus)) {
+    if (!availableStatusValues.has(nextStatus)) {
       setToastMessage("Выбран неизвестный статус");
       return;
     }
@@ -581,10 +565,9 @@ export default function CandidatesPage() {
                       {visibleCandidates.map((candidate: Candidate, index) => {
                         const statusTone =
                           statusToneConfig[candidate.status] ??
-                          statusToneConfig.new;
+                          defaultStatusTone;
                         const isHhCandidate = candidate.source === "hh.uz";
                         const isStatusPending =
-                          !isHhCandidate &&
                           updateCandidateStatus.isPending &&
                           updateCandidateStatus.variables?.id === candidate.id;
 
@@ -627,44 +610,37 @@ export default function CandidatesPage() {
                             </div>
 
                             <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                              {isHhCandidate ? (
-                                <span
-                                  className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
+                              <div
+                                className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1`}
+                              >
+                                <select
+                                  aria-label={`Статус кандидата ${candidate.name}`}
+                                  className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70`}
+                                  disabled={
+                                    isStatusPending ||
+                                    statusOptions.length === 0
+                                  }
+                                  onChange={(event) => {
+                                    handleStatusChange(
+                                      candidate.id,
+                                      event.target.value,
+                                    );
+                                  }}
+                                  value={candidate.status}
                                 >
-                                  {statusOptions.find(
-                                    (o) => o.value === candidate.status,
-                                  )?.label ?? candidate.status}
-                                </span>
-                              ) : (
-                                <div
-                                  className={`relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1 ${statusTone.containerClassName}`}
-                                >
-                                  <select
-                                    aria-label={`Статус кандидата ${candidate.name}`}
-                                    className={`h-[32px] w-full appearance-none bg-transparent px-2 pr-6 text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.textClassName} font-semibold disabled:cursor-not-allowed disabled:opacity-70`}
-                                    disabled={isStatusPending}
-                                    onChange={(event) => {
-                                      handleStatusChange(
-                                        candidate.id,
-                                        event.target.value,
-                                      );
-                                    }}
-                                    value={candidate.status}
-                                  >
-                                    {statusOptions.map((option) => (
-                                      <option
-                                        key={option.value}
-                                        value={option.value}
-                                      >
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <ChevronDownIcon
-                                    className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                  />
-                                </div>
-                              )}
+                                  {statusOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <ChevronDownIcon
+                                  className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
+                                />
+                              </div>
                             </div>
 
                             <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">

@@ -430,6 +430,24 @@ export const updateCandidateProcedure = protectedProcedure
       valuesToUpdate.source = input.source || null;
     }
     if (input.status && input.status !== (existing.status ?? "")) {
+      const [statusOption] = await ctx.db
+        .select({ value: candidateStatusOptions.value })
+        .from(candidateStatusOptions)
+        .where(
+          and(
+            eq(candidateStatusOptions.value, input.status),
+            eq(candidateStatusOptions.isActive, true),
+          ),
+        )
+        .limit(1);
+
+      if (!statusOption) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unknown status: ${input.status}`,
+        });
+      }
+
       valuesToUpdate.status = input.status;
     }
     if (
