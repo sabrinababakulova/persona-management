@@ -670,7 +670,10 @@ export default function VacancyFunnelPage() {
               return false;
             }
           }
-          if (cityFilter && !candidate.city.toLowerCase().includes(cityFilter)) {
+          if (
+            cityFilter &&
+            !candidate.city.toLowerCase().includes(cityFilter)
+          ) {
             return false;
           }
           if (
