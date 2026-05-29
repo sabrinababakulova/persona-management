@@ -8,6 +8,7 @@ import { PencilIcon, PlusIcon, TrashIcon } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
+import { CandidateStatusSelect } from "~/app/candidates/components/candidate-status-select";
 import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summary-card";
 import { api } from "~/trpc/react";
 
@@ -25,6 +26,8 @@ export default function CandidateDetailPage() {
   const { data: candidate, isLoading } = api.candidates.get.useQuery({
     id: candidateId,
   });
+  const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
+  const statusOptions = lookups?.statusOptions ?? [];
   const addCandidateNote = api.candidates.addNote.useMutation({
     onSuccess: async () => {
       setNoteContent("");
@@ -108,9 +111,18 @@ export default function CandidateDetailPage() {
           </div>
 
           {/* Page Title */}
-          <h1 className="mb-6 font-bold text-2xl text-text-heading lg:text-3xl">
-            Профиль кандидата
-          </h1>
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
+              Профиль кандидата
+            </h1>
+
+            <CandidateStatusSelect
+              candidateId={candidate.id}
+              candidateName={candidate.name}
+              status={candidate.status}
+              statusOptions={statusOptions}
+            />
+          </div>
 
           {candidateId.startsWith("hh_") && candidate.resumeFile.url && (
             <a

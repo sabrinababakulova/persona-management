@@ -17,7 +17,6 @@ import {
   type FilterModalFilters,
 } from "../_components/filter-modal";
 import {
-  ChevronDownIcon,
   FilterIcon,
   FloatingAddIcon,
   ImageUploadPlaceholderIcon,
@@ -33,6 +32,7 @@ import {
 import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
+import { CandidateStatusSelect } from "./components/candidate-status-select";
 import { QuickOverview } from "./components/quickOverview";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
@@ -42,40 +42,6 @@ const CANDIDATE_SOURCE_ICONS = {
   "hh.uz": { src: "/hh.svg", label: "hh.uz" },
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
-};
-
-type StatusTone = {
-  containerClassName: string;
-  textClassName: string;
-};
-
-const defaultStatusTone: StatusTone = {
-  containerClassName: "border border-status-outline-border bg-bg-light",
-  textClassName: "text-text-placeholder",
-};
-
-const statusToneConfig: Record<string, StatusTone> = {
-  new: defaultStatusTone,
-  screening: {
-    containerClassName: "bg-status-neutral-bg",
-    textClassName: "text-status-neutral",
-  },
-  interview: {
-    containerClassName: "bg-status-info-bg",
-    textClassName: "text-primary-blue",
-  },
-  offer: {
-    containerClassName: "bg-status-offer-bg",
-    textClassName: "text-status-offer",
-  },
-  hired: {
-    containerClassName: "bg-status-active-soft",
-    textClassName: "text-status-active-strong",
-  },
-  rejected: {
-    containerClassName: "bg-status-danger-soft",
-    textClassName: "text-accent-red",
-  },
 };
 
 function CandidateSourceIcon({ source }: { source?: string | null }) {
@@ -142,10 +108,6 @@ export default function CandidatesPage() {
   const statusOptions = useMemo(
     () => lookups?.statusOptions ?? [],
     [lookups?.statusOptions],
-  );
-  const availableStatusValues = useMemo(
-    () => new Set(statusOptions.map((option) => option.value)),
-    [statusOptions],
   );
   const defaultStatus = statusOptions[0]?.value;
   const candidateQueryInput = useMemo(
@@ -281,45 +243,6 @@ export default function CandidatesPage() {
     },
   });
 
-  const updateCandidateStatus = api.candidates.update.useMutation({
-    onMutate: async ({ id, status }) => {
-      await utils.candidates.list.cancel(candidateQueryInput);
-
-      const previousCandidates =
-        utils.candidates.list.getData(candidateQueryInput);
-
-      if (status && availableStatusValues.has(status)) {
-        utils.candidates.list.setData(candidateQueryInput, (existing) =>
-          existing
-            ? {
-                ...existing,
-                items: existing.items.map((candidate) =>
-                  candidate.id === id ? { ...candidate, status } : candidate,
-                ),
-              }
-            : existing,
-        );
-      }
-
-      return { previousCandidates };
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previousCandidates) {
-        utils.candidates.list.setData(
-          candidateQueryInput,
-          context.previousCandidates,
-        );
-      }
-      setToastMessage("Не удалось обновить статус кандидата");
-    },
-    onSuccess: () => {
-      setToastMessage("Статус кандидата обновлен");
-    },
-    onSettled: () => {
-      void utils.candidates.list.invalidate();
-    },
-  });
-
   const handleApplyFilters = (filters: FilterModalFilters) => {
     setAppliedFilters(filters);
     setCurrentPage(1);
@@ -345,26 +268,6 @@ export default function CandidatesPage() {
     selectedPeriod !== DEFAULT_CANDIDATE_PERIOD;
   const showCandidatesTable =
     hasCandidates || isTableLoading || hasActiveSearchOrFilters;
-
-  const handleStatusChange = (candidateId: string, nextStatus: string) => {
-    if (!availableStatusValues.has(nextStatus)) {
-      setToastMessage("Выбран неизвестный статус");
-      return;
-    }
-
-    const currentStatus =
-      candidatesData?.items.find((candidate) => candidate.id === candidateId)
-        ?.status ?? null;
-
-    if (!currentStatus || currentStatus === nextStatus) {
-      return;
-    }
-
-    updateCandidateStatus.mutate({
-      id: candidateId,
-      status: nextStatus,
-    });
-  };
 
   const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
     const prefill = payload.resumePrefillData;
@@ -563,13 +466,7 @@ export default function CandidatesPage() {
                   <>
                     <div className="min-h-0 flex-1 overflow-auto">
                       {visibleCandidates.map((candidate: Candidate, index) => {
-                        const statusTone =
-                          statusToneConfig[candidate.status] ??
-                          defaultStatusTone;
                         const isHhCandidate = candidate.source === "hh.uz";
-                        const isStatusPending =
-                          updateCandidateStatus.isPending &&
-                          updateCandidateStatus.variables?.id === candidate.id;
 
                         return (
                           <div
@@ -610,37 +507,21 @@ export default function CandidatesPage() {
                             </div>
 
                             <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
-                              <div
-                                className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1`}
-                              >
-                                <select
-                                  aria-label={`Статус кандидата ${candidate.name}`}
-                                  className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70`}
-                                  disabled={
-                                    isStatusPending ||
-                                    statusOptions.length === 0
-                                  }
-                                  onChange={(event) => {
-                                    handleStatusChange(
-                                      candidate.id,
-                                      event.target.value,
-                                    );
-                                  }}
-                                  value={candidate.status}
-                                >
-                                  {statusOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                <ChevronDownIcon
-                                  className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                                />
-                              </div>
+                              <CandidateStatusSelect
+                                candidateId={candidate.id}
+                                candidateName={candidate.name}
+                                listQueryInput={candidateQueryInput}
+                                onError={() =>
+                                  setToastMessage(
+                                    "Не удалось обновить статус кандидата",
+                                  )
+                                }
+                                onSuccess={() =>
+                                  setToastMessage("Статус кандидата обновлен")
+                                }
+                                status={candidate.status}
+                                statusOptions={statusOptions}
+                              />
                             </div>
 
                             <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
