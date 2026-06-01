@@ -264,7 +264,9 @@ async function retryJob(
 
 /**
  * Scores the candidate against every non-archived vacancy they have applied
- * to and persists each score on `candidateVacancies.matchScore`. The maximum
+ * to and persists each score on `candidateVacancies.matchScore` together with
+ * the agent's narrative justification on `candidateVacancies.matchAnalysis`.
+ * The maximum
  * across the candidate's active applications is also mirrored onto
  * `candidates.matchScore` so the candidate-detail card (which has no vacancy
  * context) has a sensible default value to render.
@@ -365,7 +367,10 @@ async function computeMatchScores(input: {
 
     await db
       .update(candidateVacancies)
-      .set({ matchScore: matchResult.score })
+      .set({
+        matchScore: matchResult.score,
+        matchAnalysis: matchResult.reasoning || null,
+      })
       .where(eq(candidateVacancies.id, pair.applicationId));
 
     if (bestScore === null || matchResult.score > bestScore) {

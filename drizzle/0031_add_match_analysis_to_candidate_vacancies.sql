@@ -1,0 +1,1 @@
+ALTER TABLE "vacancy_candidate" ADD COLUMN "match_analysis" text;

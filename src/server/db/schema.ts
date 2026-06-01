@@ -385,6 +385,12 @@ export const candidateVacancies = createTable(
      * and weak for another. Refreshed by enrichment, null until first run.
      */
     matchScore: d.integer("match_score"),
+    /**
+     * Russian narrative justifying `matchScore` for THIS vacancy — the textual
+     * counterpart to the numeric score, written by the candidate-vacancy match
+     * agent. Per-application like the score; null until first enrichment run.
+     */
+    matchAnalysis: d.text("match_analysis"),
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.

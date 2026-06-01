@@ -404,6 +404,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
           city: "",
           experience: "",
           matchScore: 0,
+          matchAnalysis: "",
           aiAnalysis: "",
           currentPosition: "",
           currentCompany: "",
@@ -549,6 +550,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         city: candidate.city ?? "",
         experience: candidate.experience ?? "",
         matchScore: candidate.matchScore ?? candidate.candidateMatchScore ?? 0,
+        matchAnalysis: candidate.matchAnalysis ?? "",
         aiAnalysis: candidate.aiAnalysis ?? "",
         currentPosition:
           candidate.currentPosition ?? currentWorkplace?.position ?? "",

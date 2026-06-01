@@ -10,12 +10,14 @@ import { z } from "zod";
  * applies that rubric holistically rather than as a keyword count, so the score
  * reflects qualitative fit and not just term frequency.
  *
- * `reasoning` is a short Russian explanation (one or two sentences) used for
- * debugging and audit logs; it is not currently surfaced to the recruiter.
+ * `reasoning` is a Russian narrative (one concise paragraph, ~100 words)
+ * justifying the score with concrete points from the résumé and vacancy. It is
+ * surfaced to the recruiter per-application (stored on
+ * `candidateVacancies.matchAnalysis`) and shown in the vacancy funnel.
  */
 export const candidateVacancyMatchSchema = z.object({
   score: z.number().int().min(0).max(100),
-  reasoning: z.string().max(400),
+  reasoning: z.string().max(1200),
 });
 
 export type CandidateVacancyMatch = z.infer<typeof candidateVacancyMatchSchema>;

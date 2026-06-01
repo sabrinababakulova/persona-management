@@ -94,6 +94,7 @@ type FunnelCandidate = {
   city: string;
   experience: string;
   matchScore: number;
+  matchAnalysis: string;
   aiAnalysis: string;
   currentPosition: string;
   currentCompany: string;
@@ -229,7 +230,11 @@ function VacancyStageCandidateCard({
     candidate.city.toUpperCase(),
     candidate.experience.toUpperCase(),
   ]);
-  const aiSummaryLines = toAiSummaryLines(candidate.aiAnalysis);
+  // Per-vacancy fit narrative (candidateVacancies.matchAnalysis) when present;
+  // older rows that predate it fall back to the candidate-level résumé summary.
+  const aiSummaryLines = toAiSummaryLines(
+    candidate.matchAnalysis || candidate.aiAnalysis,
+  );
   const positionTokens = compactValues([
     candidate.currentCompany,
     candidate.currentPosition,

@@ -218,6 +218,13 @@
       "when": 1779779240450,
       "tag": "0030_add_match_score_to_candidate_vacancies",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780318394053,
+      "tag": "0031_add_match_analysis_to_candidate_vacancies",
+      "breakpoints": true
     }
   ]
 }

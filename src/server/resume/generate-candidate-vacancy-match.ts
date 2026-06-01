@@ -217,7 +217,7 @@ ${formatCandidateBlock(input.candidate)}
     }
 
     const score = clampScore(parsed.score);
-    const reasoning = (parsed.reasoning ?? "").trim().slice(0, 400);
+    const reasoning = (parsed.reasoning ?? "").trim().slice(0, 1200);
 
     if (usageContext) {
       await recordAiUsage({
