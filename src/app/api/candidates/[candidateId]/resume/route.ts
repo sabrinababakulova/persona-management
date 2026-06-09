@@ -3,6 +3,15 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
 import {
+  fetchHhResumePdf,
+  HhApiError,
+  isHhAccessError,
+} from "~/server/services/hh";
+import {
+  resolveCompanyHhAccounts,
+  resolveUserHhAuth,
+} from "~/server/services/hh-company-account";
+import {
   DirectusStorageError,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
@@ -32,6 +41,123 @@ function buildErrorResponse(message: string, status: number) {
 function buildContentDisposition(fileName: string) {
   const fallbackFileName = "resume.pdf";
   return `attachment; filename="${fallbackFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+/**
+ * hh.uz resume id behind a candidate row.
+ *
+ * Candidates discovered by sync carry it in `hhResumeId`; legacy/import rows
+ * encode it in the `hh_<resumeId>` primary key. Returns "" for non-hh.uz rows.
+ */
+function resolveHhResumeId(candidate: {
+  id: string;
+  hhResumeId: string | null;
+}) {
+  const stored = candidate.hhResumeId?.trim();
+  if (stored) {
+    return stored;
+  }
+
+  return candidate.id.startsWith("hh_") ? candidate.id.slice(3) : "";
+}
+
+/**
+ * Every hh.uz access token usable to download this resume, current user first.
+ *
+ * A resume may have been imported by a colleague, so we fall back to the other
+ * employer accounts connected within the company. Tokens are deduped so the
+ * same account connected twice is only tried once.
+ */
+async function collectHhAccessTokens(userId: string, companyId: string) {
+  const tokens: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (token?: string | null) => {
+    const value = token?.trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      tokens.push(value);
+    }
+  };
+
+  const userAuth = await resolveUserHhAuth(db, userId);
+  push(userAuth?.accessToken);
+
+  const companyAccounts = await resolveCompanyHhAccounts(db, companyId);
+  for (const account of companyAccounts) {
+    push(account.accessToken);
+  }
+
+  return tokens;
+}
+
+/**
+ * Streams an hh.uz resume PDF to the browser without persisting it.
+ *
+ * Tries each connected employer token until one is allowed to download the
+ * resume. Access denials (403/404) move on to the next token; the daily
+ * view-limit (429) is surfaced as-is so the recruiter knows to retry later.
+ */
+async function streamHhResumePdf(input: {
+  candidateId: string;
+  resumeId: string;
+  userId: string;
+  companyId: string;
+}) {
+  const accessTokens = await collectHhAccessTokens(
+    input.userId,
+    input.companyId,
+  );
+
+  if (accessTokens.length === 0) {
+    return buildErrorResponse("Аккаунт hh.uz не подключён", 412);
+  }
+
+  let lastError: unknown = null;
+
+  for (const accessToken of accessTokens) {
+    try {
+      const pdf = await fetchHhResumePdf(input.resumeId, accessToken);
+
+      return new Response(pdf.body, {
+        status: 200,
+        headers: {
+          "Content-Type": pdf.contentType,
+          "Content-Disposition": buildContentDisposition(
+            sanitizeResumeFileName(pdf.fileName),
+          ),
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      // This account can't see the resume — another colleague's account might.
+      if (isHhAccessError(error)) {
+        continue;
+      }
+      // Any other failure (rate limit, network) won't improve by retrying.
+      break;
+    }
+  }
+
+  if (lastError instanceof HhApiError && lastError.status === 429) {
+    return buildErrorResponse(
+      "Превышен дневной лимит просмотров резюме на hh.uz",
+      429,
+    );
+  }
+
+  if (isHhAccessError(lastError)) {
+    return buildErrorResponse("Резюме недоступно на hh.uz", 404);
+  }
+
+  console.error("Failed to stream hh.uz resume", {
+    candidateId: input.candidateId,
+    resumeId: input.resumeId,
+    error: lastError,
+  });
+  return buildErrorResponse("Не удалось получить резюме с hh.uz", 502);
 }
 
 export async function POST(request: Request, context: RouteContext) {
@@ -162,6 +288,7 @@ export async function GET(_request: Request, context: RouteContext) {
       id: candidates.id,
       resumeFileId: candidates.resumeFileId,
       resumeFileName: candidates.resumeFileName,
+      hhResumeId: candidates.hhResumeId,
     })
     .from(candidates)
     .where(
@@ -173,14 +300,26 @@ export async function GET(_request: Request, context: RouteContext) {
     return buildErrorResponse("Кандидат не найден", 404);
   }
 
+  // No uploaded file of our own: for hh.uz-sourced candidates, stream the
+  // resume PDF straight from hh.uz without ever writing it to our storage.
+  if (!candidate.resumeFileId) {
+    const resumeId = resolveHhResumeId(candidate);
+    if (resumeId) {
+      return streamHhResumePdf({
+        candidateId,
+        resumeId,
+        userId: session.user.id,
+        companyId,
+      });
+    }
+
+    return buildErrorResponse("Резюме не найдено", 404);
+  }
+
   try {
     getCandidateResumeStorageKey(candidateId);
   } catch {
     return buildErrorResponse("Некорректный идентификатор кандидата", 400);
-  }
-
-  if (!candidate.resumeFileId) {
-    return buildErrorResponse("Резюме не найдено", 404);
   }
 
   try {

@@ -3,6 +3,7 @@ import {
   formatExperienceMonths,
   formatWorkPeriod,
   HH_API_BASE_URL,
+  HhApiError,
   type HhResumeCandidate,
   type HhResumeResponse,
 } from "./shared";
@@ -99,5 +100,90 @@ export async function fetchHhResumeById(
     workExperience,
     education,
     resumeUrl: resume.alternate_url?.trim() || "",
+  };
+}
+
+export type HhResumePdf = {
+  /** PDF bytes streamed straight from hh.uz — never buffered to our storage. */
+  body: ReadableStream<Uint8Array>;
+  contentType: string;
+  fileName: string;
+};
+
+/** Builds a human-friendly `<name>.pdf` filename for the downloaded resume. */
+function deriveResumeFileName(
+  pdfUrl: string,
+  resume: HhResumeResponse,
+): string {
+  try {
+    const lastSegment = decodeURIComponent(
+      new URL(pdfUrl).pathname.split("/").pop() ?? "",
+    );
+    if (lastSegment.toLowerCase().endsWith(".pdf")) {
+      return lastSegment;
+    }
+  } catch {
+    // Fall through to a name built from the resume fields below.
+  }
+
+  const nameParts = [resume.last_name, resume.first_name, resume.middle_name]
+    .map((part) => part?.trim())
+    .filter(Boolean);
+  const base =
+    nameParts.length > 0
+      ? nameParts.join(" ")
+      : resume.title?.trim() || "resume";
+
+  return `${base}.pdf`;
+}
+
+/**
+ * Streams a candidate's resume PDF from hh.uz using the official API download
+ * link, authorized by the connected employer's Bearer token.
+ *
+ * The `/resumes/{id}` response exposes a `download.pdf.url` (an
+ * `api_resume_converter` link) that returns the file body when fetched with the
+ * same token. We pipe that stream straight to the caller — nothing is persisted
+ * to our own storage. Throws `HhApiError` for hh.uz failures: `403` (account
+ * lacks the service to download the resume), `404` (resume unavailable to the
+ * account), `429` (daily resume-view limit exceeded).
+ */
+export async function fetchHhResumePdf(
+  resumeId: string,
+  accessToken: string,
+): Promise<HhResumePdf> {
+  const searchParams = new URLSearchParams({ host: "hh.uz" });
+
+  const resume = await fetchHhJson<HhResumeResponse>(
+    `${HH_API_BASE_URL}/resumes/${resumeId}?${searchParams}`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  const pdfUrl = resume.download?.pdf?.url?.trim();
+  if (!pdfUrl) {
+    throw new Error("HH resume has no PDF download link");
+  }
+
+  const response = await fetch(pdfUrl, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok || !response.body) {
+    const body = await response.text().catch(() => "");
+    throw new HhApiError(response.status, body);
+  }
+
+  return {
+    body: response.body,
+    contentType: response.headers.get("content-type") ?? "application/pdf",
+    fileName: deriveResumeFileName(pdfUrl, resume),
   };
 }

@@ -129,6 +129,49 @@ export async function getStoredCandidateRecord(
 }
 
 /**
+ * Resolves the resume row shown on the candidate profile.
+ *
+ * Precedence:
+ * 1. A resume PDF uploaded into our own storage → served through the protected
+ *    `/api/candidates/{id}/resume` download route.
+ * 2. A candidate sourced from hh.uz → the same `/api/candidates/{id}/resume`
+ *    route streams the resume PDF straight from hh.uz on demand (nothing is
+ *    saved to our storage).
+ * 3. An explicit override (legacy live-fetched hh.uz resumes).
+ * 4. Nothing stored → an empty, non-clickable "Файл не загружен" row.
+ */
+function buildResumeFileDto(
+  candidate: StoredCandidateRecord,
+  resumeNameOverride?: string,
+  resumeUrlOverride?: string,
+) {
+  if (candidate.resumeFileId) {
+    return {
+      name: candidate.resumeFileName ?? "",
+      size: candidate.resumeFileSize ?? "",
+      url: buildCandidateResumeUrl(candidate.id),
+    };
+  }
+
+  const isHhSourced =
+    Boolean(candidate.hhResumeId?.trim()) || candidate.id.startsWith("hh_");
+
+  if (isHhSourced) {
+    return {
+      name: resumeNameOverride ?? "Резюме с hh.uz",
+      size: candidate.resumeFileSize ?? "",
+      url: buildCandidateResumeUrl(candidate.id),
+    };
+  }
+
+  return {
+    name: resumeUrlOverride ? (resumeNameOverride ?? "Резюме на hh.uz") : "",
+    size: candidate.resumeFileSize ?? "",
+    url: resumeUrlOverride ?? "",
+  };
+}
+
+/**
  * Builds the candidate detail DTO consumed by the candidate profile page.
  *
  * Combines the candidate row with related vacancies, recent activity, normalized
@@ -229,15 +272,12 @@ export async function buildCandidateDetailResponse({
       period: string;
       isCurrent?: boolean;
     }[],
-    resumeFile: {
-      name:
-        candidate.resumeFileName ??
-        (resumeUrlOverride ? (resumeNameOverride ?? "") : ""),
-      size: candidate.resumeFileSize ?? "",
-      url: candidate.resumeFileId
-        ? buildCandidateResumeUrl(candidate.id)
-        : (resumeUrlOverride ?? ""),
-    },
+    resumeFile: buildResumeFileDto(
+      candidate,
+      resumeNameOverride,
+      resumeUrlOverride,
+    ),
+    hhResumeUrl: candidate.hhResumeUrl?.trim() ?? "",
     notes: (candidate.notes ?? []) as {
       id: string;
       content: string;

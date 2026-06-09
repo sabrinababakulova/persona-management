@@ -138,6 +138,10 @@ export type HhResumeResponse = {
   languages?: HhResumeLanguage[] | null;
   contact?: HhResumeContact[] | null;
   alternate_url?: string | null;
+  download?: {
+    pdf?: { url?: string | null } | null;
+    rtf?: { url?: string | null } | null;
+  } | null;
 };
 
 export type HhResumeCandidate = {

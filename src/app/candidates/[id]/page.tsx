@@ -124,10 +124,10 @@ export default function CandidateDetailPage() {
             />
           </div>
 
-          {candidateId.startsWith("hh_") && candidate.resumeFile.url && (
+          {candidate.hhResumeUrl && (
             <a
               className="mb-6 inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary hover:text-text-heading"
-              href={candidate.resumeFile.url}
+              href={candidate.hhResumeUrl}
               rel="noopener noreferrer"
               target="_blank"
             >

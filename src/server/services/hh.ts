@@ -23,7 +23,8 @@ export {
   refreshHhAccessToken,
   resolveHhEmployerFromAccessToken,
 } from "./hh/oauth";
-export { fetchHhResumeById } from "./hh/resumes";
+export type { HhResumePdf } from "./hh/resumes";
+export { fetchHhResumeById, fetchHhResumePdf } from "./hh/resumes";
 export type {
   HhConnectedAccount,
   HhResumeCandidate,

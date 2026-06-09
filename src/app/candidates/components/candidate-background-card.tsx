@@ -162,9 +162,11 @@ function ResumeRow({ name, size, url }: ResumeFile) {
           <p className="truncate font-medium text-[16px] text-text-heading leading-none tracking-[-0.32px]">
             {name || "Файл не загружен"}
           </p>
-          <p className="mt-1 text-[14px] text-text-placeholder leading-none tracking-[-0.28px]">
-            {size || "0MB"}
-          </p>
+          {size ? (
+            <p className="mt-1 text-[14px] text-text-placeholder leading-none tracking-[-0.28px]">
+              {size}
+            </p>
+          ) : null}
         </div>
       </div>
 
