@@ -1,7 +1,15 @@
 import { env } from "~/env";
 
-export function isTelegramConfigured(): boolean {
-  return !!env.TELEGRAM_BOT_TOKEN;
+function getTelegramBotToken(botToken?: string | null): string {
+  const token = botToken?.trim() || env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    throw new Error("Telegram bot token is not configured");
+  }
+  return token;
+}
+
+export function isTelegramConfigured(botToken?: string | null): boolean {
+  return !!(botToken?.trim() || env.TELEGRAM_BOT_TOKEN);
 }
 
 type TelegramSendResponse = {
@@ -28,12 +36,10 @@ function parseTelegramSendResult(data: TelegramSendResponse): {
 export async function sendTelegramMessage(
   text: string,
   channelId: string,
+  botToken?: string | null,
 ): Promise<{ messageId: number; messageUrl: string }> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const token = getTelegramBotToken(botToken);
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -54,17 +60,16 @@ export async function sendTelegramMessage(
   return parseTelegramSendResult(data);
 }
 
-let cachedBotId: number | null = null;
+const cachedBotIds = new Map<string, number>();
 
-async function getTelegramBotId(): Promise<number> {
-  if (cachedBotId !== null) {
+async function getTelegramBotId(botToken?: string | null): Promise<number> {
+  const token = getTelegramBotToken(botToken);
+  const cachedBotId = cachedBotIds.get(token);
+  if (cachedBotId !== undefined) {
     return cachedBotId;
   }
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
 
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getMe`;
+  const url = `https://api.telegram.org/bot${token}/getMe`;
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -73,8 +78,36 @@ async function getTelegramBotId(): Promise<number> {
   }
 
   const data = (await response.json()) as { result: { id: number } };
-  cachedBotId = data.result.id;
-  return cachedBotId;
+  cachedBotIds.set(token, data.result.id);
+  return data.result.id;
+}
+
+export async function validateTelegramBotToken(botToken: string): Promise<{
+  botId: number;
+  username: string | null;
+}> {
+  const token = getTelegramBotToken(botToken);
+  const url = `https://api.telegram.org/bot${token}/getMe`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Telegram API error ${response.status}: ${body}`);
+  }
+
+  const data = (await response.json()) as {
+    ok: boolean;
+    result: { id: number; username?: string };
+  };
+  if (!data.ok) {
+    throw new Error("Telegram bot token is invalid");
+  }
+
+  cachedBotIds.set(token, data.result.id);
+  return {
+    botId: data.result.id,
+    username: data.result.username ?? null,
+  };
 }
 
 /**
@@ -105,13 +138,13 @@ export function parseTelegramMessageUrl(
 }
 
 /** Checks whether the bot has the `can_delete_messages` admin right in a chat. */
-export async function canBotDeleteMessages(chatId: string): Promise<boolean> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const botId = await getTelegramBotId();
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getChatMember`;
+export async function canBotDeleteMessages(
+  chatId: string,
+  botToken?: string | null,
+): Promise<boolean> {
+  const token = getTelegramBotToken(botToken);
+  const botId = await getTelegramBotId(token);
+  const url = `https://api.telegram.org/bot${token}/getChatMember`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -138,12 +171,10 @@ export async function canBotDeleteMessages(chatId: string): Promise<boolean> {
 export async function deleteTelegramMessage(
   chatId: string,
   messageId: number,
+  botToken?: string | null,
 ): Promise<void> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/deleteMessage`;
+  const token = getTelegramBotToken(botToken);
+  const url = `https://api.telegram.org/bot${token}/deleteMessage`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -162,12 +193,10 @@ export async function sendTelegramPhoto(
   photo: { data: ArrayBuffer; filename: string; contentType: string },
   caption: string,
   channelId: string,
+  botToken?: string | null,
 ): Promise<{ messageId: number; messageUrl: string }> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`;
+  const token = getTelegramBotToken(botToken);
+  const url = `https://api.telegram.org/bot${token}/sendPhoto`;
 
   const form = new FormData();
   form.append("chat_id", channelId);

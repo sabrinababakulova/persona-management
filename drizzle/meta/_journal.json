@@ -225,6 +225,13 @@
       "when": 1780318394053,
       "tag": "0031_add_match_analysis_to_candidate_vacancies",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780565319283,
+      "tag": "0032_spicy_bloodstorm",
+      "breakpoints": true
     }
   ]
 }

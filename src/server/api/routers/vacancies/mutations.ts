@@ -9,6 +9,7 @@ import {
 import { protectedProcedure } from "~/server/api/trpc";
 import {
   companies,
+  userTelegramBotSettings,
   userTelegramChannels,
   vacancies,
   vacancyTelegramPosts,
@@ -39,6 +40,7 @@ import {
   sendTelegramPhoto,
 } from "~/server/services/telegram";
 import { fetchDirectusAsset } from "~/server/storage/directus-storage";
+import { decryptSecret } from "~/server/utils/secret-encryption";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
@@ -434,12 +436,27 @@ export const updateVacancyProcedure = protectedProcedure
         );
 
       if (targets.length > 0) {
+        const telegramSettings = await ctx.db
+          .select({ botToken: userTelegramBotSettings.botToken })
+          .from(userTelegramBotSettings)
+          .where(eq(userTelegramBotSettings.userId, ctx.session.user.id))
+          .limit(1);
+        const botToken = telegramSettings[0]?.botToken
+          ? decryptSecret(telegramSettings[0].botToken)
+          : null;
+        if (!isTelegramConfigured(botToken)) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Telegram не настроен",
+          });
+        }
+
         // Pre-check delete permission for every distinct chat before deleting anything.
         const distinctChatIds = [...new Set(targets.map((t) => t.chatId))];
         const permissions = await Promise.all(
           distinctChatIds.map(
             async (chatId) =>
-              [chatId, await canBotDeleteMessages(chatId)] as const,
+              [chatId, await canBotDeleteMessages(chatId, botToken)] as const,
           ),
         );
         if (permissions.some(([, canDelete]) => !canDelete)) {
@@ -453,7 +470,11 @@ export const updateVacancyProcedure = protectedProcedure
         const deleteErrors: string[] = [];
         for (const target of targets) {
           try {
-            await deleteTelegramMessage(target.chatId, target.messageId);
+            await deleteTelegramMessage(
+              target.chatId,
+              target.messageId,
+              botToken,
+            );
           } catch (error) {
             deleteErrors.push(
               `${target.chatId}: ${error instanceof Error ? error.message : "ошибка"}`,
@@ -654,7 +675,16 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
 
 export const getTelegramConfigProcedure = protectedProcedure.query(
   async ({ ctx }) => {
-    if (!isTelegramConfigured()) {
+    const telegramSettings = await ctx.db
+      .select({ botToken: userTelegramBotSettings.botToken })
+      .from(userTelegramBotSettings)
+      .where(eq(userTelegramBotSettings.userId, ctx.session.user.id))
+      .limit(1);
+    const botToken = telegramSettings[0]?.botToken
+      ? decryptSecret(telegramSettings[0].botToken)
+      : null;
+
+    if (!isTelegramConfigured(botToken)) {
       return { enabled: false };
     }
 
@@ -678,7 +708,16 @@ export const publishTelegramProcedure = protectedProcedure
     }),
   )
   .mutation(async ({ ctx, input }) => {
-    if (!isTelegramConfigured()) {
+    const telegramSettings = await ctx.db
+      .select({ botToken: userTelegramBotSettings.botToken })
+      .from(userTelegramBotSettings)
+      .where(eq(userTelegramBotSettings.userId, ctx.session.user.id))
+      .limit(1);
+    const botToken = telegramSettings[0]?.botToken
+      ? decryptSecret(telegramSettings[0].botToken)
+      : null;
+
+    if (!isTelegramConfigured(botToken)) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "Telegram не настроен",
@@ -843,8 +882,13 @@ export const publishTelegramProcedure = protectedProcedure
                 },
                 photoCaption,
                 channel.channelId,
+                botToken,
               )
-            : await sendTelegramMessage(textMessage, channel.channelId);
+            : await sendTelegramMessage(
+                textMessage,
+                channel.channelId,
+                botToken,
+              );
         if (!firstMessageUrl) {
           firstMessageUrl = sent.messageUrl;
         }

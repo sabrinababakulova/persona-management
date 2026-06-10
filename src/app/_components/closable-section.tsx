@@ -1,16 +1,22 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { ChevronUpIcon } from "~/app/_components/icons";
 
 export const ClosableSection = ({
+  ariaTitle,
   children,
   title,
 }: {
-  children: React.ReactNode;
-  title: string;
+  ariaTitle?: string;
+  children: ReactNode;
+  title: ReactNode;
 }) => {
   const [isSectionOpen, setIsSectionOpen] = useState(true);
+  const sectionLabel =
+    ariaTitle ?? (typeof title === "string" ? title : "секцию");
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -19,7 +25,7 @@ export const ClosableSection = ({
         </h2>
         <button
           aria-expanded={isSectionOpen}
-          aria-label={`Свернуть или развернуть ${title}`}
+          aria-label={`Свернуть или развернуть ${sectionLabel}`}
           className="rounded p-1 text-text-secondary transition-[background-color,color,transform] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
           onClick={() => setIsSectionOpen((prev) => !prev)}
           type="button"

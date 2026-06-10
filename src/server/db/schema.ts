@@ -595,6 +595,30 @@ export const vacancyWorkTypes = createTable(
   }),
 );
 
+// User Telegram bot settings (for vacancy posting)
+export const userTelegramBotSettings = createTable(
+  "user_telegram_bot_setting",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id)
+      .unique(),
+    botToken: d.varchar("bot_token", { length: 255 }).notNull(),
+    botUsername: d.varchar("bot_username", { length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+);
+
 // User Telegram channels (for vacancy posting)
 export const userTelegramChannels = createTable(
   "company_telegram_channel",

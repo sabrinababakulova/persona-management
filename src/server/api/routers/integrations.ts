@@ -4,9 +4,187 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { userHhAccounts, userTelegramChannels } from "~/server/db/schema";
+import {
+  userHhAccounts,
+  userTelegramBotSettings,
+  userTelegramChannels,
+} from "~/server/db/schema";
+import { validateTelegramBotToken } from "~/server/services/telegram";
+import { decryptSecret, encryptSecret } from "~/server/utils/secret-encryption";
+
+function maskSecret(value: string): string {
+  return `${"•".repeat(8)}${value.slice(-4)}`;
+}
+
+function normalizeTelegramChannelId(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Укажите Telegram-канал",
+    });
+  }
+
+  if (trimmed.startsWith("@")) {
+    return trimmed;
+  }
+  if (/^-100\d{5,}$/.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^[A-Za-z0-9_]{5,32}$/.test(trimmed)) {
+    return `@${trimmed}`;
+  }
+
+  const link = trimmed.match(/^https?:\/\//)
+    ? trimmed
+    : trimmed.startsWith("t.me/") || trimmed.startsWith("telegram.me/")
+      ? `https://${trimmed}`
+      : null;
+  if (!link) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Укажите @username, -100... ID или ссылку вида https://t.me/channel",
+    });
+  }
+
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Некорректная ссылка Telegram",
+    });
+  }
+
+  if (!["t.me", "telegram.me"].includes(url.hostname)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Поддерживаются только ссылки t.me или telegram.me",
+    });
+  }
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  const first = segments[0];
+  if (!first) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "В ссылке Telegram не найден канал",
+    });
+  }
+
+  if (first === "c" && segments[1] && /^\d+$/.test(segments[1])) {
+    return `-100${segments[1]}`;
+  }
+
+  const publicChannel = first === "s" ? segments[1] : first;
+  if (publicChannel?.startsWith("+") || publicChannel === "joinchat") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Ссылка-приглашение не содержит ID канала. Добавьте публичную ссылку, @username или -100... ID.",
+    });
+  }
+
+  if (publicChannel && /^[A-Za-z0-9_]{5,32}$/.test(publicChannel)) {
+    return `@${publicChannel}`;
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "Не удалось определить ID канала из ссылки Telegram",
+  });
+}
 
 export const integrationsRouter = createTRPCRouter({
+  // ── Telegram bot ──────────────────────────────────────────────────
+
+  getTelegramBotSettings: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select()
+      .from(userTelegramBotSettings)
+      .where(eq(userTelegramBotSettings.userId, ctx.session.user.id))
+      .limit(1);
+
+    const settings = rows[0];
+    if (settings) {
+      const botToken = decryptSecret(settings.botToken);
+      return {
+        id: settings.id,
+        botUsername: settings.botUsername,
+        maskedToken: maskSecret(botToken),
+        source: "user" as const,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      };
+    }
+
+    if (env.TELEGRAM_BOT_TOKEN) {
+      return {
+        id: null,
+        botUsername: null,
+        maskedToken: maskSecret(env.TELEGRAM_BOT_TOKEN),
+        source: "env" as const,
+        createdAt: null,
+        updatedAt: null,
+      };
+    }
+
+    return null;
+  }),
+
+  saveTelegramBotToken: protectedProcedure
+    .input(
+      z.object({
+        botToken: z.string().trim().min(20).max(255),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let bot: { username: string | null };
+      try {
+        bot = await validateTelegramBotToken(input.botToken);
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Не удалось проверить токен. Убедитесь, что вы скопировали токен из BotFather полностью.",
+        });
+      }
+
+      const existing = await ctx.db
+        .select({ id: userTelegramBotSettings.id })
+        .from(userTelegramBotSettings)
+        .where(eq(userTelegramBotSettings.userId, ctx.session.user.id))
+        .limit(1);
+
+      if (existing[0]) {
+        await ctx.db
+          .update(userTelegramBotSettings)
+          .set({
+            botToken: encryptSecret(input.botToken),
+            botUsername: bot.username,
+          })
+          .where(eq(userTelegramBotSettings.id, existing[0].id));
+      } else {
+        await ctx.db.insert(userTelegramBotSettings).values({
+          userId: ctx.session.user.id,
+          botToken: encryptSecret(input.botToken),
+          botUsername: bot.username,
+        });
+      }
+
+      return { success: true, botUsername: bot.username };
+    }),
+
+  removeTelegramBotToken: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .delete(userTelegramBotSettings)
+      .where(eq(userTelegramBotSettings.userId, ctx.session.user.id));
+
+    return { success: true };
+  }),
+
   // ── Telegram channels ──────────────────────────────────────────────
 
   getTelegramChannels: protectedProcedure.query(async ({ ctx }) => {
@@ -24,11 +202,12 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const channelId = normalizeTelegramChannelId(input.channelId);
       const rows = await ctx.db
         .insert(userTelegramChannels)
         .values({
           userId: ctx.session.user.id,
-          channelId: input.channelId,
+          channelId,
           label: input.label ?? null,
         })
         .returning();
