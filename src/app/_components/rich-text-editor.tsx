@@ -3,7 +3,13 @@
 import Link from "@tiptap/extension-link";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+import { AIGenerationIcon } from "~/app/_components/icons/AIGenerationIcon";
+import { api } from "~/trpc/react";
+
+/** The AI paraphrase button only appears once the editor has at least this many characters. */
+const AI_PARAPHRASE_MIN_CHARS = 200;
 
 type RichTextEditorProps = {
   className?: string;
@@ -118,6 +124,61 @@ function Toolbar({ editor }: { editor: Editor }) {
   );
 }
 
+function AiParaphraseFooter({
+  disabled,
+  editor,
+  maxLength,
+  onChange,
+}: {
+  disabled: boolean;
+  editor: Editor;
+  maxLength?: number;
+  onChange: (html: string) => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const paraphrase = api.ai.paraphrase.useMutation();
+
+  const handleParaphrase = async () => {
+    if (disabled || paraphrase.isPending || editor.isEmpty) return;
+    setError(null);
+    const originalHtml = editor.getHTML();
+    try {
+      const { html } = await paraphrase.mutateAsync({ html: originalHtml });
+      editor.commands.setContent(html, { emitUpdate: false });
+      if (maxLength !== undefined && editor.getText().length > maxLength) {
+        // Paraphrase exceeded the limit — restore the original text untouched.
+        editor.commands.setContent(originalHtml, { emitUpdate: false });
+        setError(
+          `Перефразированный текст превышает лимит в ${maxLength} символов`,
+        );
+        return;
+      }
+      onChange(editor.isEmpty ? "" : editor.getHTML());
+    } catch (mutationError) {
+      setError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Не удалось перефразировать текст",
+      );
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-border-input border-t bg-bg-input px-2 py-2">
+      <button
+        className="inline-flex items-center gap-1.5 rounded-[4px] border border-border-input bg-bg-light px-2 py-1 font-medium text-[12px] text-accent-ai leading-none transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={disabled || paraphrase.isPending}
+        onClick={handleParaphrase}
+        type="button"
+      >
+        <AIGenerationIcon />
+        {paraphrase.isPending ? "Перефразируем…" : "Перефразировать с AI"}
+      </button>
+      {error && <span className="text-[12px] text-danger-red">{error}</span>}
+    </div>
+  );
+}
+
 export function RichTextEditor({
   className,
   disabled = false,
@@ -217,6 +278,14 @@ export function RichTextEditor({
           )}
           <EditorContent editor={editor} />
         </div>
+        {editor && charCount >= AI_PARAPHRASE_MIN_CHARS && (
+          <AiParaphraseFooter
+            disabled={disabled}
+            editor={editor}
+            maxLength={maxLength}
+            onChange={onChange}
+          />
+        )}
       </div>
       {maxLength !== undefined && (
         <div className="flex justify-end text-[12px] text-text-placeholder">

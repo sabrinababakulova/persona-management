@@ -4,6 +4,7 @@ import { candidateResumeAnalyzerAgent } from "./agents/candidate-resume-analyzer
 import { candidateResumeSummaryAgent } from "./agents/candidate-resume-summary";
 import { candidateVacancyMatchAgent } from "./agents/candidate-vacancy-match";
 import { hrAssistantAgent } from "./agents/hr-assistant";
+import { textParaphraserAgent } from "./agents/text-paraphraser";
 
 export const mastra = new Mastra({
   agents: {
@@ -11,5 +12,6 @@ export const mastra = new Mastra({
     candidateResumeAnalyzer: candidateResumeAnalyzerAgent,
     candidateResumeSummary: candidateResumeSummaryAgent,
     candidateVacancyMatch: candidateVacancyMatchAgent,
+    textParaphraser: textParaphraserAgent,
   },
 });

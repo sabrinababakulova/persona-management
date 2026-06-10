@@ -1,3 +1,4 @@
+import { aiRouter } from "~/server/api/routers/ai";
 import { candidatesRouter } from "~/server/api/routers/candidates";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { integrationsRouter } from "~/server/api/routers/integrations";
@@ -14,6 +15,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  ai: aiRouter,
   dashboard: dashboardRouter,
   vacancies: vacanciesRouter,
   candidates: candidatesRouter,
