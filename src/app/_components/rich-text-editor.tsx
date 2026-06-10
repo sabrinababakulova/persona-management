@@ -72,6 +72,17 @@ function Toolbar({ editor }: { editor: Editor }) {
   return (
     <div className="flex flex-wrap items-center gap-1 border-border-input border-b bg-bg-input px-2 py-2">
       <ToolbarButton
+        disabled={!editor.can().undo()}
+        label="↶"
+        onClick={() => editor.chain().focus().undo().run()}
+      />
+      <ToolbarButton
+        disabled={!editor.can().redo()}
+        label="↷"
+        onClick={() => editor.chain().focus().redo().run()}
+      />
+      <span className="mx-1 h-4 w-px bg-border-input" />
+      <ToolbarButton
         active={editor.isActive("bold")}
         label="B"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -142,6 +153,8 @@ function AiParaphraseFooter({
     if (disabled || paraphrase.isPending || editor.isEmpty) return;
     setError(null);
     const originalHtml = editor.getHTML();
+    // Lock typing while the AI is working so edits can't race the result.
+    editor.setEditable(false);
     try {
       const { html } = await paraphrase.mutateAsync({ html: originalHtml });
       editor.commands.setContent(html, { emitUpdate: false });
@@ -160,6 +173,8 @@ function AiParaphraseFooter({
           ? mutationError.message
           : "Не удалось перефразировать текст",
       );
+    } finally {
+      editor.setEditable(!disabled);
     }
   };
 
