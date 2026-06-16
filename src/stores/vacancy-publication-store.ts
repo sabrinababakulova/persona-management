@@ -56,7 +56,12 @@ export type TelegramPublicationFields = {
  * The set of distribution channels a vacancy can be published to. Update {@link PUBLICATION_CHANNELS}
  * when adding a new option — the literal-union type is derived from it.
  */
-export const PUBLICATION_CHANNELS = ["linkedin", "hh.uz", "telegram"] as const;
+export const PUBLICATION_CHANNELS = [
+  "linkedin",
+  "hh.uz",
+  "telegram",
+  "person-hunter",
+] as const;
 
 /** Literal-union of the channels supported by the publication flow. */
 export type PublicationChannel = (typeof PUBLICATION_CHANNELS)[number];

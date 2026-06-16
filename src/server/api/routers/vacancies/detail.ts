@@ -302,6 +302,7 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         destination: vacancies.destination,
         hhVacancyId: vacancies.hhVacancyId,
         hhDraftId: vacancies.hhDraftId,
+        personHunterVacancyId: vacancies.personHunterVacancyId,
         telegramPostId: vacancies.telegramPostId,
       })
       .from(vacancies)

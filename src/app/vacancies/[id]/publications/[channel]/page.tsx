@@ -1,4 +1,5 @@
 import { HhPublicationForm } from "./hh-publication-form";
+import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
 import { TgPublicationForm } from "./tg-publication-form";
 
 /** Display labels for known channels; unknown channels fall back to their raw segment value. */
@@ -6,6 +7,7 @@ const CHANNEL_DISPLAY_NAME: Record<string, string> = {
   linkedin: "LinkedIn",
   "hh.uz": "HH",
   telegram: "Telegram",
+  "person-hunter": "PersonHunters",
 };
 
 /**
@@ -28,6 +30,10 @@ export default async function VacancyPublicationChannelPage({
 
   if (channel === "telegram") {
     return <TgPublicationForm vacancyId={id} />;
+  }
+
+  if (channel === "person-hunter") {
+    return <PersonHunterPublicationForm vacancyId={id} />;
   }
 
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;

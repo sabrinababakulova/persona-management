@@ -322,6 +322,10 @@ export const vacancies = createTable(
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     hhVacancyId: d.varchar("hh_vacancy_id", { length: 100 }),
     hhDraftId: d.varchar("hh_draft_id", { length: 100 }),
+    /** Numeric id of this publication's vacancy on PersonHunters, set once published there. */
+    personHunterVacancyId: d.varchar("person_hunter_vacancy_id", {
+      length: 100,
+    }),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),

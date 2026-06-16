@@ -17,8 +17,10 @@ import {
   deleteVacancyPublicationProcedure,
   getHhConfigProcedure,
   getHhPublishLookupsProcedure,
+  getPersonHunterConfigProcedure,
   getTelegramConfigProcedure,
   publishHhProcedure,
+  publishPersonHunterProcedure,
   publishTelegramProcedure,
   saveHhDraftProcedure,
   updateVacancyProcedure,
@@ -42,4 +44,6 @@ export const vacanciesRouter = createTRPCRouter({
   getHhPublishLookups: getHhPublishLookupsProcedure,
   publishHh: publishHhProcedure,
   saveHhDraft: saveHhDraftProcedure,
+  getPersonHunterConfig: getPersonHunterConfigProcedure,
+  publishPersonHunter: publishPersonHunterProcedure,
 });

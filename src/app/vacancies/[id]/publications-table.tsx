@@ -24,6 +24,11 @@ const CHANNEL_OPTIONS: ActionDropdownItem[] = [
   { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
   { value: "hh.uz", label: "Для HH", iconSrc: "/hh.svg" },
   { value: "telegram", label: "Для Telegram", iconSrc: "/telegram.svg" },
+  {
+    value: "person-hunter",
+    label: "Для PersonHunters",
+    iconSrc: "/person-hunter.svg",
+  },
 ];
 
 /** Brand assets used to render the "Канал" column for each known platform. */
@@ -31,6 +36,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
+  "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
 };
 
 const ACTIVE_STATUS_OPTIONS = [
@@ -55,8 +61,9 @@ const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
 function getPublicationState(publication: {
   hhVacancyId?: string | null;
   hhDraftId?: string | null;
+  personHunterVacancyId?: string | null;
 }): PublicationState {
-  if (publication.hhVacancyId) {
+  if (publication.hhVacancyId || publication.personHunterVacancyId) {
     return "published";
   }
   if (publication.hhDraftId) {
@@ -72,10 +79,17 @@ function getPublicationState(publication: {
 function getPublicationExternalUrl(publication: {
   destination?: string | null;
   hhVacancyId?: string | null;
+  personHunterVacancyId?: string | null;
   telegramPostId?: string | null;
 }): string | null {
   if (publication.destination === "hh.uz" && publication.hhVacancyId) {
     return `https://hh.uz/vacancy/${publication.hhVacancyId}`;
+  }
+  if (
+    publication.destination === "person-hunter" &&
+    publication.personHunterVacancyId
+  ) {
+    return `https://personhunters.com/vacancy/${publication.personHunterVacancyId}`;
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
@@ -265,10 +279,14 @@ export function PublicationsTable() {
       return;
     }
 
-    // hh.uz changes and Telegram deactivations need a confirmation step (the latter deletes the
-    // channel post); other status changes apply directly.
+    // hh.uz / PersonHunters changes and Telegram deactivations need a confirmation step (the
+    // latter deletes the channel post); other status changes apply directly.
 
-    if (destination === "hh.uz" || (destination === "telegram" && !isActive)) {
+    if (
+      destination === "hh.uz" ||
+      destination === "person-hunter" ||
+      (destination === "telegram" && !isActive)
+    ) {
       setPendingStatusChange({ id, isActive, destination });
       return;
     }
@@ -550,9 +568,13 @@ export function PublicationsTable() {
         description={
           pendingStatusChange?.destination === "telegram"
             ? "Публикация будет удалена из Telegram-канала."
-            : pendingStatusChange?.isActive
-              ? "Публикация будет опубликована на hh.uz"
-              : "Публикация будет архивирована в hh.uz"
+            : pendingStatusChange?.destination === "person-hunter"
+              ? pendingStatusChange?.isActive
+                ? "Публикация будет опубликована на PersonHunters."
+                : "Публикация будет скрыта на PersonHunters."
+              : pendingStatusChange?.isActive
+                ? "Публикация будет опубликована на hh.uz"
+                : "Публикация будет архивирована в hh.uz"
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}

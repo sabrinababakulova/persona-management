@@ -29,6 +29,7 @@ export const env = createEnv({
     HH_CLIENT_ID: z.string().min(1).optional(),
     HH_CLIENT_SECRET: z.string().min(1).optional(),
     HH_REDIRECT_URI: z.string().url().optional(),
+    PERSON_HUNTER_API_KEY: z.string().min(1).optional(),
   },
 
   /**
@@ -65,6 +66,7 @@ export const env = createEnv({
     HH_CLIENT_ID: process.env.HH_CLIENT_ID,
     HH_CLIENT_SECRET: process.env.HH_CLIENT_SECRET,
     HH_REDIRECT_URI: process.env.HH_REDIRECT_URI,
+    PERSON_HUNTER_API_KEY: process.env.PERSON_HUNTER_API_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

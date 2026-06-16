@@ -31,6 +31,15 @@ import {
   resolveUserHhAuth,
 } from "~/server/services/hh-company-account";
 import {
+  createPersonHunterVacancy,
+  deletePersonHunterVacancy,
+  getPersonHunterApiKey,
+  getPersonHunterReferences,
+  isPersonHunterConfigured,
+  PersonHunterApiError,
+  updatePersonHunterVacancy,
+} from "~/server/services/person-hunter";
+import {
   canBotDeleteMessages,
   deleteTelegramMessage,
   isTelegramConfigured,
@@ -470,6 +479,36 @@ export const updateVacancyProcedure = protectedProcedure
       }
     }
 
+    // Toggling a PersonHunters publication mirrors the change to PersonHunters: deactivating
+    // hides the vacancy (status 0), reactivating republishes it (status 1). We do this before
+    // the local write so a failed remote call leaves the local row untouched and retryable.
+    if (
+      input.isActive !== undefined &&
+      input.isActive !== existing.isActive &&
+      existing.destination === "person-hunter" &&
+      existing.personHunterVacancyId
+    ) {
+      if (!isPersonHunterConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "PersonHunters не настроен (отсутствует API-ключ).",
+        });
+      }
+
+      try {
+        await updatePersonHunterVacancy(
+          existing.personHunterVacancyId,
+          { status: input.isActive ? 1 : 0 },
+          getPersonHunterApiKey(),
+        );
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: describePersonHunterError(error),
+        });
+      }
+    }
+
     const valuesToUpdate: Partial<{
       title: string;
       status: "active" | "draft" | "paused" | "closed" | "archive";
@@ -629,6 +668,59 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
   .input(vacancyIdInputSchema)
   .mutation(async ({ ctx, input }) => {
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const rows = await ctx.db
+      .select({
+        id: vacancies.id,
+        parentId: vacancies.parentId,
+        destination: vacancies.destination,
+        personHunterVacancyId: vacancies.personHunterVacancyId,
+      })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, companyId),
+          eq(vacancies.isPublication, true),
+        ),
+      )
+      .limit(1);
+
+    const existing = rows[0];
+    if (!existing) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Публикация не найдена",
+      });
+    }
+
+    // Fully remove the vacancy from PersonHunters first, so the local row only disappears once
+    // the remote delete succeeds. A 404 means it's already gone there — treat that as success.
+    if (
+      existing.destination === "person-hunter" &&
+      existing.personHunterVacancyId
+    ) {
+      if (!isPersonHunterConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "PersonHunters не настроен (отсутствует API-ключ).",
+        });
+      }
+
+      try {
+        await deletePersonHunterVacancy(
+          existing.personHunterVacancyId,
+          getPersonHunterApiKey(),
+        );
+      } catch (error) {
+        if (!(error instanceof PersonHunterApiError && error.status === 404)) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: describePersonHunterError(error),
+          });
+        }
+      }
+    }
 
     const deletedRows = await ctx.db
       .delete(vacancies)
@@ -1218,6 +1310,159 @@ export const saveHhDraftProcedure = protectedProcedure
             : "Не удалось сохранить черновик на hh.uz",
       });
     }
+  });
+
+// ── PersonHunters ───────────────────────────────────────────────────────────
+
+/**
+ * Returns whether the PersonHunters integration is usable (an API key is configured) plus the
+ * reference dictionaries the publish form needs. PersonHunters has no dictionary endpoints, so
+ * the references are served from a curated, hardcoded list (see the service `references` module).
+ */
+export const getPersonHunterConfigProcedure = protectedProcedure.query(() => {
+  return {
+    enabled: isPersonHunterConfigured(),
+    references: getPersonHunterReferences(),
+  };
+});
+
+/** Turns a PersonHunters error into a user-facing message, expanding 422 field validations. */
+function describePersonHunterError(error: unknown): string {
+  if (error instanceof PersonHunterApiError) {
+    if (error.status === 422 && error.validationErrors.length > 0) {
+      const fields = error.validationErrors
+        .map((entry) => entry.message || entry.field)
+        .join("; ");
+      return `PersonHunters отклонил публикацию: ${fields}`;
+    }
+    if (error.status === 401) {
+      return "PersonHunters: неверный или просроченный API-ключ.";
+    }
+    if (error.status === 403) {
+      return "PersonHunters: нет прав на эту операцию.";
+    }
+  }
+  return error instanceof Error
+    ? `Не удалось опубликовать на PersonHunters: ${error.message}`
+    : "Не удалось опубликовать на PersonHunters";
+}
+
+export const publishPersonHunterProcedure = protectedProcedure
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      name: z.string().min(1).max(500),
+      description: z.string().max(20000).optional(),
+      duties: z.string().min(1).max(20000),
+      requirements: z.string().min(1).max(20000),
+      conditions: z.string().min(1).max(20000),
+      uniqueCode: z.string().max(100).optional(),
+      industryId: z.number().int().positive(),
+      countryId: z.number().int().positive(),
+      regionId: z.number().int().positive(),
+      cityId: z.number().int().positive(),
+      currencyId: z.number().int().positive().optional(),
+      // 0 = hidden, 1 = published. `nonnegative`, not `positive`, so 0 is allowed.
+      status: z.number().int().nonnegative(),
+      experienceFrom: z.number().int().nonnegative(),
+      experienceTo: z.number().int().nonnegative(),
+      employmentIds: z.array(z.number().int().positive()).min(1),
+      scheduleIds: z.array(z.number().int().positive()).min(1),
+      payFrom: z.number().int().nonnegative().nullable().optional(),
+      payTo: z.number().int().nonnegative().nullable().optional(),
+      lang: z.enum(["ru", "uz", "en"]).default("ru"),
+    }),
+  )
+  .mutation(async ({ ctx, input }) => {
+    if (!isPersonHunterConfigured()) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "PersonHunters не настроен (отсутствует API-ключ).",
+      });
+    }
+
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const vacancyRows = await ctx.db
+      .select({ id: vacancies.id, parentId: vacancies.parentId })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.vacancyId),
+          eq(vacancies.companyId, companyId),
+        ),
+      )
+      .limit(1);
+
+    const vacancy = vacancyRows[0];
+    if (!vacancy) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    let created: Awaited<ReturnType<typeof createPersonHunterVacancy>>;
+    try {
+      created = await createPersonHunterVacancy(
+        {
+          name: input.name,
+          // PersonHunters 500s if `vacancy_description` is absent entirely (an empty string is
+          // fine), so always send it even when the recruiter left the field blank.
+          description: input.description ?? "",
+          duties: input.duties,
+          requirements: input.requirements,
+          conditions: input.conditions,
+          uniqueCode: input.uniqueCode,
+          industryId: input.industryId,
+          countryId: input.countryId,
+          regionId: input.regionId,
+          cityId: input.cityId,
+          currencyId: input.currencyId,
+          status: input.status,
+          experienceFrom: input.experienceFrom,
+          experienceTo: input.experienceTo,
+          employmentIds: input.employmentIds,
+          scheduleIds: input.scheduleIds,
+          payFrom: input.payFrom ?? null,
+          payTo: input.payTo ?? null,
+          lang: input.lang,
+        },
+        getPersonHunterApiKey(),
+      );
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: describePersonHunterError(error),
+      });
+    }
+
+    const personHunterVacancyId = String(created.id);
+
+    // Persist the external id on this publication and mirror it onto the base vacancy, exactly
+    // as the hh.uz publish flow does with `hhVacancyId`.
+    await ctx.db
+      .update(vacancies)
+      .set({ personHunterVacancyId })
+      .where(eq(vacancies.id, vacancy.id));
+
+    if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
+      await ctx.db
+        .update(vacancies)
+        .set({ personHunterVacancyId })
+        .where(
+          and(
+            eq(vacancies.id, vacancy.parentId),
+            eq(vacancies.companyId, companyId),
+          ),
+        );
+    }
+
+    return {
+      success: true,
+      personHunterVacancyId,
+      status: created.status?.id ?? input.status,
+    };
   });
 
 function parseHhPhone(raw: string): {
