@@ -1,8 +1,8 @@
 export type {
   PersonHunterReferenceOption,
   PersonHunterReferences,
-} from "./person-hunter/references";
-export { getPersonHunterReferences } from "./person-hunter/references";
+} from "./person-hunter/dictionaries";
+export { fetchPersonHunterDictionaries } from "./person-hunter/dictionaries";
 export type {
   PersonHunterLang,
   PersonHunterReference,

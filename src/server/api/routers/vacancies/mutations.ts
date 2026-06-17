@@ -33,8 +33,8 @@ import {
 import {
   createPersonHunterVacancy,
   deletePersonHunterVacancy,
+  fetchPersonHunterDictionaries,
   getPersonHunterApiKey,
-  getPersonHunterReferences,
   isPersonHunterConfigured,
   PersonHunterApiError,
   updatePersonHunterVacancy,
@@ -1316,15 +1316,24 @@ export const saveHhDraftProcedure = protectedProcedure
 
 /**
  * Returns whether the PersonHunters integration is usable (an API key is configured) plus the
- * reference dictionaries the publish form needs. PersonHunters has no dictionary endpoints, so
- * the references are served from a curated, hardcoded list (see the service `references` module).
+ * reference dictionaries the publish form needs. The dictionaries are fetched live from
+ * PersonHunters' `GET /dictionaries` endpoint and localized to the requested language; when the
+ * integration isn't configured, `references` is `null` and the form shows its "not configured" notice.
  */
-export const getPersonHunterConfigProcedure = protectedProcedure.query(() => {
-  return {
-    enabled: isPersonHunterConfigured(),
-    references: getPersonHunterReferences(),
-  };
-});
+export const getPersonHunterConfigProcedure = protectedProcedure
+  .input(z.object({ lang: z.enum(["ru", "uz", "en"]).optional() }).optional())
+  .query(async ({ input }) => {
+    if (!isPersonHunterConfigured()) {
+      return { enabled: false, references: null };
+    }
+
+    const references = await fetchPersonHunterDictionaries(
+      getPersonHunterApiKey(),
+      input?.lang ?? "ru",
+    );
+
+    return { enabled: true, references };
+  });
 
 /** Turns a PersonHunters error into a user-facing message, expanding 422 field validations. */
 function describePersonHunterError(error: unknown): string {
@@ -1361,7 +1370,8 @@ export const publishPersonHunterProcedure = protectedProcedure
       countryId: z.number().int().positive(),
       regionId: z.number().int().positive(),
       cityId: z.number().int().positive(),
-      currencyId: z.number().int().positive().optional(),
+      // Currency ids can legitimately be 0 (USD), so accept nonnegative, not strictly positive.
+      currencyId: z.number().int().nonnegative().optional(),
       // 0 = hidden, 1 = published. `nonnegative`, not `positive`, so 0 is allowed.
       status: z.number().int().nonnegative(),
       experienceFrom: z.number().int().nonnegative(),
