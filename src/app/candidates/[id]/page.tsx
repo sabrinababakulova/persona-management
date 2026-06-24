@@ -10,6 +10,7 @@ import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
 import { CandidateStatusSelect } from "~/app/candidates/components/candidate-status-select";
 import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summary-card";
+import { ResumeDownloadButton } from "~/app/candidates/components/resume-download-button";
 import { api } from "~/trpc/react";
 
 export default function CandidateDetailPage() {
@@ -22,7 +23,6 @@ export default function CandidateDetailPage() {
   const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
-
   const { data: candidate, isLoading } = api.candidates.get.useQuery({
     id: candidateId,
   });
@@ -124,19 +124,28 @@ export default function CandidateDetailPage() {
             />
           </div>
 
-          {candidate.hhResumeUrl && (
-            <a
-              className="mb-6 inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary hover:text-text-heading"
-              href={candidate.hhResumeUrl}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-[11px] text-accent-red leading-none">
-                hh.uz
-              </span>
-              Открыть профиль на hh.uz →
-            </a>
-          )}
+          <div className="mb-6 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {candidate.hhResumeUrl && (
+                <a
+                  className="inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary hover:text-text-heading"
+                  href={candidate.hhResumeUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-[11px] text-accent-red leading-none">
+                    hh.uz
+                  </span>
+                  Открыть профиль на hh.uz →
+                </a>
+              )}
+
+              <ResumeDownloadButton
+                candidateId={candidateId}
+                hasHhResume={Boolean(candidate.resumeFile?.url)}
+              />
+            </div>
+          </div>
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">

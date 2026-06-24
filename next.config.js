@@ -26,7 +26,7 @@ if (directusAssetBaseUrl) {
 }
 
 const config = {
-  serverExternalPackages: ["argon2"],
+  serverExternalPackages: ["argon2", "@react-pdf/renderer"],
   poweredByHeader: false,
   images: {
     remotePatterns,
