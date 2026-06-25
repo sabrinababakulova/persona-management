@@ -48,11 +48,25 @@ export const PROFILE_SECTIONS = [
 
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
 
+/**
+ * A user-uploaded logo for the custom export, already decoded with display
+ * dimensions computed (see {@link fitWithin}).
+ */
+export type ResumeLogo = {
+  data: Buffer;
+  type: "png" | "jpeg";
+  /** Display size in points/pixels, aspect-preserved. */
+  width: number;
+  height: number;
+};
+
 export type ProfileRenderOptions = {
   /** When false, the Person Hunters logo and footer are omitted (custom export). */
   showBranding: boolean;
   /** Sections allowed to render; data still has to be present for each. */
   sections: ProfileSection[];
+  /** Optional custom logo rendered at the top of the unbranded export. */
+  logo?: ResumeLogo;
 };
 
 /** The fixed Person Hunters export: branded, every section included. */

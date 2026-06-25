@@ -17,6 +17,7 @@ const VACANCY_CONNECTION_ICONS = {
   tg: { src: "/telegram.svg", label: "Telegram" },
   hh: { src: "/hh.svg", label: "hh.uz" },
   ln: { src: "/linkedin.svg", label: "LinkedIn" },
+  ph: { src: "/person-hunter.svg", label: "PersonHunters" },
 };
 
 const vacancyStatusTone: Record<
@@ -53,6 +54,10 @@ const getVacancyConnectionIconsMeta = (vacancy: VacancyTableItem) => {
 
   if (vacancy.hhVacancyId) {
     connections.push("hh");
+  }
+
+  if (vacancy.personHunterVacancyId) {
+    connections.push("ph");
   }
 
   if (vacancy.telegramPostId) {

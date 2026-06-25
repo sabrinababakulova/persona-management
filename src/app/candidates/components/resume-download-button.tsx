@@ -35,8 +35,12 @@ const SECTION_LABELS: Record<string, string> = {
 
 const DEFAULT_ORDER = Object.keys(SECTION_LABELS);
 
-async function downloadFromUrl(url: string, fileName: string) {
-  const response = await fetch(url);
+async function downloadFromUrl(
+  url: string,
+  fileName: string,
+  init?: RequestInit,
+) {
+  const response = await fetch(url, init);
   if (!response.ok) {
     // Surface the route's JSON error (e.g. "Резюме недоступно на hh.uz",
     // "Кандидат не найден") instead of a bare status code.
@@ -180,6 +184,7 @@ export function ResumeDownloadButton({
   const [format, setFormat] = useState<ExportFormat>("pdf");
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
   const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_ORDER));
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [downloading, setDownloading] = useState<DownloadKey | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,14 +219,29 @@ export function ResumeDownloadButton({
     }
   };
 
-  const run = async (key: DownloadKey, url: string, fileName: string) => {
+  const onLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (file && !["image/png", "image/jpeg"].includes(file.type)) {
+      setError("Логотип должен быть PNG или JPEG");
+      return;
+    }
+    setError(null);
+    setLogoFile(file);
+  };
+
+  const run = async (
+    key: DownloadKey,
+    url: string,
+    fileName: string,
+    init?: RequestInit,
+  ) => {
     if (isBusy) {
       return;
     }
     setDownloading(key);
     setError(null);
     try {
-      await downloadFromUrl(url, fileName);
+      await downloadFromUrl(url, fileName, init);
     } catch (downloadError) {
       console.error(`Failed to download ${key} resume`, downloadError);
       setError(
@@ -356,6 +376,34 @@ export function ResumeDownloadButton({
                 </ul>
               </SortableContext>
             </DndContext>
+
+            {/* Optional logo placed at the top of the custom resume */}
+            <div className="mt-3 flex items-center gap-2">
+              <label className="cursor-pointer rounded-[6px] border border-border-input bg-bg-input px-3 py-1.5 font-medium text-[13px] text-text-secondary transition-colors hover:text-text-heading">
+                Загрузить логотип
+                <input
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={onLogoChange}
+                  type="file"
+                />
+              </label>
+              {logoFile && (
+                <span className="flex items-center gap-2 text-[12px] text-text-secondary">
+                  <span className="max-w-[160px] truncate">
+                    {logoFile.name}
+                  </span>
+                  <button
+                    className="text-text-placeholder hover:text-danger-red"
+                    onClick={() => setLogoFile(null)}
+                    type="button"
+                  >
+                    Убрать
+                  </button>
+                </span>
+              )}
+            </div>
+
             <div className="mt-4 flex items-center justify-between gap-3">
               <FormatToggle
                 disabled={isBusy}
@@ -365,13 +413,20 @@ export function ResumeDownloadButton({
               <button
                 className="rounded-[6px] bg-primary-blue px-4 py-2 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isBusy || orderedSelected.length === 0}
-                onClick={() =>
+                onClick={() => {
+                  const formData = new FormData();
+                  formData.append("format", format);
+                  formData.append("sections", orderedSelected.join(","));
+                  if (logoFile) {
+                    formData.append("logo", logoFile);
+                  }
                   run(
                     "custom",
-                    `/api/candidates/${candidateId}/profile-export?format=${format}&template=custom&sections=${orderedSelected.join(",")}`,
+                    `/api/candidates/${candidateId}/profile-export`,
                     `resume-${candidateId}.${ext}`,
-                  )
-                }
+                    { method: "POST", body: formData },
+                  );
+                }}
                 type="button"
               >
                 {downloading === "custom" ? "Загрузка..." : "Скачать"}

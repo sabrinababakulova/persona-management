@@ -9,13 +9,39 @@ set -a
 source "$REPO_ROOT/.env"
 
 # Authenticate and get access token
-TOKEN=$(curl -s -X POST "$DIRECTUS_URL/auth/login" \
+AUTH_RESPONSE=$(curl -s -X POST "$DIRECTUS_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d "{\"email\": \"$DIRECTUS_ADMIN_EMAIL\", \"password\": \"$DIRECTUS_ADMIN_PASSWORD\"}" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['access_token'])")
+  -d "{\"email\": \"$DIRECTUS_ADMIN_EMAIL\", \"password\": \"$DIRECTUS_ADMIN_PASSWORD\"}")
+
+# Parse the token defensively: a failed login returns an `errors` array (no `data`), so reach
+# into the payload without assuming the happy-path shape and surface the API error message.
+TOKEN=$(printf '%s' "$AUTH_RESPONSE" | python3 -c "
+import sys, json
+try:
+    payload = json.load(sys.stdin)
+except (json.JSONDecodeError, ValueError):
+    sys.exit(0)
+token = (payload.get('data') or {}).get('access_token')
+if token:
+    print(token)
+")
 
 if [ -z "$TOKEN" ]; then
-  echo "Failed to authenticate with Directus"
+  echo "Failed to authenticate with Directus at $DIRECTUS_URL as $DIRECTUS_ADMIN_EMAIL."
+  printf '%s' "$AUTH_RESPONSE" | python3 -c "
+import sys, json
+try:
+    payload = json.load(sys.stdin)
+except (json.JSONDecodeError, ValueError):
+    print('Directus says: non-JSON response.')
+    sys.exit(0)
+errors = payload.get('errors') or []
+if errors:
+    print('Directus says: ' + '; '.join(str(e.get('message', e)) for e in errors))
+else:
+    print('Directus says: response did not contain an access token.')
+"
+  echo "Check DIRECTUS_ADMIN_EMAIL / DIRECTUS_ADMIN_PASSWORD in .env."
   exit 1
 fi
 
@@ -1073,7 +1099,8 @@ patch_field "vacancy" "destination" '{
         "choices": [
           { "text": "LinkedIn", "value": "linkedin" },
           { "text": "hh.uz", "value": "hh.uz" },
-          { "text": "Telegram", "value": "telegram" }
+          { "text": "Telegram", "value": "telegram" },
+          { "text": "PersonHunters", "value": "person-hunter" }
         ],
         "allowOther": false,
         "allowNone": true
@@ -1093,6 +1120,32 @@ patch_field "vacancy" "hh_vacancy_id" '{
       "note": "ID вакансии на hh.uz. Заполните вручную, чтобы связать существующую локальную вакансию с её копией на hh.uz и убрать дубликат из списка."
     }
   }' "vacancy.hh_vacancy_id"
+
+patch_field "vacancy" "person_hunter_vacancy_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "sort": 51,
+      "width": "half",
+      "note": "ID вакансии на PersonHunters, проставляется после публикации."
+    }
+  }' "vacancy.person_hunter_vacancy_id"
+
+# PersonHunters-specific publication fields (duties, requirements, conditions, the selected
+# reference ids, employment/schedule, experience range) that have no dedicated vacancy column.
+# Stored as a single JSON blob so the PersonHunters publish form can be re-populated when editing.
+patch_field "vacancy" "person_hunter_meta" '{
+    "type": "json",
+    "meta": {
+      "interface": "input-code",
+      "options": {
+        "language": "json"
+      },
+      "sort": 52,
+      "width": "full",
+      "note": "Поля публикации PersonHunters (обязанности, требования, условия, выбранные справочники, занятость/график, опыт), которых нет в отдельных колонках вакансии."
+    }
+  }' "vacancy.person_hunter_meta"
 
 # New hh.uz-shaped vacancy columns (added in migration 0014). Each lookup id renders as a
 # select-dropdown populated from the live hh.uz dictionaries fetched above; numeric salary

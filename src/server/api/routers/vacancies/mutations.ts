@@ -52,6 +52,7 @@ import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
 import {
+  type PersonHunterPublicationMeta,
   vacancyCreateInputSchema,
   vacancyIdInputSchema,
   vacancyUpdateInputSchema,
@@ -121,6 +122,7 @@ export const createVacancyProcedure = protectedProcedure
         descriptionHtml: input.descriptionHtml ?? null,
         contactPhone: input.contactPhone ?? null,
         telegramFileId: input.telegramFileId ?? null,
+        personHunterMeta: input.personHunterMeta ?? null,
         companyId,
       })
       .returning();
@@ -530,6 +532,7 @@ export const updateVacancyProcedure = protectedProcedure
       hhDraftId: string | null;
       isActive: boolean;
       isPublication: boolean;
+      personHunterMeta: PersonHunterPublicationMeta | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
@@ -613,6 +616,9 @@ export const updateVacancyProcedure = protectedProcedure
       input.isPublication !== existing.isPublication
     ) {
       valuesToUpdate.isPublication = input.isPublication;
+    }
+    if (input.personHunterMeta !== undefined) {
+      valuesToUpdate.personHunterMeta = input.personHunterMeta;
     }
     if (clearTelegramPosts) {
       valuesToUpdate.telegramPostId = null;

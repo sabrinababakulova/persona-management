@@ -31,6 +31,32 @@ export const vacancyAssignCandidateInputSchema = z.object({
   status: z.string().min(1).max(50),
 });
 
+/**
+ * PersonHunters-specific publication fields that have no column on the base vacancy. Persisted
+ * as a single JSON blob (`vacancy.personHunterMeta`) so the publish form can be re-hydrated when
+ * the recruiter edits a PersonHunters publication.
+ */
+export const personHunterMetaSchema = z.object({
+  duties: z.string().max(20000).optional(),
+  requirements: z.string().max(20000).optional(),
+  conditions: z.string().max(20000).optional(),
+  industryId: z.number().int().nonnegative().optional(),
+  countryId: z.number().int().nonnegative().optional(),
+  regionId: z.number().int().nonnegative().optional(),
+  cityId: z.number().int().nonnegative().optional(),
+  currencyId: z.number().int().nonnegative().optional(),
+  statusId: z.number().int().nonnegative().optional(),
+  lang: z.enum(["ru", "uz", "en"]).optional(),
+  employmentIds: z.array(z.number().int().positive()).optional(),
+  scheduleIds: z.array(z.number().int().positive()).optional(),
+  experienceFrom: z.number().int().nonnegative().optional(),
+  experienceTo: z.number().int().nonnegative().optional(),
+});
+
+export type PersonHunterPublicationMeta = z.infer<
+  typeof personHunterMetaSchema
+>;
+
 export const vacancyCreateInputSchema = z.object({
   id: z.string().min(1).max(255).optional(),
   parentId: z.string().min(1).max(255).optional(),
@@ -55,6 +81,7 @@ export const vacancyCreateInputSchema = z.object({
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
+  personHunterMeta: personHunterMetaSchema.optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -77,6 +104,7 @@ export const vacancyUpdateInputSchema = z.object({
   telegramFileId: z.string().max(255).nullable().optional(),
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
+  personHunterMeta: personHunterMetaSchema.nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({

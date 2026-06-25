@@ -7,6 +7,8 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
+import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
+
 export const createTable = pgTableCreator((name) => name);
 
 // Companies table
@@ -326,6 +328,14 @@ export const vacancies = createTable(
     personHunterVacancyId: d.varchar("person_hunter_vacancy_id", {
       length: 100,
     }),
+    /**
+     * PersonHunters-specific publication fields (duties, requirements, conditions, the selected
+     * reference ids, employment/schedule, experience range, …) that have no dedicated vacancy
+     * column. Stored so the PersonHunters publish form can be re-populated when editing.
+     */
+    personHunterMeta: d
+      .json("person_hunter_meta")
+      .$type<PersonHunterPublicationMeta>(),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),

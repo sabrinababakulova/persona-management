@@ -282,7 +282,26 @@ export async function buildCandidateDocx(
       );
     }
   } else {
-    // Custom layout: each selected section in the user-chosen order.
+    // Custom layout: optional uploaded logo on top, then each selected section
+    // in the user-chosen order.
+    if (options.logo) {
+      body.unshift(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { after: 160 },
+          children: [
+            new ImageRun({
+              type: options.logo.type === "png" ? "png" : "jpg",
+              data: options.logo.data,
+              transformation: {
+                width: options.logo.width,
+                height: options.logo.height,
+              },
+            }),
+          ],
+        }),
+      );
+    }
     for (const section of options.sections) {
       body.push(...sectionBlocksDocx(section, data));
     }
@@ -329,7 +348,16 @@ export async function buildCandidateDocx(
       {
         properties: {
           page: {
-            margin: { top: 1200, bottom: 1200, left: 1080, right: 1080 },
+            // A larger top margin keeps the branded header logo clear of the
+            // body; the unbranded custom export needs no such allowance.
+            margin: {
+              top: options.showBranding ? 1900 : 1100,
+              bottom: 1200,
+              left: 1080,
+              right: 1080,
+              header: 567,
+              footer: 567,
+            },
           },
         },
         headers: header,

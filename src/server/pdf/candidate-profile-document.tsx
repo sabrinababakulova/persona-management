@@ -13,6 +13,7 @@ import type {
   CandidateProfileData,
   ProfileRenderOptions,
   ProfileSection,
+  ResumeLogo,
 } from "./candidate-profile-data";
 import { PersonHuntersLogo } from "./person-hunters-logo";
 
@@ -65,8 +66,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 13,
     marginBottom: 14,
-    marginTop: 18,
+    marginTop: 0,
   },
+  // Clears the fixed Person Hunters logo so it never overlaps the name.
+  brandedHeaderSpacer: { height: 44 },
+  customLogoWrap: { alignItems: "flex-end", marginBottom: 14 },
   topRow: { flexDirection: "row", justifyContent: "space-between" },
   infoCol: { flexGrow: 1, paddingRight: 12 },
   infoLine: { marginBottom: 2 },
@@ -316,6 +320,16 @@ function BrandedBody({ data }: { data: CandidateProfileData }) {
   );
 }
 
+/** User-uploaded logo at the top of the custom export, centered. */
+function CustomLogo({ logo }: { logo: ResumeLogo }) {
+  const src = `data:image/${logo.type};base64,${logo.data.toString("base64")}`;
+  return (
+    <View style={styles.customLogoWrap}>
+      <Image src={src} style={{ width: logo.width, height: logo.height }} />
+    </View>
+  );
+}
+
 /** Custom layout: each selected section rendered in the user-chosen order. */
 function OrderedBody({
   data,
@@ -376,6 +390,13 @@ export function CandidateProfileDocument({
               </Text>
             </View>
           </>
+        ) : null}
+
+        {/* Push content clear of the fixed branded logo. */}
+        {options.showBranding ? (
+          <View style={styles.brandedHeaderSpacer} />
+        ) : options.logo ? (
+          <CustomLogo logo={options.logo} />
         ) : null}
 
         <Text style={styles.name}>{data.fullName}</Text>

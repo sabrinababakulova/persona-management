@@ -110,7 +110,9 @@ export function PersonHunterPublicationForm({
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  // Seed the text/salary fields from the base vacancy once it loads.
+  // Seed the text/salary fields from the base vacancy once it loads, then overlay any
+  // PersonHunters-specific fields saved on the publication row (edit mode) so the form is
+  // restored exactly as it was last submitted.
   useEffect(() => {
     const vacancy = vacancyQuery.data;
     if (!vacancy) {
@@ -128,6 +130,25 @@ export function PersonHunterPublicationForm({
         ? formatNumberWithSpaces(String(vacancy.salaryTo))
         : "",
     );
+
+    const meta = vacancy.personHunterMeta;
+    if (meta) {
+      setDuties(meta.duties ?? "");
+      setRequirements(meta.requirements ?? "");
+      setConditions(meta.conditions ?? "");
+      if (meta.industryId != null) setIndustryId(String(meta.industryId));
+      if (meta.countryId != null) setCountryId(String(meta.countryId));
+      if (meta.regionId != null) setRegionId(String(meta.regionId));
+      if (meta.cityId != null) setCityId(String(meta.cityId));
+      if (meta.currencyId != null) setCurrencyId(String(meta.currencyId));
+      if (meta.statusId != null) setStatusId(String(meta.statusId));
+      if (meta.lang) setLang(meta.lang);
+      if (meta.employmentIds) setEmploymentIds(meta.employmentIds);
+      if (meta.scheduleIds) setScheduleIds(meta.scheduleIds);
+      if (meta.experienceFrom != null)
+        setExperienceFrom(String(meta.experienceFrom));
+      if (meta.experienceTo != null) setExperienceTo(String(meta.experienceTo));
+    }
   }, [vacancyQuery.data]);
 
   // Default each single-select to the first available reference option once they load.
@@ -201,6 +222,27 @@ export function PersonHunterPublicationForm({
       setIsConfirmOpen(false);
       setErrors({ _form: error.message || "Не удалось обновить публикацию" });
     },
+  });
+
+  /**
+   * Snapshots the PersonHunters-specific fields that have no base-vacancy column, so they can be
+   * persisted on the publication row and re-hydrated when the recruiter edits this publication.
+   */
+  const buildMeta = () => ({
+    duties: duties.trim(),
+    requirements: requirements.trim(),
+    conditions: conditions.trim(),
+    industryId: industryId ? Number(industryId) : undefined,
+    countryId: countryId ? Number(countryId) : undefined,
+    regionId: regionId ? Number(regionId) : undefined,
+    cityId: cityId ? Number(cityId) : undefined,
+    currencyId: currencyId ? Number(currencyId) : undefined,
+    statusId: statusId ? Number(statusId) : undefined,
+    lang: lang as "ru" | "uz" | "en",
+    employmentIds,
+    scheduleIds,
+    experienceFrom: Number(experienceFrom),
+    experienceTo: Number(experienceTo),
   });
 
   /** Builds the `publishPersonHunter` input from current form state for the given publication id. */
@@ -291,7 +333,10 @@ export function PersonHunterPublicationForm({
         id: pubId,
         title: name.trim(),
         descriptionHtml: description.trim() || null,
+        salaryFrom: payFrom ? parseFormattedNumber(payFrom) : null,
+        salaryTo: payTo ? parseFormattedNumber(payTo) : null,
         isPublication: true,
+        personHunterMeta: buildMeta(),
       });
       return;
     }
@@ -300,9 +345,12 @@ export function PersonHunterPublicationForm({
       parentId: vacancyId,
       title: name.trim(),
       descriptionHtml: description.trim() || undefined,
+      salaryFrom: payFrom ? parseFormattedNumber(payFrom) : undefined,
+      salaryTo: payTo ? parseFormattedNumber(payTo) : undefined,
       destination: "person-hunter",
       isActive: true,
       isPublication: true,
+      personHunterMeta: buildMeta(),
     });
   };
 

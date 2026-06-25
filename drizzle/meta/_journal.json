@@ -232,6 +232,13 @@
       "when": 1781590151206,
       "tag": "0032_add_person_hunter_vacancy_id",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1782370738871,
+      "tag": "0033_loving_wallow",
+      "breakpoints": true
     }
   ]
 }

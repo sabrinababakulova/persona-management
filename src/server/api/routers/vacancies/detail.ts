@@ -105,6 +105,7 @@ export const getVacancyProcedure = protectedProcedure
           companyId: userCompanyId,
           hhVacancyId,
           hhDraftId: null,
+          personHunterMeta: null,
           telegramPostId: null,
           telegramFileId: null,
           publishedAt: hhVacancy.publishedAt,

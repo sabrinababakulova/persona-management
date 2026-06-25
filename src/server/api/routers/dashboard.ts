@@ -199,6 +199,7 @@ export const dashboardRouter = createTRPCRouter({
           employmentId: vacancies.employmentId,
           experienceId: vacancies.experienceId,
           hhVacancyId: vacancies.hhVacancyId,
+          personHunterVacancyId: vacancies.personHunterVacancyId,
           telegramPostId: vacancies.telegramPostId,
         })
         .from(vacancies)
@@ -264,6 +265,7 @@ export const dashboardRouter = createTRPCRouter({
       employmentId: v.employmentId ?? "",
       experienceId: v.experienceId ?? "",
       hhVacancyId: v.hhVacancyId ?? null,
+      personHunterVacancyId: v.personHunterVacancyId ?? null,
       telegramPostId: v.telegramPostId ?? null,
       publishedAt: undefined as string | undefined,
       source: "local" as const,
