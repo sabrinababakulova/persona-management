@@ -140,7 +140,8 @@ export const candidates = createTable(
     resumeFileId: d.varchar({ length: 255 }),
     resumeFileName: d.varchar({ length: 255 }),
     resumeFileSize: d.varchar({ length: 50 }),
-    experience: d.varchar({ length: 255 }),
+    /** Total work experience in months; formatted for display by `formatExperienceMonths`. */
+    experience: d.integer(),
     matchScore: d.integer(),
     aiAnalysis: d.text(),
     // JSON fields for arrays

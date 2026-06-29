@@ -10,6 +10,7 @@ import {
 } from "~/server/db/schema";
 import type { HhResumeCandidate } from "~/server/services/hh";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import { formatExperienceMonths } from "~/utils/russian-plural";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -59,7 +60,7 @@ export function formatHhCandidateForAiAnalysis(candidate: HhResumeCandidate) {
     `ФИО: ${candidate.fullName || "Не указано"}`,
     `Город: ${candidate.city || "Не указан"}`,
     `Текущая должность: ${candidate.currentPosition || "Не указана"}`,
-    `Опыт: ${candidate.experience || "Не указан"}`,
+    `Опыт: ${formatExperienceMonths(candidate.experience) || "Не указан"}`,
     `Зарплатные ожидания: ${
       candidate.salaryExpectation > 0
         ? `${candidate.salaryExpectation} ${candidate.salaryCurrency}`
@@ -242,7 +243,7 @@ export async function buildCandidateDetailResponse({
     id: candidate.id,
     name: candidate.fullName,
     location: (candidate.city ?? "").toUpperCase(),
-    experience: candidate.experience ?? "",
+    experience: formatExperienceMonths(candidate.experience),
     matchScore: candidate.matchScore ?? 0,
     salaryExpectation: candidate.salaryExpectation ?? 0,
     salaryCurrency: candidate.salaryCurrency ?? "UZS",

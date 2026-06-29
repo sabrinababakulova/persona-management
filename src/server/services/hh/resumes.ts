@@ -1,6 +1,5 @@
 import {
   fetchHhJson,
-  formatExperienceMonths,
   formatWorkPeriod,
   HH_API_BASE_URL,
   HhApiError,
@@ -36,7 +35,7 @@ export async function fetchHhResumeById(
       : resume.title?.trim() || "Неизвестный кандидат";
 
   const city = resume.area?.name?.trim() || "";
-  const experience = formatExperienceMonths(resume.total_experience?.months);
+  const experience = resume.total_experience?.months ?? null;
 
   const salaryExpectation = resume.salary?.amount ?? 0;
   const salaryCurrency: "UZS" | "USD" =

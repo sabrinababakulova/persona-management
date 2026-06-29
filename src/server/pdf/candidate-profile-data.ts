@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
+import { formatExperienceMonths } from "~/utils/russian-plural";
 
 /**
  * Plain, already-formatted candidate data consumed by both the PDF and DOCX
@@ -148,7 +149,7 @@ export async function loadCandidateProfileData(input: {
 
   return {
     fullName: candidate.fullName,
-    experience: candidate.experience,
+    experience: formatExperienceMonths(candidate.experience) || null,
     // DOB and candidate photo aren't stored on the candidate row yet; the
     // exporters omit whatever is null.
     dateOfBirth: null,

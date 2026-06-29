@@ -15,7 +15,7 @@ export const DEMO_CANDIDATES: DemoCandidate[] = [
     salaryExpectation: 2800,
     salaryCurrency: "USD",
     currentPosition: "Tech Solutions Inc. | Frontend Developer",
-    experience: "5+ лет",
+    experience: 60,
     matchScore: 92,
     skills: ["React", "TypeScript", "JavaScript", "Figma"],
     languages: [
@@ -110,7 +110,7 @@ export const DEMO_CANDIDATES: DemoCandidate[] = [
     salaryExpectation: 3200,
     salaryCurrency: "USD",
     currentPosition: "Apex Banking Systems | Backend Developer",
-    experience: "6+ лет",
+    experience: 72,
     matchScore: 88,
     skills: ["Node.js", "TypeScript", "JavaScript", "Python"],
     languages: [
@@ -205,7 +205,7 @@ export const DEMO_CANDIDATES: DemoCandidate[] = [
     salaryExpectation: 2200,
     salaryCurrency: "USD",
     currentPosition: "Design Orbit | Product Designer",
-    experience: "4+ года",
+    experience: 48,
     matchScore: 84,
     skills: ["Figma", "Adobe Photoshop", "Adobe Illustrator", "Креативность"],
     languages: [
@@ -301,7 +301,7 @@ export const DEMO_CANDIDATES: DemoCandidate[] = [
     salaryExpectation: 1800,
     salaryCurrency: "USD",
     currentPosition: "Ops Bridge | Project Manager",
-    experience: "3+ года",
+    experience: 36,
     matchScore: 79,
     skills: ["Управление проектами", "Аналитика", "Коммуникабельность"],
     languages: [

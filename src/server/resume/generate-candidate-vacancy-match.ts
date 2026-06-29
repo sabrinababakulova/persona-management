@@ -5,6 +5,7 @@ import {
 } from "~/schemas/candidate-vacancy-match";
 import { recordAiUsage } from "~/server/ai/usage-logging";
 import { stripHtml } from "~/server/services/hh/shared";
+import { formatExperienceMonths } from "~/utils/russian-plural";
 
 type Database = typeof import("~/server/db").db;
 
@@ -33,7 +34,7 @@ export type CandidateMatchInput = {
   candidate: {
     fullName: string | null;
     city?: string | null;
-    experience?: string | null;
+    experience?: number | null;
     currentPosition?: string | null;
     skills?: string[] | null;
     languages?: Array<{ name: string; level: string }> | null;
@@ -120,7 +121,7 @@ function formatCandidateBlock(
   return [
     `ФИО: ${candidate.fullName?.trim() || "Не указано"}`,
     `Город: ${candidate.city?.trim() || "Не указан"}`,
-    `Опыт (текст): ${candidate.experience?.trim() || "Не указан"}`,
+    `Опыт (текст): ${formatExperienceMonths(candidate.experience) || "Не указан"}`,
     `Текущая должность: ${candidate.currentPosition?.trim() || "Не указана"}`,
     `Зарплатные ожидания: ${salary}`,
     `Навыки: ${skills.length > 0 ? skills.join(", ") : "Не указаны"}`,

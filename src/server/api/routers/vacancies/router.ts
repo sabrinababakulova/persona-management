@@ -6,6 +6,7 @@ import {
 } from "./assignments";
 import {
   getHhVacancyDetailProcedure,
+  getPersonHunterPublicationProcedure,
   getPublicationTelegramPostsProcedure,
   getVacancyFunnelProcedure,
   getVacancyProcedure,
@@ -45,5 +46,6 @@ export const vacanciesRouter = createTRPCRouter({
   publishHh: publishHhProcedure,
   saveHhDraft: saveHhDraftProcedure,
   getPersonHunterConfig: getPersonHunterConfigProcedure,
+  getPersonHunterPublication: getPersonHunterPublicationProcedure,
   publishPersonHunter: publishPersonHunterProcedure,
 });

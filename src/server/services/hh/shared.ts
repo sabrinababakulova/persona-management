@@ -148,7 +148,8 @@ export type HhResumeCandidate = {
   id: string;
   fullName: string;
   city: string;
-  experience: string;
+  /** Total work experience in months (formatted for display by `formatExperienceMonths`). */
+  experience: number | null;
   salaryExpectation: number;
   salaryCurrency: "UZS" | "USD";
   currentPosition: string;
@@ -475,16 +476,6 @@ export async function fetchHhJson<T>(url: string, init?: RequestInit) {
   }
 
   return (await response.json()) as T;
-}
-
-export function formatExperienceMonths(months: number | null | undefined) {
-  if (!months) return "";
-  const years = Math.floor(months / 12);
-  const remainingMonths = months % 12;
-  if (years > 0 && remainingMonths > 0)
-    return `${years} лет ${remainingMonths} мес.`;
-  if (years > 0) return `${years} лет`;
-  return `${remainingMonths} мес.`;
 }
 
 export function formatWorkPeriod(

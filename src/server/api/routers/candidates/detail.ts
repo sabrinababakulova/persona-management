@@ -104,7 +104,7 @@ export const getCandidateProcedure = protectedProcedure
           resumeFileId: storedCandidate?.resumeFileId ?? null,
           resumeFileName: storedCandidate?.resumeFileName ?? null,
           resumeFileSize: storedCandidate?.resumeFileSize ?? null,
-          experience: hhCandidate.experience || null,
+          experience: hhCandidate.experience ?? null,
           matchScore: storedCandidate?.matchScore ?? null,
           aiAnalysis: aiAnalysis || null,
           contacts: toStoredCandidateContacts(hhCandidate),

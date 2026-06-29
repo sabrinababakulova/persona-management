@@ -7,7 +7,7 @@ import { Checkbox } from "~/app/_components/checkbox";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { Input } from "~/app/_components/input";
-import { Textarea } from "~/app/_components/textarea";
+import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { api } from "~/trpc/react";
 import {
   formatNumberWithSpaces,
@@ -29,19 +29,9 @@ type PersonHunterErrors = Partial<
   >
 >;
 
-/** Strips HTML tags so a rich-text vacancy description can seed PersonHunters' plain-text fields. */
-function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li)>/gi, "\n")
-    .replace(/<li>/gi, "• ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+/** Returns true when the supplied HTML contains visible text (ignores empty tags like `<p></p>`). */
+function hasMeaningfulHtml(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").trim().length > 0;
 }
 
 /** Maps reference options ({ id, name }) to the `{ value, label }` shape the Dropdown expects. */
@@ -76,6 +66,13 @@ export function PersonHunterPublicationForm({
   const utils = api.useUtils();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
   const configQuery = api.vacancies.getPersonHunterConfig.useQuery();
+  // When editing, pull the live PersonHunters data as a fallback for fields not stored locally
+  // (publications created before `personHunterMeta` existed have no saved meta).
+  const personHunterPublicationQuery =
+    api.vacancies.getPersonHunterPublication.useQuery(
+      { id: pubId ?? "" },
+      { enabled: Boolean(pubId) },
+    );
 
   const references = configQuery.data?.references;
   const isConfigured = configQuery.data?.enabled ?? false;
@@ -119,7 +116,7 @@ export function PersonHunterPublicationForm({
       return;
     }
     setName(vacancy.title ?? "");
-    setDescription(htmlToPlainText(vacancy.descriptionHtml ?? ""));
+    setDescription(vacancy.descriptionHtml ?? "");
     setPayFrom(
       vacancy.salaryFrom != null
         ? formatNumberWithSpaces(String(vacancy.salaryFrom))
@@ -163,6 +160,35 @@ export function PersonHunterPublicationForm({
     setCurrencyId((prev) => prev || String(references.currencies[0]?.id ?? ""));
     setStatusId((prev) => prev || String(references.statuses[0]?.id ?? ""));
   }, [references]);
+
+  // Fall back to the live PersonHunters data for fields with no saved local meta — covers
+  // publications created before `personHunterMeta` existed and any edits made directly on
+  // PersonHunters. Local meta stays authoritative, so this is skipped once meta is present.
+  useEffect(() => {
+    const remote = personHunterPublicationQuery.data;
+    if (!remote || vacancyQuery.data?.personHunterMeta) {
+      return;
+    }
+    setDuties(remote.duties ?? "");
+    setRequirements(remote.requirements ?? "");
+    setConditions(remote.conditions ?? "");
+    if (remote.description) setDescription(remote.description);
+    if (remote.industryId != null) setIndustryId(String(remote.industryId));
+    if (remote.countryId != null) setCountryId(String(remote.countryId));
+    if (remote.regionId != null) setRegionId(String(remote.regionId));
+    if (remote.cityId != null) setCityId(String(remote.cityId));
+    if (remote.statusId != null) setStatusId(String(remote.statusId));
+    if (remote.employmentIds.length > 0) setEmploymentIds(remote.employmentIds);
+    if (remote.scheduleIds.length > 0) setScheduleIds(remote.scheduleIds);
+    if (remote.experienceFrom != null)
+      setExperienceFrom(String(remote.experienceFrom));
+    if (remote.experienceTo != null)
+      setExperienceTo(String(remote.experienceTo));
+    if (remote.payFrom != null)
+      setPayFrom(formatNumberWithSpaces(String(remote.payFrom)));
+    if (remote.payTo != null)
+      setPayTo(formatNumberWithSpaces(String(remote.payTo)));
+  }, [personHunterPublicationQuery.data, vacancyQuery.data]);
 
   const publishPersonHunter = api.vacancies.publishPersonHunter.useMutation({
     onSuccess: async () => {
@@ -287,13 +313,13 @@ export function PersonHunterPublicationForm({
     if (!name.trim()) {
       next.name = "Введите название вакансии";
     }
-    if (!duties.trim()) {
+    if (!hasMeaningfulHtml(duties)) {
       next.duties = "Заполните обязанности";
     }
-    if (!requirements.trim()) {
+    if (!hasMeaningfulHtml(requirements)) {
       next.requirements = "Заполните требования";
     }
-    if (!conditions.trim()) {
+    if (!hasMeaningfulHtml(conditions)) {
       next.conditions = "Заполните условия";
     }
     if (employmentIds.length === 0) {
@@ -430,19 +456,21 @@ export function PersonHunterPublicationForm({
                 {errorText("name")}
               </div>
 
-              <Textarea
+              <RichTextEditor
+                id="person-hunter-description"
                 label="Описание компании"
                 maxLength={20000}
-                onChange={(event) => setDescription(event.currentTarget.value)}
+                onChange={setDescription}
                 placeholder="Краткое описание компании (необязательно)"
                 value={description}
               />
 
               <div className="flex min-w-0 flex-col gap-2">
-                <Textarea
+                <RichTextEditor
+                  id="person-hunter-duties"
                   label="Обязанности"
                   maxLength={20000}
-                  onChange={(event) => setDuties(event.currentTarget.value)}
+                  onChange={setDuties}
                   placeholder="Что предстоит делать"
                   value={duties}
                 />
@@ -450,12 +478,11 @@ export function PersonHunterPublicationForm({
               </div>
 
               <div className="flex min-w-0 flex-col gap-2">
-                <Textarea
+                <RichTextEditor
+                  id="person-hunter-requirements"
                   label="Требования"
                   maxLength={20000}
-                  onChange={(event) =>
-                    setRequirements(event.currentTarget.value)
-                  }
+                  onChange={setRequirements}
                   placeholder="Что мы ожидаем от кандидата"
                   value={requirements}
                 />
@@ -463,10 +490,11 @@ export function PersonHunterPublicationForm({
               </div>
 
               <div className="flex min-w-0 flex-col gap-2">
-                <Textarea
+                <RichTextEditor
+                  id="person-hunter-conditions"
                   label="Условия"
                   maxLength={20000}
-                  onChange={(event) => setConditions(event.currentTarget.value)}
+                  onChange={setConditions}
                   placeholder="Что мы предлагаем"
                   value={conditions}
                 />

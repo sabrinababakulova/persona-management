@@ -18,7 +18,13 @@ import {
 } from "~/server/services/hh";
 import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
+import {
+  fetchPersonHunterVacancyById,
+  getPersonHunterApiKey,
+  isPersonHunterConfigured,
+} from "~/server/services/person-hunter";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import { formatExperienceMonths } from "~/utils/russian-plural";
 
 import {
   vacancyIdInputSchema,
@@ -140,6 +146,74 @@ export const getVacancyProcedure = protectedProcedure
       ...vacancy,
       source: "local" as const,
     };
+  });
+
+/**
+ * Loads the live PersonHunters representation of a publication so the publish form can be
+ * re-populated when editing. Serves as a fallback for publications created before the
+ * PersonHunters-specific fields were persisted locally (`personHunterMeta`), and reflects any
+ * edits made directly on PersonHunters. Returns `null` when the publication isn't linked to
+ * PersonHunters, the integration isn't configured, or the remote fetch fails — so the form
+ * degrades gracefully to whatever local data it already has.
+ */
+export const getPersonHunterPublicationProcedure = protectedProcedure
+  .input(vacancyIdInputSchema)
+  .query(async ({ ctx, input }) => {
+    const userCompanyId = await getOptionalCompanyId(
+      ctx.db,
+      ctx.session.user.id,
+    );
+    if (!userCompanyId) {
+      return null;
+    }
+
+    const rows = await ctx.db
+      .select({ personHunterVacancyId: vacancies.personHunterVacancyId })
+      .from(vacancies)
+      .where(
+        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+      )
+      .limit(1);
+
+    const personHunterVacancyId = rows[0]?.personHunterVacancyId;
+    if (!personHunterVacancyId || !isPersonHunterConfigured()) {
+      return null;
+    }
+
+    try {
+      const vacancy = await fetchPersonHunterVacancyById(
+        personHunterVacancyId,
+        {
+          accessToken: getPersonHunterApiKey(),
+        },
+      );
+
+      return {
+        name: vacancy.name,
+        description: vacancy.description,
+        duties: vacancy.duties,
+        requirements: vacancy.requirements,
+        conditions: vacancy.conditions,
+        industryId: vacancy.industry?.id ?? null,
+        countryId: vacancy.country?.id ?? null,
+        regionId: vacancy.region?.id ?? null,
+        cityId: vacancy.city?.id ?? null,
+        statusId: vacancy.status?.id ?? null,
+        experienceFrom: vacancy.experienceFrom,
+        experienceTo: vacancy.experienceTo,
+        employmentIds: vacancy.employments.map((item) => item.id),
+        scheduleIds: vacancy.schedules.map((item) => item.id),
+        payFrom: vacancy.payFrom,
+        payTo: vacancy.payTo,
+      };
+    } catch (error) {
+      console.error("Failed to load PersonHunters vacancy for editing", {
+        vacancyId: input.id,
+        personHunterVacancyId,
+        error,
+      });
+      return null;
+    }
   });
 
 /**
@@ -550,7 +624,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         fullName: candidate.fullName,
         status: candidate.status ?? "new",
         city: candidate.city ?? "",
-        experience: candidate.experience ?? "",
+        experience: formatExperienceMonths(candidate.experience),
         matchScore: candidate.matchScore ?? candidate.candidateMatchScore ?? 0,
         matchAnalysis: candidate.matchAnalysis ?? "",
         aiAnalysis: candidate.aiAnalysis ?? "",

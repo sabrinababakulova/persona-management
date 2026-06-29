@@ -166,7 +166,7 @@ async function processJob(
             resume.salaryExpectation > 0 ? resume.salaryExpectation : null,
           salaryCurrency: resume.salaryCurrency,
           currentPosition: resume.currentPosition || null,
-          experience: resume.experience || null,
+          experience: resume.experience ?? null,
           skills: resume.skills,
           languages: resume.languages,
           contacts: toStoredCandidateContacts(resume),

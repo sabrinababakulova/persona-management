@@ -184,10 +184,10 @@ export function CandidateSummaryCard({
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="flex w-full items-center gap-[22px] rounded-[5px] bg-bg-input px-3 py-4">
-            <div className="flex min-w-0 flex-col gap-[7px]">
-              <p className="font-bold text-[41px] text-text-heading uppercase leading-none tracking-[-0.82px]">
+        <div className="flex flex-col gap-2">
+          <div className="flex w-full items-center gap-3 rounded-[5px] bg-bg-input px-3">
+            <div className="flex min-w-0 flex-col gap-1.75">
+              <p className="font-bold text-[20px] text-text-heading uppercase leading-none tracking-[-0.82px]">
                 {matchScore}%
               </p>
               <p className="text-[16px] text-text-placeholder leading-none tracking-[-0.32px]">
@@ -198,17 +198,17 @@ export function CandidateSummaryCard({
             <div className="h-12 w-px shrink-0 bg-border-input" />
 
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-[clamp(30px,5vw,41px)] text-text-heading leading-none tracking-[-0.82px]">
+              <p className="font-bold text-[20px] text-text-heading leading-none tracking-[-0.82px]">
                 {formatSalary(salaryExpectation, salaryCurrency)}
               </p>
-              <p className="mt-[7px] text-[16px] text-text-placeholder leading-none tracking-[-0.32px]">
+              <p className="mt-1.75 text-[16px] text-text-placeholder leading-none tracking-[-0.32px]">
                 Зарплатные ожидания
               </p>
             </div>
           </div>
 
           <div className="rounded-[5px] bg-chart-purple/10 p-3 text-chart-purple">
-            <div className="mb-[9px] flex items-center gap-[6px]">
+            <div className="mb-2.25 flex items-center gap-1.5">
               <div className="flex items-center gap-1">
                 <AIGenerationIcon className="h-4 w-4" />
                 <span className="font-bold text-[14px] leading-none tracking-[-0.28px]">
