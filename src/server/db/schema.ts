@@ -330,6 +330,13 @@ export const vacancies = createTable(
       length: 100,
     }),
     /**
+     * PersonHunters `unique_code` returned on publish — the slug used in the public vacancy URL
+     * (`personhunters.com/ru/vacancy/<unique_code>`), which is keyed on the code, not the id.
+     */
+    personHunterUniqueCode: d.varchar("person_hunter_unique_code", {
+      length: 100,
+    }),
+    /**
      * PersonHunters-specific publication fields (duties, requirements, conditions, the selected
      * reference ids, employment/schedule, experience range, …) that have no dedicated vacancy
      * column. Stored so the PersonHunters publish form can be re-populated when editing.

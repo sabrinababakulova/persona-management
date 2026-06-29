@@ -91,15 +91,27 @@
 │   │   │   ├── extract-candidate-resume-prefill.ts  # Form prefill from PDF
 │   │   │   ├── generate-candidate-ai-analysis.ts    # AI summary generation
 │   │   │   └── generate-candidate-vacancy-match.ts  # Candidate ↔ vacancy match score
+│   │   ├── pdf/              # Candidate profile export (PDF via react-pdf + DOCX via docx)
+│   │   │   ├── candidate-profile-data.ts      # Loads + shapes data; sections, render options, logos
+│   │   │   ├── candidate-profile-document.tsx # react-pdf <Document> layout
+│   │   │   ├── generate-candidate-pdf.tsx     # Renders the PDF buffer
+│   │   │   ├── generate-candidate-docx.ts     # Renders the DOCX buffer
+│   │   │   ├── image-size.ts                  # Intrinsic image dims + aspect-fit for logos
+│   │   │   ├── person-hunters-logo.tsx        # Branded logo component
+│   │   │   ├── assets/        # Logo PNG    └── fonts/  # DejaVuSans (Cyrillic-capable)
 │   │   ├── services/
 │   │   │   ├── telegram.ts   # Telegram Bot API integration
 │   │   │   ├── hh-company-account.ts   # hh.uz token resolution (per user / per company)
-│   │   │   └── hh/           # hh.uz API + candidate sync engine
-│   │   │       ├── oauth.ts, vacancies.ts, resumes.ts, applicants.ts, shared.ts
-│   │   │       ├── negotiations.ts        # rich negotiation fetch (watermark cursor)
-│   │   │       ├── discover-candidates.ts # sync Layer 1 — discovery
-│   │   │       ├── enrich-worker.ts       # sync Layer 2 — enrichment queue worker
-│   │   │       └── sync-statuses.ts       # sync Layer 3 — status reconciliation
+│   │   │   ├── hh/           # hh.uz API + candidate sync engine
+│   │   │   │   ├── oauth.ts, vacancies.ts, resumes.ts, applicants.ts, shared.ts
+│   │   │   │   ├── negotiations.ts        # rich negotiation fetch (watermark cursor)
+│   │   │   │   ├── discover-candidates.ts # sync Layer 1 — discovery
+│   │   │   │   ├── enrich-worker.ts       # sync Layer 2 — enrichment queue worker
+│   │   │   │   └── sync-statuses.ts       # sync Layer 3 — status reconciliation
+│   │   │   └── person-hunter/   # PersonHunters Vacancies API (publication channel)
+│   │   │       ├── shared.ts        # Base URL, API-key auth, types, JSON helper
+│   │   │       ├── vacancies.ts     # CRUD against the PersonHunters vacancy API
+│   │   │       └── dictionaries.ts  # GET /dictionaries → publish-form dropdown options
 │   │   └── storage/
 │   │       └── resume-storage.ts  # Directus-backed file storage for resumes
 │   ├── trpc/                 # tRPC client-side setup
@@ -118,6 +130,7 @@
 │   ├── utils/                # Utility functions
 │   │   ├── format-telegram-vacancy.ts    # HTML message formatter for Telegram
 │   │   ├── generate-vacancy-keyword.ts   # SHA-256 keyword for vacancy postings
+│   │   ├── russian-plural.ts             # Russian noun declension (pluralizeRussian, formatExperienceMonths)
 │   │   └── resume-prefill-helpers.ts     # Lookup normalization for AI output
 │   ├── styles/
 │   │   └── globals.css       # Tailwind v4 theme tokens (colors, fonts)
@@ -190,6 +203,12 @@
 |---------|---------|
 | `@directus/sdk` 21.2 | Directus API client for file storage |
 
+### Document Export
+| Package | Purpose |
+|---------|---------|
+| `@react-pdf/renderer` 4.5 | Renders the candidate profile PDF (Node runtime only) |
+| `docx` 9.7 | Renders the candidate profile DOCX |
+
 ### Styling
 | Package | Purpose |
 |---------|---------|
@@ -229,6 +248,7 @@ Defined and validated in `src/env.js`:
 | `VERCEL_URL` | No | Auto-set by Vercel deployment |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram bot token for vacancy posting |
 | `TELEGRAM_CHANNEL_ID` | No | Target Telegram channel (e.g., `@channelname` or numeric chat ID) |
+| `PERSON_HUNTER_API_KEY` | No | PersonHunters Vacancies API key — single shared key (not per-user OAuth); when unset, the PersonHunters channel is disabled |
 
 No `NEXT_PUBLIC_*` variables exist — all env vars are server-only.
 
@@ -255,8 +275,8 @@ Tables use their plain schema names with no `persona-management_` prefix.
 
 **Domain tables**:
 - `companies` — id (UUID), name. Each user belongs to a company; vacancies and candidates are scoped to a company.
-- `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally.
+- `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` (external id once published), and `personHunterMeta` — a JSON blob (`$type<PersonHunterPublicationMeta>`) holding the PersonHunters-only fields (duties, requirements, conditions, selected reference ids, employment/schedule, experience range) that have no dedicated column, so the publish form can be re-populated on edit.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy)
 
@@ -356,7 +376,7 @@ Validation errors, modal open state, and per-channel publish progress remain in 
 |--------|---------------|------|
 | `dashboard` | `getWelcomeModalState`, `markWelcomeModalSeen`, `getDashboardData` | Protected |
 | `candidates` | `list`, `get`, `create`, `update`, `uploadResume`, `addNote`, `syncHh` (runs hh.uz discovery + enrichment warm-up), `hhSyncStatus` (pending enrichment count), `listHh` (deprecated — returns empty; hh.uz candidates are now in `list`) | Protected |
-| `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram` | Protected |
+| `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram`, `getPersonHunterConfig` (enabled flag + reference dictionaries), `getPersonHunterPublication`, `publishPersonHunter` | Protected |
 | `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
 | `profile` | `changePassword` (rate-limited) | Protected |
 | `sidebar` | `counts` (new candidates/vacancies since the user last looked), `markSeen` (clears a section's badge) | Protected |
@@ -391,6 +411,44 @@ Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID` env vars. Both are optio
 - `src/server/services/telegram.ts` — `sendTelegramMessage()`, `isTelegramConfigured()`
 - `src/utils/format-telegram-vacancy.ts` — HTML template (handles escaping, 4096-char truncation)
 - `src/utils/generate-vacancy-keyword.ts` — deterministic keyword from vacancyId + companyId
+
+---
+
+## PersonHunters Integration
+
+A second job-board publication channel (alongside Telegram and hh.uz), backed by the PersonHunters Vacancies API (`https://api.personhunters.com/v1`). Code lives under `src/server/services/person-hunter/`.
+
+### Auth model
+Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single shared `PERSON_HUNTER_API_KEY`** from the environment — closer to the Telegram bot-token model, so there is no per-user token stored in the DB. `isPersonHunterConfigured()` gates the whole channel; when the key is unset the publish UI/procedures are disabled.
+
+### Flow
+1. The publish form (`src/app/vacancies/[id]/publications/[channel]/person-hunter-publication-form.tsx`) loads `getPersonHunterConfig` → enabled flag + reference dictionaries.
+2. Dropdowns (industry, country/region/city, currency, employment, schedule, status) are populated **live** from `GET /dictionaries` via `fetchPersonHunterDictionaries` — no hand-maintained lists. Reference ids are coerced to numbers (the API returns most as strings, `statuses` as numbers, and `USD` as id `0`).
+3. `publishPersonHunter` creates/updates the vacancy through `person-hunter/vacancies.ts`. The external id is stored on `vacancies.personHunterVacancyId`; all PersonHunters-only form fields are persisted to `vacancies.personHunterMeta` (typed `PersonHunterPublicationMeta`) so the form re-populates on edit.
+
+### Notes
+- The API pre-resolves related entities (`{ id, name }`) and localizes on the fly via `?lang=` (GET) / `"lang"` in the body (write) — languages `ru` / `uz` / `en`.
+- Design doc: `PERSON_HUNTER_DOC.md`. Schema helpers: `src/server/api/routers/vacancies/schemas.ts` (`PersonHunterPublicationMeta`).
+
+---
+
+## Candidate Profile Export (PDF / DOCX)
+
+Candidates can be exported to a downloadable PDF or DOCX résumé. All rendering code is in `src/server/pdf/` and runs on the **Node runtime only** (`export const runtime = "nodejs"` — react-pdf and docx don't work on the edge).
+
+### Endpoint
+`src/app/api/candidates/[candidateId]/profile-export/route.ts` — both `GET` and `POST`, gated by session + company guard.
+- `?format=pdf` (default) or `docx` selects the renderer.
+- `?template=custom` switches from the branded **Person Hunters** template (`PERSON_HUNTERS_OPTIONS` — branding on, all sections) to a customizable one.
+- `?sections=` is a comma-separated, **order-preserving** list parsed by `parseSections` (so the custom template can be drag-reordered); invalid/duplicate tokens are dropped. Available sections: `experience`, `dateOfBirth`, `languages`, `education`, `workExperience`, `additionalInfo`, `salary`.
+- `POST` accepts a multipart upload with a **custom logo** (PNG/JPEG, ≤2MB) for the unbranded export; `image-size.ts` reads its intrinsic dimensions and aspect-fits it (`fitWithin`, max 200×64).
+
+### Key files
+- `candidate-profile-data.ts` — loads candidate data, defines `ProfileSection`, `ProfileRenderOptions`, `ResumeLogo`, `parseSections`, `CandidateNotFoundError`.
+- `candidate-profile-document.tsx` + `generate-candidate-pdf.tsx` — react-pdf layout and buffer generation.
+- `generate-candidate-docx.ts` — DOCX buffer generation.
+- Cyrillic text needs the bundled `fonts/DejaVuSans*.ttf`; the branded logo is `assets/person-hunters-logo.png`.
+- Triggered from the UI by `src/app/candidates/[id]/components/resume-download-button.tsx`.
 
 ---
 

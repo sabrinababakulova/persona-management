@@ -1,0 +1,1 @@
+ALTER TABLE "vacancy" ADD COLUMN "person_hunter_unique_code" varchar(100);

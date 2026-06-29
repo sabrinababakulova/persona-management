@@ -228,7 +228,8 @@ export function PersonHunterPublicationForm({
     },
   });
 
-  // Edit mode only updates the local publication row; PersonHunters is not re-published here.
+  // Edit mode saves the local publication row and mirrors the changes to PersonHunters
+  // (vacancies.update issues a PUT /vacancies/{id} when the row is a PersonHunters publication).
   const updatePublication = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setErrors({});
@@ -695,7 +696,7 @@ export function PersonHunterPublicationForm({
         confirmLabel={pubId ? "Обновить" : "Опубликовать"}
         description={
           pubId
-            ? "Изменения будут сохранены в базе данных без повторной публикации на PersonHunters."
+            ? "Изменения будут сохранены и обновлены на PersonHunters."
             : "Публикация будет сохранена и отправлена на PersonHunters."
         }
         isOpen={isConfirmOpen}

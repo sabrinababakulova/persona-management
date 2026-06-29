@@ -37,6 +37,7 @@ import {
   getPersonHunterApiKey,
   isPersonHunterConfigured,
   PersonHunterApiError,
+  type UpdatePersonHunterVacancyInput,
   updatePersonHunterVacancy,
 } from "~/server/services/person-hunter";
 import {
@@ -508,6 +509,84 @@ export const updateVacancyProcedure = protectedProcedure
           code: "INTERNAL_SERVER_ERROR",
           message: describePersonHunterError(error),
         });
+      }
+    }
+
+    // Editing a PersonHunters publication must mirror the content changes to PersonHunters via
+    // PUT /vacancies/{id} — otherwise the live vacancy keeps its original text/salary/references.
+    // The edit form always submits the full form state (title, description, salary + the meta
+    // blob), so we forward every editable field. Done before the local write so a failed remote
+    // call leaves the local row untouched and retryable. The isActive toggle above is a separate
+    // path (status 0/1) and never carries these fields, so the two blocks don't overlap.
+    if (
+      existing.destination === "person-hunter" &&
+      existing.personHunterVacancyId &&
+      (input.title !== undefined ||
+        input.descriptionHtml !== undefined ||
+        input.salaryFrom !== undefined ||
+        input.salaryTo !== undefined ||
+        input.personHunterMeta != null)
+    ) {
+      if (!isPersonHunterConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "PersonHunters не настроен (отсутствует API-ключ).",
+        });
+      }
+
+      const meta = input.personHunterMeta;
+      const phUpdate: UpdatePersonHunterVacancyInput = {};
+      if (input.title !== undefined) phUpdate.name = input.title;
+      // PersonHunters 500s when vacancy_description is absent entirely (empty string is fine),
+      // mirroring the create flow — so send "" rather than dropping it on a cleared field.
+      if (input.descriptionHtml !== undefined) {
+        phUpdate.description = input.descriptionHtml ?? "";
+      }
+      if (input.salaryFrom !== undefined) phUpdate.payFrom = input.salaryFrom;
+      if (input.salaryTo !== undefined) phUpdate.payTo = input.salaryTo;
+      if (meta) {
+        if (meta.duties !== undefined) phUpdate.duties = meta.duties;
+        if (meta.requirements !== undefined) {
+          phUpdate.requirements = meta.requirements;
+        }
+        if (meta.conditions !== undefined)
+          phUpdate.conditions = meta.conditions;
+        if (meta.industryId !== undefined)
+          phUpdate.industryId = meta.industryId;
+        if (meta.countryId !== undefined) phUpdate.countryId = meta.countryId;
+        if (meta.regionId !== undefined) phUpdate.regionId = meta.regionId;
+        if (meta.cityId !== undefined) phUpdate.cityId = meta.cityId;
+        if (meta.currencyId !== undefined)
+          phUpdate.currencyId = meta.currencyId;
+        if (meta.statusId !== undefined) phUpdate.status = meta.statusId;
+        if (meta.employmentIds !== undefined) {
+          phUpdate.employmentIds = meta.employmentIds;
+        }
+        if (meta.scheduleIds !== undefined) {
+          phUpdate.scheduleIds = meta.scheduleIds;
+        }
+        if (meta.experienceFrom !== undefined) {
+          phUpdate.experienceFrom = meta.experienceFrom;
+        }
+        if (meta.experienceTo !== undefined) {
+          phUpdate.experienceTo = meta.experienceTo;
+        }
+        if (meta.lang !== undefined) phUpdate.lang = meta.lang;
+      }
+
+      if (Object.keys(phUpdate).length > 0) {
+        try {
+          await updatePersonHunterVacancy(
+            existing.personHunterVacancyId,
+            phUpdate,
+            getPersonHunterApiKey(),
+          );
+        } catch (error) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: describePersonHunterError(error),
+          });
+        }
       }
     }
 
@@ -1454,18 +1533,21 @@ export const publishPersonHunterProcedure = protectedProcedure
     }
 
     const personHunterVacancyId = String(created.id);
+    // The public vacancy URL is keyed on `unique_code`, not the numeric id, so store the code
+    // the API echoes back to build the link later.
+    const personHunterUniqueCode = created.uniqueCode ?? null;
 
-    // Persist the external id on this publication and mirror it onto the base vacancy, exactly
-    // as the hh.uz publish flow does with `hhVacancyId`.
+    // Persist the external id + slug on this publication and mirror them onto the base vacancy,
+    // exactly as the hh.uz publish flow does with `hhVacancyId`.
     await ctx.db
       .update(vacancies)
-      .set({ personHunterVacancyId })
+      .set({ personHunterVacancyId, personHunterUniqueCode })
       .where(eq(vacancies.id, vacancy.id));
 
     if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
       await ctx.db
         .update(vacancies)
-        .set({ personHunterVacancyId })
+        .set({ personHunterVacancyId, personHunterUniqueCode })
         .where(
           and(
             eq(vacancies.id, vacancy.parentId),
@@ -1477,6 +1559,7 @@ export const publishPersonHunterProcedure = protectedProcedure
     return {
       success: true,
       personHunterVacancyId,
+      personHunterUniqueCode,
       status: created.status?.id ?? input.status,
     };
   });

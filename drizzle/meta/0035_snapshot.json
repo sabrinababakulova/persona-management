@@ -1,6 +1,6 @@
 {
-  "id": "d1286a05-b257-48a1-82a8-89c86f65d0a4",
-  "prevId": "ebc81863-53e0-4fd1-b2c5-4688ddba36f9",
+  "id": "f40480c8-5e07-4f50-b573-6cc24b694702",
+  "prevId": "d1286a05-b257-48a1-82a8-89c86f65d0a4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1932,6 +1932,12 @@
         },
         "person_hunter_vacancy_id": {
           "name": "person_hunter_vacancy_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "person_hunter_unique_code": {
+          "name": "person_hunter_unique_code",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false

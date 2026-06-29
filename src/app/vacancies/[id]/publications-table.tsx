@@ -79,17 +79,19 @@ function getPublicationState(publication: {
 function getPublicationExternalUrl(publication: {
   destination?: string | null;
   hhVacancyId?: string | null;
-  personHunterVacancyId?: string | null;
+  personHunterUniqueCode?: string | null;
   telegramPostId?: string | null;
 }): string | null {
   if (publication.destination === "hh.uz" && publication.hhVacancyId) {
     return `https://hh.uz/vacancy/${publication.hhVacancyId}`;
   }
+  // PersonHunters keys its public vacancy page on the `unique_code` slug, not the numeric id —
+  // e.g. https://personhunters.com/ru/vacancy/menedzer-po-razvitiu
   if (
     publication.destination === "person-hunter" &&
-    publication.personHunterVacancyId
+    publication.personHunterUniqueCode
   ) {
-    return `https://personhunters.com/vacancy/${publication.personHunterVacancyId}`;
+    return `https://personhunters.com/ru/vacancy/${publication.personHunterUniqueCode}`;
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
