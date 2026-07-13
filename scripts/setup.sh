@@ -34,9 +34,9 @@ echo ""
 echo "=== 3. Pushing schema to database ==="
 bun run db:push
 
-echo ""
-echo "=== 4. Seeding lookup tables and demo data ==="
-bun run db:seed
+# echo ""
+# echo "=== 4. Seeding lookup tables and demo data ==="
+# bun run db:seed
 
 echo ""
 echo "=== 5. Starting Directus ==="
