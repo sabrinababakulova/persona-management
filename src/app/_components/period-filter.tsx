@@ -26,7 +26,7 @@ export function PeriodFilter({
     <div className="relative self-start sm:self-auto">
       <select
         aria-label={ariaLabel}
-        className="h-[42px] appearance-none rounded-lg border border-border-light bg-bg-light py-2 pr-10 pl-4 text-[14px] text-text-secondary outline-none transition-colors hover:bg-bg-input focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
+        className="h-10 appearance-none rounded-lg border border-border-light bg-bg-light py-2 pr-9 pl-3.5 font-medium text-sm text-text-secondary outline-none transition-colors hover:border-border-control hover:bg-bg-input focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
         onChange={(event) => onChange(event.target.value as PeriodFilterValue)}
         value={value}
       >
@@ -36,7 +36,7 @@ export function PeriodFilter({
           </option>
         ))}
       </select>
-      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
+      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
     </div>
   );
 }

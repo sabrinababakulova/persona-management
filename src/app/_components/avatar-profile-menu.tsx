@@ -11,7 +11,7 @@ import {
   ProfileOutlineIcon,
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
-import { usePresence } from "./use-presence";
+import { AnimatePresence, motion } from "./motion-system";
 
 const AUTH_COOKIE_NAMES = [
   "authjs.session-token",
@@ -39,7 +39,6 @@ export function AvatarProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { shouldRender, isVisible } = usePresence(isOpen, 180);
 
   const { data: avatar } = api.profile.getAvatar.useQuery(undefined, {
     enabled: status === "authenticated",
@@ -92,13 +91,15 @@ export function AvatarProfileMenu() {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
+      <motion.button
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label="Профиль"
-        className="h-10 w-10 overflow-hidden rounded-[40px] bg-primary-blue-light outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
+        className="h-10 w-10 overflow-hidden rounded-full bg-primary-blue-light outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
+        whileHover={{ scale: 1.045 }}
+        whileTap={{ scale: 0.94 }}
       >
         {avatarSrc ? (
           <Image
@@ -114,38 +115,41 @@ export function AvatarProfileMenu() {
             <ImageUploadPlaceholderIcon className="h-6 w-6" />
           </span>
         )}
-      </button>
+      </motion.button>
 
-      {shouldRender && (
-        <div
-          className={`absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] overflow-hidden rounded-[6px] border border-border-light bg-bg-light shadow-toast transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"}`}
-          role="menu"
-        >
-          <Link
-            className="flex h-10 items-center gap-2 px-3 text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
-            href="/my-profile"
-            onClick={() => setIsOpen(false)}
-            role="menuitem"
+      <AnimatePresence>
+        {isOpen ? (
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="absolute top-[calc(100%+8px)] right-0 z-30 w-[195px] origin-top-right overflow-hidden rounded-lg border border-border-light bg-bg-light shadow-toast"
+            exit={{ opacity: 0, scale: 0.98, y: -5 }}
+            initial={{ opacity: 0, scale: 0.97, y: -8 }}
+            role="menu"
           >
-            <ProfileOutlineIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
-            <span className="text-[14px] leading-none tracking-[-0.28px]">
-              Мой профиль
-            </span>
-          </Link>
-          <button
-            className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isLoggingOut}
-            onClick={handleLogout}
-            role="menuitem"
-            type="button"
-          >
-            <LogoutIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
-            <span className="text-[14px] leading-none tracking-[-0.28px]">
-              {isLoggingOut ? "Выход..." : "Выйти"}
-            </span>
-          </button>
-        </div>
-      )}
+            <Link
+              className="flex h-10 items-center gap-2 px-3 text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
+              href="/my-profile"
+              onClick={() => setIsOpen(false)}
+              role="menuitem"
+            >
+              <ProfileOutlineIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
+              <span className="text-sm leading-none">Мой профиль</span>
+            </Link>
+            <button
+              className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
+              role="menuitem"
+              type="button"
+            >
+              <LogoutIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
+              <span className="text-sm leading-none">
+                {isLoggingOut ? "Выход..." : "Выйти"}
+              </span>
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

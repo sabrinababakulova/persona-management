@@ -13,19 +13,19 @@ export function Input({
   const inputId = id ?? label;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex w-full flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex w-full flex-col gap-1.5">
         <label
-          className={`w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px] ${hideLabel ? "sr-only" : ""}`}
+          className={`w-full font-semibold text-sm text-text-label leading-5 ${hideLabel ? "sr-only" : ""}`}
           htmlFor={inputId}
         >
           {label}
         </label>
         <div
-          className={`flex h-12 w-full items-center rounded-[6px] border border-border-input bg-bg-input transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-primary-blue focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(35,122,248,0.12)] hover:border-border-control hover:bg-white hover:shadow-[0_8px_18px_rgba(28,28,30,0.04)] ${className ?? ""}`}
+          className={`flex h-11 w-full items-center rounded-xl border border-border-input bg-bg-input transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-primary-blue focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(40,100,220,0.13)] hover:border-border-control hover:bg-white ${className ?? ""}`}
         >
           <input
-            className={`h-full min-w-0 flex-1 border-none bg-transparent px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:outline-none ${inputClassName ?? ""}`}
+            className={`h-full min-w-0 flex-1 border-none bg-transparent px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder focus:outline-none ${inputClassName ?? ""}`}
             id={inputId}
             {...props}
           />

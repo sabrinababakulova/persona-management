@@ -4,14 +4,14 @@ export const RecentActions = ({
   recentActivities = [],
 }: RecentActionsProps) => {
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
+    <div className="surface-card flex min-h-56 flex-col gap-4 overflow-hidden p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
+        <h3 className="font-semibold text-sm text-text-secondary leading-5">
           Последние действия
         </h3>
       </div>
 
-      <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-4">
         {recentActivities.map((activity) => {
           const isCreateAction = activity.action.startsWith("Создал(а)");
 
@@ -19,10 +19,10 @@ export const RecentActions = ({
             <div className="flex flex-col gap-2" key={activity.id}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary-blue-light font-semibold text-[9px] text-primary-blue leading-none tracking-[-0.18px]">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-blue-light font-bold text-[10px] text-primary-blue leading-none">
                     {activity.candidateInitials.slice(0, 2)}
                   </div>
-                  <p className="truncate font-medium text-[14px] text-text-heading leading-none tracking-[-0.28px]">
+                  <p className="truncate font-semibold text-sm text-text-heading leading-none">
                     {activity.name}
                   </p>
                 </div>
@@ -31,13 +31,13 @@ export const RecentActions = ({
                   {activity.isRecent ? (
                     <span className="size-1 rounded-full bg-accent-red" />
                   ) : null}
-                  <p className="font-normal text-[12px] text-text-disabled leading-none tracking-[-0.24px]">
+                  <p className="text-text-muted text-xs leading-none">
                     {activity.time}
                   </p>
                 </div>
               </div>
 
-              <p className="font-normal text-[13px] text-text-placeholder leading-[1.3] tracking-[-0.26px]">
+              <p className="text-text-placeholder text-xs leading-5">
                 {activity.action}{" "}
                 <span className="text-primary-blue">
                   {activity.candidateName}

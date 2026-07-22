@@ -21,22 +21,20 @@ function CreateVacancyPageContent() {
   };
 
   return (
-    <main className="h-full bg-bg-light">
-      <div className="relative w-full">
-        <div className="flex w-full gap-16 px-6 pt-8 pb-8">
-          <SideMenu
-            activeId={SIDE_MENU_ITEMS[0].id}
-            items={SIDE_MENU_ITEMS.map((item) => ({
-              ...item,
-              disabled: item.id !== "description",
-            }))}
-            onSelect={goToStep}
-          />
+    <main className="h-full bg-bg-canvas">
+      <div className="app-page flex flex-col gap-5 lg:flex-row lg:gap-8">
+        <SideMenu
+          activeId={SIDE_MENU_ITEMS[0].id}
+          items={SIDE_MENU_ITEMS.map((item) => ({
+            ...item,
+            disabled: item.id !== "description",
+          }))}
+          onSelect={goToStep}
+        />
 
-          <section className="flex flex-3 flex-col">
-            <CreateVacancyForm onSaved={goToPublications} />
-          </section>
-        </div>
+        <section className="min-w-0 flex-1">
+          <CreateVacancyForm onSaved={goToPublications} />
+        </section>
       </div>
     </main>
   );

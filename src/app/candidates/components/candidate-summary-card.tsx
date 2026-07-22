@@ -72,16 +72,14 @@ function DetailSection({
   const visibleValues = compactValues(values);
 
   return (
-    <div className="flex flex-col gap-[10px]">
+    <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2 text-text-placeholder">
         <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
-        <p className="font-medium text-[16px] leading-none tracking-[-0.32px]">
-          {title}
-        </p>
+        <p className="font-medium text-base leading-none">{title}</p>
       </div>
 
       <div
-        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] leading-[1.3] tracking-[-0.32px] ${valueClassName ?? "text-text-heading"}`}
+        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-base leading-[1.3] ${valueClassName ?? "text-text-heading"}`}
       >
         {visibleValues.length > 0 ? (
           visibleValues.map((value, index) => (
@@ -106,17 +104,15 @@ function CurrentPositionSection({
   );
 
   return (
-    <div className="flex flex-col gap-[10px]">
+    <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2 text-text-placeholder">
         <span className="flex h-4 w-4 items-center justify-center">
           <BriefcaseIcon className="h-4 w-4" />
         </span>
-        <p className="font-medium text-[16px] leading-none tracking-[-0.32px]">
-          Текущая должность
-        </p>
+        <p className="font-medium text-base leading-none">Текущая должность</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] text-text-heading leading-[1.3] tracking-[-0.32px]">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-text-heading leading-[1.3]">
         {positionTokens.length > 0 ? (
           positionTokens.map((token, index) => (
             <div className="flex items-center gap-2" key={token}>
@@ -165,10 +161,10 @@ export function CandidateSummaryCard({
   ]);
 
   return (
-    <aside className="rounded-[8px] border border-border-input bg-bg-light p-5">
+    <aside className="surface-card p-5">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="font-semibold text-[24px] text-text-heading leading-[1.1] tracking-[-0.48px]">
+          <h2 className="font-semibold text-2xl text-text-heading leading-tight tracking-tight">
             {fullName}
           </h2>
 
@@ -176,7 +172,7 @@ export function CandidateSummaryCard({
             {subtitleTokens.map((token, index) => (
               <div className="flex items-center gap-2" key={token}>
                 {index > 0 ? <DotSeparator /> : null}
-                <p className="font-medium text-[16px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.32px]">
+                <p className="font-semibold text-text-placeholder text-xs uppercase leading-5">
                   {token}
                 </p>
               </div>
@@ -185,12 +181,12 @@ export function CandidateSummaryCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex w-full items-center gap-3 rounded-[5px] bg-bg-input px-3">
+          <div className="flex w-full items-center gap-3 rounded-lg bg-bg-input px-3 py-3">
             <div className="flex min-w-0 flex-col gap-1.75">
-              <p className="font-bold text-[20px] text-text-heading uppercase leading-none tracking-[-0.82px]">
+              <p className="font-bold text-text-heading text-xl uppercase leading-none tracking-tight">
                 {matchScore}%
               </p>
-              <p className="text-[16px] text-text-placeholder leading-none tracking-[-0.32px]">
+              <p className="mt-1 text-text-placeholder text-xs leading-none">
                 Соответствия
               </p>
             </div>
@@ -198,41 +194,35 @@ export function CandidateSummaryCard({
             <div className="h-12 w-px shrink-0 bg-border-input" />
 
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-[20px] text-text-heading leading-none tracking-[-0.82px]">
+              <p className="font-bold text-text-heading text-xl leading-none tracking-tight">
                 {formatSalary(salaryExpectation, salaryCurrency)}
               </p>
-              <p className="mt-1.75 text-[16px] text-text-placeholder leading-none tracking-[-0.32px]">
+              <p className="mt-1.5 text-text-placeholder text-xs leading-none">
                 Зарплатные ожидания
               </p>
             </div>
           </div>
 
-          <div className="rounded-[5px] bg-chart-purple/10 p-3 text-chart-purple">
+          <div className="rounded-lg bg-chart-purple/10 p-3 text-chart-purple">
             <div className="mb-2.25 flex items-center gap-1.5">
               <div className="flex items-center gap-1">
                 <AIGenerationIcon className="h-4 w-4" />
-                <span className="font-bold text-[14px] leading-none tracking-[-0.28px]">
-                  AI
-                </span>
+                <span className="font-bold text-sm leading-none">AI</span>
               </div>
-              <span className="font-semibold text-[14px] leading-none tracking-[-0.28px]">
-                сводка
-              </span>
+              <span className="font-semibold text-sm leading-none">сводка</span>
             </div>
 
-            <p className="text-[14px] leading-[1.3] tracking-[-0.28px]">
-              {summaryText}
-            </p>
+            <p className="text-sm leading-5">{summaryText}</p>
           </div>
 
           {tags.length > 0 ? (
-            <div className="flex flex-wrap items-start gap-[6px]">
+            <div className="flex flex-wrap items-start gap-1.5">
               {tags.map((tag) => (
                 <div
-                  className="rounded-[6px] bg-danger-red-bg px-2 py-2"
+                  className="rounded-md bg-danger-red-bg px-2 py-2"
                   key={tag}
                 >
-                  <p className="font-semibold text-[14px] text-accent-red uppercase leading-none tracking-[-0.28px] line-through">
+                  <p className="font-semibold text-accent-red text-xs uppercase leading-none line-through">
                     {tag}
                   </p>
                 </div>
@@ -258,17 +248,17 @@ export function CandidateSummaryCard({
             values={contactTokens}
           />
 
-          <div className="flex flex-col gap-[8px]">
-            <div className="flex items-center gap-[6px] text-text-placeholder">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-text-placeholder">
               <span className="flex h-4 w-4 items-center justify-center">
                 <VacancyResponsesIcon className="h-4 w-4" />
               </span>
-              <p className="font-medium text-[16px] leading-none tracking-[-0.32px]">
+              <p className="font-semibold text-sm leading-none">
                 Отклики на вакансии
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] text-primary-blue leading-[1.3] tracking-[-0.32px]">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-primary-blue text-sm leading-5">
               {relatedVacancies.length > 0 ? (
                 relatedVacancies.map((vacancy, index) => (
                   <div

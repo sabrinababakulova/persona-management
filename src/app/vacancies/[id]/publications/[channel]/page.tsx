@@ -39,11 +39,9 @@ export default async function VacancyPublicationChannelPage({
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;
 
   return (
-    <main className="flex h-full flex-1 overflow-auto">
-      <div className="flex min-h-full w-full flex-col p-8">
-        <h1 className="font-bold text-3xl text-text-heading">
-          Публикация: {channelName}
-        </h1>
+    <main className="flex h-full flex-1 overflow-auto bg-bg-canvas">
+      <div className="app-page flex min-h-full flex-col">
+        <h1 className="page-title">Публикация: {channelName}</h1>
       </div>
     </main>
   );

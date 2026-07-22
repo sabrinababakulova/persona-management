@@ -23,15 +23,13 @@ export function BasicInfoSection({
   onContactChange,
 }: BasicInfoSectionProps) {
   return (
-    <div className="mb-6">
+    <section className="surface-card mb-5 p-5 sm:p-6">
       <button
-        className="flex w-full items-center justify-between py-4"
+        className="flex w-full items-center justify-between"
         onClick={onToggle}
         type="button"
       >
-        <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-          Основная информация
-        </h2>
+        <h2 className="section-title">Основная информация</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -40,7 +38,7 @@ export function BasicInfoSection({
       </button>
 
       {isOpen && (
-        <div className="flex flex-col gap-6 pt-2">
+        <div className="flex flex-col gap-5 pt-5">
           <div className="flex flex-col gap-2">
             <Input
               className={errors.fullName ? "border-danger-red" : undefined}
@@ -52,11 +50,11 @@ export function BasicInfoSection({
               value={fullName}
             />
             {errors.fullName && (
-              <p className="text-[12px] text-danger-red">{errors.fullName}</p>
+              <p className="text-danger-red text-xs">{errors.fullName}</p>
             )}
           </div>
 
-          <div className="flex gap-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-1 flex-col gap-2">
               <Input
                 className={errors.city ? "border-danger-red" : undefined}
@@ -68,7 +66,7 @@ export function BasicInfoSection({
                 value={city}
               />
               {errors.city && (
-                <p className="text-[12px] text-danger-red">{errors.city}</p>
+                <p className="text-danger-red text-xs">{errors.city}</p>
               )}
             </div>
 
@@ -86,7 +84,7 @@ export function BasicInfoSection({
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+              <span className="font-semibold text-sm text-text-label leading-5">
                 Контакты
               </span>
               <button
@@ -98,7 +96,10 @@ export function BasicInfoSection({
               </button>
             </div>
             {contacts.map((contact) => (
-              <div className="flex w-full items-center gap-2" key={contact.id}>
+              <div
+                className="flex w-full flex-col gap-2 sm:flex-row sm:items-center"
+                key={contact.id}
+              >
                 <div className="min-w-0 flex-1">
                   <Input
                     hideLabel
@@ -112,7 +113,7 @@ export function BasicInfoSection({
                   />
                 </div>
                 <Dropdown
-                  className="min-w-[220px] flex-1"
+                  className="min-w-0 flex-1 sm:min-w-52"
                   hideLabel
                   iconClassName="h-4 w-4 right-2 text-text-placeholder"
                   label="Тип контакта"
@@ -147,6 +148,6 @@ export function BasicInfoSection({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

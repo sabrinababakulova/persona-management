@@ -16,6 +16,7 @@ import {
   TrashIcon,
 } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
+import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
@@ -333,9 +334,7 @@ export function PublicationsTable() {
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="font-bold text-[28px] text-text-heading leading-none tracking-[-0.48px]">
-          Версии публикаций
-        </h2>
+        <h2 className="page-title">Версии публикаций</h2>
         <ActionDropdown
           items={CHANNEL_OPTIONS}
           onSelect={handleChannelSelect}
@@ -343,8 +342,8 @@ export function PublicationsTable() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
-        <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-[14px] text-text-placeholder lg:grid">
+      <div className="surface-card overflow-hidden">
+        <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
             <span>Название</span>
@@ -386,7 +385,7 @@ export function PublicationsTable() {
                   onChange={() => toggle(pub.id)}
                 />
               </div>
-              <div className="col-span-11 truncate font-medium text-[14px] text-text-heading lg:col-span-3">
+              <div className="col-span-11 truncate font-medium text-sm text-text-heading lg:col-span-3">
                 {externalUrl ? (
                   <a
                     className="hover:text-primary-blue hover:underline"
@@ -415,7 +414,7 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-3 lg:col-span-2">
                 <span
-                  className={`inline-flex items-center rounded-[6px] px-2 py-1 font-semibold text-[13px] leading-none ${PUBLICATION_STATE_CLASS[state]}`}
+                  className={`inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs leading-none ${PUBLICATION_STATE_CLASS[state]}`}
                 >
                   {PUBLICATION_STATE_LABEL[state]}
                 </span>
@@ -445,7 +444,7 @@ export function PublicationsTable() {
                   value={pub.isActive ? "active" : "inactive"}
                 />
               </div>
-              <div className="col-span-3 text-[14px] text-text-heading lg:col-span-2">
+              <div className="col-span-3 text-sm text-text-heading lg:col-span-2">
                 {dateLabel}
               </div>
               <div className="col-span-3 flex items-center justify-end gap-3 lg:col-span-1">
@@ -482,7 +481,7 @@ export function PublicationsTable() {
 
         <div className="flex justify-end border-border-input border-t px-4 py-3">
           <button
-            className="inline-flex items-center gap-2 rounded-md border border-border-input px-3 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+            className="ui-button ui-button-secondary min-h-9 px-3"
             type="button"
           >
             <span>Действия</span>
@@ -498,24 +497,28 @@ export function PublicationsTable() {
         title="Удалить публикацию?"
       >
         <div className="flex flex-col gap-5">
-          <p className="text-[14px] text-text-secondary leading-[1.4]">
+          <p className="text-sm text-text-secondary leading-[1.4]">
             Are you sure you want to delete publication?
           </p>
           <div className="flex justify-end gap-3">
             <button
-              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              className="ui-button ui-button-secondary"
               onClick={() => setDeleteCandidateId(null)}
               type="button"
             >
               Отмена
             </button>
             <button
-              className="rounded-md bg-accent-red px-4 py-2 font-medium text-[14px] text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button bg-accent-red text-white hover:opacity-90"
               disabled={deletePublication.isPending}
               onClick={confirmDelete}
               type="button"
             >
-              {deletePublication.isPending ? "Удаление..." : "Удалить"}
+              <LoadingButtonContent
+                isLoading={deletePublication.isPending}
+                label="Удалить"
+                loadingLabel="Удаление..."
+              />
             </button>
           </div>
         </div>
@@ -528,12 +531,12 @@ export function PublicationsTable() {
         title="Успешно удалено"
       >
         <div className="flex flex-col gap-5">
-          <p className="text-[14px] text-text-secondary leading-[1.4]">
+          <p className="text-sm text-text-secondary leading-[1.4]">
             Публикация удалена из Telegram-канала.
           </p>
           <div className="flex justify-end">
             <button
-              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              className="ui-button ui-button-secondary"
               onClick={() => setIsTelegramDeleteSuccess(false)}
               type="button"
             >
@@ -550,13 +553,13 @@ export function PublicationsTable() {
         title="Публикация не может быть деактивирована"
       >
         <div className="flex flex-col gap-5">
-          <p className="text-[14px] text-text-secondary leading-[1.4]">
+          <p className="text-sm text-text-secondary leading-[1.4]">
             Вы не можете деактивировать эту публикацию, так как её нельзя
             удалить в Telegram.
           </p>
           <div className="flex justify-end">
             <button
-              className="rounded-md border border-border-input px-4 py-2 text-[14px] text-text-secondary transition-colors hover:bg-bg-hover"
+              className="ui-button ui-button-secondary"
               onClick={() => setIsDeactivationBlocked(false)}
               type="button"
             >

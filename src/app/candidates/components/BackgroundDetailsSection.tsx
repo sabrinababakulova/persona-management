@@ -26,15 +26,13 @@ export function BackgroundDetailsSection({
   onEducationChange,
 }: BackgroundDetailsSectionProps) {
   return (
-    <div className="mb-6">
+    <section className="surface-card mb-5 p-5 sm:p-6">
       <button
-        className="flex w-full items-center justify-between py-4"
+        className="flex w-full items-center justify-between"
         onClick={onToggle}
         type="button"
       >
-        <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-          Опыт и образование
-        </h2>
+        <h2 className="section-title">Опыт и образование</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -43,10 +41,10 @@ export function BackgroundDetailsSection({
       </button>
 
       {isOpen && (
-        <div className="flex flex-col gap-8 pt-2">
+        <div className="flex flex-col gap-6 pt-5">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[18px] text-text-heading leading-[1.2] tracking-[-0.36px]">
+              <h3 className="font-semibold text-lg text-text-heading leading-tight">
                 Опыт работы
               </h3>
               <button
@@ -60,11 +58,11 @@ export function BackgroundDetailsSection({
 
             {workExperience.map((item, index) => (
               <div
-                className="rounded-[8px] border border-border-input bg-bg-input p-4"
+                className="rounded-lg border border-border-input bg-bg-input p-4"
                 key={item.id}
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="font-medium text-[16px] text-text-heading leading-[1.3] tracking-[-0.32px]">
+                  <p className="font-semibold text-sm text-text-heading leading-5">
                     Место работы {index + 1}
                   </p>
                   {workExperience.length > 1 && (
@@ -106,7 +104,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `workExperience.${index}.company`,
                       ) && (
-                        <p className="text-[12px] text-danger-red">
+                        <p className="text-danger-red text-xs">
                           {getFieldError(
                             errors,
                             `workExperience.${index}.company`,
@@ -141,7 +139,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `workExperience.${index}.position`,
                       ) && (
-                        <p className="text-[12px] text-danger-red">
+                        <p className="text-danger-red text-xs">
                           {getFieldError(
                             errors,
                             `workExperience.${index}.position`,
@@ -174,7 +172,7 @@ export function BackgroundDetailsSection({
                       errors,
                       `workExperience.${index}.period`,
                     ) && (
-                      <p className="text-[12px] text-danger-red">
+                      <p className="text-danger-red text-xs">
                         {getFieldError(
                           errors,
                           `workExperience.${index}.period`,
@@ -210,7 +208,7 @@ export function BackgroundDetailsSection({
                       errors,
                       `workExperience.${index}.description`,
                     ) && (
-                      <p className="text-[12px] text-danger-red">
+                      <p className="text-danger-red text-xs">
                         {getFieldError(
                           errors,
                           `workExperience.${index}.description`,
@@ -225,7 +223,7 @@ export function BackgroundDetailsSection({
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[18px] text-text-heading leading-[1.2] tracking-[-0.36px]">
+              <h3 className="font-semibold text-lg text-text-heading leading-tight">
                 Образование
               </h3>
               <button
@@ -239,11 +237,11 @@ export function BackgroundDetailsSection({
 
             {education.map((item, index) => (
               <div
-                className="rounded-[8px] border border-border-input bg-bg-input p-4"
+                className="rounded-lg border border-border-input bg-bg-input p-4"
                 key={item.id}
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="font-medium text-[16px] text-text-heading leading-[1.3] tracking-[-0.32px]">
+                  <p className="font-semibold text-sm text-text-heading leading-5">
                     Образование {index + 1}
                   </p>
                   {education.length > 1 && (
@@ -285,7 +283,7 @@ export function BackgroundDetailsSection({
                         errors,
                         `education.${index}.institution`,
                       ) && (
-                        <p className="text-[12px] text-danger-red">
+                        <p className="text-danger-red text-xs">
                           {getFieldError(
                             errors,
                             `education.${index}.institution`,
@@ -310,7 +308,7 @@ export function BackgroundDetailsSection({
                         value={item.gpa}
                       />
                       {getFieldError(errors, `education.${index}.gpa`) && (
-                        <p className="text-[12px] text-danger-red">
+                        <p className="text-danger-red text-xs">
                           {getFieldError(errors, `education.${index}.gpa`)}
                         </p>
                       )}
@@ -336,7 +334,7 @@ export function BackgroundDetailsSection({
                         value={item.period}
                       />
                       {getFieldError(errors, `education.${index}.period`) && (
-                        <p className="text-[12px] text-danger-red">
+                        <p className="text-danger-red text-xs">
                           {getFieldError(errors, `education.${index}.period`)}
                         </p>
                       )}
@@ -348,6 +346,6 @@ export function BackgroundDetailsSection({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

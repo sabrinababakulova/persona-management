@@ -6,6 +6,11 @@ import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { Input } from "~/app/_components/input";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
 import {
@@ -556,9 +561,10 @@ export function HhPublicationForm({
 
   if (vacancyQuery.isLoading) {
     return (
-      <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Загрузка вакансии...
-      </main>
+      <LoadingState
+        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
+        label="Загрузка вакансии..."
+      />
     );
   }
 
@@ -571,9 +577,9 @@ export function HhPublicationForm({
   }
 
   return (
-    <main className="relative w-full">
-      <div className="flex w-full flex-col px-6 pt-8 pb-8">
-        <div className="w-full max-w-[900px]">
+    <main className="relative w-full bg-bg-canvas">
+      <div className="app-page-narrow flex flex-col">
+        <div className="w-full">
           <Breadcrumbs
             label="Публикация на hh.uz"
             parent={{
@@ -584,12 +590,10 @@ export function HhPublicationForm({
             rootLabel="Вакансии"
           />
 
-          <h1 className="mt-6 mb-6 font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-            Публикация на hh.uz
-          </h1>
+          <h1 className="page-title mt-5 mb-5">Публикация на hh.uz</h1>
 
-          {hhLookupsQuery.isError && (
-            <div className="mb-4 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+          <FeedbackPresence className="mb-4" show={hhLookupsQuery.isError}>
+            <div className="mb-4 rounded-lg border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
               Не удалось загрузить справочники hh.uz.{" "}
               <button
                 className="underline"
@@ -599,11 +603,11 @@ export function HhPublicationForm({
                 Повторить
               </button>
             </div>
-          )}
+          </FeedbackPresence>
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-5">
             <div
-              className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
+              className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="basic-information"
             >
               <ClosableSection title="Основная информация hh.uz">
@@ -618,7 +622,7 @@ export function HhPublicationForm({
                     value={fields.title}
                   />
                   {errors.title && (
-                    <p className="text-[13px] text-danger-red leading-[1.4]">
+                    <p className="text-danger-red text-xs leading-[1.4]">
                       {errors.title}
                     </p>
                   )}
@@ -635,7 +639,7 @@ export function HhPublicationForm({
                       value={fields.areaId}
                     />
                     {errors.areaId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.areaId}
                       </p>
                     )}
@@ -653,7 +657,7 @@ export function HhPublicationForm({
                       value={fields.professionalRoleId}
                     />
                     {errors.professionalRoleId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.professionalRoleId}
                       </p>
                     )}
@@ -672,7 +676,7 @@ export function HhPublicationForm({
                       value={fields.employmentId}
                     />
                     {errors.employmentId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.employmentId}
                       </p>
                     )}
@@ -689,7 +693,7 @@ export function HhPublicationForm({
                       value={fields.scheduleId}
                     />
                     {errors.scheduleId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.scheduleId}
                       </p>
                     )}
@@ -708,7 +712,7 @@ export function HhPublicationForm({
                       value={fields.experienceId}
                     />
                     {errors.experienceId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.experienceId}
                       </p>
                     )}
@@ -725,7 +729,7 @@ export function HhPublicationForm({
                       value={fields.vacancyTypeId}
                     />
                     {errors.vacancyTypeId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.vacancyTypeId}
                       </p>
                     )}
@@ -744,7 +748,7 @@ export function HhPublicationForm({
                       value={fields.billingTypeId}
                     />
                     {errors.billingTypeId && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.billingTypeId}
                       </p>
                     )}
@@ -754,7 +758,7 @@ export function HhPublicationForm({
             </div>
 
             <div
-              className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6"
+              className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="description"
             >
               <ClosableSection title="Описание">
@@ -769,11 +773,11 @@ export function HhPublicationForm({
                   value={fields.descriptionHtml}
                 />
                 {errors.descriptionHtml && (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     {errors.descriptionHtml}
                   </p>
                 )}
-                <p className="text-[12px] text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   hh.uz принимает только базовое форматирование: абзацы, списки,
                   заголовки H3/H4, жирный, курсив и ссылки. Описание должно
                   содержать хотя бы один список.
@@ -782,19 +786,19 @@ export function HhPublicationForm({
             </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
+          <div className="sticky bottom-0 z-10 mt-6 border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex min-h-[20px] flex-col gap-1">
-                {errors._form && (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                <FeedbackPresence show={Boolean(errors._form)}>
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     {errors._form}
                   </p>
-                )}
-                {savedMessage && (
-                  <p className="text-[13px] text-success-green leading-[1.4]">
+                </FeedbackPresence>
+                <FeedbackPresence show={Boolean(savedMessage)}>
+                  <p className="text-success-green text-xs leading-[1.4]">
                     {savedMessage}
                   </p>
-                )}
+                </FeedbackPresence>
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <Dropdown
@@ -805,7 +809,7 @@ export function HhPublicationForm({
                   value={submitAction}
                 />
                 <button
-                  className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+                  className="ui-button ui-button-secondary"
                   onClick={() =>
                     router.push(`/vacancies/${vacancyId}?step=publications`)
                   }
@@ -814,7 +818,7 @@ export function HhPublicationForm({
                   Назад
                 </button>
                 <button
-                  className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-primary"
                   disabled={
                     createPublication.isPending ||
                     updatePublication.isPending ||
@@ -824,12 +828,16 @@ export function HhPublicationForm({
                   onClick={handleSubmitAction}
                   type="button"
                 >
-                  {createPublication.isPending ||
-                  updatePublication.isPending ||
-                  saveDraftToHH.isPending ||
-                  publishToHH.isPending
-                    ? "Сохранение..."
-                    : HH_SUBMIT_BUTTON_LABEL[submitAction]}
+                  <LoadingButtonContent
+                    isLoading={
+                      createPublication.isPending ||
+                      updatePublication.isPending ||
+                      saveDraftToHH.isPending ||
+                      publishToHH.isPending
+                    }
+                    label={HH_SUBMIT_BUTTON_LABEL[submitAction]}
+                    loadingLabel="Сохранение..."
+                  />
                 </button>
               </div>
             </div>

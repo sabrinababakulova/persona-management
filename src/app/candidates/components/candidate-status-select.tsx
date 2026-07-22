@@ -155,11 +155,11 @@ export function CandidateStatusSelect({
 
   return (
     <div
-      className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1`}
+      className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-lg px-1`}
     >
       <select
         aria-label={`Статус кандидата ${candidateName}`}
-        className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70`}
+        className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
         disabled={updateCandidateStatus.isPending || statusOptions.length === 0}
         onChange={(event) => handleStatusChange(event.target.value)}
         value={status}

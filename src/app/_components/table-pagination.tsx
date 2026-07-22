@@ -69,24 +69,24 @@ export function TablePagination({
 
   return (
     <div className="flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-[13px] text-text-placeholder">
+      <div className="text-text-placeholder text-xs">
         {rangeStart}-{rangeEnd} из {totalItems}
       </div>
 
       <div className="flex items-center gap-2">
         <button
-          className="cursor-pointer rounded-[6px] border border-border-input px-3 py-2 text-[14px] text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-button ui-button-secondary min-h-9 px-3"
           disabled={currentPage === 1}
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           type="button"
         >
           Назад
         </button>
-        <span className="min-w-[72px] text-center text-[14px] text-text-secondary">
+        <span className="min-w-16 text-center text-sm text-text-secondary">
           {currentPage} / {totalPages}
         </span>
         <button
-          className="cursor-pointer rounded-[6px] border border-border-input px-3 py-2 text-[14px] text-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-button ui-button-secondary min-h-9 px-3"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           type="button"
@@ -95,11 +95,11 @@ export function TablePagination({
         </button>
       </div>
 
-      <label className="flex items-center gap-3 text-[14px] text-text-secondary">
+      <label className="flex items-center gap-3 text-sm text-text-secondary">
         <span>Количество</span>
         <div className="relative">
           <select
-            className="h-[40px] min-w-[88px] cursor-pointer appearance-none rounded-[6px] border border-border-input bg-bg-light px-3 pr-9 text-[14px] text-text-secondary"
+            className="h-9 min-w-20 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-light px-3 pr-8 text-sm text-text-secondary"
             onChange={(event) =>
               onItemsPerPageChange(Number(event.target.value))
             }

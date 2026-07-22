@@ -18,6 +18,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { DownloadIcon } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
 
 type ExportFormat = "pdf" | "docx";
 type DownloadKey = "hh" | "person-hunters" | "custom";
@@ -109,7 +113,7 @@ function SortableSectionRow({
 
   return (
     <li
-      className={`flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-light px-2 py-2 ${
+      className={`flex items-center gap-2 rounded-lg border border-border-input bg-bg-light px-2 py-2 ${
         isDragging ? "opacity-70 shadow-md" : ""
       }`}
       ref={setNodeRef}
@@ -124,7 +128,7 @@ function SortableSectionRow({
       >
         <GripIcon />
       </button>
-      <label className="flex flex-1 cursor-pointer items-center gap-2 text-[13px] text-text-heading">
+      <label className="flex flex-1 cursor-pointer items-center gap-2 text-text-heading text-xs">
         <input
           checked={checked}
           className="h-4 w-4 accent-primary-blue"
@@ -147,10 +151,10 @@ function FormatToggle({
   disabled: boolean;
 }) {
   return (
-    <div className="inline-flex overflow-hidden rounded-[6px] border border-border-input">
+    <div className="inline-flex overflow-hidden rounded-lg border border-border-input">
       {(["pdf", "docx"] as const).map((format) => (
         <button
-          className={`px-3 py-1.5 font-medium text-[13px] transition-colors ${
+          className={`px-3 py-1.5 font-medium text-xs transition-colors ${
             value === format
               ? "bg-primary-blue text-bg-light"
               : "bg-bg-input text-text-secondary hover:text-text-heading"
@@ -261,11 +265,11 @@ export function ResumeDownloadButton({
   return (
     <>
       <button
-        className="inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary transition-colors hover:text-text-heading"
+        className="ui-button ui-button-secondary"
         onClick={() => setIsOpen(true)}
         type="button"
       >
-        <span className="inline-flex items-center rounded-full bg-primary-blue-light px-2 py-0.5 font-semibold text-[11px] text-primary-blue leading-none">
+        <span className="inline-flex items-center rounded-full bg-primary-blue-light px-2 py-0.5 font-semibold text-primary-blue text-xs leading-none">
           PDF
         </span>
         Скачать резюме
@@ -280,18 +284,16 @@ export function ResumeDownloadButton({
       >
         <div className="flex flex-col gap-4">
           {/* hh.uz — original file, always PDF */}
-          <section className="rounded-[8px] border border-border-input p-4">
+          <section className="rounded-xl border border-border-input p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-semibold text-[15px] text-text-heading">
-                  hh.uz
-                </p>
-                <p className="text-[13px] text-text-secondary">
+                <p className="font-semibold text-sm text-text-heading">hh.uz</p>
+                <p className="text-text-secondary text-xs">
                   Оригинальное резюме с hh.uz (PDF)
                 </p>
               </div>
               <button
-                className="rounded-[6px] bg-primary-blue px-4 py-2 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-button ui-button-primary min-h-9 px-3"
                 disabled={isBusy || !hasHhResume}
                 onClick={() =>
                   run(
@@ -302,24 +304,28 @@ export function ResumeDownloadButton({
                 }
                 type="button"
               >
-                {downloading === "hh" ? "Загрузка..." : "Скачать"}
+                <LoadingButtonContent
+                  isLoading={downloading === "hh"}
+                  label="Скачать"
+                  loadingLabel="Загрузка..."
+                />
               </button>
             </div>
             {!hasHhResume && (
-              <p className="mt-2 text-[12px] text-text-placeholder">
+              <p className="mt-2 text-text-placeholder text-xs">
                 Резюме с hh.uz недоступно для этого кандидата
               </p>
             )}
           </section>
 
           {/* Person Hunters — branded template */}
-          <section className="rounded-[8px] border border-border-input p-4">
+          <section className="rounded-xl border border-border-input p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-semibold text-[15px] text-text-heading">
+                <p className="font-semibold text-sm text-text-heading">
                   Person Hunters
                 </p>
-                <p className="text-[13px] text-text-secondary">
+                <p className="text-text-secondary text-xs">
                   Брендированный шаблон
                 </p>
               </div>
@@ -330,7 +336,7 @@ export function ResumeDownloadButton({
                   value={format}
                 />
                 <button
-                  className="rounded-[6px] bg-primary-blue px-4 py-2 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-primary min-h-9 px-3"
                   disabled={isBusy}
                   onClick={() =>
                     run(
@@ -341,18 +347,22 @@ export function ResumeDownloadButton({
                   }
                   type="button"
                 >
-                  {downloading === "person-hunters" ? "Загрузка..." : "Скачать"}
+                  <LoadingButtonContent
+                    isLoading={downloading === "person-hunters"}
+                    label="Скачать"
+                    loadingLabel="Загрузка..."
+                  />
                 </button>
               </div>
             </div>
           </section>
 
           {/* Custom — drag to reorder, check to include, pick format */}
-          <section className="rounded-[8px] border border-border-input p-4">
-            <p className="font-semibold text-[15px] text-text-heading">
+          <section className="rounded-xl border border-border-input p-4">
+            <p className="font-semibold text-sm text-text-heading">
               Свой формат
             </p>
-            <p className="text-[13px] text-text-secondary">
+            <p className="text-text-secondary text-xs">
               Перетащите разделы, чтобы изменить порядок, и отметьте нужные
             </p>
             <DndContext
@@ -379,7 +389,7 @@ export function ResumeDownloadButton({
 
             {/* Optional logo placed at the top of the custom resume */}
             <div className="mt-3 flex items-center gap-2">
-              <label className="cursor-pointer rounded-[6px] border border-border-input bg-bg-input px-3 py-1.5 font-medium text-[13px] text-text-secondary transition-colors hover:text-text-heading">
+              <label className="cursor-pointer rounded-lg border border-border-input bg-bg-input px-3 py-1.5 font-medium text-text-secondary text-xs transition-colors hover:text-text-heading">
                 Загрузить логотип
                 <input
                   accept="image/png,image/jpeg"
@@ -389,7 +399,7 @@ export function ResumeDownloadButton({
                 />
               </label>
               {logoFile && (
-                <span className="flex items-center gap-2 text-[12px] text-text-secondary">
+                <span className="flex items-center gap-2 text-text-secondary text-xs">
                   <span className="max-w-[160px] truncate">
                     {logoFile.name}
                   </span>
@@ -411,7 +421,7 @@ export function ResumeDownloadButton({
                 value={format}
               />
               <button
-                className="rounded-[6px] bg-primary-blue px-4 py-2 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-button ui-button-primary min-h-9 px-3"
                 disabled={isBusy || orderedSelected.length === 0}
                 onClick={() => {
                   const formData = new FormData();
@@ -429,19 +439,23 @@ export function ResumeDownloadButton({
                 }}
                 type="button"
               >
-                {downloading === "custom" ? "Загрузка..." : "Скачать"}
+                <LoadingButtonContent
+                  isLoading={downloading === "custom"}
+                  label="Скачать"
+                  loadingLabel="Загрузка..."
+                />
               </button>
             </div>
             {orderedSelected.length === 0 && (
-              <p className="mt-2 text-[12px] text-text-placeholder">
+              <p className="mt-2 text-text-placeholder text-xs">
                 Выберите хотя бы один раздел
               </p>
             )}
           </section>
 
-          {error && (
-            <p className="text-[13px] text-danger-red leading-[1.4]">{error}</p>
-          )}
+          <FeedbackPresence show={Boolean(error)}>
+            <p className="text-danger-red text-xs leading-[1.4]">{error}</p>
+          </FeedbackPresence>
         </div>
       </Modal>
     </>

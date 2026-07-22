@@ -7,6 +7,10 @@ import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { Input } from "~/app/_components/input";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { api } from "~/trpc/react";
 import {
@@ -242,17 +246,15 @@ export function CreateVacancyForm({
   const isSaving = createVacancy.isPending || updateVacancy.isPending;
 
   return (
-    <div className="w-full max-w-[900px]">
+    <div className="w-full max-w-[1040px]">
       <Breadcrumbs
         label={breadcrumbLabel}
         rootHref="/vacancies"
         rootLabel="Вакансии"
       />
 
-      <div className="mt-6 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-          {pageHeading}
-        </h1>
+      <div className="page-header mt-5">
+        <h1 className="page-title">{pageHeading}</h1>
       </div>
 
       {bannerContent && <div className="mb-6">{bannerContent}</div>}
@@ -264,10 +266,10 @@ export function CreateVacancyForm({
         total={progress.total}
       />
 
-      <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
-        <div className="min-w-0 flex-1 space-y-8">
+      <div className="flex flex-col gap-5">
+        <div className="min-w-0 flex-1 space-y-5">
           <div
-            className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
+            className="surface-card scroll-mt-24 p-5 sm:p-6"
             id="basic-information"
           >
             <ClosableSection title="Основная информация">
@@ -283,7 +285,7 @@ export function CreateVacancyForm({
                   value={formData.title}
                 />
                 {errors.title && (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     {errors.title}
                   </p>
                 )}
@@ -299,7 +301,7 @@ export function CreateVacancyForm({
                   value={formData.descriptionHtml}
                 />
                 {errors.descriptionHtml && (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     {errors.descriptionHtml}
                   </p>
                 )}
@@ -307,10 +309,7 @@ export function CreateVacancyForm({
             </ClosableSection>
           </div>
 
-          <div
-            className="scroll-mt-24 rounded-[8px] border border-border-input bg-bg-light p-4 lg:p-6"
-            id="conditions"
-          >
+          <div className="surface-card scroll-mt-24 p-5 sm:p-6" id="conditions">
             <ClosableSection title="Условия">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Input
@@ -366,23 +365,23 @@ export function CreateVacancyForm({
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
+      <div className="sticky bottom-0 z-10 mt-6 border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-h-[20px] flex-col gap-1">
-            {errors._form && (
-              <p className="text-[13px] text-danger-red leading-[1.4]">
+            <FeedbackPresence show={Boolean(errors._form)}>
+              <p className="text-danger-red text-xs leading-[1.4]">
                 {errors._form}
               </p>
-            )}
-            {isEditMode && updateMessage && (
-              <p className="text-[13px] text-success-green leading-[1.4]">
+            </FeedbackPresence>
+            <FeedbackPresence show={Boolean(isEditMode && updateMessage)}>
+              <p className="text-success-green text-xs leading-[1.4]">
                 {updateMessage}
               </p>
-            )}
+            </FeedbackPresence>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+              className="ui-button ui-button-secondary"
               onClick={handleCancel}
               type="button"
             >
@@ -390,16 +389,16 @@ export function CreateVacancyForm({
             </button>
             {!readOnly && (
               <button
-                className="h-10 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-button ui-button-primary"
                 disabled={isSaving || progress.missing.length > 0}
                 onClick={handleSubmit}
                 type="button"
               >
-                {isSaving
-                  ? "Сохранение..."
-                  : isEditMode
-                    ? "Сохранить изменения"
-                    : "Продолжить"}
+                <LoadingButtonContent
+                  isLoading={isSaving}
+                  label={isEditMode ? "Сохранить изменения" : "Продолжить"}
+                  loadingLabel="Сохранение..."
+                />
               </button>
             )}
           </div>

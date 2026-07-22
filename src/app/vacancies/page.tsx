@@ -16,6 +16,7 @@ import {
   NoVacancies,
   SearchIcon,
 } from "../_components/icons";
+import { MotionToast } from "../_components/motion-system";
 import {
   PeriodFilter,
   type PeriodFilterValue,
@@ -183,14 +184,7 @@ export default function VacanciesPage() {
 
   return (
     <>
-      {toastMessage && (
-        <output
-          aria-live="polite"
-          className="fixed top-6 right-6 z-70 rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-bg-light shadow-toast"
-        >
-          {toastMessage}
-        </output>
-      )}
+      <MotionToast message={toastMessage} />
 
       <FilterModal
         cityOptions={vacancyLookups?.cities}
@@ -203,11 +197,9 @@ export default function VacanciesPage() {
       />
 
       <main className="flex h-full flex-1 overflow-auto">
-        <div className="flex min-h-full w-full flex-col p-4 pb-10 lg:p-8 lg:pb-10">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
-              Вакансии
-            </h1>
+        <div className="app-page flex min-h-full flex-col">
+          <div className="page-header">
+            <h1 className="page-title">Вакансии</h1>
             <PeriodFilter
               ariaLabel="Фильтр периода вакансий"
               onChange={(value) => {
@@ -220,11 +212,11 @@ export default function VacanciesPage() {
 
           {showVacanciesTable ? (
             <>
-              <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
                   <input
-                    className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-text-secondary placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                    className="ui-search"
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setCurrentPage(1);
@@ -235,7 +227,7 @@ export default function VacanciesPage() {
                   />
                 </div>
                 <button
-                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-text-secondary transition-colors hover:bg-bg-light ${
+                  className={`ui-button ui-button-secondary ${
                     activeFilterCount > 0
                       ? "border-primary-blue bg-primary-blue-light"
                       : "border-border-light bg-bg-light"
@@ -292,7 +284,7 @@ export default function VacanciesPage() {
               <div className="flex w-full max-w-59 flex-col items-center gap-10">
                 <NoVacancies className="h-47.5 w-59" />
                 <Link
-                  className="flex h-10 w-47.5 items-center justify-center rounded-md bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                  className="ui-button ui-button-primary"
                   href="/vacancies/create"
                 >
                   Добавить вакансию
@@ -305,7 +297,7 @@ export default function VacanciesPage() {
 
       <Link
         aria-label="Создать вакансию"
-        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-bg-light shadow-lg transition-colors hover:bg-primary-blue-hover"
+        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         href="/vacancies/create"
       >
         <FloatingAddIcon className="h-10 w-10" />

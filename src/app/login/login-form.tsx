@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
 
 function getLoginErrorMessage(code?: string | null) {
   switch (code) {
@@ -95,9 +99,9 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
+    <div className="auth-layout">
       {/* Left Sidebar with Logo */}
-      <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
+      <div className="auth-art">
         <Image
           alt="Logo"
           className="object-cover"
@@ -108,16 +112,14 @@ export default function LoginForm() {
       </div>
 
       {/* Right Content Area */}
-      <div className="flex flex-1 items-center justify-center px-6 lg:px-[120px]">
-        <div className="w-full max-w-[505px]">
+      <div className="auth-content">
+        <div className="auth-panel">
           {/* Title */}
-          <h1 className="mb-8 font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
-            Войти
-          </h1>
+          <h1 className="auth-title">Войти</h1>
           {isGoogleAvailable && (
             <>
               <button
-                className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-bg-light font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-button ui-button-secondary mb-6 h-11 w-full"
                 disabled={isGoogleSubmitting || isSubmitting}
                 onClick={() => void handleGoogleSignIn()}
                 type="button"
@@ -136,23 +138,23 @@ export default function LoginForm() {
 
               <div className="mb-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-border-input" />
-                <span className="text-[12px] text-text-muted">или</span>
+                <span className="text-text-muted text-xs">или</span>
                 <div className="h-px flex-1 bg-border-input" />
               </div>
             </>
           )}
           {/* Form */}
-          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             {/* Email Field */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <label
-                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                className="font-semibold text-sm text-text-label leading-5"
                 htmlFor="login-email"
               >
                 Почта
               </label>
               <input
-                className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                 id="login-email"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Адрес электронной почты"
@@ -162,15 +164,15 @@ export default function LoginForm() {
             </div>
 
             {/* Password Field */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <label
-                className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                className="font-semibold text-sm text-text-label leading-5"
                 htmlFor="login-password"
               >
                 Пароль
               </label>
               <input
-                className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                 id="login-password"
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Введите ваш пароль"
@@ -178,7 +180,7 @@ export default function LoginForm() {
                 value={password}
               />
               <Link
-                className="mt-1 text-right text-[12px] text-text-muted leading-[1.4] tracking-[-0.24px] transition-colors hover:text-text-heading"
+                className="mt-1 text-right text-text-muted text-xs leading-[1.4] transition-colors hover:text-text-heading"
                 href="/forgot-password"
               >
                 Забыли пароль?
@@ -186,25 +188,29 @@ export default function LoginForm() {
             </div>
 
             {/* Buttons */}
-            {errorMessage && (
-              <div className="rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+            <FeedbackPresence show={Boolean(errorMessage)}>
+              <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
                 {errorMessage}
               </div>
-            )}
+            </FeedbackPresence>
 
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row">
               <Link
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue-light font-semibold text-[16px] text-primary-blue tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover"
+                className="ui-button ui-button-soft flex-1"
                 href="/register"
               >
                 Создать аккаунт
               </Link>
               <button
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                className="ui-button ui-button-primary flex-1"
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Вход..." : "Войти"}
+                <LoadingButtonContent
+                  isLoading={isSubmitting}
+                  label="Войти"
+                  loadingLabel="Вход..."
+                />
               </button>
             </div>
           </form>

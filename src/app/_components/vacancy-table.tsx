@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -10,6 +12,7 @@ type VacancyTableItem = Vacancy | DashboardVacancy;
 
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
+import { LoadingState, motion } from "./motion-system";
 
 type VacancyStatus = Vacancy["status"];
 
@@ -162,14 +165,14 @@ export function VacancyTable({
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[8px] border border-border-input bg-bg-light",
+        "surface-card flex min-h-0 flex-1 flex-col overflow-hidden",
         containerClassName,
       )}
     >
       {showTitleBar && (
         <div
           className={cn(
-            "flex items-center justify-between border-border-input border-b px-6 py-4",
+            "flex items-center justify-between border-border-input border-b px-5 py-4",
             titleBarClassName,
           )}
         >
@@ -180,41 +183,41 @@ export function VacancyTable({
 
       <div
         className={cn(
-          "hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-[14px] lg:grid",
+          "hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 lg:grid",
           columnHeaderClassName,
         )}
       >
-        <div className="col-span-3 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Название</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Статус</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Регион (hh.uz)</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-1 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Отклики</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Занятость</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-1 flex items-center gap-1 text-[14px] text-text-placeholder">
+        <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
           <span>Связи</span>
         </div>
         <div className="col-span-1" />
       </div>
 
       {isLoading ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-text-placeholder">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-light border-t-primary-blue" />
-          <div className="text-[14px]">{loadingLabel}</div>
-        </div>
+        <LoadingState
+          className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
+          label={loadingLabel}
+        />
       ) : (
         <>
           <div className={cn("min-h-0 flex-1 overflow-auto", bodyClassName)}>
@@ -230,14 +233,21 @@ export function VacancyTable({
                 const statusPending = isStatusPending?.(item) ?? false;
 
                 return (
-                  <div
+                  <motion.div
+                    animate={{ opacity: 1, y: 0 }}
                     className={cn(
                       "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center",
                       stripedRows &&
                         (index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"),
                       rowClassName,
                     )}
+                    initial={{ opacity: 0, y: 7 }}
                     key={item.id}
+                    layout
+                    transition={{
+                      delay: Math.min(index * 0.025, 0.18),
+                      duration: 0.24,
+                    }}
                   >
                     <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
                       {onToggleSelection && (
@@ -250,7 +260,7 @@ export function VacancyTable({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Link
-                            className="block max-w-[220px] truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue hover:underline lg:max-w-[180px]"
+                            className="block max-w-[220px] truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue lg:max-w-[180px]"
                             href={getDetailPath(item)}
                             title={item.title}
                           >
@@ -258,12 +268,12 @@ export function VacancyTable({
                           </Link>
                         </div>
                         {item.experienceId && (
-                          <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                          <div className="mt-1 truncate text-text-placeholder text-xs leading-none">
                             {item.experienceId}
                           </div>
                         )}
                         {publishedAtLabel && (
-                          <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                          <div className="mt-1 truncate text-text-placeholder text-xs leading-none">
                             Опубликовано: {publishedAtLabel}
                           </div>
                         )}
@@ -273,7 +283,7 @@ export function VacancyTable({
                     <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
                       {isHhVacancy || !onStatusChange ? (
                         <span
-                          className={`inline-flex min-h-[32px] min-w-[124px] items-center rounded-[6px] px-3 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] ${statusTone.containerClassName} ${statusTone.textClassName}`}
+                          className={`inline-flex min-h-8 min-w-28 items-center rounded-md px-3 font-semibold text-xs uppercase leading-none ${statusTone.containerClassName} ${statusTone.textClassName}`}
                         >
                           {getVacancyStatusLabel(
                             item.status,
@@ -282,11 +292,11 @@ export function VacancyTable({
                         </span>
                       ) : (
                         <div
-                          className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-[6px] px-1`}
+                          className={`${statusTone.containerClassName} relative inline-flex min-w-28 items-center overflow-hidden rounded-md px-1`}
                         >
                           <select
                             aria-label={`Статус вакансии ${item.title}`}
-                            className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-[12px] uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70`}
+                            className={`h-8 w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
                             disabled={statusPending}
                             onChange={(event) => {
                               onStatusChange(item.id, event.target.value);
@@ -306,21 +316,21 @@ export function VacancyTable({
                       )}
                     </div>
 
-                    <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
                       {item.areaId || "-"}
                     </div>
 
-                    <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-1 lg:block">
+                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-1 lg:block">
                       {item.responses}
                     </div>
 
-                    <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
                       {item.employmentId || "-"}
                     </div>
 
                     <div className="hidden lg:col-span-1 lg:flex lg:items-center lg:gap-1.5">
                       {connections.length === 0 ? (
-                        <span className="text-[14px] text-text-heading leading-none">
+                        <span className="text-sm text-text-heading leading-none">
                           -
                         </span>
                       ) : (
@@ -347,7 +357,7 @@ export function VacancyTable({
 
                     <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
                       <Link
-                        className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
+                        className="flex items-center gap-1 font-medium text-primary-blue text-sm leading-none hover:text-primary-blue-hover"
                         href={getFunnelPath(item)}
                       >
                         <FunnelIcon className="h-3.5 w-3.5" />
@@ -361,17 +371,17 @@ export function VacancyTable({
                       </button>
                     </div>
 
-                    <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
+                    <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
                       {renderMobileMeta(item)}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })(),
             )}
 
             {items.length === 0 &&
               (emptyState ?? (
-                <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
+                <div className="px-4 py-10 text-center text-sm text-text-placeholder">
                   Вакансии не найдены
                 </div>
               ))}

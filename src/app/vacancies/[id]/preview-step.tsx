@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { ClosableSection } from "~/app/_components/closable-section";
+import { LoadingState } from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 
 export function PreviewStep() {
@@ -18,7 +19,7 @@ export function PreviewStep() {
   );
 
   if (isLoading) {
-    return <div className="text-[14px] text-text-secondary">Загрузка...</div>;
+    return <LoadingState compact label="Загрузка предпросмотра..." />;
   }
 
   const activePublications =
@@ -26,7 +27,7 @@ export function PreviewStep() {
 
   if (activePublications.length === 0) {
     return (
-      <div className="rounded-lg border border-border-input bg-bg-light p-4 text-[14px] text-text-secondary leading-[1.4] lg:p-6">
+      <div className="rounded-lg border border-border-input bg-bg-light p-4 text-sm text-text-secondary leading-[1.4] lg:p-6">
         Нет активных публикаций
       </div>
     );
@@ -38,7 +39,7 @@ export function PreviewStep() {
         <ClosableSection title="Основная">
           <p>{parentVacancy?.title}</p>
           <div
-            className="text-[14px] text-text-secondary leading-[1.4]"
+            className="text-sm text-text-secondary leading-[1.4]"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: descriptionHtml is authored by the company in the editor
             dangerouslySetInnerHTML={{
               __html: parentVacancy?.descriptionHtml ?? "",
@@ -56,7 +57,7 @@ export function PreviewStep() {
           >
             <p>{publication.title}</p>
             <div
-              className="text-[14px] text-text-secondary leading-[1.4]"
+              className="text-sm text-text-secondary leading-[1.4]"
               // biome-ignore lint/security/noDangerouslySetInnerHtml: descriptionHtml is authored by the company in the editor
               dangerouslySetInnerHTML={{
                 __html: publication.descriptionHtml ?? "",

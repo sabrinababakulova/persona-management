@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
+import { AnimatePresence, motion } from "./motion-system";
 
 /** Single entry shown inside an {@link ActionDropdown} menu. */
 export interface ActionDropdownItem {
@@ -75,12 +76,13 @@ export function ActionDropdown({
       className={`relative inline-block ${className ?? ""}`}
       ref={containerRef}
     >
-      <button
+      <motion.button
         aria-expanded={open}
         aria-haspopup="menu"
-        className="inline-flex h-12 items-center justify-between gap-3 rounded-[8px] bg-primary-blue px-5 font-semibold text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+        className="ui-button ui-button-primary justify-between"
         onClick={() => setOpen((prev) => !prev)}
         type="button"
+        whileTap={{ scale: 0.975 }}
       >
         <span>{triggerLabel}</span>
         <ChevronDownIcon
@@ -88,39 +90,52 @@ export function ActionDropdown({
             open ? "-rotate-180" : ""
           }`}
         />
-      </button>
+      </motion.button>
 
-      {open && (
-        <ul
-          className={`absolute top-full right-0 z-20 mt-2 flex w-[260px] flex-col overflow-hidden rounded-[8px] border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
-        >
-          {items.map((item, index) => (
-            <li key={item.value} role="none">
-              <button
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left font-medium text-[16px] text-text-heading leading-none transition-colors hover:bg-bg-input ${
-                  index < items.length - 1 ? "border-border-input border-b" : ""
-                }`}
-                onClick={() => {
-                  onSelect(item.value);
-                  setOpen(false);
-                }}
-                role="menuitem"
-                type="button"
+      <AnimatePresence>
+        {open ? (
+          <motion.ul
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className={`absolute top-full right-0 z-20 mt-2 flex w-[260px] origin-top-right flex-col overflow-hidden rounded-xl border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
+            exit={{ opacity: 0, scale: 0.98, y: -5 }}
+            initial={{ opacity: 0, scale: 0.97, y: -8 }}
+          >
+            {items.map((item, index) => (
+              <motion.li
+                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, x: -5 }}
+                key={item.value}
+                role="none"
+                transition={{ delay: index * 0.035, duration: 0.18 }}
               >
-                <Image
-                  alt=""
-                  className="h-6 w-6 flex-shrink-0"
-                  height={24}
-                  src={item.iconSrc}
-                  unoptimized
-                  width={24}
-                />
-                <span>{item.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <button
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left font-medium text-base text-text-heading leading-none transition-colors hover:bg-bg-input ${
+                    index < items.length - 1
+                      ? "border-border-input border-b"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    onSelect(item.value);
+                    setOpen(false);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  <Image
+                    alt=""
+                    className="h-6 w-6 flex-shrink-0"
+                    height={24}
+                    src={item.iconSrc}
+                    unoptimized
+                    width={24}
+                  />
+                  <span>{item.label}</span>
+                </button>
+              </motion.li>
+            ))}
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

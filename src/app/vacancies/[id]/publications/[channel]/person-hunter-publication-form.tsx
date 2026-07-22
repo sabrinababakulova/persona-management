@@ -7,6 +7,11 @@ import { Checkbox } from "~/app/_components/checkbox";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { Input } from "~/app/_components/input";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { api } from "~/trpc/react";
 import {
@@ -388,7 +393,7 @@ export function PersonHunterPublicationForm({
 
   const errorText = (key: keyof PersonHunterErrors) =>
     errors[key] ? (
-      <p className="text-[13px] text-danger-red leading-[1.4]">{errors[key]}</p>
+      <p className="text-danger-red text-xs leading-[1.4]">{errors[key]}</p>
     ) : null;
 
   const languageOptions = useMemo(
@@ -402,9 +407,10 @@ export function PersonHunterPublicationForm({
 
   if (vacancyQuery.isLoading || configQuery.isLoading) {
     return (
-      <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Загрузка...
-      </main>
+      <LoadingState
+        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
+        label="Загрузка публикации..."
+      />
     );
   }
 
@@ -417,9 +423,9 @@ export function PersonHunterPublicationForm({
   }
 
   return (
-    <main className="relative w-full">
-      <div className="flex w-full flex-col px-6 pt-8 pb-8">
-        <div className="w-full max-w-225">
+    <main className="relative w-full bg-bg-canvas">
+      <div className="app-page-narrow flex flex-col">
+        <div className="w-full">
           <Breadcrumbs
             label="Публикация на PersonHunters"
             parent={{
@@ -430,21 +436,19 @@ export function PersonHunterPublicationForm({
             rootLabel="Вакансии"
           />
 
-          <h1 className="mt-6 mb-6 font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-            Публикация на PersonHunters
-          </h1>
+          <h1 className="page-title mt-5 mb-5">Публикация на PersonHunters</h1>
         </div>
 
-        {!isConfigured && (
-          <div className="mb-6 w-full max-w-225 rounded-lg border border-danger-red bg-status-closed-bg px-4 py-3 text-[14px] text-danger-red leading-[1.4]">
+        <FeedbackPresence show={!isConfigured}>
+          <div className="mb-5 w-full rounded-lg border border-danger-red bg-status-closed-bg px-4 py-3 text-danger-red text-sm leading-5">
             Интеграция PersonHunters не настроена: отсутствует API-ключ
             (PERSON_HUNTER_API_KEY).
           </div>
-        )}
+        </FeedbackPresence>
 
-        <div className="mt-2 flex w-full max-w-225 flex-col gap-8">
+        <div className="mt-2 flex w-full flex-col gap-5">
           {/* Content */}
-          <div className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6">
+          <div className="surface-card scroll-mt-24 p-5 sm:p-6">
             <ClosableSection title="Контент публикации">
               <div className="flex min-w-0 flex-col gap-2">
                 <Input
@@ -505,7 +509,7 @@ export function PersonHunterPublicationForm({
           </div>
 
           {/* Placement / references */}
-          <div className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6">
+          <div className="surface-card scroll-mt-24 p-5 sm:p-6">
             <ClosableSection title="Параметры вакансии">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Dropdown
@@ -548,7 +552,7 @@ export function PersonHunterPublicationForm({
 
               <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="flex flex-col gap-3">
-                  <span className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+                  <span className="font-medium text-base text-text-label leading-[1.4]">
                     Тип занятости
                   </span>
                   {(references?.employments ?? []).map((option) => (
@@ -559,7 +563,7 @@ export function PersonHunterPublicationForm({
                           toggleId(employmentIds, setEmploymentIds, option.id)
                         }
                       />
-                      <span className="text-[14px] text-text-heading leading-[1.4]">
+                      <span className="text-sm text-text-heading leading-[1.4]">
                         {option.name}
                       </span>
                     </div>
@@ -568,7 +572,7 @@ export function PersonHunterPublicationForm({
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <span className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+                  <span className="font-medium text-base text-text-label leading-[1.4]">
                     График работы
                   </span>
                   {(references?.schedules ?? []).map((option) => (
@@ -579,7 +583,7 @@ export function PersonHunterPublicationForm({
                           toggleId(scheduleIds, setScheduleIds, option.id)
                         }
                       />
-                      <span className="text-[14px] text-text-heading leading-[1.4]">
+                      <span className="text-sm text-text-heading leading-[1.4]">
                         {option.name}
                       </span>
                     </div>
@@ -617,7 +621,7 @@ export function PersonHunterPublicationForm({
           </div>
 
           {/* Salary */}
-          <div className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6">
+          <div className="surface-card scroll-mt-24 p-5 sm:p-6">
             <ClosableSection title="Зарплата">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Input
@@ -653,19 +657,19 @@ export function PersonHunterPublicationForm({
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 mt-8 w-full max-w-225 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
+        <div className="sticky bottom-0 z-10 mt-6 w-full border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-h-[20px] flex-col gap-1">
               {errorText("_form")}
-              {savedMessage && (
-                <p className="text-[13px] text-success-green leading-[1.4]">
+              <FeedbackPresence show={Boolean(savedMessage)}>
+                <p className="text-success-green text-xs leading-[1.4]">
                   {savedMessage}
                 </p>
-              )}
+              </FeedbackPresence>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button
-                className="h-10 rounded-md border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+                className="ui-button ui-button-secondary"
                 onClick={() =>
                   router.push(`/vacancies/${vacancyId}?step=publications`)
                 }
@@ -674,18 +678,16 @@ export function PersonHunterPublicationForm({
                 Назад
               </button>
               <button
-                className="h-10 rounded-md bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-button ui-button-primary"
                 disabled={isSubmitting || (!pubId && !isConfigured)}
                 onClick={handleSubmit}
                 type="button"
               >
-                {isSubmitting
-                  ? pubId
-                    ? "Сохранение..."
-                    : "Публикация..."
-                  : pubId
-                    ? "Сохранить изменения"
-                    : "Опубликовать"}
+                <LoadingButtonContent
+                  isLoading={isSubmitting}
+                  label={pubId ? "Сохранить изменения" : "Опубликовать"}
+                  loadingLabel={pubId ? "Сохранение..." : "Публикация..."}
+                />
               </button>
             </div>
           </div>

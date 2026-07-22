@@ -5,6 +5,7 @@ import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import { api } from "~/trpc/react";
 import { bytesToBase64 } from "~/utils/bytes-to-base64";
 import { FileUploadIcon } from "./icons";
+import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 export type ResumeUploadMeta = {
   resumeFileId: string;
@@ -105,32 +106,34 @@ export function ResumeFileUploader({
         type="file"
       />
       <button
-        className="flex h-24 w-full flex-col items-center justify-center rounded-[6px] border border-border-input border-dashed bg-bg-input px-3 py-[14px] transition-colors hover:border-primary-blue disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-24 w-full flex-col items-center justify-center rounded-lg border border-border-input border-dashed bg-bg-input px-3 py-3.5 transition-colors hover:border-primary-blue disabled:cursor-not-allowed disabled:opacity-60"
         disabled={disabled || uploadResume.isPending}
         onClick={() => fileInputRef.current?.click()}
         type="button"
       >
         <div className="flex items-center gap-2">
           <FileUploadIcon className="h-5 w-5 text-text-placeholder" />
-          <span className="font-medium text-[16px] text-text-placeholder leading-[1.4] tracking-[-0.32px]">
-            {uploadResume.isPending ? "Загрузка..." : "Загрузите PDF файл"}
+          <span className="font-medium text-base text-text-placeholder leading-[1.4]">
+            <LoadingButtonContent
+              isLoading={uploadResume.isPending}
+              label="Загрузите PDF файл"
+              loadingLabel="Загрузка..."
+            />
           </span>
         </div>
-        <p className="font-normal text-[12px] text-text-disabled leading-[1.4] tracking-[-0.24px]">
+        <p className="font-normal text-text-disabled text-xs leading-[1.4]">
           Файл должен быть менее 10МБ
         </p>
       </button>
-      {resumeFileName && (
-        <p className="mt-1 font-medium text-[12px] text-success-green leading-[1.4] tracking-[-0.24px]">
+      <FeedbackPresence show={Boolean(resumeFileName)}>
+        <p className="mt-1 font-medium text-success-green text-xs leading-[1.4]">
           Загружено: {resumeFileName}
           {resumeFileSize ? ` (${resumeFileSize})` : ""}
         </p>
-      )}
-      {uploadError && (
-        <p className="mt-1 text-[14px] text-accent-red tracking-[-0.28px]">
-          {uploadError}
-        </p>
-      )}
+      </FeedbackPresence>
+      <FeedbackPresence show={Boolean(uploadError)}>
+        <p className="mt-1 text-accent-red text-sm">{uploadError}</p>
+      </FeedbackPresence>
     </div>
   );
 }

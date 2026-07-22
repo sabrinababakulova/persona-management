@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronDownIcon, SearchIcon } from "./icons";
-import { usePresence } from "./use-presence";
+import { AnimatePresence, LoadingState, motion } from "./motion-system";
 
 type CandidateSelectorProps = {
   className?: string;
@@ -36,7 +36,6 @@ export function CandidateSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const { shouldRender, isVisible } = usePresence(isOpen, 180);
   const trimmedQuery = debouncedSearchQuery.trim();
 
   useEffect(() => {
@@ -106,7 +105,7 @@ export function CandidateSelector({
     >
       <div className="flex w-full flex-col gap-2">
         <label
-          className="w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+          className="w-full font-medium text-base text-text-label leading-[1.4]"
           htmlFor={selectId}
         >
           {label}
@@ -116,7 +115,7 @@ export function CandidateSelector({
           <button
             aria-controls={`${selectId}-panel`}
             aria-expanded={isOpen}
-            className={`flex h-12 w-full items-center justify-between rounded-[6px] border border-border-input bg-bg-input px-3 text-left text-[16px] leading-[1.4] tracking-[-0.32px] transition-[border-color,background-color,box-shadow,transform,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+            className={`flex h-12 w-full items-center justify-between rounded-lg border border-border-input bg-bg-input px-3 text-left text-base leading-[1.4] transition-[border-color,background-color,box-shadow,transform,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled || !vacancyId}
             id={selectId}
             onClick={() => setIsOpen((current) => !current)}
@@ -128,126 +127,133 @@ export function CandidateSelector({
             />
           </button>
 
-          {shouldRender && (
-            <div
-              className={`absolute top-[calc(100%+8px)] left-0 z-50 w-full rounded-[8px] border border-border-input bg-bg-light shadow-toast transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"}`}
-              id={`${selectId}-panel`}
-            >
-              <div className="border-border-input border-b p-3">
-                <div className="relative">
-                  <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
-                  <input
-                    className="h-10 w-full rounded-[6px] border border-border-input bg-bg-input py-2 pr-3 pl-10 text-[14px] text-text-heading outline-none transition-colors placeholder:text-text-placeholder focus:border-primary-blue"
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Поиск кандидата"
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                  />
-                </div>
-              </div>
-
-              <div className="max-h-[280px] overflow-y-auto p-2">
-                {isLoading || isFetching ? (
-                  <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-text-placeholder">
-                    <div className="h-7 w-7 animate-spin rounded-full border-2 border-border-light border-t-primary-blue" />
-                    <span className="text-[14px]">Загрузка кандидатов...</span>
+          <AnimatePresence>
+            {isOpen ? (
+              <motion.div
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="absolute top-[calc(100%+8px)] left-0 z-50 w-full origin-top rounded-xl border border-border-input bg-bg-light shadow-toast"
+                exit={{ opacity: 0, scale: 0.985, y: -5 }}
+                id={`${selectId}-panel`}
+                initial={{ opacity: 0, scale: 0.975, y: -8 }}
+              >
+                <div className="border-border-input border-b p-3">
+                  <div className="relative">
+                    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
+                    <input
+                      className="h-10 w-full rounded-lg border border-border-input bg-bg-input py-2 pr-3 pl-10 text-sm text-text-heading outline-none transition-colors placeholder:text-text-placeholder focus:border-primary-blue"
+                      onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Поиск кандидата"
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                    />
                   </div>
-                ) : options.length > 0 ? (
-                  options.map((candidate) => {
-                    const optionMeta = [
-                      candidate.currentPosition,
-                      candidate.city,
-                      candidate.source,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ");
+                </div>
 
-                    return (
+                <div className="max-h-[280px] overflow-y-auto p-2">
+                  {isLoading || isFetching ? (
+                    <LoadingState
+                      className="min-h-[180px] text-text-placeholder"
+                      label="Загрузка кандидатов..."
+                    />
+                  ) : options.length > 0 ? (
+                    options.map((candidate) => {
+                      const optionMeta = [
+                        candidate.currentPosition,
+                        candidate.city,
+                        candidate.source,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+
+                      return (
+                        <button
+                          className={`flex w-full flex-col items-start gap-1 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-input ${selectedCandidateId === candidate.id ? "bg-primary-blue-light/60" : ""}`}
+                          key={candidate.id}
+                          onClick={() => {
+                            onChange({
+                              id: candidate.id,
+                              label: candidate.fullName,
+                            });
+                            setIsOpen(false);
+                          }}
+                          type="button"
+                        >
+                          <span className="text-sm text-text-heading leading-[1.3]">
+                            {candidate.fullName}
+                          </span>
+                          {optionMeta ? (
+                            <span className="text-text-placeholder text-xs leading-[1.3]">
+                              {optionMeta}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="flex min-h-[180px] items-center justify-center px-3 text-center text-sm text-text-placeholder">
+                      Кандидаты не найдены
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-border-input border-t px-3 py-2">
+                  <button
+                    className="rounded-lg px-3 py-2 text-text-heading text-xs transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={currentPage <= 1 || isLoading || isFetching}
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
+                    type="button"
+                  >
+                    Назад
+                  </button>
+
+                  <span className="text-text-placeholder text-xs">
+                    {totalItems > 0
+                      ? `${currentPage} / ${totalPages}`
+                      : "0 / 0"}
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {selectedCandidateId ? (
                       <button
-                        className={`flex w-full flex-col items-start gap-1 rounded-[6px] px-3 py-2 text-left transition-colors hover:bg-bg-input ${selectedCandidateId === candidate.id ? "bg-primary-blue-light/60" : ""}`}
-                        key={candidate.id}
+                        className="rounded-lg px-3 py-2 text-text-placeholder text-xs transition-colors hover:bg-bg-input"
                         onClick={() => {
-                          onChange({
-                            id: candidate.id,
-                            label: candidate.fullName,
-                          });
+                          onChange(null);
+                          setSearchQuery("");
+                          setCurrentPage(1);
                           setIsOpen(false);
                         }}
                         type="button"
                       >
-                        <span className="text-[14px] text-text-heading leading-[1.3]">
-                          {candidate.fullName}
-                        </span>
-                        {optionMeta ? (
-                          <span className="text-[12px] text-text-placeholder leading-[1.3]">
-                            {optionMeta}
-                          </span>
-                        ) : null}
+                        Очистить
                       </button>
-                    );
-                  })
-                ) : (
-                  <div className="flex min-h-[180px] items-center justify-center px-3 text-center text-[14px] text-text-placeholder">
-                    Кандидаты не найдены
-                  </div>
-                )}
-              </div>
+                    ) : null}
 
-              <div className="flex items-center justify-between gap-3 border-border-input border-t px-3 py-2">
-                <button
-                  className="rounded-[6px] px-3 py-2 text-[13px] text-text-heading transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={currentPage <= 1 || isLoading || isFetching}
-                  onClick={() =>
-                    setCurrentPage((page) => Math.max(1, page - 1))
-                  }
-                  type="button"
-                >
-                  Назад
-                </button>
-
-                <span className="text-[13px] text-text-placeholder">
-                  {totalItems > 0 ? `${currentPage} / ${totalPages}` : "0 / 0"}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  {selectedCandidateId ? (
                     <button
-                      className="rounded-[6px] px-3 py-2 text-[13px] text-text-placeholder transition-colors hover:bg-bg-input"
-                      onClick={() => {
-                        onChange(null);
-                        setSearchQuery("");
-                        setCurrentPage(1);
-                        setIsOpen(false);
-                      }}
+                      className="rounded-lg px-3 py-2 text-text-heading text-xs transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={
+                        currentPage >= totalPages ||
+                        totalItems === 0 ||
+                        isLoading ||
+                        isFetching
+                      }
+                      onClick={() =>
+                        setCurrentPage((page) => Math.min(totalPages, page + 1))
+                      }
                       type="button"
                     >
-                      Очистить
+                      Вперед
                     </button>
-                  ) : null}
-
-                  <button
-                    className="rounded-[6px] px-3 py-2 text-[13px] text-text-heading transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={
-                      currentPage >= totalPages ||
-                      totalItems === 0 ||
-                      isLoading ||
-                      isFetching
-                    }
-                    onClick={() =>
-                      setCurrentPage((page) => Math.min(totalPages, page + 1))
-                    }
-                    type="button"
-                  >
-                    Вперед
-                  </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
     </div>

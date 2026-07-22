@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Input } from "~/app/_components/input";
 import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
+import {
   forgotPasswordRequestSchema,
   forgotPasswordResetSchema,
 } from "~/schemas/forgot-password";
@@ -139,8 +143,8 @@ function ForgotPasswordPageContent() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
-      <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
+    <div className="auth-layout">
+      <div className="auth-art">
         <Image
           alt="Logo"
           className="object-cover"
@@ -150,13 +154,11 @@ function ForgotPasswordPageContent() {
         />
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 lg:px-[120px]">
-        <div className="w-full max-w-[505px]">
-          <div className="mb-8 space-y-3">
-            <h1 className="font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
-              Восстановление пароля
-            </h1>
-            <p className="text-[16px] text-text-secondary leading-[1.4] tracking-[-0.32px]">
+      <div className="auth-content">
+        <div className="auth-panel">
+          <div className="mb-7 space-y-3">
+            <h1 className="auth-title mb-0">Восстановление пароля</h1>
+            <p className="text-sm text-text-secondary leading-6">
               {resetFlow
                 ? maskedEmail
                   ? `Введите код из письма для ${maskedEmail} и задайте новый пароль.`
@@ -167,13 +169,10 @@ function ForgotPasswordPageContent() {
 
           {successMessage ? (
             <div className="space-y-6">
-              <div className="rounded-[6px] border border-success-green/20 bg-success-green-bg px-4 py-3 text-[14px] text-success-green">
+              <div className="rounded-lg border border-success-green/20 bg-success-green-bg px-4 py-3 text-sm text-success-green">
                 {successMessage}
               </div>
-              <Link
-                className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
-                href="/login"
-              >
+              <Link className="ui-button ui-button-primary" href="/login">
                 Вернуться ко входу
               </Link>
             </div>
@@ -207,15 +206,15 @@ function ForgotPasswordPageContent() {
                 value={confirmPassword}
               />
 
-              {errorMessage && (
-                <div className="rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              <FeedbackPresence show={Boolean(errorMessage)}>
+                <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
                   {errorMessage}
                 </div>
-              )}
+              </FeedbackPresence>
 
               <div className="mt-2 flex items-center justify-between">
                 <button
-                  className="text-[14px] text-text-secondary transition-colors hover:text-text-heading"
+                  className="text-sm text-text-secondary transition-colors hover:text-text-heading"
                   onClick={() => {
                     setErrorMessage(null);
                     setCode("");
@@ -228,13 +227,15 @@ function ForgotPasswordPageContent() {
                   Изменить почту
                 </button>
                 <button
-                  className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-primary"
                   disabled={resetPassword.isPending}
                   type="submit"
                 >
-                  {resetPassword.isPending
-                    ? "Сохранение..."
-                    : "Сохранить пароль"}
+                  <LoadingButtonContent
+                    isLoading={resetPassword.isPending}
+                    label="Сохранить пароль"
+                    loadingLabel="Сохранение..."
+                  />
                 </button>
               </div>
             </form>
@@ -252,27 +253,29 @@ function ForgotPasswordPageContent() {
                 value={email}
               />
 
-              {errorMessage && (
-                <div className="rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              <FeedbackPresence show={Boolean(errorMessage)}>
+                <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
                   {errorMessage}
                 </div>
-              )}
+              </FeedbackPresence>
 
               <div className="mt-2 flex items-center justify-between">
                 <Link
-                  className="text-[14px] text-text-secondary transition-colors hover:text-text-heading"
+                  className="text-sm text-text-secondary transition-colors hover:text-text-heading"
                   href="/login"
                 >
                   Назад ко входу
                 </Link>
                 <button
-                  className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-primary"
                   disabled={requestPasswordReset.isPending}
                   type="submit"
                 >
-                  {requestPasswordReset.isPending
-                    ? "Отправка..."
-                    : "Получить код"}
+                  <LoadingButtonContent
+                    isLoading={requestPasswordReset.isPending}
+                    label="Получить код"
+                    loadingLabel="Отправка..."
+                  />
                 </button>
               </div>
             </form>

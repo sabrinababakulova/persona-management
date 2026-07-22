@@ -11,9 +11,12 @@ export function Breadcrumbs({
   parent,
 }: BreadcrumbsProps) {
   return (
-    <div className="flex items-center gap-2 pt-2">
+    <nav
+      aria-label="Хлебные крошки"
+      className="flex min-w-0 items-center gap-2 text-sm"
+    >
       <Link
-        className="font-medium text-[14px] text-text-disabled tracking-[-0.28px] hover:text-text-placeholder"
+        className="shrink-0 font-medium text-text-muted hover:text-text-heading"
         href={rootHref}
       >
         {rootLabel}
@@ -22,7 +25,7 @@ export function Breadcrumbs({
       {parent && (
         <>
           <Link
-            className="font-medium text-[14px] text-text-disabled tracking-[-0.28px] hover:text-text-placeholder"
+            className="min-w-0 truncate font-medium text-text-muted hover:text-text-heading"
             href={parent.href}
           >
             {parent.label}
@@ -30,9 +33,9 @@ export function Breadcrumbs({
           <ChevronRightIcon className="h-3 w-3 text-text-disabled" />
         </>
       )}
-      <span className="font-medium text-[14px] text-primary-blue tracking-[-0.28px]">
+      <span className="min-w-0 truncate font-semibold text-primary-blue">
         {label}
       </span>
-    </div>
+    </nav>
   );
 }

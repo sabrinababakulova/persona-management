@@ -25,15 +25,13 @@ export function ConditionsSection({
   onLanguageChange,
 }: ConditionsSectionProps) {
   return (
-    <div className="mb-6">
+    <section className="surface-card mb-5 p-5 sm:p-6">
       <button
-        className="flex w-full items-center justify-between py-4"
+        className="flex w-full items-center justify-between"
         onClick={onToggle}
         type="button"
       >
-        <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-          Условия
-        </h2>
+        <h2 className="section-title">Условия</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -42,13 +40,13 @@ export function ConditionsSection({
       </button>
 
       {isOpen && (
-        <div className="flex flex-col gap-6 pt-2">
+        <div className="flex flex-col gap-5 pt-5">
           <Input
             endAdornment={
               <div className="flex overflow-hidden rounded-md border border-border-input">
                 <button
                   aria-pressed={salaryCurrency === "UZS"}
-                  className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
+                  className={`px-2 py-1.5 font-semibold text-xs ${
                     salaryCurrency === "UZS"
                       ? "bg-primary-blue-light text-primary-blue"
                       : "bg-bg-light text-text-disabled"
@@ -60,7 +58,7 @@ export function ConditionsSection({
                 </button>
                 <button
                   aria-pressed={salaryCurrency === "USD"}
-                  className={`px-2 py-1.5 font-semibold text-[12px] tracking-[-0.24px] ${
+                  className={`px-2 py-1.5 font-semibold text-xs ${
                     salaryCurrency === "USD"
                       ? "bg-primary-blue-light text-primary-blue"
                       : "bg-bg-light text-text-disabled"
@@ -111,7 +109,7 @@ export function ConditionsSection({
               <div className="mt-1 flex flex-wrap gap-2">
                 {skills.map((skill) => (
                   <span
-                    className="inline-flex items-center gap-1 rounded-md bg-primary-blue-light px-2 py-1 text-[14px] text-primary-blue"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary-blue-light px-2 py-1 text-primary-blue text-sm"
                     key={skill}
                   >
                     <button onClick={() => onRemoveSkill(skill)} type="button">
@@ -126,7 +124,7 @@ export function ConditionsSection({
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+              <span className="font-semibold text-sm text-text-label leading-5">
                 Языки
               </span>
               <button
@@ -183,9 +181,7 @@ export function ConditionsSection({
                     )}
                   </div>
                   {languageError && (
-                    <p className="text-[12px] text-danger-red">
-                      {languageError}
-                    </p>
+                    <p className="text-danger-red text-xs">{languageError}</p>
                   )}
                 </div>
               );
@@ -193,6 +189,6 @@ export function ConditionsSection({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

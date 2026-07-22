@@ -6,6 +6,11 @@ import { useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { PencilIcon, PlusIcon, TrashIcon } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
 import { CandidateStatusSelect } from "~/app/candidates/components/candidate-status-select";
@@ -67,16 +72,20 @@ export default function CandidateDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Загрузка...</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <LoadingState label="Загружаем профиль кандидата..." />
       </div>
     );
   }
 
   if (!candidate) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Кандидат не найден</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <FeedbackPresence show>
+          <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
+            Кандидат не найден
+          </div>
+        </FeedbackPresence>
       </div>
     );
   }
@@ -91,9 +100,9 @@ export default function CandidateDetailPage() {
   return (
     <>
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-bg-canvas">
         {/* Page Content */}
-        <div className="p-4 lg:p-8">
+        <div className="app-page">
           <div className="mb-4">
             <Breadcrumbs
               label={candidate.name}
@@ -111,10 +120,8 @@ export default function CandidateDetailPage() {
           </div>
 
           {/* Page Title */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
-              Профиль кандидата
-            </h1>
+          <div className="page-header">
+            <h1 className="page-title">Профиль кандидата</h1>
 
             <CandidateStatusSelect
               candidateId={candidate.id}
@@ -128,12 +135,12 @@ export default function CandidateDetailPage() {
             <div className="flex flex-wrap items-center gap-3">
               {candidate.hhResumeUrl && (
                 <a
-                  className="inline-flex items-center gap-2 rounded-[6px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary hover:text-text-heading"
+                  className="ui-button ui-button-secondary"
                   href={candidate.hhResumeUrl}
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-[11px] text-accent-red leading-none">
+                  <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-accent-red text-xs leading-none">
                     hh.uz
                   </span>
                   Открыть профиль на hh.uz →
@@ -181,11 +188,9 @@ export default function CandidateDetailPage() {
             <div className="lg:col-span-4">
               <div className="space-y-6">
                 {/* Recruiter Notes */}
-                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
+                <div className="surface-card p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="font-bold text-lg text-text-heading">
-                      Заметки рекрутера
-                    </h3>
+                    <h3 className="section-title">Заметки рекрутера</h3>
                     <button
                       className="text-primary-blue hover:text-primary-blue-dark"
                       onClick={() => setIsAddNoteModalOpen(true)}
@@ -198,7 +203,7 @@ export default function CandidateDetailPage() {
                   <div className="space-y-4">
                     {candidate.notes.map((note) => (
                       <div
-                        className="rounded-xl border border-border-light bg-bg-light p-4"
+                        className="rounded-lg border border-border-light bg-bg-input p-4"
                         key={note.id}
                       >
                         <p className="mb-3 text-sm text-text-label">
@@ -229,10 +234,8 @@ export default function CandidateDetailPage() {
                 </div>
 
                 {/* Recent Activities */}
-                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
-                  <h3 className="mb-4 font-bold text-lg text-text-heading">
-                    Последние действия
-                  </h3>
+                <div className="surface-card p-5">
+                  <h3 className="section-title mb-4">Последние действия</h3>
 
                   <div className="space-y-4">
                     {candidate.activities.map((activity) => (
@@ -278,10 +281,8 @@ export default function CandidateDetailPage() {
                 </div>
 
                 {/* Communication */}
-                <div className="rounded-2xl border border-border-light bg-bg-light p-6">
-                  <h3 className="font-bold text-lg text-text-heading">
-                    Коммуникация
-                  </h3>
+                <div className="surface-card p-5">
+                  <h3 className="section-title">Коммуникация</h3>
                   <div className="mt-4 text-sm text-text-muted">
                     История коммуникации будет отображаться здесь
                   </div>
@@ -314,15 +315,15 @@ export default function CandidateDetailPage() {
             value={noteContent}
           />
 
-          {noteError && (
-            <div className="rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+          <FeedbackPresence show={Boolean(noteError)}>
+            <div className="rounded-lg border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
               {noteError}
             </div>
-          )}
+          </FeedbackPresence>
 
           <div className="flex justify-end gap-3">
             <button
-              className="rounded-[8px] border border-border-input px-5 py-2.5 font-medium text-[14px] text-text-secondary transition-colors hover:bg-bg-light disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button ui-button-secondary"
               disabled={addCandidateNote.isPending}
               onClick={closeAddNoteModal}
               type="button"
@@ -330,12 +331,16 @@ export default function CandidateDetailPage() {
               Отмена
             </button>
             <button
-              className="rounded-[8px] bg-primary-blue px-5 py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button ui-button-primary"
               disabled={addCandidateNote.isPending}
               onClick={handleSaveNote}
               type="button"
             >
-              {addCandidateNote.isPending ? "Сохранение..." : "Сохранить"}
+              <LoadingButtonContent
+                isLoading={addCandidateNote.isPending}
+                label="Сохранить"
+                loadingLabel="Сохранение..."
+              />
             </button>
           </div>
         </div>

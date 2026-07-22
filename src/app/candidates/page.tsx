@@ -26,6 +26,12 @@ import {
   SortIcon,
 } from "../_components/icons";
 import {
+  FeedbackPresence,
+  LoadingState,
+  MotionToast,
+  motion,
+} from "../_components/motion-system";
+import {
   PeriodFilter,
   type PeriodFilterValue,
 } from "../_components/period-filter";
@@ -315,19 +321,21 @@ export default function CandidatesPage() {
 
   if (isLookupsError && !isLookupsLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light px-4">
-        <div className="w-full max-w-[460px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
-          <p className="mb-4 text-[14px]">
-            Не удалось загрузить справочники из базы данных.
-          </p>
-          <button
-            className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
-            onClick={() => void refetchLookups()}
-            type="button"
-          >
-            Повторить
-          </button>
-        </div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas px-4">
+        <FeedbackPresence className="w-full max-w-[460px]" show>
+          <div className="rounded-xl border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
+            <p className="mb-4 text-sm">
+              Не удалось загрузить справочники из базы данных.
+            </p>
+            <button
+              className="ui-button ui-button-primary"
+              onClick={() => void refetchLookups()}
+              type="button"
+            >
+              Повторить
+            </button>
+          </div>
+        </FeedbackPresence>
       </div>
     );
   }
@@ -366,21 +374,12 @@ export default function CandidatesPage() {
         statusOptions={statusOptions}
       />
 
-      {toastMessage && (
-        <output
-          aria-live="polite"
-          className="fixed top-6 right-6 z-70 rounded-[10px] bg-text-heading px-4 py-3 text-[14px] text-bg-light shadow-toast"
-        >
-          {toastMessage}
-        </output>
-      )}
+      <MotionToast message={toastMessage} />
 
       <main className="flex h-full flex-1 overflow-auto">
-        <div className="flex min-h-full w-full flex-col p-4 pb-10 lg:p-8 lg:pb-10">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="font-bold text-2xl text-text-heading lg:text-3xl">
-              Кандидаты
-            </h1>
+        <div className="app-page flex min-h-full flex-col">
+          <div className="page-header">
+            <h1 className="page-title">Кандидаты</h1>
             {showCandidatesTable && (
               <PeriodFilter
                 ariaLabel="Фильтр периода кандидатов"
@@ -395,11 +394,11 @@ export default function CandidatesPage() {
 
           {showCandidatesTable ? (
             <>
-              <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
                   <input
-                    className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-text-label placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+                    className="ui-search"
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setCurrentPage(1);
@@ -410,7 +409,7 @@ export default function CandidatesPage() {
                   />
                 </div>
                 <button
-                  className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-text-label transition-colors hover:bg-bg-light ${
+                  className={`ui-button ui-button-secondary ${
                     activeFilterCount > 0
                       ? "border-primary-blue bg-primary-blue/5"
                       : "border-border-light bg-bg-light"
@@ -432,25 +431,25 @@ export default function CandidatesPage() {
                 </button>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[8px] border border-border-input bg-bg-light">
-                <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-[14px] lg:grid">
-                  <div className="col-span-3 flex items-center gap-1 text-[14px] text-text-placeholder">
+              <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 lg:grid">
+                  <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>Название</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+                  <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>Статус</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+                  <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>Город</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+                  <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>Дата создания</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
-                  <div className="col-span-2 flex items-center gap-1 text-[14px] text-text-placeholder">
+                  <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>Источник</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
@@ -458,10 +457,10 @@ export default function CandidatesPage() {
                 </div>
 
                 {isTableLoading ? (
-                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-text-placeholder">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-light border-t-primary-blue" />
-                    <div className="text-[14px]">Загрузка кандидатов...</div>
-                  </div>
+                  <LoadingState
+                    className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
+                    label="Загрузка кандидатов..."
+                  />
                 ) : (
                   <>
                     <div className="min-h-0 flex-1 overflow-auto">
@@ -469,11 +468,18 @@ export default function CandidatesPage() {
                         const isHhCandidate = candidate.source === "hh.uz";
 
                         return (
-                          <div
-                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-[14px] last:border-b-0 lg:items-center ${
+                          <motion.div
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center ${
                               index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
                             }`}
+                            initial={{ opacity: 0, y: 7 }}
                             key={candidate.id}
+                            layout
+                            transition={{
+                              delay: Math.min(index * 0.025, 0.18),
+                              duration: 0.24,
+                            }}
                           >
                             <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
                               <Checkbox
@@ -484,14 +490,14 @@ export default function CandidatesPage() {
                               <div className="min-w-0">
                                 {isHhCandidate ? (
                                   <Link
-                                    className="truncate font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    className="truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue"
                                     href={`/candidates/${candidate.id}`}
                                   >
                                     {candidate.name}
                                   </Link>
                                 ) : (
                                   <button
-                                    className="truncate text-left font-medium text-[14px] text-text-heading leading-none hover:text-primary-blue"
+                                    className="truncate text-left font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue"
                                     onClick={() =>
                                       openQuickOverview(candidate.id)
                                     }
@@ -500,7 +506,7 @@ export default function CandidatesPage() {
                                     {candidate.name}
                                   </button>
                                 )}
-                                <div className="mt-1 truncate text-[12px] text-text-placeholder leading-none">
+                                <div className="mt-1 truncate text-text-placeholder text-xs leading-none">
                                   {candidate.patronymic}
                                 </div>
                               </div>
@@ -524,11 +530,11 @@ export default function CandidatesPage() {
                               />
                             </div>
 
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                            <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
                               {candidate.city || "-"}
                             </div>
 
-                            <div className="hidden text-[14px] text-text-heading leading-none lg:col-span-2 lg:block">
+                            <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
                               {candidate.createdAt || "-"}
                             </div>
 
@@ -538,7 +544,7 @@ export default function CandidatesPage() {
 
                             <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
                               <Link
-                                className="flex items-center gap-1 text-[14px] text-primary-blue leading-none hover:text-primary-blue-hover"
+                                className="flex items-center gap-1 font-medium text-primary-blue text-sm leading-none hover:text-primary-blue-hover"
                                 href={`/candidates/${candidate.id}`}
                               >
                                 <span className="hidden xl:inline">детали</span>
@@ -551,7 +557,7 @@ export default function CandidatesPage() {
                               </button>
                             </div>
 
-                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-[12px] text-text-placeholder lg:hidden">
+                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
                               <span>Город: {candidate.city || "-"}</span>
                               <span>Создан: {candidate.createdAt || "-"}</span>
                               <span className="flex items-center gap-1.5">
@@ -561,12 +567,12 @@ export default function CandidatesPage() {
                                 />
                               </span>
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
 
                       {visibleCandidates.length === 0 && (
-                        <div className="px-4 py-10 text-center text-[14px] text-text-placeholder">
+                        <div className="px-4 py-10 text-center text-sm text-text-placeholder">
                           Кандидаты не найдены
                         </div>
                       )}
@@ -592,7 +598,7 @@ export default function CandidatesPage() {
               <div className="flex w-full max-w-[240px] flex-col items-center gap-10">
                 <NoCandidates className="h-[190px] w-[240px] opacity-70" />
                 <button
-                  className="flex h-[40px] w-[190px] items-center justify-center rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                  className="ui-button ui-button-primary"
                   onClick={() => setIsQuickAddModalOpen(true)}
                   type="button"
                 >
@@ -606,7 +612,7 @@ export default function CandidatesPage() {
 
       <button
         aria-label="Быстро добавить кандидата"
-        className="fixed right-6 bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-[200px] bg-primary-blue text-bg-light shadow-lg transition-colors hover:bg-primary-blue-hover"
+        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         onClick={() => setIsQuickAddModalOpen(true)}
         type="button"
       >
