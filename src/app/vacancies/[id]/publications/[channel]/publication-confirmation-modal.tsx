@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "~/app/_components/modal";
+import { LoadingButtonContent } from "~/app/_components/motion-system";
 
 type PublicationConfirmationModalProps = {
   isOpen: boolean;
@@ -35,7 +36,7 @@ export function PublicationConfirmationModal({
     >
       <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
         <button
-          className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="ui-button ui-button-secondary"
           disabled={isPending}
           onClick={onReject}
           type="button"
@@ -43,15 +44,16 @@ export function PublicationConfirmationModal({
           {rejectLabel}
         </button>
         <button
-          className="flex h-10 items-center gap-2 rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="ui-button ui-button-primary"
           disabled={isPending}
           onClick={onConfirm}
           type="button"
         >
-          {isPending && (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-blue/30 border-t-primary-blue" />
-          )}
-          {confirmLabel}
+          <LoadingButtonContent
+            isLoading={isPending}
+            label={confirmLabel}
+            loadingLabel="Выполняем..."
+          />
         </button>
       </div>
     </Modal>

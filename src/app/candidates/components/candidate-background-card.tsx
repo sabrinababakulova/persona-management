@@ -56,7 +56,7 @@ function SectionHeader({ title, isExpanded, onToggle }: SectionHeaderProps) {
       onClick={onToggle}
       type="button"
     >
-      <span className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
+      <span className="font-semibold text-text-heading text-xl leading-[1.1]">
         {title}
       </span>
       <ChevronUpIcon
@@ -75,23 +75,23 @@ function WorkExperienceEntry({
   description,
 }: WorkExperienceItem) {
   return (
-    <div className="flex flex-col gap-[10px]">
-      <div className="flex w-full items-start gap-[14px]">
-        <div className="flex shrink-0 items-center rounded-[6px] bg-status-neutral-bg p-2 text-status-neutral">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex w-full items-start gap-3.5">
+        <div className="flex shrink-0 items-center rounded-lg bg-status-neutral-bg p-2 text-status-neutral">
           <PackageIcon className="h-6 w-6" />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="font-medium text-[16px] text-text-heading italic leading-[1.3] tracking-[-0.32px]">
+          <p className="font-medium text-base text-text-heading italic leading-[1.3]">
             {company}
           </p>
 
           <div className="flex flex-wrap items-center gap-x-[5px] gap-y-1">
-            <span className="font-medium text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
+            <span className="font-medium text-text-placeholder text-xs uppercase leading-[1.3]">
               {position}
             </span>
             <DotSeparator />
-            <span className="font-medium text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
+            <span className="font-medium text-text-placeholder text-xs uppercase leading-[1.3]">
               {period}
             </span>
           </div>
@@ -99,7 +99,7 @@ function WorkExperienceEntry({
       </div>
 
       {description.length > 0 ? (
-        <ul className="ml-[21px] list-disc space-y-[10px] text-[14px] text-text-heading leading-[1.2] tracking-[-0.28px]">
+        <ul className="ml-5 list-disc space-y-2.5 text-sm text-text-heading leading-[1.2]">
           {description.map((item) => (
             <li key={`${company}-${position}-${item}`}>{item}</li>
           ))}
@@ -111,22 +111,22 @@ function WorkExperienceEntry({
 
 function EducationEntry({ institution, gpa, period }: EducationItem) {
   return (
-    <div className="flex w-full items-start gap-[14px]">
-      <div className="flex shrink-0 items-center rounded-[6px] bg-primary-blue-light p-2 text-primary-blue">
+    <div className="flex w-full items-start gap-3.5">
+      <div className="flex shrink-0 items-center rounded-lg bg-primary-blue-light p-2 text-primary-blue">
         <EducationIcon className="h-6 w-6" />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="font-medium text-[16px] text-text-heading italic leading-[1.3] tracking-[-0.32px]">
+        <p className="font-medium text-base text-text-heading italic leading-[1.3]">
           {institution}
         </p>
 
         <div className="flex flex-wrap items-center gap-x-[5px] gap-y-1">
-          <span className="font-medium text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
+          <span className="font-medium text-text-placeholder text-xs uppercase leading-[1.3]">
             {gpa}
           </span>
           <DotSeparator />
-          <span className="font-medium text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
+          <span className="font-medium text-text-placeholder text-xs uppercase leading-[1.3]">
             {period}
           </span>
         </div>
@@ -153,17 +153,17 @@ function ResumeRow({ name, size, url }: ResumeFile) {
 
   return (
     <div className="flex w-full items-center justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-[14px]">
-        <div className="flex shrink-0 items-center rounded-[6px] border border-border-input bg-bg-input p-2 text-text-placeholder">
+      <div className="flex min-w-0 items-center gap-3.5">
+        <div className="flex shrink-0 items-center rounded-lg border border-border-input bg-bg-input p-2 text-text-placeholder">
           <FileOutlineIcon className="h-6 w-6" />
         </div>
 
         <div className="min-w-0">
-          <p className="truncate font-medium text-[16px] text-text-heading leading-none tracking-[-0.32px]">
+          <p className="truncate font-medium text-base text-text-heading leading-none">
             {name || "Файл не загружен"}
           </p>
           {size ? (
-            <p className="mt-1 text-[14px] text-text-placeholder leading-none tracking-[-0.28px]">
+            <p className="mt-1 text-sm text-text-placeholder leading-none">
               {size}
             </p>
           ) : null}
@@ -177,7 +177,7 @@ function ResumeRow({ name, size, url }: ResumeFile) {
 
 function EmptySectionState() {
   return (
-    <p className="text-[14px] text-text-placeholder leading-[1.3] tracking-[-0.28px]">
+    <p className="text-sm text-text-placeholder leading-[1.3]">
       no information
     </p>
   );
@@ -197,7 +197,7 @@ export function CandidateBackgroundCard({
   );
 
   return (
-    <section className="flex w-full flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-5">
+    <section className="surface-card flex w-full flex-col gap-5 overflow-hidden p-5">
       <div className="flex flex-col gap-5">
         <SectionHeader
           isExpanded={isExperienceExpanded}

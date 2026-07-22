@@ -4,6 +4,10 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
 import { registerFormSchema } from "~/schemas/register";
 import MailVerificationPage from "./mail-verification";
 
@@ -185,8 +189,8 @@ function RegisterPageContent() {
     }
   };
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
-      <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
+    <div className="auth-layout">
+      <div className="auth-art">
         <Image
           alt="Logo"
           className="object-cover"
@@ -206,21 +210,19 @@ function RegisterPageContent() {
           onSubmit={handleCodeSubmit}
         />
       ) : (
-        <div className="flex flex-1 items-center justify-center px-6 lg:px-[120px]">
-          <div className="w-full max-w-[505px]">
-            <h1 className="mb-8 font-bold text-[32px] text-text-heading leading-none tracking-[-0.64px]">
-              Зарегестрироваться
-            </h1>
+        <div className="auth-content">
+          <div className="auth-panel">
+            <h1 className="auth-title">Создать аккаунт</h1>
 
             {isGoogleAvailable && (
               <>
                 <button
-                  className="mb-6 flex h-12 w-full items-center justify-center gap-3 rounded-[6px] border border-border-input bg-bg-light font-medium text-[16px] text-text-heading tracking-[-0.32px] transition-colors hover:bg-bg-input disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-secondary mb-6 h-11 w-full"
                   disabled={isGoogleSubmitting || isSubmitting}
                   onClick={() => void handleGoogleSignIn()}
                   type="button"
                 >
-                  <span className="text-[18px]">G</span>
+                  <span className="text-lg">G</span>
                   <span>
                     {isGoogleSubmitting
                       ? "Переход..."
@@ -230,23 +232,23 @@ function RegisterPageContent() {
 
                 <div className="mb-6 flex items-center gap-3">
                   <div className="h-px flex-1 bg-border-input" />
-                  <span className="text-[12px] text-text-muted">или</span>
+                  <span className="text-text-muted text-xs">или</span>
                   <div className="h-px flex-1 bg-border-input" />
                 </div>
               </>
             )}
 
-            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-6 lg:flex-row">
-                <div className="flex flex-1 flex-col gap-1">
+            <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-1 flex-col gap-1.5">
                   <label
-                    className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                    className="font-semibold text-sm text-text-label leading-5"
                     htmlFor="register-first-name"
                   >
                     Имя
                   </label>
                   <input
-                    className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                    className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                     id="register-first-name"
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="Ваше имя"
@@ -255,15 +257,15 @@ function RegisterPageContent() {
                   />
                 </div>
 
-                <div className="flex flex-1 flex-col gap-1">
+                <div className="flex flex-1 flex-col gap-1.5">
                   <label
-                    className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                    className="font-semibold text-sm text-text-label leading-5"
                     htmlFor="register-last-name"
                   >
                     Фамилия
                   </label>
                   <input
-                    className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                    className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                     id="register-last-name"
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Ваша фамилия"
@@ -273,15 +275,15 @@ function RegisterPageContent() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label
-                  className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                  className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-email"
                 >
                   Корпоративная почта
                 </label>
                 <input
-                  className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-email"
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Адрес электронной почты"
@@ -290,15 +292,15 @@ function RegisterPageContent() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label
-                  className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                  className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-password"
                 >
                   Пароль
                 </label>
                 <input
-                  className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-password"
                   minLength={8}
                   onChange={(e) => setPassword(e.target.value)}
@@ -308,15 +310,15 @@ function RegisterPageContent() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label
-                  className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+                  className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-confirm-password"
                 >
                   Повторите пароль
                 </label>
                 <input
-                  className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-confirm-password"
                   minLength={8}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -326,19 +328,23 @@ function RegisterPageContent() {
                 />
               </div>
 
-              {errorMessage && (
-                <div className="rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+              <FeedbackPresence show={Boolean(errorMessage)}>
+                <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
                   {errorMessage}
                 </div>
-              )}
+              </FeedbackPresence>
 
-              <div className="mt-6 flex items-center justify-end">
+              <div className="mt-2 flex items-center justify-end">
                 <button
-                  className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover"
+                  className="ui-button ui-button-primary w-full sm:w-auto"
                   disabled={isSubmitting}
                   type="submit"
                 >
-                  {isSubmitting ? "Создание..." : "Создать аккаунт"}
+                  <LoadingButtonContent
+                    isLoading={isSubmitting}
+                    label="Создать аккаунт"
+                    loadingLabel="Создание..."
+                  />
                 </button>
               </div>
             </form>

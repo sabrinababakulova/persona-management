@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CandidateSelector } from "./candidate-selector";
 import { Modal } from "./modal";
+import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 type AssignCandidateToVacancyModalProps = {
   errorMessage?: string;
@@ -55,7 +56,7 @@ export function AssignCandidateToVacancyModal({
       title="Добавить кандидата"
     >
       <div className="flex flex-col gap-5">
-        <div className="rounded-[6px] bg-primary-blue-light px-3 py-2 text-[14px] text-primary-blue leading-[1.4] tracking-[-0.28px]">
+        <div className="rounded-lg bg-primary-blue-light px-3 py-2 text-primary-blue text-sm leading-[1.4]">
           Этап: {stageLabel}
         </div>
 
@@ -68,15 +69,15 @@ export function AssignCandidateToVacancyModal({
           vacancyId={vacancyId}
         />
 
-        {(localError ?? errorMessage) && (
-          <p className="text-[14px] text-accent-red tracking-[-0.28px]">
+        <FeedbackPresence show={Boolean(localError ?? errorMessage)}>
+          <p className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
             {localError ?? errorMessage}
           </p>
-        )}
+        </FeedbackPresence>
 
         <div className="flex items-center justify-end gap-3">
           <button
-            className="h-10 rounded-[6px] border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+            className="ui-button ui-button-secondary"
             disabled={isAssigning}
             onClick={onClose}
             type="button"
@@ -84,12 +85,16 @@ export function AssignCandidateToVacancyModal({
             Отмена
           </button>
           <button
-            className="h-10 rounded-[6px] bg-primary-blue px-4 font-semibold text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-button ui-button-primary"
             disabled={isAssigning}
             onClick={handleAssign}
             type="button"
           >
-            {isAssigning ? "Добавление..." : "Добавить кандидата"}
+            <LoadingButtonContent
+              isLoading={isAssigning}
+              label="Добавить кандидата"
+              loadingLabel="Добавление..."
+            />
           </button>
         </div>
       </div>

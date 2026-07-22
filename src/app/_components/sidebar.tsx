@@ -13,6 +13,7 @@ import {
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
 import type { NavItem } from "~/types/components/sidebar-nav-item";
+import { AnimatePresence, motion } from "./motion-system";
 
 type SidebarProps = {
   hasHydrated: boolean;
@@ -85,13 +86,13 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div className="mb-10 flex items-center justify-between gap-3 px-2">
+      <div className="mb-8 flex items-center justify-between gap-3 px-2">
         <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10">
+          <div className="relative h-9 w-9">
             <BrandLogoIcon className="h-full w-full" />
           </div>
-          <span className="font-semibold text-2xl text-primary-blue tracking-wide">
-            Logoipsum
+          <span className="font-semibold text-white text-xl tracking-tight">
+            Persona
           </span>
         </div>
 
@@ -105,19 +106,21 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-1.5">
         {navItems.map((item) => {
           // Strip the query string before comparing — the Settings link points at
           // `/my-profile?section=company-settings` but `pathname` is just `/my-profile`.
           const itemPath = item.href.split("?")[0];
-          const isActive = pathname === itemPath;
+          const isActive =
+            pathname === itemPath ||
+            (itemPath !== "/dashboard" && pathname.startsWith(`${itemPath}/`));
 
           return (
             <Link
-              className={`group relative flex items-center gap-4 rounded-xl px-4 py-3 font-medium text-base transition-all duration-200 ease-in-out ${
+              className={`group relative flex min-h-11 items-center gap-3 rounded-lg px-3.5 py-2.5 font-medium text-sm transition-all duration-200 ease-in-out ${
                 isActive
-                  ? "bg-sidebar-active-bg text-primary-blue"
-                  : "text-text-placeholder hover:bg-sidebar-hover hover:text-text-placeholder-hover"
+                  ? "bg-sidebar-active-bg text-primary-blue-soft"
+                  : "text-text-menu hover:bg-sidebar-hover hover:text-white"
               }`}
               href={item.href}
               key={item.href}
@@ -126,8 +129,8 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
               <span
                 className={`transition-all duration-200 ease-in-out ${
                   isActive
-                    ? "text-primary-blue"
-                    : "text-text-placeholder group-hover:text-text-placeholder-hover"
+                    ? "text-primary-blue-soft"
+                    : "text-text-placeholder-hover group-hover:text-white"
                 }`}
               >
                 {item.icon}
@@ -136,9 +139,13 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
               <span className="flex-1">{item.label}</span>
 
               {item.badge && (
-                <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-badge-red px-1.5 font-semibold text-bg-light text-xs">
+                <motion.span
+                  animate={{ scale: 1 }}
+                  className="flex h-5 min-w-5 items-center justify-center rounded-full bg-badge-red px-1.5 font-semibold text-white text-xs"
+                  initial={{ scale: 0 }}
+                >
                   {item.badge > 99 ? "99+" : item.badge}
-                </span>
+                </motion.span>
               )}
             </Link>
           );
@@ -149,37 +156,46 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      <div
-        className={`relative hidden shrink-0 overflow-hidden transition-[width] duration-300 lg:block ${
-          desktopIsOpen ? "w-80" : "w-0"
-        }`}
+      <motion.div
+        animate={{ width: desktopIsOpen ? 272 : 0 }}
+        className="relative hidden shrink-0 overflow-hidden lg:block"
         id="app-sidebar"
+        initial={false}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       >
-        <aside
-          className={`fixed top-0 flex h-screen w-80 flex-col bg-sidebar-bg px-4 py-8 transition-transform duration-300 ${
-            desktopIsOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        <motion.aside
+          animate={{ x: desktopIsOpen ? 0 : -272 }}
+          className="fixed top-0 flex h-screen w-68 flex-col bg-sidebar-bg px-4 py-6"
+          initial={false}
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         >
           {sidebarContent}
-        </aside>
-      </div>
+        </motion.aside>
+      </motion.div>
 
-      <div
-        aria-hidden={!mobileIsOpen}
-        className={`fixed inset-0 z-40 bg-text-heading/35 transition-opacity duration-300 lg:hidden ${
-          mobileIsOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={onClose}
-      />
+      <AnimatePresence>
+        {mobileIsOpen ? (
+          <>
+            <motion.div
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 z-40 bg-text-heading/35 lg:hidden"
+              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+              onClick={onClose}
+            />
 
-      <aside
-        aria-hidden={!mobileIsOpen}
-        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-80 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-8 shadow-toast transition-transform duration-300 lg:hidden ${
-          mobileIsOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {sidebarContent}
-      </aside>
+            <motion.aside
+              animate={{ x: 0 }}
+              className="fixed inset-y-0 left-0 z-50 flex h-screen w-68 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-6 shadow-toast lg:hidden"
+              exit={{ x: -272 }}
+              initial={{ x: -272 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {sidebarContent}
+            </motion.aside>
+          </>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

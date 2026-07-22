@@ -41,7 +41,7 @@ export function CompanySettingsSection() {
   }, [justConnected, runMigration, router, utils]);
 
   return (
-    <div className="mt-12 space-y-10">
+    <div className="space-y-10">
       <DataMigrationLoadingScreen isLoading={isMigrating} />
       <TelegramChannelsSection />
       <HhAccountSection />

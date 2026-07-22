@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+} from "~/app/_components/motion-system";
 import type { MailVerificationPageProps } from "~/types/register/mail-verification-page-props";
 
 const CODE_LENGTH = 6;
@@ -111,8 +115,8 @@ export default function MailVerificationPage({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-bg-light">
-      <div className="relative hidden h-screen w-[695px] shrink-0 lg:block">
+    <div className="auth-layout">
+      <div className="auth-art">
         <Image
           alt="Logo"
           className="object-cover"
@@ -122,24 +126,22 @@ export default function MailVerificationPage({
         />
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 lg:px-[120px]">
-        <div className="w-full max-w-[505px]">
+      <div className="auth-content">
+        <div className="auth-panel">
           <div className="flex flex-col gap-4 text-text-heading">
-            <h1 className="font-bold text-[32px] leading-none tracking-[-0.64px]">
-              Подтвердите почту
-            </h1>
-            <p className="text-[16px] leading-[1.2] tracking-[-0.32px]">
+            <h1 className="auth-title mb-0">Подтвердите почту</h1>
+            <p className="text-sm text-text-secondary leading-6">
               {maskedEmail
                 ? `Мы отправили 6-значный код на почту ${maskedEmail}`
                 : "Мы отправили 6-значный код на вашу почту"}
             </p>
           </div>
 
-          <div className="mt-8 flex items-start gap-4">
+          <div className="mt-8 flex items-start gap-2.5 sm:gap-4">
             {CODE_SLOTS.map((slot) => (
               <input
                 aria-label={`Код ${slot + 1}`}
-                className="h-12 w-10 rounded-[6px] border border-border-input bg-bg-input text-center text-[20px] text-text-heading outline-none focus:border-primary-blue"
+                className="h-12 min-w-0 flex-1 rounded-lg border border-border-input bg-bg-input text-center font-semibold text-text-heading text-xl outline-none focus:border-primary-blue sm:w-12 sm:flex-none"
                 inputMode="numeric"
                 key={`verification-digit-${slot}`}
                 maxLength={1}
@@ -155,15 +157,15 @@ export default function MailVerificationPage({
             ))}
           </div>
 
-          {errorMessage && (
-            <div className="mt-6 rounded-[6px] border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+          <FeedbackPresence className="mt-6" show={Boolean(errorMessage)}>
+            <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
               {errorMessage}
             </div>
-          )}
+          </FeedbackPresence>
 
-          <div className="mt-12 flex items-center justify-between">
+          <div className="mt-10 flex items-center justify-between gap-3">
             <button
-              className="flex h-10 w-[104px] items-center justify-center rounded-[6px] font-semibold text-[16px] text-text-placeholder leading-none tracking-[-0.32px]"
+              className="ui-button ui-button-secondary"
               onClick={onBack}
               type="button"
             >
@@ -171,12 +173,16 @@ export default function MailVerificationPage({
             </button>
 
             <button
-              className="flex h-10 w-[174px] items-center justify-center rounded-[6px] bg-primary-blue font-medium text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-button ui-button-primary"
               disabled={!isCodeComplete || isSubmitting}
               onClick={handleSubmit}
               type="button"
             >
-              {isSubmitting ? "Проверка..." : "Подтвердить"}
+              <LoadingButtonContent
+                isLoading={isSubmitting}
+                label="Подтвердить"
+                loadingLabel="Проверка..."
+              />
             </button>
           </div>
         </div>

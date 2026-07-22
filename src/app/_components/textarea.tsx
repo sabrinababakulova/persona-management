@@ -24,20 +24,20 @@ export function Textarea({
   }, []);
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex w-full flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex w-full flex-col gap-1.5">
         <label
           className={
             hideLabel
               ? "sr-only"
-              : "w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+              : "w-full font-semibold text-sm text-text-label leading-5"
           }
           htmlFor={textareaId}
         >
           {label}
         </label>
         <textarea
-          className={`min-h-[96px] w-full resize-none overflow-hidden rounded-[6px] border border-border-input bg-bg-input px-3 py-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none ${className ?? ""} ${textareaClassName ?? ""}`}
+          className={`min-h-24 w-full resize-none overflow-hidden rounded-xl border border-border-input bg-bg-input px-3.5 py-3 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${className ?? ""} ${textareaClassName ?? ""}`}
           id={textareaId}
           ref={textareaRef}
           {...props}

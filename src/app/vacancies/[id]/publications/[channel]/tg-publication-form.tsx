@@ -7,6 +7,11 @@ import { Checkbox } from "~/app/_components/checkbox";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { ImageUploader } from "~/app/_components/image-uploader";
 import { Input } from "~/app/_components/input";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { useVacancyPublicationStore } from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
@@ -253,9 +258,10 @@ export function TgPublicationForm({
 
   if (vacancyQuery.isLoading) {
     return (
-      <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Загрузка вакансии...
-      </main>
+      <LoadingState
+        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
+        label="Загрузка вакансии..."
+      />
     );
   }
 
@@ -268,9 +274,9 @@ export function TgPublicationForm({
   }
 
   return (
-    <main className="relative w-full">
-      <div className="flex w-full flex-col px-6 pt-8 pb-8">
-        <div className="w-full max-w-225">
+    <main className="relative w-full bg-bg-canvas">
+      <div className="app-page-narrow flex flex-col">
+        <div className="w-full">
           <Breadcrumbs
             label="Публикация в Telegram"
             parent={{
@@ -281,12 +287,10 @@ export function TgPublicationForm({
             rootLabel="Вакансии"
           />
 
-          <h1 className="mt-6 mb-6 font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-            Публикация в Telegram
-          </h1>
+          <h1 className="page-title mt-5 mb-5">Публикация в Telegram</h1>
         </div>
 
-        <div className="w-full max-w-225">
+        <div className="w-full">
           <ImageUploader
             initialImageUrl={
               vacancyQuery.data.telegramFileId
@@ -298,10 +302,10 @@ export function TgPublicationForm({
           />
         </div>
 
-        <div className="mt-8 flex w-full max-w-225 flex-col">
-          <div className="flex flex-col gap-8">
+        <div className="mt-5 flex w-full flex-col">
+          <div className="flex flex-col gap-5">
             <div
-              className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6"
+              className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="telegram-publication"
             >
               <ClosableSection title="Контент публикации">
@@ -316,7 +320,7 @@ export function TgPublicationForm({
                     value={fields.title}
                   />
                   {errors.title && (
-                    <p className="text-[13px] text-danger-red leading-[1.4]">
+                    <p className="text-danger-red text-xs leading-[1.4]">
                       {errors.title}
                     </p>
                   )}
@@ -332,7 +336,7 @@ export function TgPublicationForm({
                     value={fields.description}
                   />
                   {errors.description && (
-                    <p className="text-[13px] text-danger-red leading-[1.4]">
+                    <p className="text-danger-red text-xs leading-[1.4]">
                       {errors.description}
                     </p>
                   )}
@@ -340,21 +344,19 @@ export function TgPublicationForm({
               </ClosableSection>
             </div>
 
-            <div className="scroll-mt-24 rounded-lg border border-border-input bg-bg-light p-4 lg:p-6">
+            <div className="surface-card scroll-mt-24 p-5 sm:p-6">
               <ClosableSection title="Каналы публикации">
                 {channelsQuery.isLoading ? (
-                  <p className="text-[14px] text-text-secondary leading-[1.4]">
-                    Загрузка каналов...
-                  </p>
+                  <LoadingState compact label="Загрузка каналов..." />
                 ) : (channelsQuery.data?.length ?? 0) === 0 ? (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     Нет добавленных Telegram-каналов. Добавьте канал в
                     настройках профиля.
                   </p>
                 ) : (
                   <div className="flex min-w-0 flex-col gap-3">
                     {pubId && (
-                      <p className="text-[13px] text-text-placeholder leading-[1.4]">
+                      <p className="text-text-placeholder text-xs leading-[1.4]">
                         Каналы нельзя изменить после публикации.
                       </p>
                     )}
@@ -373,13 +375,13 @@ export function TgPublicationForm({
                             }
                           }}
                         />
-                        <span className="text-[14px] text-text-heading leading-[1.4]">
+                        <span className="text-sm text-text-heading leading-[1.4]">
                           {channel.label || channel.channelId}
                         </span>
                       </div>
                     ))}
                     {errors.channels && (
-                      <p className="text-[13px] text-danger-red leading-[1.4]">
+                      <p className="text-danger-red text-xs leading-[1.4]">
                         {errors.channels}
                       </p>
                     )}
@@ -389,23 +391,23 @@ export function TgPublicationForm({
             </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 mt-8 border-border-input border-t bg-bg-light py-4 backdrop-blur-[10px]">
+          <div className="sticky bottom-0 z-10 mt-6 border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex min-h-[20px] flex-col gap-1">
-                {errors._form && (
-                  <p className="text-[13px] text-danger-red leading-[1.4]">
+                <FeedbackPresence show={Boolean(errors._form)}>
+                  <p className="text-danger-red text-xs leading-[1.4]">
                     {errors._form}
                   </p>
-                )}
-                {savedMessage && (
-                  <p className="text-[13px] text-success-green leading-[1.4]">
+                </FeedbackPresence>
+                <FeedbackPresence show={Boolean(savedMessage)}>
+                  <p className="text-success-green text-xs leading-[1.4]">
                     {savedMessage}
                   </p>
-                )}
+                </FeedbackPresence>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  className="h-10 rounded-md border border-border-input px-4 font-semibold text-[16px] text-text-secondary leading-none tracking-[-0.32px] transition-colors hover:bg-bg-hover"
+                  className="ui-button ui-button-secondary"
                   onClick={() =>
                     router.push(`/vacancies/${vacancyId}?step=publications`)
                   }
@@ -414,18 +416,16 @@ export function TgPublicationForm({
                   Назад
                 </button>
                 <button
-                  className="h-10 rounded-md bg-primary-blue-light px-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button ui-button-primary"
                   disabled={isSubmitting || hasNoChannels}
                   onClick={handleSubmit}
                   type="button"
                 >
-                  {isSubmitting
-                    ? pubId
-                      ? "Сохранение..."
-                      : "Публикация..."
-                    : pubId
-                      ? "Сохранить изменения"
-                      : "Опубликовать"}
+                  <LoadingButtonContent
+                    isLoading={isSubmitting}
+                    label={pubId ? "Сохранить изменения" : "Опубликовать"}
+                    loadingLabel={pubId ? "Сохранение..." : "Публикация..."}
+                  />
                 </button>
               </div>
             </div>

@@ -38,6 +38,10 @@ import {
   SortIcon,
   VacancyResponsesIcon,
 } from "~/app/_components/icons";
+import {
+  FeedbackPresence,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { useDebouncedValue } from "~/app/_components/use-debounced-value";
 import { api } from "~/trpc/react";
 
@@ -134,9 +138,7 @@ function CandidateCardSection({
         <span className="flex h-[14px] w-[14px] items-center justify-center">
           {icon}
         </span>
-        <p className="font-medium text-[12px] leading-none tracking-[-0.24px]">
-          {title}
-        </p>
+        <p className="font-medium text-xs leading-none">{title}</p>
       </div>
       {children}
     </div>
@@ -161,14 +163,12 @@ function VacancyFunnelHeader({
   return (
     <section className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
       <div className="flex flex-col gap-4">
-        <p className="font-medium text-[16px] text-text-secondary uppercase leading-none tracking-[-0.32px]">
+        <p className="font-medium text-base text-text-secondary uppercase leading-none">
           Воронка по вакансии
         </p>
 
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
-          <h1 className="font-bold text-[28px] text-text-heading leading-none tracking-[-0.64px] md:text-[32px]">
-            {title}
-          </h1>
+          <h1 className="page-title">{title}</h1>
 
           {metadata.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 md:gap-4">
@@ -180,7 +180,7 @@ function VacancyFunnelHeader({
                       className="hidden h-[18px] w-px bg-border-input md:block"
                     />
                   )}
-                  <span className="font-medium text-[28px] text-text-secondary leading-none tracking-[-0.64px] md:text-[32px]">
+                  <span className="font-medium text-3xl text-text-secondary leading-none md:text-3xl">
                     {value}
                   </span>
                 </div>
@@ -192,7 +192,7 @@ function VacancyFunnelHeader({
 
       <div className="flex items-center gap-2 self-start md:self-end">
         <Link
-          className="inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-[6px] bg-primary-blue px-3 text-[16px] text-bg-light leading-none tracking-[-0.32px] transition-colors hover:bg-primary-blue-hover sm:w-[195px]"
+          className="ui-button ui-button-primary w-full justify-between sm:w-auto sm:min-w-48"
           href={`/vacancies/${id}`}
         >
           <span className="font-medium">Больше о вакансии</span>
@@ -259,17 +259,17 @@ function VacancyStageCandidateCard({
 
   return (
     <article
-      className={`flex w-full flex-col gap-6 rounded-[8px] border border-border-input bg-bg-light p-4 md:w-[293px] ${
+      className={`surface-card flex w-full flex-col gap-5 p-4 md:w-72 ${
         isDragging ? "opacity-40" : ""
       } ${isDragOverlay ? "rotate-2 cursor-grabbing shadow-2xl" : ""}`}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-[5px] text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
+            <div className="flex flex-wrap items-center gap-1.5 text-text-placeholder text-xs uppercase leading-[1.3]">
               {subtitleTokens.length > 0 ? (
                 subtitleTokens.map((token, index) => (
-                  <div className="flex items-center gap-[5px]" key={token}>
+                  <div className="flex items-center gap-1.5" key={token}>
                     {index > 0 ? (
                       <DotSeparator className="text-text-placeholder" />
                     ) : null}
@@ -291,7 +291,7 @@ function VacancyStageCandidateCard({
           </div>
 
           <Link
-            className={`font-semibold text-[16px] leading-[1.1] tracking-[-0.32px] transition-colors ${
+            className={`font-semibold text-base leading-[1.1] transition-colors ${
               isHhSource
                 ? "text-primary-blue hover:text-primary-blue-hover"
                 : "text-text-heading hover:text-primary-blue"
@@ -302,25 +302,20 @@ function VacancyStageCandidateCard({
           </Link>
         </div>
 
-        <div className="rounded-[5px] bg-status-offer-bg p-2 text-status-offer">
-          <div className="mb-[9px] flex items-center gap-1.5">
+        <div className="rounded-md bg-status-offer-bg p-2 text-status-offer">
+          <div className="mb-2 flex items-center gap-1.5">
             <div className="flex items-center gap-1">
               <AIGenerationIcon className="h-3 w-3" />
-              <span className="font-bold text-[12px] leading-none tracking-[-0.24px]">
-                AI
-              </span>
+              <span className="font-bold text-xs leading-none">AI</span>
             </div>
-            <span className="font-semibold text-[12px] leading-none tracking-[-0.24px]">
+            <span className="font-semibold text-xs leading-none">
               {candidate.matchScore}% соответствия
             </span>
           </div>
 
           <div className="flex flex-col gap-1">
             {aiSummaryLines.map((line) => (
-              <p
-                className="text-[12px] leading-[1.3] tracking-[-0.24px]"
-                key={line}
-              >
+              <p className="text-xs leading-[1.3]" key={line}>
                 - {line}
               </p>
             ))}
@@ -333,7 +328,7 @@ function VacancyStageCandidateCard({
           icon={<OutlineBriefcaseIcon className="h-[14px] w-[14px]" />}
           title="Текущая должность и навыки"
         >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-text-heading leading-[1.3] tracking-[-0.28px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
             {positionTokens.length > 0 ? (
               positionTokens.map((token, index) => (
                 <div className="flex items-center gap-2" key={token}>
@@ -351,7 +346,7 @@ function VacancyStageCandidateCard({
           icon={<MailIcon className="h-[14px] w-[14px]" />}
           title="Контакты"
         >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-text-heading leading-[1.3] tracking-[-0.28px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
             {contactTokens.length > 0 ? (
               contactTokens.map((token, index) => (
                 <div className="flex items-center gap-2" key={token}>
@@ -369,7 +364,7 @@ function VacancyStageCandidateCard({
           icon={<DollarIcon className="h-[14px] w-[14px]" />}
           title="Зарплатные ожидания"
         >
-          <p className="text-[14px] text-text-heading leading-[1.3] tracking-[-0.28px]">
+          <p className="text-sm text-text-heading leading-[1.3]">
             {formatSalary(
               candidate.salaryExpectation,
               candidate.salaryCurrency,
@@ -381,7 +376,7 @@ function VacancyStageCandidateCard({
           icon={<VacancyResponsesIcon className="h-[14px] w-[14px]" />}
           title="Отклики на другие вакансии"
         >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] leading-[1.3] tracking-[-0.28px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
             {candidate.relatedVacancies.length > 0 ? (
               candidate.relatedVacancies.slice(0, 2).map((vacancy, index) => (
                 <div className="flex items-center gap-2" key={vacancy.id}>
@@ -402,10 +397,10 @@ function VacancyStageCandidateCard({
       </div>
 
       {candidate.tags.length > 0 ? (
-        <div className="flex flex-wrap items-start gap-[6px]">
+        <div className="flex flex-wrap items-start gap-1.5">
           {candidate.tags.slice(0, 3).map((tag) => (
-            <div className="rounded-[6px] bg-status-danger-soft p-2" key={tag}>
-              <p className="font-semibold text-[12px] text-accent-red uppercase leading-none tracking-[-0.24px] line-through">
+            <div className="rounded-lg bg-status-danger-soft p-2" key={tag}>
+              <p className="font-semibold text-accent-red text-xs uppercase leading-none line-through">
                 {tag}
               </p>
             </div>
@@ -413,7 +408,7 @@ function VacancyStageCandidateCard({
         </div>
       ) : null}
 
-      <p className="text-[12px] text-text-heading leading-[1.3] tracking-[-0.24px]">
+      <p className="text-text-heading text-xs leading-[1.3]">
         Источник:{" "}
         <span className="text-primary-blue">
           {candidate.source.trim() || "Не указан"}
@@ -423,13 +418,11 @@ function VacancyStageCandidateCard({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1 text-text-placeholder">
           <DownloadIcon className="h-[18px] w-[18px]" />
-          <p className="font-medium text-[16px] leading-none tracking-[-0.32px]">
-            CV
-          </p>
+          <p className="font-medium text-base leading-none">CV</p>
         </div>
 
         <button
-          className="inline-flex h-[34px] items-center justify-center rounded-[6px] bg-primary-blue-light px-3 font-medium text-[14px] text-primary-blue leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:text-text-disabled"
+          className="inline-flex h-[34px] items-center justify-center rounded-lg bg-primary-blue-light px-3 font-medium text-primary-blue text-sm leading-none transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:text-text-disabled"
           disabled={!candidate.resumeUrl}
           onClick={() => {
             if (candidate.resumeUrl) {
@@ -524,7 +517,7 @@ function VacancyStageSection({
 
   return (
     <section
-      className={`w-full shrink-0 rounded-[8px] border bg-bg-input p-4 transition-colors lg:w-[325px] ${
+      className={`w-full shrink-0 rounded-xl border bg-bg-input p-4 transition-colors lg:w-80 ${
         isOver
           ? "border-primary-blue bg-primary-blue-light"
           : "border-border-input"
@@ -532,7 +525,7 @@ function VacancyStageSection({
       ref={setNodeRef}
     >
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
+        <h2 className="font-medium text-base text-text-secondary leading-none">
           {label}
         </h2>
 
@@ -559,7 +552,7 @@ function VacancyStageSection({
 
       <div className="mt-4 flex flex-col gap-4">
         {candidates.length === 0 ? (
-          <div className="rounded-[8px] border border-border-input bg-bg-light px-4 py-6 text-[14px] text-text-secondary">
+          <div className="rounded-lg border border-border-input bg-bg-light px-4 py-6 text-sm text-text-secondary">
             На этом этапе пока нет кандидатов.
           </div>
         ) : (
@@ -784,23 +777,27 @@ export default function VacancyFunnelPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Загрузка...</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <LoadingState label="Собираем воронку кандидатов..." />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Воронка вакансии не найдена</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <FeedbackPresence show>
+          <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
+            Воронка вакансии не найдена
+          </div>
+        </FeedbackPresence>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-bg-light px-6 pt-8 pb-8">
-      <div className="mx-auto flex w-full max-w-[1132px] flex-col gap-6">
+    <main className="min-h-full bg-bg-canvas">
+      <div className="app-page flex flex-col gap-5">
         <Breadcrumbs
           label={`${data.title} / Воронка`}
           rootHref="/vacancies"
@@ -815,14 +812,14 @@ export default function VacancyFunnelPage() {
         />
 
         {isHhVacancy ? (
-          <div className="rounded-[8px] border border-border-input bg-bg-input px-4 py-3 text-[14px] text-text-secondary">
+          <div className="rounded-lg border border-border-input bg-bg-light px-4 py-3 text-sm text-text-secondary">
             Кандидаты и этапы загружены из hh.uz. Добавление кандидатов в
             воронку на этой странице недоступно.
           </div>
         ) : null}
 
         {data.hhAccessDenied ? (
-          <div className="rounded-[8px] border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-[14px] text-danger-red">
+          <div className="rounded-lg border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-danger-red text-sm">
             У вашего аккаунта hh.uz нет доступа к откликам этой вакансии.
             Кандидаты с hh.uz не отображаются в воронке. Проверьте права
             менеджера или подключённый аккаунт hh.uz.
@@ -833,7 +830,7 @@ export default function VacancyFunnelPage() {
           <div className="relative flex-1">
             <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
             <input
-              className="w-full rounded-xl border border-border-light bg-bg-light py-3 pr-4 pl-12 text-text-label placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none focus:ring-2 focus:ring-primary-blue/20"
+              className="ui-search"
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Поиск кандидатов"
               type="text"
@@ -841,7 +838,7 @@ export default function VacancyFunnelPage() {
             />
           </div>
           <button
-            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-text-label transition-colors hover:bg-bg-light ${
+            className={`ui-button ui-button-secondary ${
               activeFilterCount > 0
                 ? "border-primary-blue bg-primary-blue/5"
                 : "border-border-light bg-bg-light"

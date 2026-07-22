@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronRightIcon } from "../_components/icons";
+import { LoadingState } from "../_components/motion-system";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyTable } from "../_components/vacancy-table";
 import { WelcomeModal } from "../_components/welcome-modal";
@@ -51,8 +52,8 @@ export default function DashboardClient({ userName }: { userName: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Загрузка...</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <LoadingState label="Готовим рабочий стол..." />
       </div>
     );
   }
@@ -66,19 +67,17 @@ export default function DashboardClient({ userName }: { userName: string }) {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {/* Dashboard Content */}
-        <div className="p-8">
+        <div className="app-page">
           {/* Welcome Section */}
-          <div className="mb-8">
-            <p className="mb-2 font-medium text-sm text-text-muted uppercase tracking-wider">
+          <div className="mb-6">
+            <p className="mb-1.5 font-semibold text-text-muted text-xs uppercase tracking-wider">
               {currentDate}
             </p>
-            <h1 className="font-bold text-3xl text-text-heading">
-              Добро пожаловать, {userName}!
-            </h1>
+            <h1 className="page-title">Добро пожаловать, {userName}!</h1>
           </div>
 
           {/* Stats Cards */}
-          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {dashboardData?.statsCards.map((stat) => (
               <StatsCard
                 key={stat.title}
@@ -91,8 +90,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
 
           {/* Recent Vacancies */}
           <VacancyTable
-            columnHeaderClassName="border-border-light bg-bg-light px-6 py-3"
-            containerClassName="mb-8 flex-none rounded-2xl border-border-light"
+            bodyClassName="overflow-none"
+            columnHeaderClassName="border-border-light px-4 py-3"
+            containerClassName="mb-6 flex-none rounded-xl border-border-light"
             headerAction={
               <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
@@ -111,9 +111,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
           {/* Candidates Section */}
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-lg text-text-heading">
-                Кандидаты
-              </h2>
+              <h2 className="section-title">Кандидаты</h2>
               <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
                 href="/candidates"
@@ -123,7 +121,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <ChannelStatistics channelStats={dashboardData?.channelStats} />
 
               <RecentActions

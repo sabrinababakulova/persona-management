@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "./header";
+import { RouteTransition } from "./motion-system";
 import { Sidebar } from "./sidebar";
 
 type AppShellProps = {
@@ -10,7 +11,12 @@ type AppShellProps = {
 };
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
-const AUTH_SCREEN_ROUTES = ["/login", "/register", "/forgot-password"];
+const AUTH_SCREEN_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/auth/error",
+];
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
@@ -42,22 +48,31 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   if (isAuthScreenRoute) {
-    return <>{children}</>;
+    return (
+      <RouteTransition className="min-h-screen" routeKey={pathname}>
+        {children}
+      </RouteTransition>
+    );
   }
 
   return (
-    <div className="relative flex min-h-screen bg-bg-light">
+    <div className="relative flex h-dvh overflow-hidden bg-bg-canvas">
       <Sidebar
         hasHydrated={hasHydrated}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           isSidebarOpen={isSidebarOpen}
           onSidebarToggle={() => setIsSidebarOpen((current) => !current)}
         />
-        <div className="min-h-0 flex-1">{children}</div>
+        <RouteTransition
+          className="app-route-frame min-h-0 flex-1 overflow-y-auto bg-bg-canvas"
+          routeKey={pathname}
+        >
+          {children}
+        </RouteTransition>
       </div>
     </div>
   );

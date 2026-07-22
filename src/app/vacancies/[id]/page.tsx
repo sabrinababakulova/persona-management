@@ -3,6 +3,10 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
+import {
+  FeedbackPresence,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { SIDE_MENU_ITEMS } from "~/shared/vacancy-side-menu";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -87,16 +91,20 @@ export default function VacancyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Загрузка...</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <LoadingState label="Загружаем вакансию..." />
       </div>
     );
   }
 
   if (!vacancy) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-light">
-        <div className="text-text-secondary">Вакансия не найдена</div>
+      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
+        <FeedbackPresence show>
+          <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
+            Вакансия не найдена
+          </div>
+        </FeedbackPresence>
       </div>
     );
   }
@@ -118,13 +126,13 @@ export default function VacancyDetailPage() {
   const archivedBanner = isArchivedHh ? (
     <section
       aria-live="polite"
-      className="flex flex-col gap-3 rounded-[8px] border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-[14px] text-text-heading sm:flex-row sm:items-start sm:justify-between"
+      className="flex flex-col gap-3 rounded-xl border border-status-outline-border bg-status-neutral-bg px-4 py-3 text-sm text-text-heading sm:flex-row sm:items-start sm:justify-between"
       role="alert"
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-[12px] text-bg-light leading-none"
+          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-text-heading font-bold text-bg-light text-xs leading-none"
         >
           !
         </span>
@@ -141,12 +149,12 @@ export default function VacancyDetailPage() {
           )}
         </div>
       </div>
-      <label className="flex shrink-0 items-center gap-2 text-[12px] text-text-secondary uppercase tracking-[-0.24px]">
+      <label className="flex shrink-0 items-center gap-2 text-text-secondary text-xs uppercase">
         <span className="sr-only">Статус вакансии</span>
-        <div className="relative inline-flex min-w-[140px] items-center overflow-hidden rounded-[6px] border border-status-outline-border bg-bg-light">
+        <div className="relative inline-flex min-w-[140px] items-center overflow-hidden rounded-lg border border-status-outline-border bg-bg-light">
           <select
             aria-label="Статус вакансии"
-            className="h-[36px] w-full appearance-none bg-transparent px-3 pr-8 font-semibold text-[12px] text-text-heading uppercase leading-none tracking-[-0.24px] disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-[36px] w-full appearance-none bg-transparent px-3 pr-8 font-semibold text-text-heading text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70"
             disabled={restoreFromArchive.isPending}
             onChange={(event) => handleStatusChange(event.target.value)}
             value={vacancy.status ?? "archive"}
@@ -161,39 +169,35 @@ export default function VacancyDetailPage() {
   ) : null;
 
   return (
-    <main className="h-full bg-bg-light">
-      <div className="relative w-full">
-        <div className="flex w-full gap-16 px-6 pt-8 pb-8">
-          <SideMenu
-            activeId={activeSectionId}
-            items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
-            onSelect={goToStep}
-          />
+    <main className="h-full bg-bg-canvas">
+      <div className="app-page flex flex-col gap-5 lg:flex-row lg:gap-8">
+        <SideMenu
+          activeId={activeSectionId}
+          items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
+          onSelect={goToStep}
+        />
 
-          <section className="flex flex-3 flex-col">
-            {activeSectionId === "description" ? (
-              <CreateVacancyForm
-                bannerContent={archivedBanner}
-                breadcrumbLabel={vacancy.title}
-                initialData={initialData}
-                pageHeading={vacancy.title || "Редактирование вакансии"}
-                readOnly={isArchivedHh}
-                vacancyId={vacancyId}
-              />
-            ) : activeSectionId === "publications" ? (
-              <div className="w-full max-w-225">
-                <PublicationsTable />
-              </div>
-            ) : (
-              <div className="w-full max-w-225">
-                <h1 className="mb-6 font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-                  Предпросмотр
-                </h1>
-                <PreviewStep />
-              </div>
-            )}
-          </section>
-        </div>
+        <section className="min-w-0 flex-1">
+          {activeSectionId === "description" ? (
+            <CreateVacancyForm
+              bannerContent={archivedBanner}
+              breadcrumbLabel={vacancy.title}
+              initialData={initialData}
+              pageHeading={vacancy.title || "Редактирование вакансии"}
+              readOnly={isArchivedHh}
+              vacancyId={vacancyId}
+            />
+          ) : activeSectionId === "publications" ? (
+            <div className="w-full max-w-225">
+              <PublicationsTable />
+            </div>
+          ) : (
+            <div className="w-full max-w-225">
+              <h1 className="page-title mb-5">Предпросмотр</h1>
+              <PreviewStep />
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );

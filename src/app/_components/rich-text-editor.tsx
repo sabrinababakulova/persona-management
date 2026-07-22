@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { AIGenerationIcon } from "~/app/_components/icons/AIGenerationIcon";
 import { api } from "~/trpc/react";
+import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 /** The AI paraphrase button only appears once the editor has at least this many characters. */
 const AI_PARAPHRASE_MIN_CHARS = 200;
@@ -25,7 +26,7 @@ type RichTextEditorProps = {
 };
 
 const TOOLBAR_BUTTON_CLASS =
-  "rounded-[4px] border border-border-input bg-bg-light px-2 py-1 font-medium text-[12px] text-text-secondary leading-none transition-colors hover:bg-bg-hover";
+  "rounded border border-border-input bg-bg-light px-2 py-1 font-medium text-xs text-text-secondary leading-none transition-colors hover:bg-bg-hover";
 const TOOLBAR_ACTIVE_CLASS =
   "border-primary-blue bg-primary-blue-light text-primary-blue";
 
@@ -181,15 +182,21 @@ function AiParaphraseFooter({
   return (
     <div className="flex flex-wrap items-center gap-2 border-border-input border-t bg-bg-input px-2 py-2">
       <button
-        className="inline-flex items-center gap-1.5 rounded-[4px] border border-border-input bg-bg-light px-2 py-1 font-medium text-[12px] text-accent-ai leading-none transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-border-input bg-bg-light px-2 py-1 font-medium text-accent-ai text-xs leading-none transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || paraphrase.isPending}
         onClick={handleParaphrase}
         type="button"
       >
         <AIGenerationIcon />
-        {paraphrase.isPending ? "Перефразируем…" : "Перефразировать с AI"}
+        <LoadingButtonContent
+          isLoading={paraphrase.isPending}
+          label="Перефразировать с AI"
+          loadingLabel="Перефразируем…"
+        />
       </button>
-      {error && <span className="text-[12px] text-danger-red">{error}</span>}
+      <FeedbackPresence show={Boolean(error)}>
+        <span className="text-danger-red text-xs">{error}</span>
+      </FeedbackPresence>
     </div>
   );
 }
@@ -213,7 +220,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "tiptap min-h-[180px] w-full bg-bg-light px-3 py-3 text-[15px] text-text-heading leading-[1.5] focus:outline-none [&_h3]:font-bold [&_h3]:text-[18px] [&_h3]:my-2 [&_h4]:font-semibold [&_h4]:text-[16px] [&_h4]:my-2 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary-blue [&_a]:underline [&_strong]:font-semibold",
+          "tiptap min-h-[180px] w-full bg-bg-light px-3 py-3 text-sm text-text-heading leading-[1.5] focus:outline-none [&_h3]:font-bold [&_h3]:text-lg [&_h3]:my-2 [&_h4]:font-semibold [&_h4]:text-base [&_h4]:my-2 [&_p]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-primary-blue [&_a]:underline [&_strong]:font-semibold",
         id: editorId,
       },
     },
@@ -266,14 +273,14 @@ export function RichTextEditor({
         className={
           hideLabel
             ? "sr-only"
-            : "w-full font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+            : "w-full font-medium text-base text-text-label leading-[1.4]"
         }
         htmlFor={editorId}
       >
         {label}
       </label>
       <div
-        className={`overflow-hidden rounded-[6px] border border-border-input bg-bg-light focus-within:border-primary-blue ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+        className={`overflow-hidden rounded-lg border border-border-input bg-bg-light focus-within:border-primary-blue ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
       >
         {editor && (
           <div
@@ -287,7 +294,7 @@ export function RichTextEditor({
         )}
         <div className="relative">
           {isEmpty && placeholder && (
-            <div className="pointer-events-none absolute top-3 left-3 text-[15px] text-text-placeholder">
+            <div className="pointer-events-none absolute top-3 left-3 text-sm text-text-placeholder">
               {placeholder}
             </div>
           )}
@@ -303,7 +310,7 @@ export function RichTextEditor({
         )}
       </div>
       {maxLength !== undefined && (
-        <div className="flex justify-end text-[12px] text-text-placeholder">
+        <div className="flex justify-end text-text-placeholder text-xs">
           {charCount} / {maxLength}
         </div>
       )}

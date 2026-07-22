@@ -2,6 +2,10 @@
 
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
+import {
+  LoadingButtonContent,
+  LoadingState,
+} from "../_components/motion-system";
 
 export function HhAccountSection() {
   const utils = api.useUtils();
@@ -18,21 +22,21 @@ export function HhAccountSection() {
 
   return (
     <ClosableSection title="hh.uz аккаунт">
-      {isLoading && (
-        <p className="text-[14px] text-text-secondary">Загрузка...</p>
-      )}
+      {isLoading ? (
+        <LoadingState compact label="Проверяем подключение..." />
+      ) : null}
 
       {!isLoading && isConnected && (
-        <div className="space-y-1 rounded-[6px] border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-[14px] text-text-heading">
+        <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
+          <p className="text-sm text-text-heading">
             <span className="font-medium">Статус:</span>{" "}
             <span className="text-success-green">Подключен</span>
           </p>
-          <p className="text-[13px] text-text-secondary">
+          <p className="text-text-secondary text-xs">
             Employer ID: {account.employerId}
           </p>
           {account.email && (
-            <p className="text-[13px] text-text-secondary">
+            <p className="text-text-secondary text-xs">
               Email: {account.email}
             </p>
           )}
@@ -40,11 +44,11 @@ export function HhAccountSection() {
       )}
 
       {!isLoading && !isConnected && (
-        <div className="rounded-[6px] border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-[14px] text-text-heading">
+        <div className="rounded-lg border border-border-input bg-bg-input px-3 py-3">
+          <p className="text-sm text-text-heading">
             Подключите hh.uz через OAuth.
           </p>
-          <p className="mt-1 text-[13px] text-text-secondary leading-[1.4]">
+          <p className="mt-1 text-text-secondary text-xs leading-[1.4]">
             Client ID и Client Secret берутся из серверных переменных окружения.
             Employer ID определяется автоматически после авторизации в hh.uz.
           </p>
@@ -53,7 +57,7 @@ export function HhAccountSection() {
 
       <div className="flex gap-3">
         <a
-          className="inline-flex h-10 items-center rounded-[6px] bg-primary-blue-light px-4 font-semibold text-[14px] text-primary-blue leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-light-hover"
+          className="ui-button ui-button-soft"
           href="/api/integrations/hh/connect"
         >
           {isConnected ? "Переподключить hh.uz" : "Подключить hh.uz"}
@@ -61,14 +65,18 @@ export function HhAccountSection() {
 
         {account && (
           <button
-            className="h-10 rounded-[6px] border border-danger-red px-4 font-semibold text-[14px] text-danger-red leading-none tracking-[-0.28px] transition-colors hover:bg-danger-red-bg disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 rounded-lg border border-danger-red px-4 font-semibold text-danger-red text-sm leading-none transition-colors hover:bg-danger-red-bg disabled:cursor-not-allowed disabled:opacity-60"
             disabled={removeAccount.isPending}
             onClick={() => {
               removeAccount.mutate();
             }}
             type="button"
           >
-            {removeAccount.isPending ? "Отключение..." : "Отключить"}
+            <LoadingButtonContent
+              isLoading={removeAccount.isPending}
+              label="Отключить"
+              loadingLabel="Отключение..."
+            />
           </button>
         )}
       </div>

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { ModalProps } from "~/types/components/modal-props";
 import { CloseIcon } from "./icons";
-import { usePresence } from "./use-presence";
+import { AnimatePresence, motion } from "./motion-system";
+
+const MODAL_EASE = [0.22, 1, 0.36, 1] as const;
 
 export function Modal({
   isOpen,
@@ -29,7 +31,7 @@ export function Modal({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const closeOnEscapeRef = useRef(closeOnEscape);
-  const { shouldRender, isVisible } = usePresence(isOpen, 220);
+  const generatedId = useId();
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -40,13 +42,15 @@ export function Modal({
   }, [closeOnEscape]);
 
   useEffect(() => {
-    if (!shouldRender || !isOpen) {
+    if (!isOpen) {
       return;
     }
 
     previousActiveElementRef.current =
       document.activeElement as HTMLElement | null;
-    dialogPanelRef.current?.focus();
+    const frameId = window.requestAnimationFrame(() => {
+      dialogPanelRef.current?.focus();
+    });
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && closeOnEscapeRef.current) {
@@ -99,72 +103,92 @@ export function Modal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      window.cancelAnimationFrame(frameId);
       window.removeEventListener("keydown", handleKeyDown);
       previousActiveElementRef.current?.focus();
     };
-  }, [isOpen, shouldRender]);
+  }, [isOpen]);
 
-  if (!shouldRender) {
-    return null;
-  }
-
-  const titleId = title ? "modal-title" : undefined;
-  const descriptionId = description ? "modal-description" : undefined;
+  const titleId = title ? `${generatedId}-title` : undefined;
+  const descriptionId = description ? `${generatedId}-description` : undefined;
   const labelledBy = ariaLabelledBy ?? titleId;
   const describedBy = ariaDescribedBy ?? descriptionId;
 
   return (
-    <div
-      aria-describedby={describedBy}
-      aria-hidden={!isOpen}
-      aria-label={ariaLabel}
-      aria-labelledby={labelledBy}
-      aria-modal="true"
-      className={`fixed inset-0 z-50 flex items-center justify-center p-5 transition-opacity duration-200 ease-out ${isVisible ? "opacity-100" : "pointer-events-none opacity-0"} ${containerClassName ?? ""}`}
-      role="dialog"
-    >
-      <button
-        aria-label={closeButtonLabel}
-        className={`absolute inset-0 bg-text-heading/20 transition-opacity duration-200 ease-out ${isVisible ? "opacity-100" : "opacity-0"} ${overlayClassName ?? ""}`}
-        data-motion="none"
-        onClick={closeOnBackdropClick ? onClose : undefined}
-        type="button"
-      />
-
-      <div
-        className={`relative w-full rounded-[8px] border border-border-input bg-bg-light p-5 shadow-modal transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.98] opacity-0"} ${maxWidthClassName} ${panelClassName ?? ""}`}
-        ref={dialogPanelRef}
-        tabIndex={-1}
-      >
-        <button
-          aria-label={closeButtonLabel}
-          className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-[6px] text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading"
-          onClick={onClose}
-          type="button"
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          animate={{ opacity: 1 }}
+          aria-describedby={describedBy}
+          aria-label={ariaLabel}
+          aria-labelledby={labelledBy}
+          aria-modal="true"
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 ${containerClassName ?? ""}`}
+          exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          role="dialog"
+          transition={{ duration: 0.2, ease: MODAL_EASE }}
         >
-          <CloseIcon className="h-4 w-4" />
-        </button>
+          <motion.button
+            animate={{ opacity: 1 }}
+            aria-label={closeButtonLabel}
+            className={`absolute inset-0 bg-text-heading/20 ${overlayClassName ?? ""}`}
+            data-motion="none"
+            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            onClick={closeOnBackdropClick ? onClose : undefined}
+            transition={{ duration: 0.2 }}
+            type="button"
+          />
 
-        <div className={`flex flex-col gap-4 ${contentClassName ?? ""}`}>
-          {title && (
-            <h2
-              className={`pr-10 font-semibold text-[22px] text-text-heading leading-none tracking-[-0.44px] ${titleClassName ?? ""}`}
-              id={titleId}
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className={`relative w-full rounded-xl border border-border-input bg-bg-light p-5 shadow-modal sm:p-6 ${maxWidthClassName} ${panelClassName ?? ""}`}
+            exit={{ opacity: 0, scale: 0.98, y: 10 }}
+            initial={{ opacity: 0, scale: 0.965, y: 18 }}
+            ref={dialogPanelRef}
+            tabIndex={-1}
+            transition={{ duration: 0.28, ease: MODAL_EASE }}
+          >
+            <motion.button
+              aria-label={closeButtonLabel}
+              className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading"
+              onClick={onClose}
+              type="button"
+              whileHover={{ rotate: 6, scale: 1.06 }}
+              whileTap={{ scale: 0.9 }}
             >
-              {title}
-            </h2>
-          )}
-          {description && (
-            <p
-              className={`text-[14px] text-text-secondary leading-[1.4] tracking-[-0.28px] ${descriptionClassName ?? ""}`}
-              id={descriptionId}
-            >
-              {description}
-            </p>
-          )}
-          {children}
-        </div>
-      </div>
-    </div>
+              <CloseIcon className="h-4 w-4" />
+            </motion.button>
+
+            <div className={`flex flex-col gap-4 ${contentClassName ?? ""}`}>
+              {title && (
+                <motion.h2
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`pr-10 font-semibold text-text-heading text-xl leading-tight tracking-tight ${titleClassName ?? ""}`}
+                  id={titleId}
+                  initial={{ opacity: 0, y: 5 }}
+                  transition={{ delay: 0.05, duration: 0.22 }}
+                >
+                  {title}
+                </motion.h2>
+              )}
+              {description && (
+                <motion.p
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`text-sm text-text-secondary leading-5 ${descriptionClassName ?? ""}`}
+                  id={descriptionId}
+                  initial={{ opacity: 0, y: 5 }}
+                  transition={{ delay: 0.08, duration: 0.22 }}
+                >
+                  {description}
+                </motion.p>
+              )}
+              {children}
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

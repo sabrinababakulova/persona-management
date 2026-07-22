@@ -86,7 +86,7 @@ export function FilterModal({
     >
       <div className="flex flex-col gap-5">
         <div>
-          <div className="mb-3 font-medium text-[14px] text-text-secondary">
+          <div className="mb-3 font-medium text-sm text-text-secondary">
             Статус
           </div>
           <div className="flex flex-col gap-2.5">
@@ -97,7 +97,7 @@ export function FilterModal({
                   onChange={() => toggleStatus(option.value)}
                 />
                 <button
-                  className="text-left text-[14px] text-text-heading"
+                  className="text-left text-sm text-text-heading"
                   onClick={() => toggleStatus(option.value)}
                   type="button"
                 >
@@ -111,7 +111,7 @@ export function FilterModal({
         <div className="h-px bg-border-input" />
 
         <div>
-          <div className="mb-3 font-medium text-[14px] text-text-secondary">
+          <div className="mb-3 font-medium text-sm text-text-secondary">
             Город
           </div>
           {cityOptions && cityOptions.length > 0 ? (
@@ -142,7 +142,7 @@ export function FilterModal({
           <>
             <div className="h-px bg-border-input" />
             <div>
-              <div className="mb-3 font-medium text-[14px] text-text-secondary">
+              <div className="mb-3 font-medium text-sm text-text-secondary">
                 Источник
               </div>
               <div className="flex flex-col gap-2.5">
@@ -153,7 +153,7 @@ export function FilterModal({
                       onChange={() => toggleSource(option.value)}
                     />
                     <button
-                      className="text-left text-[14px] text-text-heading"
+                      className="text-left text-sm text-text-heading"
                       onClick={() => toggleSource(option.value)}
                       type="button"
                     >
@@ -168,14 +168,14 @@ export function FilterModal({
 
         <div className="flex gap-3 pt-1">
           <button
-            className="flex-1 rounded-[6px] border border-border-input bg-bg-light py-2.5 font-medium text-[14px] text-text-heading transition-colors hover:bg-bg-input"
+            className="ui-button ui-button-secondary flex-1"
             onClick={() => onApply(EMPTY_FILTER_MODAL_FILTERS)}
             type="button"
           >
             Сбросить
           </button>
           <button
-            className="flex-1 rounded-[6px] bg-primary-blue py-2.5 font-medium text-[14px] text-bg-light transition-colors hover:bg-primary-blue-hover"
+            className="ui-button ui-button-primary flex-1"
             onClick={() => onApply(draft)}
             type="button"
           >

@@ -22,8 +22,8 @@ export default async function VacancyPublicationIdPage({
   }
 
   return (
-    <main className="flex h-full flex-1 overflow-auto">
-      <div className="flex min-h-full w-full flex-col p-8">
+    <main className="flex h-full flex-1 overflow-auto bg-bg-canvas">
+      <div className="app-page flex min-h-full flex-col">
         {channel} is not supported yet
       </div>
     </main>

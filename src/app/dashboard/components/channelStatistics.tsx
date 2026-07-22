@@ -83,15 +83,15 @@ export function ChannelStatistics({
   });
 
   return (
-    <div className="flex flex-col gap-4 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4">
+    <div className="surface-card flex min-h-56 flex-col gap-4 overflow-hidden p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium text-[16px] text-text-secondary leading-none tracking-[-0.32px]">
+        <h3 className="font-semibold text-sm text-text-secondary leading-5">
           Статистика по каналам
         </h3>
       </div>
 
-      <div className="flex items-center gap-8">
-        <div className="h-[138px] w-[140px] shrink-0">
+      <div className="flex flex-1 items-center gap-5">
+        <div className="size-28 shrink-0">
           <ChannelStatisticsChartIcon
             circumference={circumference}
             className="h-full w-full -rotate-90"
@@ -100,19 +100,19 @@ export function ChannelStatistics({
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-4">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
           {normalizedStats.map((item) => (
             <div className="flex items-center justify-between" key={item.name}>
-              <div className="flex items-center gap-[10px]">
+              <div className="flex items-center gap-2.5">
                 <span
-                  className={`size-4 shrink-0 rounded-[4px] ${item.colorClasses.fillClassName}`}
+                  className={`size-4 shrink-0 rounded ${item.colorClasses.fillClassName}`}
                 />
-                <p className="font-semibold text-[14px] text-text-heading leading-none tracking-[-0.28px]">
+                <p className="font-semibold text-sm text-text-heading leading-none">
                   {item.name}
                 </p>
               </div>
 
-              <p className="font-normal text-[14px] text-text-heading leading-none tracking-[-0.28px]">
+              <p className="font-medium text-sm text-text-heading leading-none">
                 {item.percentage}%
               </p>
             </div>

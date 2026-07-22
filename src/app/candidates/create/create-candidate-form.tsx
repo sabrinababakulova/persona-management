@@ -6,6 +6,11 @@ import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { AIGenerationIcon } from "~/app/_components/icons";
 import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
+import {
   ResumeFileUploader,
   type ResumeUploadMeta,
 } from "~/app/_components/resume-file-uploader";
@@ -410,20 +415,18 @@ export function CreateCandidateForm() {
 
   if (isLookupsLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-text-secondary">
-        Загрузка справочников...
-      </div>
+      <LoadingState className="min-h-[50vh]" label="Загрузка справочников..." />
     );
   }
 
   if (isLookupsError || !candidateLookups) {
     return (
-      <div className="mx-auto mt-16 w-full max-w-[758px] rounded-[8px] border border-danger-red-bg bg-danger-red-bg p-6 text-danger-red">
-        <p className="mb-4 text-[14px]">
+      <div className="mx-auto mt-16 w-full max-w-[758px] rounded-xl border border-danger-red-bg bg-danger-red-bg p-6 text-danger-red">
+        <p className="mb-4 text-sm">
           Не удалось загрузить справочники из базы данных.
         </p>
         <button
-          className="rounded-[6px] bg-primary-blue px-4 py-2 text-[14px] text-bg-light hover:bg-primary-blue-hover"
+          className="ui-button ui-button-primary"
           onClick={() => void refetchLookups()}
           type="button"
         >
@@ -525,13 +528,11 @@ export function CreateCandidateForm() {
 
   return (
     <div className="relative flex w-full min-w-0 justify-center">
-      <div className="w-full max-w-[758px] px-6 pt-[104px] pb-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="font-bold text-[44px] text-text-heading leading-none tracking-[-0.64px]">
-            Добавление кандидата
-          </h1>
+      <div className="app-page-narrow">
+        <div className="page-header">
+          <h1 className="page-title">Добавление кандидата</h1>
           <Dropdown
-            fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
+            fieldClassName="h-9 px-2 py-2 pr-6 text-sm leading-none"
             hideLabel
             iconClassName="right-2 text-text-placeholder"
             label="Статус"
@@ -548,13 +549,11 @@ export function CreateCandidateForm() {
           total={progress.total}
         />
 
-        <section className="mb-6 flex flex-col gap-6">
+        <section className="surface-card mb-5 flex flex-col gap-5 p-5 sm:p-6">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-[22px] text-text-heading leading-[1.1] tracking-[-0.44px]">
-              Резюме
-            </h2>
+            <h2 className="section-title">Резюме</h2>
             <button
-              className="h-8 rounded-[6px] bg-chart-purple/30 px-4 font-semibold text-[14px] text-bg-light tracking-[-0.28px]"
+              className="ui-button min-h-9 bg-ai-violet/10 px-3 text-ai-violet hover:bg-ai-violet/15"
               type="button"
             >
               Заполнить поля
@@ -567,7 +566,7 @@ export function CreateCandidateForm() {
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
-          <p className="flex items-center gap-1 font-medium text-[14px] text-chart-purple tracking-[-0.28px]">
+          <p className="flex items-center gap-1.5 font-medium text-ai-violet text-sm">
             <AIGenerationIcon className="h-4 w-4" />
             AI Мы проанализируем резюме и автозаполним поля
           </p>
@@ -630,20 +629,22 @@ export function CreateCandidateForm() {
         />
 
         <div className="mt-8">
-          {errors._form && (
-            <div className="mb-4 rounded-[6px] border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-[14px] text-danger-red">
+          <FeedbackPresence show={Boolean(errors._form)}>
+            <div className="mb-4 rounded-lg border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
               {errors._form}
             </div>
-          )}
+          </FeedbackPresence>
           <button
-            className="h-10 w-full rounded-[6px] bg-primary-blue px-6 font-semibold text-[16px] text-bg-light tracking-[-0.32px] hover:bg-primary-blue-hover disabled:opacity-50"
+            className="ui-button ui-button-primary w-full"
             disabled={createCandidate.isPending || isResumeUploading}
             onClick={handleSubmit}
             type="button"
           >
-            {createCandidate.isPending
-              ? "Сохранение..."
-              : "Сохранить кандидата"}
+            <LoadingButtonContent
+              isLoading={createCandidate.isPending}
+              label="Сохранить кандидата"
+              loadingLabel="Сохранение..."
+            />
           </button>
         </div>
       </div>

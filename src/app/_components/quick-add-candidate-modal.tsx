@@ -9,6 +9,7 @@ import type {
 import { Dropdown } from "./dropdown";
 import { AIGenerationIcon } from "./icons";
 import { Modal } from "./modal";
+import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 import {
   ResumeFileUploader,
   type ResumeUploadMeta,
@@ -178,13 +179,13 @@ export function QuickAddCandidateModal({
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h2
-            className="font-semibold text-[20px] text-text-heading leading-[1.1] tracking-[-0.4px]"
+            className="font-semibold text-text-heading text-xl leading-[1.1]"
             id="quick-add-candidate-modal-title"
           >
             Быстрое добавление кандидата
           </h2>
           <Dropdown
-            fieldClassName="h-8 px-2 py-2 pr-6 text-[14px] leading-none tracking-[-0.28px]"
+            fieldClassName="h-8 px-2 py-2 pr-6 text-sm leading-none"
             hideLabel
             iconClassName="right-2 text-text-placeholder"
             label="Статус"
@@ -196,13 +197,13 @@ export function QuickAddCandidateModal({
 
         <div className="flex flex-col gap-1">
           <label
-            className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]"
+            className="font-medium text-base text-text-label leading-[1.4]"
             htmlFor="quick-add-fullname"
           >
             Ф.И.О
           </label>
           <input
-            className="h-12 w-full rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
             id="quick-add-fullname"
             onChange={(event) => setFullName(event.target.value)}
             placeholder="Введите полное имя"
@@ -213,11 +214,11 @@ export function QuickAddCandidateModal({
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <p className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+            <p className="font-medium text-base text-text-label leading-[1.4]">
               Контакты
             </p>
             <button
-              className="text-[30px] text-primary-blue leading-none"
+              className="text-3xl text-primary-blue leading-none"
               type="button"
             >
               +
@@ -225,7 +226,7 @@ export function QuickAddCandidateModal({
           </div>
           <div className="flex items-end gap-4">
             <input
-              className="h-12 w-full max-w-[294px] rounded-[6px] border border-border-input bg-bg-input px-3 text-[16px] text-text-heading leading-[1.4] tracking-[-0.32px] placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+              className="h-11 w-full max-w-72 rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
               onChange={(event) => setContactValue(event.target.value)}
               placeholder="@username или номер телефона"
               type="text"
@@ -255,7 +256,7 @@ export function QuickAddCandidateModal({
         />
 
         <div className="flex flex-col gap-1">
-          <p className="font-medium text-[16px] text-text-label leading-[1.4] tracking-[-0.32px]">
+          <p className="font-medium text-base text-text-label leading-[1.4]">
             Резюме
           </p>
           <ResumeFileUploader
@@ -265,7 +266,7 @@ export function QuickAddCandidateModal({
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
-          <p className="flex gap-1 font-medium text-[12px] text-t3-accent leading-[1.4] tracking-[-0.24px]">
+          <p className="flex gap-1 font-medium text-t3-accent text-xs leading-[1.4]">
             <span className="flex font-bold">
               <AIGenerationIcon />
               AI
@@ -274,27 +275,31 @@ export function QuickAddCandidateModal({
           </p>
         </div>
 
-        {(localError ?? errorMessage) && (
-          <p className="text-[14px] text-accent-red tracking-[-0.28px]">
+        <FeedbackPresence show={Boolean(localError ?? errorMessage)}>
+          <p className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
             {localError ?? errorMessage}
           </p>
-        )}
+        </FeedbackPresence>
 
-        <div className="flex h-10 items-start justify-between">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link
-            className="flex h-full w-[240px] items-center justify-center rounded-[6px] bg-primary-blue-light p-4 font-semibold text-[16px] text-primary-blue leading-none tracking-[-0.32px]"
+            className="ui-button ui-button-soft sm:min-w-56"
             href="/candidates/create"
             onClick={onAddMoreData}
           >
             Добавить больше данных
           </Link>
           <button
-            className="flex h-full items-center justify-center rounded-[6px] bg-primary-blue p-4 font-semibold text-[16px] text-bg-light leading-none tracking-[-0.32px] disabled:opacity-60"
+            className="ui-button ui-button-primary"
             disabled={isSaving || isResumeUploading}
             onClick={handleSave}
             type="button"
           >
-            {isSaving ? "Сохранение..." : "Сохранить кандидата"}
+            <LoadingButtonContent
+              isLoading={isSaving}
+              label="Сохранить кандидата"
+              loadingLabel="Сохранение..."
+            />
           </button>
         </div>
       </div>

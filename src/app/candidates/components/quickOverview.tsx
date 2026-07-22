@@ -8,6 +8,11 @@ import {
   DownloadIcon,
   MailIcon,
 } from "~/app/_components/icons";
+import {
+  AnimatePresence,
+  LoadingState,
+  motion,
+} from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 import type {
   QuickOverviewProps,
@@ -22,9 +27,7 @@ function SectionTitle({ icon, title }: SectionTitleProps) {
   return (
     <div className="flex items-center gap-1.5 text-text-placeholder">
       {icon}
-      <p className="font-medium text-[12px] leading-none tracking-[-0.24px]">
-        {title}
-      </p>
+      <p className="font-medium text-xs leading-none">{title}</p>
     </div>
   );
 }
@@ -150,170 +153,188 @@ export function QuickOverview({
       .filter((value) => value.length > 0);
   }, [candidate]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div
-      aria-describedby="candidate-quick-overview-description"
-      aria-labelledby="candidate-quick-overview-title"
-      aria-modal="true"
-      className="fixed inset-0 z-60 flex items-center justify-center p-5"
-      role="dialog"
-    >
-      <button
-        aria-label="Закрыть окно быстрого обзора кандидата"
-        className="absolute inset-0 bg-text-heading/20"
-        onClick={onClose}
-        type="button"
-      />
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          animate={{ opacity: 1 }}
+          aria-describedby="candidate-quick-overview-description"
+          aria-labelledby="candidate-quick-overview-title"
+          aria-modal="true"
+          className="fixed inset-0 z-60 flex items-center justify-center p-5"
+          exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          role="dialog"
+        >
+          <motion.button
+            animate={{ opacity: 1 }}
+            aria-label="Закрыть окно быстрого обзора кандидата"
+            className="absolute inset-0 bg-text-heading/20"
+            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            onClick={onClose}
+            type="button"
+          />
 
-      <div
-        className="relative flex w-full max-w-[500px] flex-col gap-6 overflow-hidden rounded-[8px] border border-border-input bg-bg-light p-4 text-text-heading shadow-toast"
-        ref={dialogPanelRef}
-        tabIndex={-1}
-      >
-        {isLoading || !candidate ? (
-          <p
-            className="text-[14px] text-text-placeholder leading-[1.3] tracking-[-0.28px]"
-            id="candidate-quick-overview-description"
+          <motion.div
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative flex w-full max-w-[500px] flex-col gap-6 overflow-hidden rounded-xl border border-border-input bg-bg-light p-4 text-text-heading shadow-toast"
+            exit={{ opacity: 0, scale: 0.98, y: 10 }}
+            initial={{ opacity: 0, scale: 0.965, y: 18 }}
+            ref={dialogPanelRef}
+            tabIndex={-1}
           >
-            {isLoading ? "Загрузка..." : "Данные кандидата не найдены"}
-          </p>
-        ) : (
-          <>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-[5px] text-[12px] text-text-placeholder uppercase leading-[1.3] tracking-[-0.24px]">
-                  {candidate.location && (
-                    <p className="font-medium">{candidate.location}</p>
-                  )}
-                  {candidate.location && candidate.experience ? (
-                    <DotSeparator />
-                  ) : null}
-                  {candidate.experience ? (
-                    <p className="font-medium">{candidate.experience}</p>
-                  ) : null}
-                </div>
-                <h2
-                  className="font-semibold text-[18px] leading-[1.1] tracking-[-0.36px]"
-                  id="candidate-quick-overview-title"
-                >
-                  {candidate.name}
-                </h2>
-              </div>
-
-              <div className="w-full rounded-[5px] bg-chart-purple/10 p-2 text-chart-purple">
-                <div className="mb-[9px] flex items-center gap-1.5">
-                  <AIGenerationIcon />
-                  <span className="font-bold text-[12px] leading-none tracking-[-0.24px]">
-                    AI сводка
-                  </span>
-                </div>
+            {isLoading || !candidate ? (
+              isLoading ? (
+                <LoadingState
+                  className="min-h-[180px] text-text-placeholder"
+                  label="Загрузка кандидата..."
+                />
+              ) : (
                 <p
-                  className="whitespace-pre-wrap font-normal text-[12px] leading-[1.3] tracking-[-0.24px]"
+                  className="text-sm text-text-placeholder leading-[1.3]"
                   id="candidate-quick-overview-description"
                 >
-                  {aiSummaryText}
+                  Данные кандидата не найдены
                 </p>
-              </div>
-            </div>
+              )
+            ) : (
+              <>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 text-text-placeholder text-xs uppercase leading-[1.3]">
+                      {candidate.location && (
+                        <p className="font-medium">{candidate.location}</p>
+                      )}
+                      {candidate.location && candidate.experience ? (
+                        <DotSeparator />
+                      ) : null}
+                      {candidate.experience ? (
+                        <p className="font-medium">{candidate.experience}</p>
+                      ) : null}
+                    </div>
+                    <h2
+                      className="font-semibold text-lg leading-[1.1]"
+                      id="candidate-quick-overview-title"
+                    >
+                      {candidate.name}
+                    </h2>
+                  </div>
 
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <SectionTitle
-                  icon={<BriefcaseIcon />}
-                  title="Текущая должность и навыки"
-                />
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] leading-[1.3] tracking-[-0.28px]">
-                  {positionAndSkillTokens.length > 0 ? (
-                    positionAndSkillTokens.map((token, index) => (
-                      <div className="flex items-center gap-2" key={token}>
-                        {index > 0 ? <DotSeparator /> : null}
-                        <span>{token}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <span className="text-text-placeholder">Нет данных</span>
-                  )}
+                  <div className="w-full rounded-md bg-chart-purple/10 p-2 text-chart-purple">
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <AIGenerationIcon />
+                      <span className="font-bold text-xs leading-none">
+                        AI сводка
+                      </span>
+                    </div>
+                    <p
+                      className="whitespace-pre-wrap font-normal text-xs leading-[1.3]"
+                      id="candidate-quick-overview-description"
+                    >
+                      {aiSummaryText}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <SectionTitle icon={<MailIcon />} title="Контакты" />
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] leading-[1.3] tracking-[-0.28px]">
-                  {contactTokens.length > 0 ? (
-                    contactTokens.map((token, index) => (
-                      <div className="flex items-center gap-2" key={token}>
-                        {index > 0 ? <DotSeparator /> : null}
-                        <span>{token}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <span className="text-text-placeholder">Нет данных</span>
-                  )}
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <SectionTitle
+                      icon={<BriefcaseIcon />}
+                      title="Текущая должность и навыки"
+                    />
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
+                      {positionAndSkillTokens.length > 0 ? (
+                        positionAndSkillTokens.map((token, index) => (
+                          <div className="flex items-center gap-2" key={token}>
+                            {index > 0 ? <DotSeparator /> : null}
+                            <span>{token}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-text-placeholder">
+                          Нет данных
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <SectionTitle icon={<MailIcon />} title="Контакты" />
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
+                      {contactTokens.length > 0 ? (
+                        contactTokens.map((token, index) => (
+                          <div className="flex items-center gap-2" key={token}>
+                            {index > 0 ? <DotSeparator /> : null}
+                            <span>{token}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-text-placeholder">
+                          Нет данных
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <SectionTitle
+                      icon={<DollarIcon />}
+                      title="Зарплатные ожидания"
+                    />
+                    <p className="text-sm leading-[1.3]">
+                      {candidate.salaryExpectation > 0
+                        ? `${candidate.salaryCurrency === "USD" ? "$" : ""}${candidate.salaryExpectation}+`
+                        : "Не указано"}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col gap-2">
-                <SectionTitle
-                  icon={<DollarIcon />}
-                  title="Зарплатные ожидания"
-                />
-                <p className="text-[14px] leading-[1.3] tracking-[-0.28px]">
-                  {candidate.salaryExpectation > 0
-                    ? `${candidate.salaryCurrency === "USD" ? "$" : ""}${candidate.salaryExpectation}+`
-                    : "Не указано"}
+                <div className="flex flex-wrap items-start gap-1.5">
+                  {candidate.tags.slice(0, 3).map((tag) => (
+                    <div className="rounded-lg bg-danger-red-bg p-2" key={tag}>
+                      <p className="font-semibold text-accent-red text-xs uppercase leading-none line-through">
+                        {tag}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="w-full text-xs leading-[1.3]">
+                  Источник:{" "}
+                  <span className="text-primary-blue">
+                    {candidate.source || "Не указан"}
+                  </span>
                 </p>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap items-start gap-[6px]">
-              {candidate.tags.slice(0, 3).map((tag) => (
-                <div className="rounded-[6px] bg-danger-red-bg p-2" key={tag}>
-                  <p className="font-semibold text-[12px] text-accent-red uppercase leading-none tracking-[-0.24px] line-through">
-                    {tag}
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-text-placeholder">
+                    <DownloadIcon />
+                    <p className="font-medium text-base leading-none">CV</p>
+                  </div>
+
+                  <button
+                    className="ui-button ui-button-primary"
+                    disabled={!candidate.resumeFile.url}
+                    onClick={() => {
+                      if (candidate.resumeFile.url) {
+                        window.open(
+                          candidate.resumeFile.url,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }
+                    }}
+                    type="button"
+                  >
+                    Быстрый просмотр CV
+                  </button>
                 </div>
-              ))}
-            </div>
-
-            <p className="w-full text-[12px] leading-[1.3] tracking-[-0.24px]">
-              Источник:{" "}
-              <span className="text-primary-blue">
-                {candidate.source || "Не указан"}
-              </span>
-            </p>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 text-text-placeholder">
-                <DownloadIcon />
-                <p className="font-medium text-[16px] leading-none tracking-[-0.32px]">
-                  CV
-                </p>
-              </div>
-
-              <button
-                className="h-11 w-[182px] rounded-[6px] bg-primary-blue px-3 py-2.5 font-medium text-[14px] text-bg-light leading-none tracking-[-0.28px] transition-colors hover:bg-primary-blue-hover disabled:cursor-not-allowed disabled:bg-primary-blue/50"
-                disabled={!candidate.resumeFile.url}
-                onClick={() => {
-                  if (candidate.resumeFile.url) {
-                    window.open(
-                      candidate.resumeFile.url,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  }
-                }}
-                type="button"
-              >
-                Быстрый просмотр CV
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

@@ -7,6 +7,7 @@ import {
   PencilIcon,
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
+import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -175,9 +176,9 @@ export function ImageUploader({
           </span>
           {fileInput}
         </label>
-        {error && (
-          <p className="text-[13px] text-danger-red leading-[1.4]">{error}</p>
-        )}
+        <FeedbackPresence show={Boolean(error)}>
+          <p className="text-danger-red text-xs leading-[1.4]">{error}</p>
+        </FeedbackPresence>
       </div>
     );
   }
@@ -204,18 +205,22 @@ export function ImageUploader({
           </span>
         )}
         <span className="flex flex-col gap-1 border-border-input border-t bg-bg-light p-4 text-text-heading">
-          <span className="font-semibold text-[18px] leading-none">
-            {isUploading ? "Загрузка изображения..." : "Добавить изображение"}
+          <span className="font-semibold text-lg leading-none">
+            <LoadingButtonContent
+              isLoading={isUploading}
+              label="Добавить изображение"
+              loadingLabel="Загрузка изображения..."
+            />
           </span>
-          <span className="text-[13px] text-text-secondary leading-[1.35]">
+          <span className="text-text-secondary text-xs leading-[1.35]">
             Нажмите на обложку, чтобы выбрать файл
           </span>
         </span>
         {fileInput}
       </label>
-      {error && (
-        <p className="text-[13px] text-danger-red leading-[1.4]">{error}</p>
-      )}
+      <FeedbackPresence show={Boolean(error)}>
+        <p className="text-danger-red text-xs leading-[1.4]">{error}</p>
+      </FeedbackPresence>
     </div>
   );
 }

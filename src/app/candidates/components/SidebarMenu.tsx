@@ -8,7 +8,7 @@ export function SidebarMenu({ items, activeId, onSelect }: SidebarMenuProps) {
       <nav className="flex flex-col gap-2">
         {items.map((item) => (
           <button
-            className={`rounded-lg px-4 py-3 text-left font-semibold text-[14px] tracking-[-0.28px] transition-colors ${
+            className={`rounded-lg px-4 py-3 text-left font-semibold text-sm transition-colors ${
               activeId === item.id
                 ? "bg-bg-active-menu text-primary-blue"
                 : "text-text-disabled hover:text-text-placeholder"
