@@ -7,7 +7,7 @@ module.exports = {
       cwd: "/root/projects/persona-management",
       env: {
         NODE_ENV: "production",
-        AUTH_URL: process.env.AUTH_URL ?? "https://ilovehr.uz",
+        AUTH_URL: process.env.AUTH_URL ?? "https://admin.talanty.uz",
       },
     },
   ],

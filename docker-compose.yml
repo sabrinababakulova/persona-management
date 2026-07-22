@@ -1,6 +1,6 @@
 services:
   directus:
-    image: directus/directus@sha256:8543bb57029d6e4087fd6bd83944233b271b3858465aa8e43d888e618bbe0a69
+    image: directus/directus@sha256:eb326f679ae847c0a776f93b972761dc2ebe84980e0b9d274a6bc31cd62809f7
     container_name: directus
     restart: unless-stopped
     ports:
