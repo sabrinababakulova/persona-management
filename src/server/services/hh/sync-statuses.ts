@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import {
   candidateStatusOptions,
@@ -67,10 +67,6 @@ function mapHhStateToStatus(
   return null;
 }
 
-function advisoryLockKey(companyId: string) {
-  return sql`hashtext(${`hh-status:${companyId}`})::bigint`;
-}
-
 function parseHhDate(value: string | null): Date | null {
   if (!value) {
     return null;
@@ -118,15 +114,21 @@ export async function syncHhCandidateStatuses(input: {
     return empty;
   }
 
-  const lockRows = (await db.execute(
-    sql`SELECT pg_try_advisory_lock(${advisoryLockKey(companyId)}) AS locked`,
-  )) as unknown as Array<{ locked: boolean }>;
-
-  if (!lockRows[0]?.locked) {
-    return empty;
-  }
+  const lockConnection = await db.$client.reserve();
+  let lockAcquired = false;
 
   try {
+    const lockRows = await lockConnection<{ locked: boolean }[]>`
+      SELECT pg_try_advisory_lock(
+        hashtext(${`hh-status:${companyId}`})::bigint
+      ) AS locked
+    `;
+    lockAcquired = lockRows[0]?.locked ?? false;
+
+    if (!lockAcquired) {
+      return empty;
+    }
+
     const statusRows = await db
       .select({ value: candidateStatusOptions.value })
       .from(candidateStatusOptions)
@@ -210,9 +212,17 @@ export async function syncHhCandidateStatuses(input: {
 
     return result;
   } finally {
-    await db.execute(
-      sql`SELECT pg_advisory_unlock(${advisoryLockKey(companyId)})`,
-    );
+    try {
+      if (lockAcquired) {
+        await lockConnection`
+          SELECT pg_advisory_unlock(
+            hashtext(${`hh-status:${companyId}`})::bigint
+          )
+        `;
+      }
+    } finally {
+      lockConnection.release();
+    }
   }
 }
 

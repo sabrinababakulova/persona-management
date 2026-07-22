@@ -21,7 +21,7 @@ BACKUP_DIR="${BACKUP_DIR:-$REPO_ROOT/backups}"
 TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
 ARCHIVE_PATH="$BACKUP_DIR/directus-uploads-${TIMESTAMP}.tar.gz"
 VOLUME_NAME="${DIRECTUS_UPLOADS_VOLUME:-persona-management_directus_uploads}"
-ARCHIVE_IMAGE="${DIRECTUS_BACKUP_IMAGE:-directus/directus@sha256:8543bb57029d6e4087fd6bd83944233b271b3858465aa8e43d888e618bbe0a69}"
+ARCHIVE_IMAGE="${DIRECTUS_BACKUP_IMAGE:-directus/directus@sha256:eb326f679ae847c0a776f93b972761dc2ebe84980e0b9d274a6bc31cd62809f7}"
 
 mkdir -p "$BACKUP_DIR"
 
