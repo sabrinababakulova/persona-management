@@ -1,4 +1,5 @@
 import { HhPublicationForm } from "./hh-publication-form";
+import { OlxPublicationForm } from "./olx-publication-form";
 import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
 import { TgPublicationForm } from "./tg-publication-form";
 
@@ -8,6 +9,7 @@ const CHANNEL_DISPLAY_NAME: Record<string, string> = {
   "hh.uz": "HH",
   telegram: "Telegram",
   "person-hunter": "PersonHunters",
+  "olx.uz": "OLX.uz",
 };
 
 /**
@@ -34,6 +36,10 @@ export default async function VacancyPublicationChannelPage({
 
   if (channel === "person-hunter") {
     return <PersonHunterPublicationForm vacancyId={id} />;
+  }
+
+  if (channel === "olx.uz") {
+    return <OlxPublicationForm vacancyId={id} />;
   }
 
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;

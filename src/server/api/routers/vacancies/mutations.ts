@@ -31,6 +31,24 @@ import {
   resolveUserHhAuth,
 } from "~/server/services/hh-company-account";
 import {
+  createOrUpdateOlxAdvert,
+  deleteOlxAdvert,
+  fetchOlxAdvert,
+  fetchOlxCategoryAttributes,
+  fetchOlxCities,
+  fetchOlxCurrencies,
+  fetchOlxDistricts,
+  fetchOlxJobCategoryOptions,
+  getUserOlxAccount,
+  isOlxAdvertActive,
+  isOlxConfigured,
+  OlxApiError,
+  OlxReconnectRequiredError,
+  prepareOlxAdvertPayload,
+  resolveUserOlxAuth,
+  sendOlxAdvertCommand,
+} from "~/server/services/olx";
+import {
   createPersonHunterVacancy,
   deletePersonHunterVacancy,
   fetchPersonHunterDictionaries,
@@ -49,10 +67,13 @@ import {
   sendTelegramPhoto,
 } from "~/server/services/telegram";
 import { fetchDirectusAsset } from "~/server/storage/directus-storage";
+import { OLX_MAX_SALARY } from "~/shared/olx-validation";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 
 import {
+  type OlxPublicationMeta,
+  olxMetaSchema,
   type PersonHunterPublicationMeta,
   vacancyCreateInputSchema,
   vacancyIdInputSchema,
@@ -124,6 +145,7 @@ export const createVacancyProcedure = protectedProcedure
         contactPhone: input.contactPhone ?? null,
         telegramFileId: input.telegramFileId ?? null,
         personHunterMeta: input.personHunterMeta ?? null,
+        olxMeta: input.olxMeta ?? null,
         companyId,
       })
       .returning();
@@ -482,6 +504,59 @@ export const updateVacancyProcedure = protectedProcedure
       }
     }
 
+    // OLX lifecycle changes use advert commands rather than a content PUT. The command is sent
+    // before the local flag changes, so a failed activation/deactivation remains retryable.
+    let olxStatusAfterToggle: string | null = null;
+    let olxIsActiveAfterToggle: boolean | null = null;
+    if (
+      input.isActive !== undefined &&
+      input.isActive !== existing.isActive &&
+      existing.destination === "olx.uz" &&
+      existing.olxAdvertId
+    ) {
+      if (!isOlxConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "OLX.uz не настроен: отсутствуют Client ID и Client Secret.",
+        });
+      }
+      const olxAccount = await resolveUserOlxAuth(
+        ctx.db,
+        ctx.session.user.id,
+      ).catch((error: unknown) => {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: describeOlxError(error),
+        });
+      });
+      if (!olxAccount?.accessToken) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Подключите OLX.uz в настройках интеграций.",
+        });
+      }
+
+      try {
+        await sendOlxAdvertCommand(
+          olxAccount.accessToken,
+          existing.olxAdvertId,
+          input.isActive ? "activate" : "deactivate",
+        );
+        const remote = await fetchOlxAdvert(
+          olxAccount.accessToken,
+          existing.olxAdvertId,
+        ).catch(() => null);
+        olxStatusAfterToggle =
+          remote?.status ?? (input.isActive ? "new" : "removed_by_user");
+        olxIsActiveAfterToggle = isOlxAdvertActive(olxStatusAfterToggle);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: describeOlxError(error),
+        });
+      }
+    }
+
     // Toggling a PersonHunters publication mirrors the change to PersonHunters: deactivating
     // hides the vacancy (status 0), reactivating republishes it (status 1). We do this before
     // the local write so a failed remote call leaves the local row untouched and retryable.
@@ -612,6 +687,8 @@ export const updateVacancyProcedure = protectedProcedure
       isActive: boolean;
       isPublication: boolean;
       personHunterMeta: PersonHunterPublicationMeta | null;
+      olxAdvertStatus: string | null;
+      olxMeta: OlxPublicationMeta | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
@@ -688,7 +765,7 @@ export const updateVacancyProcedure = protectedProcedure
       valuesToUpdate.telegramFileId = input.telegramFileId || null;
     }
     if (input.isActive !== undefined && input.isActive !== existing.isActive) {
-      valuesToUpdate.isActive = input.isActive;
+      valuesToUpdate.isActive = olxIsActiveAfterToggle ?? input.isActive;
     }
     if (
       input.isPublication !== undefined &&
@@ -698,6 +775,12 @@ export const updateVacancyProcedure = protectedProcedure
     }
     if (input.personHunterMeta !== undefined) {
       valuesToUpdate.personHunterMeta = input.personHunterMeta;
+    }
+    if (input.olxMeta !== undefined) {
+      valuesToUpdate.olxMeta = input.olxMeta;
+    }
+    if (olxStatusAfterToggle !== null) {
+      valuesToUpdate.olxAdvertStatus = olxStatusAfterToggle;
     }
     if (clearTelegramPosts) {
       valuesToUpdate.telegramPostId = null;
@@ -727,6 +810,25 @@ export const updateVacancyProcedure = protectedProcedure
       await ctx.db
         .delete(vacancyTelegramPosts)
         .where(eq(vacancyTelegramPosts.publicationId, input.id));
+    }
+
+    if (
+      olxStatusAfterToggle !== null &&
+      updated.parentId &&
+      updated.olxAdvertId
+    ) {
+      await ctx.db
+        .update(vacancies)
+        .set({
+          olxAdvertStatus: olxStatusAfterToggle,
+        })
+        .where(
+          and(
+            eq(vacancies.id, updated.parentId),
+            eq(vacancies.companyId, userCompanyId),
+            eq(vacancies.olxAdvertId, updated.olxAdvertId),
+          ),
+        );
     }
 
     const actorName =
@@ -760,6 +862,7 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
         parentId: vacancies.parentId,
         destination: vacancies.destination,
         personHunterVacancyId: vacancies.personHunterVacancyId,
+        olxAdvertId: vacancies.olxAdvertId,
       })
       .from(vacancies)
       .where(
@@ -777,6 +880,36 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
         code: "NOT_FOUND",
         message: "Публикация не найдена",
       });
+    }
+
+    // OLX only allows deletion after deactivation. The service reads the canonical status,
+    // deactivates an active advert, then deletes it. A 404 is idempotent success.
+    if (existing.destination === "olx.uz" && existing.olxAdvertId) {
+      const olxAccount = await resolveUserOlxAuth(
+        ctx.db,
+        ctx.session.user.id,
+      ).catch((error: unknown) => {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: describeOlxError(error),
+        });
+      });
+      if (!olxAccount?.accessToken) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Подключите OLX.uz в настройках интеграций.",
+        });
+      }
+      try {
+        await deleteOlxAdvert(olxAccount.accessToken, existing.olxAdvertId);
+      } catch (error) {
+        if (!(error instanceof OlxApiError && error.status === 404)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: describeOlxError(error),
+          });
+        }
+      }
     }
 
     // Fully remove the vacancy from PersonHunters first, so the local row only disappears once
@@ -824,6 +957,27 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
         code: "NOT_FOUND",
         message: "Публикация не найдена",
       });
+    }
+
+    if (
+      existing.destination === "olx.uz" &&
+      existing.olxAdvertId &&
+      deleted.parentId
+    ) {
+      await ctx.db
+        .update(vacancies)
+        .set({
+          olxAdvertId: null,
+          olxAdvertUrl: null,
+          olxAdvertStatus: null,
+        })
+        .where(
+          and(
+            eq(vacancies.id, deleted.parentId),
+            eq(vacancies.companyId, companyId),
+            eq(vacancies.olxAdvertId, existing.olxAdvertId),
+          ),
+        );
     }
 
     return { success: true, id: deleted.id, parentId: deleted.parentId };
@@ -1395,6 +1549,344 @@ export const saveHhDraftProcedure = protectedProcedure
             : "Не удалось сохранить черновик на hh.uz",
       });
     }
+  });
+
+// ── OLX.uz ─────────────────────────────────────────────────────────────────
+
+function describeOlxError(error: unknown): string {
+  if (error instanceof OlxReconnectRequiredError) {
+    return error.message;
+  }
+  if (error instanceof OlxApiError) {
+    if (error.validationErrors.length > 0) {
+      return `OLX.uz отклонил публикацию: ${error.validationErrors
+        .map((validation) => validation.detail || validation.title)
+        .join("; ")}`;
+    }
+    if (error.code === "invalid_token" || error.status === 401) {
+      return "Сессия OLX.uz истекла. Переподключите аккаунт в настройках.";
+    }
+    if (error.status === 403) {
+      return "OLX.uz отклонил операцию: проверьте пакет размещений и права аккаунта.";
+    }
+    if (error.status === 404) {
+      return "Объявление OLX.uz не найдено.";
+    }
+    return `OLX.uz: ${error.message}`;
+  }
+  return error instanceof Error
+    ? `Не удалось выполнить операцию OLX.uz: ${error.message}`
+    : "Не удалось выполнить операцию OLX.uz";
+}
+
+export const getOlxConfigProcedure = protectedProcedure.query(
+  async ({ ctx }) => {
+    if (!isOlxConfigured()) {
+      return {
+        enabled: false,
+        connected: false,
+        reconnectRequired: false,
+        references: null,
+        account: null,
+      };
+    }
+
+    const storedAccount = await getUserOlxAccount(ctx.db, ctx.session.user.id);
+    if (!storedAccount) {
+      return {
+        enabled: true,
+        connected: false,
+        reconnectRequired: false,
+        references: null,
+        account: null,
+      };
+    }
+
+    let account: Awaited<ReturnType<typeof resolveUserOlxAuth>>;
+    try {
+      account = await resolveUserOlxAuth(ctx.db, ctx.session.user.id);
+    } catch (error) {
+      if (error instanceof OlxReconnectRequiredError) {
+        return {
+          enabled: true,
+          connected: false,
+          reconnectRequired: true,
+          references: null,
+          account: {
+            name: storedAccount.name,
+            phone: storedAccount.phone,
+            isBusiness: storedAccount.isBusiness,
+          },
+        };
+      }
+      throw new TRPCError({
+        code: "BAD_GATEWAY",
+        message: describeOlxError(error),
+      });
+    }
+
+    if (!account?.accessToken) {
+      return {
+        enabled: true,
+        connected: false,
+        reconnectRequired: true,
+        references: null,
+        account: null,
+      };
+    }
+
+    try {
+      const [categories, cities, currencies] = await Promise.all([
+        fetchOlxJobCategoryOptions(account.accessToken),
+        fetchOlxCities(account.accessToken),
+        fetchOlxCurrencies(account.accessToken),
+      ]);
+      const supportedCurrencies = currencies.filter(
+        (currency) => currency.code === "UZS" || currency.code === "USD",
+      );
+      if (cities.length === 0) {
+        throw new Error("OLX.uz не вернул список городов.");
+      }
+      if (supportedCurrencies.length === 0) {
+        throw new Error("OLX.uz не вернул поддерживаемую валюту UZS или USD.");
+      }
+      return {
+        enabled: true,
+        connected: true,
+        reconnectRequired: false,
+        references: {
+          categories,
+          cities,
+          currencies: supportedCurrencies,
+        },
+        account: {
+          name: account.name,
+          phone: account.phone,
+          isBusiness: account.isBusiness,
+        },
+      };
+    } catch (error) {
+      throw new TRPCError({
+        code: "BAD_GATEWAY",
+        message: describeOlxError(error),
+      });
+    }
+  },
+);
+
+export const getOlxCategoryAttributesProcedure = protectedProcedure
+  .input(z.object({ categoryId: z.number().int().positive() }))
+  .query(async ({ ctx, input }) => {
+    const account = await resolveUserOlxAuth(ctx.db, ctx.session.user.id).catch(
+      (error: unknown) => {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: describeOlxError(error),
+        });
+      },
+    );
+    if (!account?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Подключите OLX.uz в настройках интеграций.",
+      });
+    }
+    return fetchOlxCategoryAttributes(account.accessToken, input.categoryId);
+  });
+
+export const getOlxDistrictsProcedure = protectedProcedure
+  .input(z.object({ cityId: z.number().int().positive() }))
+  .query(async ({ ctx, input }) => {
+    const account = await resolveUserOlxAuth(ctx.db, ctx.session.user.id).catch(
+      (error: unknown) => {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: describeOlxError(error),
+        });
+      },
+    );
+    if (!account?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Подключите OLX.uz в настройках интеграций.",
+      });
+    }
+    return fetchOlxDistricts(account.accessToken, input.cityId);
+  });
+
+export const publishOlxProcedure = protectedProcedure
+  .input(
+    z.object({
+      vacancyId: z.string().min(1).max(255),
+      title: z.string().min(16).max(150),
+      descriptionHtml: z.string().min(1).max(12000),
+      salaryFrom: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(OLX_MAX_SALARY)
+        .nullable()
+        .optional(),
+      salaryTo: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(OLX_MAX_SALARY)
+        .nullable()
+        .optional(),
+      salaryCurrency: z.enum(["UZS", "USD"]),
+      meta: olxMetaSchema,
+    }),
+  )
+  .mutation(async ({ ctx, input }) => {
+    if (!isOlxConfigured()) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "OLX.uz не настроен: отсутствуют Client ID и Client Secret.",
+      });
+    }
+
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+    const rows = await ctx.db
+      .select()
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.vacancyId),
+          eq(vacancies.companyId, companyId),
+          eq(vacancies.isPublication, true),
+          eq(vacancies.destination, "olx.uz"),
+        ),
+      )
+      .limit(1);
+    const vacancy = rows[0];
+    if (!vacancy) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Публикация OLX.uz не найдена",
+      });
+    }
+
+    if (
+      input.salaryFrom != null &&
+      input.salaryTo != null &&
+      input.salaryTo < input.salaryFrom
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Зарплата «до» не может быть меньше зарплаты «от».",
+      });
+    }
+
+    const account = await resolveUserOlxAuth(ctx.db, ctx.session.user.id).catch(
+      (error: unknown) => {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: describeOlxError(error),
+        });
+      },
+    );
+    if (!account?.accessToken) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Подключите OLX.uz в настройках интеграций.",
+      });
+    }
+
+    const hasSalary =
+      input.salaryFrom !== null && input.salaryFrom !== undefined
+        ? true
+        : (input.salaryTo !== null && input.salaryTo !== undefined) ||
+          input.meta.salaryNegotiable;
+    const payload = prepareOlxAdvertPayload({
+      title: input.title,
+      description: input.descriptionHtml,
+      category_id: input.meta.categoryId,
+      advertiser_type: input.meta.advertiserType,
+      external_id: vacancy.id,
+      contact: {
+        name: input.meta.contactName,
+        phone: input.meta.contactPhone,
+      },
+      location: {
+        city_id: input.meta.cityId,
+        district_id: input.meta.districtId,
+      },
+      ...(hasSalary
+        ? {
+            salary: {
+              value_from: input.salaryFrom ?? undefined,
+              value_to: input.salaryTo ?? undefined,
+              currency: input.salaryCurrency.toUpperCase(),
+              negotiable: input.meta.salaryNegotiable,
+              type: input.meta.salaryType,
+            },
+          }
+        : {}),
+      attributes: input.meta.attributes,
+      auto_extend_enabled: input.meta.autoExtendEnabled,
+    });
+
+    let advert: Awaited<ReturnType<typeof createOrUpdateOlxAdvert>>;
+    try {
+      advert = await createOrUpdateOlxAdvert({
+        accessToken: account.accessToken,
+        advertId: vacancy.olxAdvertId,
+        payload,
+      });
+    } catch (error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: describeOlxError(error),
+      });
+    }
+
+    const isActive = isOlxAdvertActive(advert.status);
+    const update = {
+      title: input.title.trim(),
+      descriptionHtml: payload.description,
+      salaryFrom: input.salaryFrom ?? null,
+      salaryTo: input.salaryTo ?? null,
+      salaryCurrency:
+        input.salaryCurrency === "USD" ? ("USD" as const) : ("UZS" as const),
+      olxAdvertId: advert.id,
+      olxAdvertUrl: advert.url,
+      olxAdvertStatus: advert.status,
+      olxMeta: input.meta,
+      isActive,
+    };
+    await ctx.db
+      .update(vacancies)
+      .set(update)
+      .where(
+        and(eq(vacancies.id, vacancy.id), eq(vacancies.companyId, companyId)),
+      );
+
+    if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
+      await ctx.db
+        .update(vacancies)
+        .set({
+          olxAdvertId: advert.id,
+          olxAdvertUrl: advert.url,
+          olxAdvertStatus: advert.status,
+        })
+        .where(
+          and(
+            eq(vacancies.id, vacancy.parentId),
+            eq(vacancies.companyId, companyId),
+          ),
+        );
+    }
+
+    return {
+      success: true,
+      olxAdvertId: advert.id,
+      url: advert.url,
+      status: advert.status,
+      requiresPayment:
+        advert.status === "limited" || advert.status === "unpaid",
+      isActive,
+    };
   });
 
 // ── PersonHunters ───────────────────────────────────────────────────────────

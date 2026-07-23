@@ -4,7 +4,12 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { userHhAccounts, userTelegramChannels } from "~/server/db/schema";
+import {
+  userHhAccounts,
+  userOlxAccounts,
+  userTelegramChannels,
+} from "~/server/db/schema";
+import { isOlxConfigured } from "~/server/services/olx";
 
 export const integrationsRouter = createTRPCRouter({
   // ── Telegram channels ──────────────────────────────────────────────
@@ -133,6 +138,56 @@ export const integrationsRouter = createTRPCRouter({
       .delete(userHhAccounts)
       .where(eq(userHhAccounts.userId, ctx.session.user.id));
 
+    return { success: true };
+  }),
+
+  // ── OLX.uz account ────────────────────────────────────────────────
+
+  getOlxAccount: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: userOlxAccounts.id,
+        olxUserId: userOlxAccounts.olxUserId,
+        email: userOlxAccounts.email,
+        name: userOlxAccounts.name,
+        phone: userOlxAccounts.phone,
+        isBusiness: userOlxAccounts.isBusiness,
+        accessToken: userOlxAccounts.accessToken,
+        refreshToken: userOlxAccounts.refreshToken,
+        accessTokenExpiresAt: userOlxAccounts.accessTokenExpiresAt,
+        scope: userOlxAccounts.scope,
+        createdAt: userOlxAccounts.createdAt,
+        updatedAt: userOlxAccounts.updatedAt,
+      })
+      .from(userOlxAccounts)
+      .where(eq(userOlxAccounts.userId, ctx.session.user.id))
+      .limit(1);
+
+    const account = rows[0];
+    return {
+      configured: isOlxConfigured(),
+      account: account
+        ? {
+            id: account.id,
+            olxUserId: account.olxUserId,
+            email: account.email,
+            name: account.name,
+            phone: account.phone,
+            isBusiness: account.isBusiness,
+            hasTokens: Boolean(account.accessToken && account.refreshToken),
+            accessTokenExpiresAt: account.accessTokenExpiresAt,
+            scope: account.scope,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt,
+          }
+        : null,
+    };
+  }),
+
+  removeOlxAccount: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .delete(userOlxAccounts)
+      .where(eq(userOlxAccounts.userId, ctx.session.user.id));
     return { success: true };
   }),
 });

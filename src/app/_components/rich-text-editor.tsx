@@ -22,6 +22,7 @@ type RichTextEditorProps = {
   maxLength?: number;
   onChange: (html: string) => void;
   placeholder?: string;
+  toolbarVariant?: "default" | "olx";
   value: string;
 };
 
@@ -53,7 +54,13 @@ function ToolbarButton({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({
+  editor,
+  variant,
+}: {
+  editor: Editor;
+  variant: "default" | "olx";
+}) {
   const promptForLink = () => {
     const previous = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt("URL ссылки", previous ?? "https://");
@@ -93,17 +100,25 @@ function Toolbar({ editor }: { editor: Editor }) {
         label="I"
         onClick={() => editor.chain().focus().toggleItalic().run()}
       />
-      <span className="mx-1 h-4 w-px bg-border-input" />
-      <ToolbarButton
-        active={editor.isActive("heading", { level: 3 })}
-        label="H3"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-      />
-      <ToolbarButton
-        active={editor.isActive("heading", { level: 4 })}
-        label="H4"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
-      />
+      {variant === "default" && (
+        <>
+          <span className="mx-1 h-4 w-px bg-border-input" />
+          <ToolbarButton
+            active={editor.isActive("heading", { level: 3 })}
+            label="H3"
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 3 }).run()
+            }
+          />
+          <ToolbarButton
+            active={editor.isActive("heading", { level: 4 })}
+            label="H4"
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 4 }).run()
+            }
+          />
+        </>
+      )}
       <ToolbarButton
         active={editor.isActive("paragraph")}
         label="¶"
@@ -115,17 +130,21 @@ function Toolbar({ editor }: { editor: Editor }) {
         label="• Список"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
-      <ToolbarButton
-        active={editor.isActive("orderedList")}
-        label="1. Список"
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      />
-      <span className="mx-1 h-4 w-px bg-border-input" />
-      <ToolbarButton
-        active={editor.isActive("link")}
-        label="Ссылка"
-        onClick={promptForLink}
-      />
+      {variant === "default" && (
+        <>
+          <ToolbarButton
+            active={editor.isActive("orderedList")}
+            label="1. Список"
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          />
+          <span className="mx-1 h-4 w-px bg-border-input" />
+          <ToolbarButton
+            active={editor.isActive("link")}
+            label="Ссылка"
+            onClick={promptForLink}
+          />
+        </>
+      )}
       <ToolbarButton
         label="Очистить"
         onClick={() =>
@@ -210,6 +229,7 @@ export function RichTextEditor({
   maxLength,
   onChange,
   placeholder,
+  toolbarVariant = "default",
   value,
 }: RichTextEditorProps) {
   const editorId = id ?? label;
@@ -289,7 +309,7 @@ export function RichTextEditor({
               disabled ? "pointer-events-none select-none opacity-60" : ""
             }
           >
-            <Toolbar editor={editor} />
+            <Toolbar editor={editor} variant={toolbarVariant} />
           </div>
         )}
         <div className="relative">

@@ -57,6 +57,41 @@ export type PersonHunterPublicationMeta = z.infer<
   typeof personHunterMetaSchema
 >;
 
+export const olxAttributeValueSchema = z
+  .object({
+    code: z.string().trim().min(1).max(100),
+    value: z.string().trim().min(1).max(500).optional(),
+    values: z
+      .array(z.string().trim().min(1).max(500))
+      .min(1)
+      .max(100)
+      .optional(),
+  })
+  .refine(
+    (attribute) =>
+      Boolean(attribute.value) || (attribute.values?.length ?? 0) > 0,
+    "Укажите значение атрибута OLX",
+  );
+
+/**
+ * OLX.uz-specific category/location/contact fields and dynamic category attributes.
+ * OLX owns this taxonomy, so the selected API values are stored rather than duplicated as columns.
+ */
+export const olxMetaSchema = z.object({
+  categoryId: z.number().int().positive(),
+  advertiserType: z.enum(["private", "business"]).default("business"),
+  cityId: z.number().int().positive(),
+  districtId: z.number().int().positive().optional(),
+  contactName: z.string().trim().min(1).max(255),
+  contactPhone: z.string().trim().min(1).max(50).optional(),
+  salaryNegotiable: z.boolean().default(false),
+  salaryType: z.enum(["hourly", "monthly"]).default("monthly"),
+  autoExtendEnabled: z.boolean().default(false),
+  attributes: z.array(olxAttributeValueSchema).max(100).default([]),
+});
+
+export type OlxPublicationMeta = z.infer<typeof olxMetaSchema>;
+
 export const vacancyCreateInputSchema = z.object({
   id: z.string().min(1).max(255).optional(),
   parentId: z.string().min(1).max(255).optional(),
@@ -82,6 +117,7 @@ export const vacancyCreateInputSchema = z.object({
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
   personHunterMeta: personHunterMetaSchema.optional(),
+  olxMeta: olxMetaSchema.optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -105,6 +141,7 @@ export const vacancyUpdateInputSchema = z.object({
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   personHunterMeta: personHunterMetaSchema.nullable().optional(),
+  olxMeta: olxMetaSchema.nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({

@@ -19,6 +19,12 @@ import {
 import { sanitizeHhDescriptionHtml } from "~/server/services/hh/sanitize-html";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 import {
+  fetchOlxAdvert,
+  isOlxAdvertActive,
+  isOlxConfigured,
+  resolveUserOlxAuth,
+} from "~/server/services/olx";
+import {
   fetchPersonHunterVacancyById,
   getPersonHunterApiKey,
   isPersonHunterConfigured,
@@ -379,13 +385,83 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         hhDraftId: vacancies.hhDraftId,
         personHunterVacancyId: vacancies.personHunterVacancyId,
         personHunterUniqueCode: vacancies.personHunterUniqueCode,
+        olxAdvertId: vacancies.olxAdvertId,
+        olxAdvertUrl: vacancies.olxAdvertUrl,
+        olxAdvertStatus: vacancies.olxAdvertStatus,
+        olxMeta: vacancies.olxMeta,
         telegramPostId: vacancies.telegramPostId,
       })
       .from(vacancies)
       .where(and(...conditions))
       .orderBy(desc(vacancies.createdAt));
 
-    return rows;
+    const olxPublications = rows.filter(
+      (publication) =>
+        publication.destination === "olx.uz" && publication.olxAdvertId,
+    );
+    if (olxPublications.length === 0 || !isOlxConfigured()) {
+      return rows;
+    }
+
+    // OLX can move an advert from moderation to active asynchronously. Refresh the small set of
+    // OLX rows when the publication list is opened so local switches and status badges converge
+    // without a separate cron job. Failures are isolated per advert and never hide local data.
+    const olxAccount = await resolveUserOlxAuth(
+      ctx.db,
+      ctx.session.user.id,
+    ).catch(() => null);
+    if (!olxAccount?.accessToken) {
+      return rows;
+    }
+    const olxAccessToken = olxAccount.accessToken;
+
+    return Promise.all(
+      rows.map(async (publication) => {
+        if (publication.destination !== "olx.uz" || !publication.olxAdvertId) {
+          return publication;
+        }
+
+        try {
+          const remote = await fetchOlxAdvert(
+            olxAccessToken,
+            publication.olxAdvertId,
+          );
+          const isActive = isOlxAdvertActive(remote.status);
+          if (
+            remote.status !== publication.olxAdvertStatus ||
+            remote.url !== publication.olxAdvertUrl ||
+            isActive !== publication.isActive
+          ) {
+            await ctx.db
+              .update(vacancies)
+              .set({
+                isActive,
+                olxAdvertStatus: remote.status,
+                olxAdvertUrl: remote.url,
+              })
+              .where(
+                and(
+                  eq(vacancies.id, publication.id),
+                  eq(vacancies.companyId, userCompanyId),
+                ),
+              );
+          }
+          return {
+            ...publication,
+            isActive,
+            olxAdvertStatus: remote.status,
+            olxAdvertUrl: remote.url,
+          };
+        } catch (error) {
+          console.error("Failed to refresh OLX advert status", {
+            advertId: publication.olxAdvertId,
+            publicationId: publication.id,
+            error,
+          });
+          return publication;
+        }
+      }),
+    );
   });
 
 export const getPublicationTelegramPostsProcedure = protectedProcedure

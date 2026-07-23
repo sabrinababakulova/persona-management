@@ -7,7 +7,10 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
-import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
+import type {
+  OlxPublicationMeta,
+  PersonHunterPublicationMeta,
+} from "~/server/api/routers/vacancies/schemas";
 
 export const createTable = pgTableCreator((name) => name);
 
@@ -344,6 +347,14 @@ export const vacancies = createTable(
     personHunterMeta: d
       .json("person_hunter_meta")
       .$type<PersonHunterPublicationMeta>(),
+    /** OLX Partner API advert id returned after the publication is created. */
+    olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
+    /** Canonical public URL returned by OLX for this advert. */
+    olxAdvertUrl: d.varchar("olx_advert_url", { length: 500 }),
+    /** Last OLX lifecycle status observed after create/update/command. */
+    olxAdvertStatus: d.varchar("olx_advert_status", { length: 50 }),
+    /** OLX-owned category, location, contact and dynamic attribute values. */
+    olxMeta: d.json("olx_meta").$type<OlxPublicationMeta>(),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),
@@ -371,6 +382,7 @@ export const vacancies = createTable(
     index("vacancy_company_id_idx").on(t.companyId),
     index("vacancy_parent_id_idx").on(t.parentId),
     index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
+    index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
   ],
 );
 
@@ -689,6 +701,36 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
   refreshToken: d.text(),
   employerId: d.varchar({ length: 255 }),
   email: d.varchar({ length: 255 }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+// User OLX.uz accounts. App credentials stay in env; OAuth tokens are per user.
+export const userOlxAccounts = createTable("user_olx_account", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  olxUserId: d.varchar("olx_user_id", { length: 100 }).notNull(),
+  accessToken: d.text("access_token"),
+  refreshToken: d.text("refresh_token"),
+  accessTokenExpiresAt: d.timestamp("access_token_expires_at", {
+    withTimezone: true,
+  }),
+  scope: d.text(),
+  email: d.varchar({ length: 255 }),
+  name: d.varchar({ length: 255 }),
+  phone: d.varchar({ length: 50 }),
+  isBusiness: d.boolean("is_business").notNull().default(false),
   createdAt: d
     .timestamp({ withTimezone: true })
     .$defaultFn(() => new Date())

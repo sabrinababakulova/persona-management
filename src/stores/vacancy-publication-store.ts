@@ -61,6 +61,7 @@ export const PUBLICATION_CHANNELS = [
   "hh.uz",
   "telegram",
   "person-hunter",
+  "olx.uz",
 ] as const;
 
 /** Literal-union of the channels supported by the publication flow. */

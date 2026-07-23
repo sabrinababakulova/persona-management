@@ -16,7 +16,11 @@ import {
   TrashIcon,
 } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
-import { LoadingButtonContent } from "~/app/_components/motion-system";
+import {
+  FeedbackPresence,
+  LoadingButtonContent,
+  LoadingState,
+} from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
@@ -30,6 +34,7 @@ const CHANNEL_OPTIONS: ActionDropdownItem[] = [
     label: "Для PersonHunters",
     iconSrc: "/person-hunter.svg",
   },
+  { value: "olx.uz", label: "Для OLX.uz", iconSrc: "/olx.svg" },
 ];
 
 /** Brand assets used to render the "Канал" column for each known platform. */
@@ -38,6 +43,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
+  "olx.uz": { src: "/olx.svg", label: "OLX.uz" },
 };
 
 const ACTIVE_STATUS_OPTIONS = [
@@ -45,16 +51,28 @@ const ACTIVE_STATUS_OPTIONS = [
   { value: "inactive", label: "Неактивна" },
 ];
 
-type PublicationState = "published" | "draft" | "local";
+type PublicationState =
+  | "published"
+  | "pending"
+  | "attention"
+  | "inactive"
+  | "draft"
+  | "local";
 
 const PUBLICATION_STATE_LABEL: Record<PublicationState, string> = {
   published: "Опубликовано",
+  pending: "На модерации",
+  attention: "Требует оплаты",
+  inactive: "Снято с публикации",
   draft: "Черновик",
   local: "Локально",
 };
 
 const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
   published: "bg-status-active-bg text-status-active",
+  pending: "bg-status-paused-bg text-status-paused",
+  attention: "bg-status-paused-bg text-status-paused",
+  inactive: "bg-status-closed-bg text-status-closed",
   draft: "bg-status-closed-bg text-status-closed",
   local: "bg-bg-input text-text-placeholder",
 };
@@ -63,7 +81,31 @@ function getPublicationState(publication: {
   hhVacancyId?: string | null;
   hhDraftId?: string | null;
   personHunterVacancyId?: string | null;
+  olxAdvertId?: string | null;
+  olxAdvertStatus?: string | null;
 }): PublicationState {
+  if (publication.olxAdvertId) {
+    if (
+      publication.olxAdvertStatus === "new" ||
+      publication.olxAdvertStatus === "moderated" ||
+      publication.olxAdvertStatus === "unconfirmed"
+    ) {
+      return "pending";
+    }
+    if (
+      publication.olxAdvertStatus === "limited" ||
+      publication.olxAdvertStatus === "unpaid"
+    ) {
+      return "attention";
+    }
+    if (
+      publication.olxAdvertStatus &&
+      publication.olxAdvertStatus !== "active"
+    ) {
+      return "inactive";
+    }
+    return "published";
+  }
   if (publication.hhVacancyId || publication.personHunterVacancyId) {
     return "published";
   }
@@ -82,6 +124,7 @@ function getPublicationExternalUrl(publication: {
   hhVacancyId?: string | null;
   personHunterUniqueCode?: string | null;
   telegramPostId?: string | null;
+  olxAdvertUrl?: string | null;
 }): string | null {
   if (publication.destination === "hh.uz" && publication.hhVacancyId) {
     return `https://hh.uz/vacancy/${publication.hhVacancyId}`;
@@ -96,6 +139,9 @@ function getPublicationExternalUrl(publication: {
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
+  }
+  if (publication.destination === "olx.uz" && publication.olxAdvertUrl) {
+    return publication.olxAdvertUrl;
   }
   return null;
 }
@@ -166,7 +212,12 @@ export function PublicationsTable() {
   const { id: parentVacancyId } = useParams() as { id: string };
   const utils = api.useUtils();
 
-  const { data: publications } = api.vacancies.listPublications.useQuery(
+  const {
+    data: publications,
+    error: publicationsError,
+    isError: isPublicationsError,
+    isLoading: isPublicationsLoading,
+  } = api.vacancies.listPublications.useQuery(
     { parentVacancyId },
     { enabled: Boolean(parentVacancyId) },
   );
@@ -182,19 +233,24 @@ export function PublicationsTable() {
   } | null>(null);
   const [isDeactivationBlocked, setIsDeactivationBlocked] = useState(false);
   const [isTelegramDeleteSuccess, setIsTelegramDeleteSuccess] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const duplicatePublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
+      setActionError(null);
       await Promise.all([
         utils.vacancies.list.invalidate(),
         utils.vacancies.listPublications.invalidate({ parentVacancyId }),
       ]);
     },
     onError: (error) => {
-      console.error("Failed to duplicate vacancy publication", error);
+      setActionError(
+        error.message || "Не удалось дублировать публикацию. Попробуйте снова.",
+      );
     },
   });
   const deletePublication = api.vacancies.deletePublication.useMutation({
     onSuccess: async (_result, variables) => {
+      setActionError(null);
       setSelectedIds((current) => current.filter((id) => id !== variables.id));
       await Promise.all([
         utils.vacancies.list.invalidate(),
@@ -202,11 +258,14 @@ export function PublicationsTable() {
       ]);
     },
     onError: (error) => {
-      console.error("Failed to delete vacancy publication", error);
+      setActionError(
+        error.message || "Не удалось удалить публикацию. Попробуйте снова.",
+      );
     },
   });
   const updatePublicationStatus = api.vacancies.update.useMutation({
     onSuccess: async () => {
+      setActionError(null);
       await Promise.all([
         utils.vacancies.listPublications.invalidate({ parentVacancyId }),
       ]);
@@ -216,7 +275,10 @@ export function PublicationsTable() {
         setIsDeactivationBlocked(true);
         return;
       }
-      console.error("Failed to update vacancy publication status", error);
+      setActionError(
+        error.message ||
+          "Не удалось изменить статус публикации. Попробуйте снова.",
+      );
     },
   });
 
@@ -261,6 +323,7 @@ export function PublicationsTable() {
       isActive: false,
       isPublication: true,
       destination: publication.destination ?? undefined,
+      olxMeta: publication.olxMeta ?? undefined,
     });
   };
   const onDelete = (id: string) => {
@@ -269,6 +332,7 @@ export function PublicationsTable() {
       return;
     }
 
+    setActionError(null);
     setDeleteCandidateId(id);
   };
 
@@ -281,6 +345,7 @@ export function PublicationsTable() {
     if (!publication || publication.isActive === isActive) {
       return;
     }
+    setActionError(null);
 
     // hh.uz / PersonHunters changes and Telegram deactivations need a confirmation step (the
     // latter deletes the channel post); other status changes apply directly.
@@ -288,6 +353,7 @@ export function PublicationsTable() {
     if (
       destination === "hh.uz" ||
       destination === "person-hunter" ||
+      destination === "olx.uz" ||
       (destination === "telegram" && !isActive)
     ) {
       setPendingStatusChange({ id, isActive, destination });
@@ -342,6 +408,18 @@ export function PublicationsTable() {
         />
       </div>
 
+      <FeedbackPresence show={Boolean(actionError || isPublicationsError)}>
+        <div
+          aria-live="polite"
+          className="rounded-lg border border-danger-red bg-status-closed-bg px-4 py-3 text-danger-red text-sm leading-5"
+          role="alert"
+        >
+          {actionError ??
+            publicationsError?.message ??
+            "Не удалось загрузить публикации."}
+        </div>
+      </FeedbackPresence>
+
       <div className="surface-card overflow-hidden">
         <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
@@ -368,12 +446,32 @@ export function PublicationsTable() {
           <div className="col-span-1" />
         </div>
 
+        {isPublicationsLoading ? (
+          <LoadingState
+            className="min-h-40 text-text-placeholder"
+            label="Загружаем публикации..."
+          />
+        ) : null}
+
+        {!isPublicationsLoading &&
+        !isPublicationsError &&
+        publications?.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-text-secondary">
+            Публикаций пока нет. Выберите канал и создайте первую версию.
+          </div>
+        ) : null}
+
         {publications?.map((pub) => {
           const platform = pub.destination;
           const icon = platform ? CHANNEL_ICONS[platform] : undefined;
           const dateLabel = formatDate(pub.createdAt);
           const state = getPublicationState(pub);
           const externalUrl = getPublicationExternalUrl(pub);
+          const isOlxPendingModeration =
+            pub.destination === "olx.uz" &&
+            (pub.olxAdvertStatus === "new" ||
+              pub.olxAdvertStatus === "moderated" ||
+              pub.olxAdvertStatus === "unconfirmed");
           return (
             <div
               className="grid grid-cols-12 items-center gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
@@ -422,7 +520,9 @@ export function PublicationsTable() {
               <div className="col-span-2 lg:col-span-2">
                 <Dropdown
                   className="w-full max-w-35"
-                  disabled={updatePublicationStatus.isPending}
+                  disabled={
+                    updatePublicationStatus.isPending || isOlxPendingModeration
+                  }
                   fieldClassName={
                     pub.isActive
                       ? "max-h-[30px] border-status-active-bg bg-status-active-bg font-semibold text-status-active hover:border-status-active hover:bg-status-active-bg focus:border-status-active focus:bg-status-active-bg"
@@ -479,15 +579,17 @@ export function PublicationsTable() {
           );
         })}
 
-        <div className="flex justify-end border-border-input border-t px-4 py-3">
-          <button
-            className="ui-button ui-button-secondary min-h-9 px-3"
-            type="button"
-          >
-            <span>Действия</span>
-            <ChevronDownIcon className="h-4 w-4" />
-          </button>
-        </div>
+        {(publications?.length ?? 0) > 0 ? (
+          <div className="flex justify-end border-border-input border-t px-4 py-3">
+            <button
+              className="ui-button ui-button-secondary min-h-9 px-3"
+              type="button"
+            >
+              <span>Действия</span>
+              <ChevronDownIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <Modal
@@ -577,9 +679,13 @@ export function PublicationsTable() {
               ? pendingStatusChange?.isActive
                 ? "Публикация будет опубликована на PersonHunters."
                 : "Публикация будет скрыта на PersonHunters."
-              : pendingStatusChange?.isActive
-                ? "Публикация будет опубликована на hh.uz"
-                : "Публикация будет архивирована в hh.uz"
+              : pendingStatusChange?.destination === "olx.uz"
+                ? pendingStatusChange?.isActive
+                  ? "Объявление будет активировано на OLX.uz."
+                  : "Объявление будет снято с публикации на OLX.uz."
+                : pendingStatusChange?.isActive
+                  ? "Публикация будет опубликована на hh.uz"
+                  : "Публикация будет архивирована в hh.uz"
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}

@@ -54,6 +54,14 @@ Required GitHub repository secrets:
 - `DEPLOY_SSH_KEY`
 - `DEPLOY_KNOWN_HOSTS`
 
+## OLX.uz publication integration
+
+The vacancy publication flow supports per-user OLX.uz OAuth, live OLX job
+categories/attributes, and the full advert lifecycle. OLX.uz Partner API access
+requires marketplace approval and there is no sandbox. See
+[`docs/olx-uz-integration.md`](docs/olx-uz-integration.md) for access,
+configuration, lifecycle behavior, and the production verification checklist.
+
 ## Candidate Lookup Constants
 
 The candidate create form select options (contact types, sources, positions, skills, languages, language levels, statuses) are stored in Postgres lookup tables and served from the backend via tRPC.

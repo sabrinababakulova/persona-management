@@ -234,6 +234,9 @@ Defined and validated in `src/env.js`:
 | `AUTH_SECRET` | Yes | NextAuth secret for JWT signing + HMAC verification codes (min 32 chars). Also the bearer token for the `/api/cron/*` hh.uz sync routes. |
 | `HH_CLIENT_ID` / `HH_CLIENT_SECRET` | No | hh.uz OAuth app credentials — when unset, hh.uz integration is disabled |
 | `HH_REDIRECT_URI` | No | hh.uz OAuth callback URL |
+| `OLX_CLIENT_ID` / `OLX_CLIENT_SECRET` | No | OLX.uz Partner API application credentials — when unset, the OLX.uz channel is disabled |
+| `OLX_REDIRECT_URI` | No | Exact OLX OAuth callback registered for the application, normally `https://<host>/api/integrations/olx/callback` |
+| `OLX_JOBS_CATEGORY_ID` | No | Numeric OLX jobs-root category override. Normally auto-detected from the live category tree. |
 | `MAIL_LOGIN` | Yes | Yandex SMTP email address (sender) |
 | `MAIL_LOGIN_PASSWORD` | Yes | Yandex SMTP app password |
 | `DIRECTUS_URL` | Yes | Directus CMS/file storage base URL |
@@ -276,12 +279,13 @@ Tables use their plain schema names with no `persona-management_` prefix.
 **Domain tables**:
 - `companies` — id (UUID), name. Each user belongs to a company; vacancies and candidates are scoped to a company.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` (external id once published), and `personHunterMeta` — a JSON blob (`$type<PersonHunterPublicationMeta>`) holding the PersonHunters-only fields (duties, requirements, conditions, selected reference ids, employment/schedule, experience range) that have no dedicated column, so the publish form can be re-populated on edit.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`; `personHunterVacancyId` plus `personHunterMeta`; and `olxAdvertId`, `olxAdvertUrl`, `olxAdvertStatus`, plus `olxMeta`. The two JSON meta fields persist channel-owned form values that do not belong on the base vacancy.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy)
 
 **Integration tables**:
 - `company_hh_account` (Drizzle export: `userHhAccounts`) — hh.uz OAuth tokens and employer metadata, **per user**. Despite the legacy table name, the FK is `userId` (references `user.id`) with a UNIQUE constraint on `userId`. Two users in the same company connect to hh.uz independently — and the sync covers **all** of a company's connected employers (`resolveCompanyHhAccounts`). See `src/server/services/hh-company-account.ts` (`getUserHhAccount`, `resolveUserHhAuth`, `resolveCompanyHhAccounts`, `listHhConnectedCompanyIds`) and `src/app/api/integrations/hh/callback/route.ts`.
+- `user_olx_account` (Drizzle export: `userOlxAccounts`) — OLX.uz OAuth access/refresh tokens and account profile, **per user**, with a UNIQUE constraint on `userId`. Tokens are refreshed automatically and stored as `text` because OLX is migrating access tokens to JWTs that can exceed 1KB.
 - `company_telegram_channel` (Drizzle export: `userTelegramChannels`) — Telegram channels configured per user (same per-user pattern; legacy table name retained).
 
 **hh.uz candidate sync tables**:
@@ -429,6 +433,31 @@ Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single share
 ### Notes
 - The API pre-resolves related entities (`{ id, name }`) and localizes on the fly via `?lang=` (GET) / `"lang"` in the body (write) — languages `ru` / `uz` / `en`.
 - Design doc: `PERSON_HUNTER_DOC.md`. Schema helpers: `src/server/api/routers/vacancies/schemas.ts` (`PersonHunterPublicationMeta`).
+
+---
+
+## OLX.uz Integration
+
+OLX.uz is a per-user OAuth publication channel backed by the OLX Partner API v2. The detailed API/access notes and production checklist live in `docs/olx-uz-integration.md`.
+
+### Auth model
+
+`OLX_CLIENT_ID` / `OLX_CLIENT_SECRET` identify the approved Persona application. Each recruiter connects an OLX.uz account through `/api/integrations/olx/connect`; the callback stores that user's tokens in `user_olx_account`. OAuth state is HMAC-signed with `AUTH_SECRET`, bound to the logged-in user, and expires after 15 minutes. Access tokens refresh one minute before expiry; a rejected/expired refresh token requires reconnecting the account.
+
+### Publication flow
+
+1. The OLX editor loads the live Jobs category tree, category attributes, cities, districts, and currencies. No OLX taxonomy is hard-coded.
+2. Client and server preflight the documented OLX text/salary rules, sanitize description HTML to the supported Jobs tags, and send a Partner API v2 payload with the local publication id as `external_id`.
+3. `external_id` is queried before POST, making retries idempotent. Edits use `PUT /adverts/{id}`.
+4. Activation/deactivation use `/adverts/{id}/commands`; deletion deactivates an active advert before `DELETE`.
+5. OLX statuses are refreshed when the publication list opens, so asynchronous moderation (`new` → `active`) and payment-required states (`limited` / `unpaid`) are reflected locally.
+
+### Key files
+
+- `src/server/services/olx/` — API transport, OAuth, token refresh, live catalogs, advert lifecycle
+- `src/app/api/integrations/olx/{connect,callback}/route.ts` — OAuth routes
+- `src/app/vacancies/[id]/publications/[channel]/olx-publication-form.tsx` — Russian-language dynamic publish form
+- `src/shared/olx-validation.ts` — shared OLX content rules
 
 ---
 

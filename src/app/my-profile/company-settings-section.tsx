@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { DataMigrationLoadingScreen } from "../_components/data-migration-loading-screen";
 import { HhAccountSection } from "../_components/hh-account-section";
+import { OlxAccountSection } from "../_components/olx-account-section";
 import { TelegramChannelsSection } from "../_components/telegram-channels-section";
 
 export function CompanySettingsSection() {
@@ -45,6 +46,7 @@ export function CompanySettingsSection() {
       <DataMigrationLoadingScreen isLoading={isMigrating} />
       <TelegramChannelsSection />
       <HhAccountSection />
+      <OlxAccountSection />
     </div>
   );
 }

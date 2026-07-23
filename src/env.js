@@ -29,6 +29,10 @@ export const env = createEnv({
     HH_CLIENT_ID: z.string().min(1).optional(),
     HH_CLIENT_SECRET: z.string().min(1).optional(),
     HH_REDIRECT_URI: z.string().url().optional(),
+    OLX_CLIENT_ID: z.string().min(1).optional(),
+    OLX_CLIENT_SECRET: z.string().min(1).optional(),
+    OLX_REDIRECT_URI: z.string().url().optional(),
+    OLX_JOBS_CATEGORY_ID: z.string().regex(/^\d+$/).optional(),
     PERSON_HUNTER_API_KEY: z.string().min(1).optional(),
   },
 
@@ -66,6 +70,10 @@ export const env = createEnv({
     HH_CLIENT_ID: process.env.HH_CLIENT_ID,
     HH_CLIENT_SECRET: process.env.HH_CLIENT_SECRET,
     HH_REDIRECT_URI: process.env.HH_REDIRECT_URI,
+    OLX_CLIENT_ID: process.env.OLX_CLIENT_ID,
+    OLX_CLIENT_SECRET: process.env.OLX_CLIENT_SECRET,
+    OLX_REDIRECT_URI: process.env.OLX_REDIRECT_URI,
+    OLX_JOBS_CATEGORY_ID: process.env.OLX_JOBS_CATEGORY_ID,
     PERSON_HUNTER_API_KEY: process.env.PERSON_HUNTER_API_KEY,
   },
   /**

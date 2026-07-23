@@ -21,6 +21,7 @@ const VACANCY_CONNECTION_ICONS = {
   hh: { src: "/hh.svg", label: "hh.uz" },
   ln: { src: "/linkedin.svg", label: "LinkedIn" },
   ph: { src: "/person-hunter.svg", label: "PersonHunters" },
+  olx: { src: "/olx.svg", label: "OLX.uz" },
 };
 
 const vacancyStatusTone: Record<
@@ -65,6 +66,9 @@ const getVacancyConnectionIconsMeta = (vacancy: VacancyTableItem) => {
 
   if (vacancy.telegramPostId) {
     connections.push("tg");
+  }
+  if ("olxAdvertId" in vacancy && vacancy.olxAdvertId) {
+    connections.push("olx");
   }
   return connections;
 };
