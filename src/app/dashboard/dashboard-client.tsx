@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronRightIcon } from "../_components/icons";
@@ -13,6 +14,8 @@ import { RecentActions } from "./components/recentActions";
 import { StatusStatistics } from "./components/statusStatistics";
 
 export default function DashboardClient({ userName }: { userName: string }) {
+  const t = useTranslations("Dashboard");
+  const format = useFormatter();
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const hasHandledWelcomeModal = useRef(false);
 
@@ -43,17 +46,23 @@ export default function DashboardClient({ userName }: { userName: string }) {
     markSeenRef.current.mutate();
   }, [welcomeModalState?.shouldShowWelcomeModal]);
 
-  const currentDate = new Date().toLocaleDateString("ru-RU", {
+  const currentDate = format.dateTime(new Date(), {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  const statKeys = [
+    "newApplications",
+    "activeVacancies",
+    "activeCandidates",
+    "hired",
+  ] as const;
 
   if (isLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label="Готовим рабочий стол..." />
+        <LoadingState label={t("loading")} />
       </div>
     );
   }
@@ -73,16 +82,18 @@ export default function DashboardClient({ userName }: { userName: string }) {
             <p className="mb-1.5 font-semibold text-text-muted text-xs uppercase tracking-wider">
               {currentDate}
             </p>
-            <h1 className="page-title">Добро пожаловать, {userName}!</h1>
+            <h1 className="page-title">
+              {t("welcome")} {userName}!
+            </h1>
           </div>
 
           {/* Stats Cards */}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {dashboardData?.statsCards.map((stat) => (
+            {dashboardData?.statsCards.map((stat, index) => (
               <StatsCard
                 key={stat.title}
-                period={stat.period}
-                title={stat.title}
+                period={t("lastSevenDays")}
+                title={statKeys[index] ? t(statKeys[index]) : stat.title}
                 value={stat.value}
               />
             ))}
@@ -98,12 +109,12 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 className="flex items-center gap-1 text-primary-blue hover:underline"
                 href="/vacancies"
               >
-                Смотреть все
+                {t("showAll")}
                 <ChevronRightIcon className="h-4 w-4" />
               </Link>
             }
             items={dashboardData?.recentVacancies ?? []}
-            title="Последние вакансии"
+            title={t("recentVacancies")}
             titleBarClassName="border-border-light"
             vacancyStatusOptions={[]}
           />
@@ -111,12 +122,12 @@ export default function DashboardClient({ userName }: { userName: string }) {
           {/* Candidates Section */}
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="section-title">Кандидаты</h2>
+              <h2 className="section-title">{t("candidates")}</h2>
               <Link
                 className="flex items-center gap-1 text-primary-blue hover:underline"
                 href="/candidates"
               >
-                Смотреть все
+                {t("showAll")}
                 <ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>

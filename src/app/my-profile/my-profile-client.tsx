@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { AvatarUploader } from "~/app/_components/avatar-uploader";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
@@ -14,11 +15,6 @@ import { SideMenu } from "~/app/_components/sideMenu";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
 import { CompanySettingsSection } from "./company-settings-section";
-
-const PROFILE_MENU_ITEMS = [
-  { id: "my-profile", label: "Мой профиль" },
-  { id: "company-settings", label: "Настройки компании" },
-] as const;
 
 const SECTION_TRANSITION = {
   enter: (direction: number) => ({
@@ -55,6 +51,12 @@ export function MyProfileClient({
   userEmail,
   userFullName,
 }: MyProfileClientProps) {
+  const t = useTranslations("Profile");
+  const common = useTranslations("Common");
+  const profileMenuItems = [
+    { id: "my-profile", label: t("myProfile") },
+    { id: "company-settings", label: t("companySettings") },
+  ] as const;
   const [activeSectionId, setActiveSectionId] =
     useState<string>(initialSection);
   const [sectionDirection, setSectionDirection] = useState(
@@ -67,9 +69,9 @@ export function MyProfileClient({
   const [formError, setFormError] = useState<string | null>(null);
 
   const changePassword = api.profile.changePassword.useMutation({
-    onSuccess: (response) => {
+    onSuccess: () => {
       setFormError(null);
-      setFormMessage(response.message);
+      setFormMessage(t("passwordChanged"));
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -86,9 +88,9 @@ export function MyProfileClient({
     const hasUpperCase = /\p{Lu}/u.test(newPassword);
 
     const checks = [
-      { label: "Состоит из 8 символов", passed: hasMinLength },
-      { label: "Содержит специальные символы", passed: hasSpecialChar },
-      { label: "Содержит символы верхнего регистра", passed: hasUpperCase },
+      { label: t("passwordMin"), passed: hasMinLength },
+      { label: t("passwordSpecial"), passed: hasSpecialChar },
+      { label: t("passwordUppercase"), passed: hasUpperCase },
     ];
 
     const passedChecksCount = checks.filter((check) => check.passed).length;
@@ -99,7 +101,7 @@ export function MyProfileClient({
         checks,
         fillClassName: "bg-success-green",
         fillWidth: "100%",
-        strengthLabel: "Сильный пароль",
+        strengthLabel: t("strongPassword"),
         strengthLabelClassName: "text-success-green",
       };
     }
@@ -109,7 +111,7 @@ export function MyProfileClient({
         checks,
         fillClassName: "bg-warning-yellow",
         fillWidth: `${Math.max(score * 100, 60)}%`,
-        strengthLabel: "Средний пароль",
+        strengthLabel: t("mediumPassword"),
         strengthLabelClassName: "text-warning-yellow",
       };
     }
@@ -118,10 +120,10 @@ export function MyProfileClient({
       checks,
       fillClassName: "bg-warning-yellow",
       fillWidth: `${Math.max(score * 100, 15)}%`,
-      strengthLabel: "Слабый пароль",
+      strengthLabel: t("weakPassword"),
       strengthLabelClassName: "text-warning-yellow",
     };
-  }, [newPassword]);
+  }, [newPassword, t]);
 
   const isProfileSectionActive = activeSectionId === "my-profile";
   const isOldPasswordFilled = oldPassword.trim().length > 0;
@@ -144,10 +146,10 @@ export function MyProfileClient({
     : formMessage
       ? formMessage
       : canSubmitPasswordChange
-        ? "Все требования выполнены — можно сохранить"
+        ? t("readyToSave")
         : hasPasswordDraft
-          ? "Заполните все поля и проверьте требования"
-          : "Заполните поля, чтобы обновить пароль";
+          ? t("completeRequirements")
+          : t("fillToUpdate");
   const saveStatusClassName = formError
     ? "text-danger-red"
     : formMessage || canSubmitPasswordChange
@@ -188,16 +190,16 @@ export function MyProfileClient({
       <div className="app-page flex flex-col gap-5 lg:flex-row lg:gap-8">
         <SideMenu
           activeId={activeSectionId}
-          items={PROFILE_MENU_ITEMS.map((item) => ({ ...item }))}
+          items={profileMenuItems.map((item) => ({ ...item }))}
           onSelect={handleSectionSelect}
         />
 
         <section className="min-w-0 flex-1">
           <div className="w-full max-w-2xl">
             <Breadcrumbs
-              label="Мой профиль"
+              label={t("myProfile")}
               rootHref="/dashboard"
-              rootLabel="Главная"
+              rootLabel={t("home")}
             />
 
             <div className="mt-5 flex items-center gap-5">
@@ -228,33 +230,37 @@ export function MyProfileClient({
                   {isProfileSectionActive ? (
                     <div className="space-y-5">
                       <div className="surface-card p-5 sm:p-6">
-                        <ClosableSection title="Основная информация">
-                          <Input label="Ф.И.О" readOnly value={userFullName} />
-                          <Input label="Город" readOnly value={userCity} />
+                        <ClosableSection title={t("basicInfo")}>
                           <Input
-                            label="Электронная почта"
+                            label={t("fullName")}
+                            readOnly
+                            value={userFullName}
+                          />
+                          <Input label={t("city")} readOnly value={userCity} />
+                          <Input
+                            label={t("email")}
                             readOnly
                             value={userEmail}
                           />
                         </ClosableSection>
                       </div>
                       <div className="surface-card p-5 sm:p-6">
-                        <ClosableSection title="Изменить пароль">
+                        <ClosableSection title={t("changePassword")}>
                           <Input
-                            label="Введите старый пароль"
+                            label={t("currentPassword")}
                             onChange={(event) =>
                               setOldPassword(event.target.value)
                             }
-                            placeholder="Ваш старый пароль"
+                            placeholder={t("currentPasswordPlaceholder")}
                             type="password"
                             value={oldPassword}
                           />
                           <Input
-                            label="Введите новый пароль"
+                            label={t("newPassword")}
                             onChange={(event) =>
                               setNewPassword(event.target.value)
                             }
-                            placeholder="Ваш новый пароль"
+                            placeholder={t("newPasswordPlaceholder")}
                             type="password"
                             value={newPassword}
                           />
@@ -299,11 +305,11 @@ export function MyProfileClient({
                           )}
 
                           <Input
-                            label="Повторите новый пароль"
+                            label={t("confirmPassword")}
                             onChange={(event) =>
                               setConfirmPassword(event.target.value)
                             }
-                            placeholder="Ваш новый пароль"
+                            placeholder={t("newPasswordPlaceholder")}
                             type="password"
                             value={confirmPassword}
                           />
@@ -328,7 +334,7 @@ export function MyProfileClient({
 
                               <div className="min-w-0">
                                 <p className="font-semibold text-sm text-text-heading leading-5">
-                                  Безопасность аккаунта
+                                  {t("accountSecurity")}
                                 </p>
                                 <AnimatePresence initial={false} mode="wait">
                                   <motion.p
@@ -357,8 +363,8 @@ export function MyProfileClient({
                             >
                               <LoadingButtonContent
                                 isLoading={changePassword.isPending}
-                                label="Сохранить изменения"
-                                loadingLabel="Сохранение..."
+                                label={common("saveChanges")}
+                                loadingLabel={common("saving")}
                               />
                             </button>
                           </div>

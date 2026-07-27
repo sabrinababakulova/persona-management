@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Modal } from "~/app/_components/modal";
 import { LoadingButtonContent } from "~/app/_components/motion-system";
 
@@ -18,17 +19,20 @@ type PublicationConfirmationModalProps = {
 export function PublicationConfirmationModal({
   isOpen,
   title,
-  description = "Публикация будет опубликована на hh.uz",
+  description,
   isPending = false,
   onClose,
   onReject,
   onConfirm,
-  rejectLabel = "Нет",
-  confirmLabel = "Да",
+  rejectLabel,
+  confirmLabel,
 }: PublicationConfirmationModalProps) {
+  const t = useTranslations("Publications");
+  const commonT = useTranslations("Common");
+
   return (
     <Modal
-      description={description}
+      description={description ?? t("hh.confirmDescription")}
       isOpen={isOpen}
       maxWidthClassName="max-w-[420px]"
       onClose={onClose}
@@ -41,7 +45,7 @@ export function PublicationConfirmationModal({
           onClick={onReject}
           type="button"
         >
-          {rejectLabel}
+          {rejectLabel ?? commonT("no")}
         </button>
         <button
           className="ui-button ui-button-primary"
@@ -51,8 +55,8 @@ export function PublicationConfirmationModal({
         >
           <LoadingButtonContent
             isLoading={isPending}
-            label={confirmLabel}
-            loadingLabel="Выполняем..."
+            label={confirmLabel ?? commonT("yes")}
+            loadingLabel={commonT("working")}
           />
         </button>
       </div>

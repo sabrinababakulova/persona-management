@@ -2,14 +2,20 @@ import "~/styles/globals.css";
 
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { AppShell } from "./_components/app-shell";
 import { Providers } from "./_components/providers";
 
-export const metadata: Metadata = {
-  title: "Persona Management",
-  description: "Система управления кандидатами и вакансиями",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Metadata");
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    icons: [{ rel: "icon", type: "image/svg+xml", url: "/talanty-mark.svg" }],
+  };
+}
 
 const manrope = Manrope({
   subsets: ["cyrillic", "latin"],
@@ -19,12 +25,21 @@ const manrope = Manrope({
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html className={manrope.variable} lang="ru">
+    <html className={manrope.variable} lang={locale}>
       <body>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <NextIntlClientProvider
+          locale={locale}
+          messages={messages}
+          timeZone="Asia/Tashkent"
+        >
+          <Providers>
+            <AppShell>{children}</AppShell>
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

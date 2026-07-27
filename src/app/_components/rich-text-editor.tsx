@@ -3,6 +3,7 @@
 import Link from "@tiptap/extension-link";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { AIGenerationIcon } from "~/app/_components/icons/AIGenerationIcon";
@@ -54,9 +55,10 @@ function ToolbarButton({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const t = useTranslations("Components");
   const promptForLink = () => {
     const previous = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("URL ссылки", previous ?? "https://");
+    const url = window.prompt(t("linkUrl"), previous ?? "https://");
     if (url === null) return;
     if (url === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
@@ -112,22 +114,22 @@ function Toolbar({ editor }: { editor: Editor }) {
       <span className="mx-1 h-4 w-px bg-border-input" />
       <ToolbarButton
         active={editor.isActive("bulletList")}
-        label="• Список"
+        label={`• ${t("list")}`}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <ToolbarButton
         active={editor.isActive("orderedList")}
-        label="1. Список"
+        label={`1. ${t("list")}`}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <span className="mx-1 h-4 w-px bg-border-input" />
       <ToolbarButton
         active={editor.isActive("link")}
-        label="Ссылка"
+        label={t("link")}
         onClick={promptForLink}
       />
       <ToolbarButton
-        label="Очистить"
+        label={t("clearFormatting")}
         onClick={() =>
           editor.chain().focus().unsetAllMarks().clearNodes().run()
         }
@@ -147,6 +149,7 @@ function AiParaphraseFooter({
   maxLength?: number;
   onChange: (html: string) => void;
 }) {
+  const t = useTranslations("Components");
   const [error, setError] = useState<string | null>(null);
   const paraphrase = api.ai.paraphrase.useMutation();
 
@@ -162,9 +165,7 @@ function AiParaphraseFooter({
       if (maxLength !== undefined && editor.getText().length > maxLength) {
         // Paraphrase exceeded the limit — restore the original text untouched.
         editor.commands.setContent(originalHtml, { emitUpdate: false });
-        setError(
-          `Перефразированный текст превышает лимит в ${maxLength} символов`,
-        );
+        setError(t("paraphraseLimit", { maxLength }));
         return;
       }
       onChange(editor.isEmpty ? "" : editor.getHTML());
@@ -172,7 +173,7 @@ function AiParaphraseFooter({
       setError(
         mutationError instanceof Error
           ? mutationError.message
-          : "Не удалось перефразировать текст",
+          : t("paraphraseError"),
       );
     } finally {
       editor.setEditable(!disabled);
@@ -190,8 +191,8 @@ function AiParaphraseFooter({
         <AIGenerationIcon />
         <LoadingButtonContent
           isLoading={paraphrase.isPending}
-          label="Перефразировать с AI"
-          loadingLabel="Перефразируем…"
+          label={t("paraphrase")}
+          loadingLabel={t("paraphrasing")}
         />
       </button>
       <FeedbackPresence show={Boolean(error)}>

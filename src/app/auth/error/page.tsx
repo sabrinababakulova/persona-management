@@ -1,25 +1,5 @@
 import Link from "next/link";
-
-const AUTH_ERROR_MESSAGES: Record<
-  string,
-  { title: string; description: string }
-> = {
-  AccessDenied: {
-    title: "Вход не выполнен",
-    description:
-      "Google не подтвердил доступ к аккаунту. Попробуйте снова или используйте другой способ входа.",
-  },
-  Configuration: {
-    title: "Ошибка настройки входа",
-    description:
-      "Вход через Google сейчас недоступен. Проверьте настройки и повторите попытку позже.",
-  },
-  Verification: {
-    title: "Ссылка недействительна",
-    description:
-      "Не удалось подтвердить запрос на вход. Запустите авторизацию заново.",
-  },
-};
+import { getTranslations } from "next-intl/server";
 
 type AuthErrorPageProps = {
   searchParams: Promise<{
@@ -27,19 +7,31 @@ type AuthErrorPageProps = {
   }>;
 };
 
-const DEFAULT_AUTH_ERROR_CONTENT = {
-  title: "Не удалось выполнить вход",
-  description:
-    "Во время авторизации произошла ошибка. Повторите попытку или войдите по почте и паролю.",
-};
-
 export default async function AuthErrorPage({
   searchParams,
 }: AuthErrorPageProps) {
   const { error } = await searchParams;
-  const content = error
-    ? (AUTH_ERROR_MESSAGES[error] ?? DEFAULT_AUTH_ERROR_CONTENT)
-    : DEFAULT_AUTH_ERROR_CONTENT;
+  const t = await getTranslations("AuthError");
+  const content =
+    error === "AccessDenied"
+      ? {
+          title: t("accessDeniedTitle"),
+          description: t("accessDeniedDescription"),
+        }
+      : error === "Configuration"
+        ? {
+            title: t("configurationTitle"),
+            description: t("configurationDescription"),
+          }
+        : error === "Verification"
+          ? {
+              title: t("verificationTitle"),
+              description: t("verificationDescription"),
+            }
+          : {
+              title: t("defaultTitle"),
+              description: t("defaultDescription"),
+            };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-canvas px-6">
@@ -50,10 +42,10 @@ export default async function AuthErrorPage({
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link className="ui-button ui-button-primary flex-1" href="/login">
-            Вернуться ко входу
+            {t("backToLogin")}
           </Link>
           <Link className="ui-button ui-button-soft flex-1" href="/register">
-            Создать аккаунт
+            {t("createAccount")}
           </Link>
         </div>
       </div>

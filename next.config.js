@@ -2,9 +2,11 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
+
+import createNextIntlPlugin from "next-intl/plugin";
 import { env } from "./src/env.js";
 
-/** @type {import("next").NextConfig} */
+/** @type {Array<URL | import("next/dist/shared/lib/image-config").RemotePattern>} */
 const remotePatterns = [
   {
     protocol: "https",
@@ -18,13 +20,16 @@ if (directusAssetBaseUrl) {
   const directusPublicUrl = new URL(directusAssetBaseUrl);
 
   remotePatterns.push({
-    protocol: directusPublicUrl.protocol.replace(":", ""),
+    protocol: /** @type {"http" | "https"} */ (
+      directusPublicUrl.protocol.replace(":", "")
+    ),
     hostname: directusPublicUrl.hostname,
     pathname: "/assets/**",
     ...(directusPublicUrl.port ? { port: directusPublicUrl.port } : {}),
   });
 }
 
+/** @type {import("next").NextConfig} */
 const config = {
   serverExternalPackages: ["argon2", "@react-pdf/renderer"],
   poweredByHeader: false,
@@ -33,4 +38,6 @@ const config = {
   },
 };
 
-export default config;
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(config);

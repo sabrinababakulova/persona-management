@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef } from "react";
 import type { ModalProps } from "~/types/components/modal-props";
 import { CloseIcon } from "./icons";
@@ -25,8 +26,10 @@ export function Modal({
   descriptionClassName,
   closeOnBackdropClick = true,
   closeOnEscape = true,
-  closeButtonLabel = "Закрыть модальное окно",
+  closeButtonLabel,
 }: ModalProps) {
+  const t = useTranslations("Components");
+  const resolvedCloseButtonLabel = closeButtonLabel ?? t("closeModal");
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -131,7 +134,7 @@ export function Modal({
         >
           <motion.button
             animate={{ opacity: 1 }}
-            aria-label={closeButtonLabel}
+            aria-label={resolvedCloseButtonLabel}
             className={`absolute inset-0 bg-text-heading/20 ${overlayClassName ?? ""}`}
             data-motion="none"
             exit={{ opacity: 0 }}
@@ -151,7 +154,7 @@ export function Modal({
             transition={{ duration: 0.28, ease: MODAL_EASE }}
           >
             <motion.button
-              aria-label={closeButtonLabel}
+              aria-label={resolvedCloseButtonLabel}
               className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading"
               onClick={onClose}
               type="button"

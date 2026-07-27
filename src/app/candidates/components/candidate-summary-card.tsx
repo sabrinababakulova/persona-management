@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import {
   AIGenerationIcon,
@@ -40,6 +41,8 @@ type DetailSectionProps = {
 
 type CurrentPositionSectionProps = {
   currentPosition?: string;
+  emptyState: string;
+  title: string;
 };
 
 function DotSeparator() {
@@ -50,23 +53,11 @@ function compactValues(values: string[]) {
   return values.map((value) => value.trim()).filter(Boolean);
 }
 
-function formatSalary(
-  salaryExpectation: number | undefined,
-  salaryCurrency: string,
-) {
-  if (!salaryExpectation) {
-    return "Не указано";
-  }
-
-  const formatted = new Intl.NumberFormat("ru-RU").format(salaryExpectation);
-  return salaryCurrency === "USD" ? `$${formatted}` : `${formatted} UZS`;
-}
-
 function DetailSection({
   title,
   icon,
   values,
-  emptyState = "Нет данных",
+  emptyState,
   valueClassName,
 }: DetailSectionProps) {
   const visibleValues = compactValues(values);
@@ -98,6 +89,8 @@ function DetailSection({
 
 function CurrentPositionSection({
   currentPosition,
+  emptyState,
+  title,
 }: CurrentPositionSectionProps) {
   const positionTokens = compactValues(
     (currentPosition ?? "").split("|").map((token) => token.trim()),
@@ -109,7 +102,7 @@ function CurrentPositionSection({
         <span className="flex h-4 w-4 items-center justify-center">
           <BriefcaseIcon className="h-4 w-4" />
         </span>
-        <p className="font-medium text-base leading-none">Текущая должность</p>
+        <p className="font-medium text-base leading-none">{title}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-text-heading leading-[1.3]">
@@ -121,7 +114,7 @@ function CurrentPositionSection({
             </div>
           ))
         ) : (
-          <span className="text-text-placeholder">Не указано</span>
+          <span className="text-text-placeholder">{emptyState}</span>
         )}
       </div>
     </div>
@@ -143,9 +136,15 @@ export function CandidateSummaryCard({
   contacts,
   relatedVacancies,
 }: CandidateSummaryCardProps) {
+  const format = useFormatter();
+  const t = useTranslations("CandidateDetail");
   const subtitleTokens = compactValues([city.toUpperCase(), experience ?? ""]);
-  const summaryText =
-    aiAnalysis?.trim() || "AI-анализ по кандидату пока недоступен.";
+  const summaryText = aiAnalysis?.trim() || t("aiUnavailable");
+  const formattedSalary = salaryExpectation
+    ? `${salaryCurrency === "USD" ? "$" : ""}${format.number(salaryExpectation)}${
+        salaryCurrency === "USD" ? "" : ` ${salaryCurrency || "UZS"}`
+      }`
+    : t("notSpecified");
   const skillTokens = compactValues([
     ...languages
       .slice(0, 1)
@@ -187,7 +186,7 @@ export function CandidateSummaryCard({
                 {matchScore}%
               </p>
               <p className="mt-1 text-text-placeholder text-xs leading-none">
-                Соответствия
+                {t("match")}
               </p>
             </div>
 
@@ -195,10 +194,10 @@ export function CandidateSummaryCard({
 
             <div className="min-w-0 flex-1">
               <p className="font-bold text-text-heading text-xl leading-none tracking-tight">
-                {formatSalary(salaryExpectation, salaryCurrency)}
+                {formattedSalary}
               </p>
               <p className="mt-1.5 text-text-placeholder text-xs leading-none">
-                Зарплатные ожидания
+                {t("salaryExpectation")}
               </p>
             </div>
           </div>
@@ -209,7 +208,9 @@ export function CandidateSummaryCard({
                 <AIGenerationIcon className="h-4 w-4" />
                 <span className="font-bold text-sm leading-none">AI</span>
               </div>
-              <span className="font-semibold text-sm leading-none">сводка</span>
+              <span className="font-semibold text-sm leading-none">
+                {t("aiSummary")}
+              </span>
             </div>
 
             <p className="text-sm leading-5">{summaryText}</p>
@@ -232,19 +233,23 @@ export function CandidateSummaryCard({
         </div>
 
         <div className="flex flex-col gap-5">
-          <CurrentPositionSection currentPosition={currentPosition} />
+          <CurrentPositionSection
+            currentPosition={currentPosition}
+            emptyState={t("notSpecified")}
+            title={t("currentPosition")}
+          />
 
           <DetailSection
-            emptyState="Навыки и языки не указаны"
+            emptyState={t("skillsAndLanguagesEmpty")}
             icon={<GlobeIcon className="h-4 w-4 text-text-placeholder" />}
-            title="Навыки и языки"
+            title={t("skillsAndLanguages")}
             values={skillTokens}
           />
 
           <DetailSection
-            emptyState="Контакты не указаны"
+            emptyState={t("contactsEmpty")}
             icon={<MailIcon className="h-4 w-4" />}
-            title="Контакты"
+            title={t("contacts")}
             values={contactTokens}
           />
 
@@ -254,7 +259,7 @@ export function CandidateSummaryCard({
                 <VacancyResponsesIcon className="h-4 w-4" />
               </span>
               <p className="font-semibold text-sm leading-none">
-                Отклики на вакансии
+                {t("vacancyApplications")}
               </p>
             </div>
 
@@ -276,7 +281,7 @@ export function CandidateSummaryCard({
                 ))
               ) : (
                 <span className="text-text-placeholder">
-                  Отклики пока не добавлены
+                  {t("vacancyApplicationsEmpty")}
                 </span>
               )}
             </div>

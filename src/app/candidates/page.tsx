@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
@@ -51,13 +53,14 @@ const CANDIDATE_SOURCE_ICONS = {
 };
 
 function CandidateSourceIcon({ source }: { source?: string | null }) {
+  const t = useTranslations("Common");
   const normalizedSource = source?.trim() || undefined;
   const meta = normalizedSource
     ? CANDIDATE_SOURCE_ICONS[
         normalizedSource as keyof typeof CANDIDATE_SOURCE_ICONS
       ]
     : undefined;
-  const label = meta?.label ?? normalizedSource ?? "Не указан";
+  const label = meta?.label ?? normalizedSource ?? t("notSpecified");
 
   if (meta) {
     return (
@@ -83,6 +86,9 @@ function CandidateSourceIcon({ source }: { source?: string | null }) {
 }
 
 export default function CandidatesPage() {
+  const t = useTranslations("Candidates");
+  const common = useTranslations("Common");
+  const localizeLookups = useLookupLocalizer();
   const utils = api.useUtils();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilterValue>(
     DEFAULT_CANDIDATE_PERIOD,
@@ -112,8 +118,16 @@ export default function CandidatesPage() {
     api.lookups.getVacancyCreateOptions.useQuery();
 
   const statusOptions = useMemo(
-    () => lookups?.statusOptions ?? [],
-    [lookups?.statusOptions],
+    () => localizeLookups(lookups?.statusOptions, "candidateStatuses"),
+    [localizeLookups, lookups?.statusOptions],
+  );
+  const contactTypeOptions = useMemo(
+    () => localizeLookups(lookups?.contactTypes, "contactTypes"),
+    [localizeLookups, lookups?.contactTypes],
+  );
+  const sourceOptions = useMemo(
+    () => localizeLookups(lookups?.sources, "sources"),
+    [localizeLookups, lookups?.sources],
   );
   const defaultStatus = statusOptions[0]?.value;
   const candidateQueryInput = useMemo(
@@ -233,7 +247,7 @@ export default function CandidatesPage() {
   const createQuickCandidate = api.candidates.create.useMutation({
     onSuccess: (createdCandidate) => {
       if (!createdCandidate) {
-        setToastMessage("Кандидат сохранен");
+        setToastMessage(t("saved"));
         setIsQuickAddModalOpen(false);
         return;
       }
@@ -241,11 +255,11 @@ export default function CandidatesPage() {
       void utils.candidates.list.invalidate();
       void utils.candidates.listHh.invalidate();
 
-      setToastMessage("Кандидат успешно добавлен");
+      setToastMessage(t("added"));
       setIsQuickAddModalOpen(false);
     },
     onError: () => {
-      setToastMessage("Не удалось сохранить кандидата");
+      setToastMessage(t("saveError"));
     },
   });
 
@@ -298,7 +312,7 @@ export default function CandidatesPage() {
     createQuickCandidate.mutate({
       id: payload.candidateId,
       fullName: payload.fullName,
-      city: prefill?.city || "Не указан",
+      city: prefill?.city || common("notSpecified"),
       contacts: mergedContacts,
       source: payload.source || prefill?.source || undefined,
       aiAnalysis: payload.aiAnalysis || undefined,
@@ -324,15 +338,13 @@ export default function CandidatesPage() {
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas px-4">
         <FeedbackPresence className="w-full max-w-[460px]" show>
           <div className="rounded-xl border border-danger-red-bg bg-danger-red-bg p-5 text-danger-red">
-            <p className="mb-4 text-sm">
-              Не удалось загрузить справочники из базы данных.
-            </p>
+            <p className="mb-4 text-sm">{t("lookupsError")}</p>
             <button
               className="ui-button ui-button-primary"
               onClick={() => void refetchLookups()}
               type="button"
             >
-              Повторить
+              {common("retry")}
             </button>
           </div>
         </FeedbackPresence>
@@ -344,7 +356,7 @@ export default function CandidatesPage() {
     <>
       {lookups && (
         <QuickAddCandidateModal
-          contactTypeOptions={lookups.contactTypes}
+          contactTypeOptions={contactTypeOptions}
           errorMessage={createQuickCandidate.error?.message}
           isOpen={isQuickAddModalOpen}
           isSaving={createQuickCandidate.isPending}
@@ -353,7 +365,7 @@ export default function CandidatesPage() {
             createQuickCandidate.reset();
           }}
           onSaveCandidate={handleQuickSaveCandidate}
-          sourceOptions={lookups.sources}
+          sourceOptions={sourceOptions}
           statusOptions={statusOptions}
         />
       )}
@@ -370,7 +382,7 @@ export default function CandidatesPage() {
         isOpen={isFilterModalOpen}
         onApply={handleApplyFilters}
         onClose={() => setIsFilterModalOpen(false)}
-        sourceOptions={lookups?.sources}
+        sourceOptions={sourceOptions}
         statusOptions={statusOptions}
       />
 
@@ -379,10 +391,10 @@ export default function CandidatesPage() {
       <main className="flex h-full flex-1 overflow-auto">
         <div className="app-page flex min-h-full flex-col">
           <div className="page-header">
-            <h1 className="page-title">Кандидаты</h1>
+            <h1 className="page-title">{t("title")}</h1>
             {showCandidatesTable && (
               <PeriodFilter
-                ariaLabel="Фильтр периода кандидатов"
+                ariaLabel={t("periodFilter")}
                 onChange={(value) => {
                   setSelectedPeriod(value);
                   setCurrentPage(1);
@@ -403,7 +415,7 @@ export default function CandidatesPage() {
                       setSearchQuery(event.target.value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Поиск кандидатов"
+                    placeholder={t("search")}
                     type="text"
                     value={searchQuery}
                   />
@@ -418,7 +430,7 @@ export default function CandidatesPage() {
                   type="button"
                 >
                   <FilterIcon className="h-5 w-5" />
-                  <span>Добавить фильтры</span>
+                  <span>{t("addFilters")}</span>
                   <span
                     className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
                       activeFilterCount > 0
@@ -434,23 +446,23 @@ export default function CandidatesPage() {
               <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 lg:grid">
                   <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
-                    <span>Название</span>
+                    <span>{common("name")}</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
                   <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-                    <span>Статус</span>
+                    <span>{common("status")}</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
                   <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-                    <span>Город</span>
+                    <span>{common("city")}</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
                   <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-                    <span>Дата создания</span>
+                    <span>{common("createdAt")}</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
                   <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-                    <span>Источник</span>
+                    <span>{common("source")}</span>
                     <SortIcon className="h-4 w-4" />
                   </div>
                   <div className="col-span-1" />
@@ -459,7 +471,7 @@ export default function CandidatesPage() {
                 {isTableLoading ? (
                   <LoadingState
                     className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
-                    label="Загрузка кандидатов..."
+                    label={t("loading")}
                   />
                 ) : (
                   <>
@@ -518,12 +530,10 @@ export default function CandidatesPage() {
                                 candidateName={candidate.name}
                                 listQueryInput={candidateQueryInput}
                                 onError={() =>
-                                  setToastMessage(
-                                    "Не удалось обновить статус кандидата",
-                                  )
+                                  setToastMessage(t("statusUpdateError"))
                                 }
                                 onSuccess={() =>
-                                  setToastMessage("Статус кандидата обновлен")
+                                  setToastMessage(t("statusUpdated"))
                                 }
                                 status={candidate.status}
                                 statusOptions={statusOptions}
@@ -547,7 +557,9 @@ export default function CandidatesPage() {
                                 className="flex items-center gap-1 font-medium text-primary-blue text-sm leading-none hover:text-primary-blue-hover"
                                 href={`/candidates/${candidate.id}`}
                               >
-                                <span className="hidden xl:inline">детали</span>
+                                <span className="hidden xl:inline">
+                                  {common("details")}
+                                </span>
                               </Link>
                               <button
                                 className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
@@ -558,10 +570,14 @@ export default function CandidatesPage() {
                             </div>
 
                             <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
-                              <span>Город: {candidate.city || "-"}</span>
-                              <span>Создан: {candidate.createdAt || "-"}</span>
+                              <span>
+                                {t("city")} {candidate.city || "-"}
+                              </span>
+                              <span>
+                                {t("created")} {candidate.createdAt || "-"}
+                              </span>
                               <span className="flex items-center gap-1.5">
-                                Источник:
+                                {t("source")}
                                 <CandidateSourceIcon
                                   source={candidate.source}
                                 />
@@ -573,7 +589,7 @@ export default function CandidatesPage() {
 
                       {visibleCandidates.length === 0 && (
                         <div className="px-4 py-10 text-center text-sm text-text-placeholder">
-                          Кандидаты не найдены
+                          {t("empty")}
                         </div>
                       )}
                     </div>
@@ -602,7 +618,7 @@ export default function CandidatesPage() {
                   onClick={() => setIsQuickAddModalOpen(true)}
                   type="button"
                 >
-                  Добавить кандидата
+                  {t("add")}
                 </button>
               </div>
             </div>
@@ -611,7 +627,7 @@ export default function CandidatesPage() {
       </main>
 
       <button
-        aria-label="Быстро добавить кандидата"
+        aria-label={t("quickAdd")}
         className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         onClick={() => setIsQuickAddModalOpen(true)}
         type="button"

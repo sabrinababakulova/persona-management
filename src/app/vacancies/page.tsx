@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
 import {
@@ -44,6 +46,8 @@ function toVacancyFunnelPath(vacancy: Pick<Vacancy, "id">): string {
 }
 
 export default function VacanciesPage() {
+  const t = useTranslations("Vacancies");
+  const localizeLookups = useLookupLocalizer();
   const utils = api.useUtils();
   const [selectedPeriod, setSelectedPeriod] =
     useState<PeriodFilterValue>("year");
@@ -83,8 +87,14 @@ export default function VacanciesPage() {
   );
   const { data: vacanciesData, isLoading } =
     api.vacancies.list.useQuery(vacancyQueryInput);
-  const vacancyStatusOptions = vacancyLookups?.statusOptions ?? [];
-  const vacancySourceOptions = vacancyLookups?.sourceOptions ?? [];
+  const vacancyStatusOptions = localizeLookups(
+    vacancyLookups?.statusOptions,
+    "vacancyStatuses",
+  );
+  const vacancySourceOptions = localizeLookups(
+    vacancyLookups?.sourceOptions,
+    "vacancySources",
+  );
   const totalItems = vacanciesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
@@ -135,10 +145,10 @@ export default function VacanciesPage() {
           context.previousVacancies,
         );
       }
-      setToastMessage("Не удалось обновить статус вакансии");
+      setToastMessage(t("statusUpdateError"));
     },
     onSuccess: () => {
-      setToastMessage("Статус вакансии обновлен");
+      setToastMessage(t("statusUpdated"));
     },
     onSettled: () => {
       void utils.vacancies.list.invalidate();
@@ -147,7 +157,7 @@ export default function VacanciesPage() {
 
   const handleStatusChange = (vacancyId: string, nextStatus: string) => {
     if (!isVacancyStatus(nextStatus, vacancyStatusOptions)) {
-      setToastMessage("Выбран неизвестный статус");
+      setToastMessage(t("unknownStatus"));
       return;
     }
 
@@ -199,9 +209,9 @@ export default function VacanciesPage() {
       <main className="flex h-full flex-1 overflow-auto">
         <div className="app-page flex min-h-full flex-col">
           <div className="page-header">
-            <h1 className="page-title">Вакансии</h1>
+            <h1 className="page-title">{t("title")}</h1>
             <PeriodFilter
-              ariaLabel="Фильтр периода вакансий"
+              ariaLabel={t("periodFilter")}
               onChange={(value) => {
                 setSelectedPeriod(value);
                 setCurrentPage(1);
@@ -221,7 +231,7 @@ export default function VacanciesPage() {
                       setSearchQuery(event.target.value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Поиск вакансий"
+                    placeholder={t("search")}
                     type="text"
                     value={searchQuery}
                   />
@@ -236,7 +246,7 @@ export default function VacanciesPage() {
                   type="button"
                 >
                   <FilterIcon className="h-5 w-5" />
-                  <span>Добавить фильтры</span>
+                  <span>{t("addFilters")}</span>
                   <span
                     className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
                       activeFilterCount > 0
@@ -259,7 +269,7 @@ export default function VacanciesPage() {
                   updateVacancyStatus.variables?.id === vacancy.id
                 }
                 items={vacanciesData?.items ?? []}
-                loadingLabel="Загрузка вакансий..."
+                loadingLabel={t("loading")}
                 onStatusChange={handleStatusChange}
                 onToggleSelection={() => {}}
                 pagination={
@@ -287,7 +297,7 @@ export default function VacanciesPage() {
                   className="ui-button ui-button-primary"
                   href="/vacancies/create"
                 >
-                  Добавить вакансию
+                  {t("add")}
                 </Link>
               </div>
             </div>
@@ -296,7 +306,7 @@ export default function VacanciesPage() {
       </main>
 
       <Link
-        aria-label="Создать вакансию"
+        aria-label={t("create")}
         className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         href="/vacancies/create"
       >

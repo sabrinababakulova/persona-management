@@ -1,16 +1,18 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useId } from "react";
 import type { SideMenuProps } from "~/types/components/vacancies-side-menu";
 import { motion } from "./motion-system";
 
 export function SideMenu({ items, activeId, onSelect }: SideMenuProps) {
+  const t = useTranslations("Components");
   const menuId = useId();
 
   return (
     <aside className="w-full shrink-0 lg:w-52 lg:pt-10">
       <nav
-        aria-label="Навигация по дополнительному меню"
+        aria-label={t("secondaryNavigation")}
         className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-0"
       >
         {items.map((item) => {

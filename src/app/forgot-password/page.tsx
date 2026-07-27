@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Input } from "~/app/_components/input";
 import {
@@ -10,8 +11,8 @@ import {
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 import {
-  forgotPasswordRequestSchema,
-  forgotPasswordResetSchema,
+  createForgotPasswordRequestSchema,
+  createForgotPasswordResetSchema,
 } from "~/schemas/forgot-password";
 import { api } from "~/trpc/react";
 
@@ -44,6 +45,8 @@ export default function ForgotPasswordPage() {
 }
 
 function ForgotPasswordPageContent() {
+  const t = useTranslations("Auth");
+  const validation = useTranslations("Validation");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -52,6 +55,28 @@ function ForgotPasswordPageContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const validationMessages = useMemo(
+    () => ({
+      invalidEmail: validation("invalidEmail"),
+      passwordMin: validation("passwordMin"),
+      passwordMax: validation("passwordMax"),
+      passwordSpecial: validation("passwordSpecial"),
+      passwordUppercase: validation("passwordUppercase"),
+      invalidFlow: validation("invalidResetFlow"),
+      invalidCode: validation("invalidCode"),
+      confirmPassword: validation("confirmNewPassword"),
+      passwordsMismatch: validation("newPasswordsMismatch"),
+    }),
+    [validation],
+  );
+  const forgotPasswordRequestSchema = useMemo(
+    () => createForgotPasswordRequestSchema(validationMessages),
+    [validationMessages],
+  );
+  const forgotPasswordResetSchema = useMemo(
+    () => createForgotPasswordResetSchema(validationMessages),
+    [validationMessages],
+  );
 
   const resetFlow = useMemo(() => {
     const step = searchParams.get("step");
@@ -89,7 +114,7 @@ function ForgotPasswordPageContent() {
 
     const parsed = forgotPasswordRequestSchema.safeParse({ email });
     if (!parsed.success) {
-      setErrorMessage(parsed.error.issues[0]?.message ?? "Неверные данные");
+      setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
       return;
     }
 
@@ -103,7 +128,7 @@ function ForgotPasswordPageContent() {
       setConfirmPassword("");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Что-то пошло не так!",
+        error instanceof Error ? error.message : t("unknownError"),
       );
     }
   };
@@ -125,19 +150,19 @@ function ForgotPasswordPageContent() {
     });
 
     if (!parsed.success) {
-      setErrorMessage(parsed.error.issues[0]?.message ?? "Неверные данные");
+      setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
       return;
     }
 
     try {
-      const response = await resetPassword.mutateAsync(parsed.data);
-      setSuccessMessage(response.message);
+      await resetPassword.mutateAsync(parsed.data);
+      setSuccessMessage(t("forgot.success"));
       setCode("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Что-то пошло не так!",
+        error instanceof Error ? error.message : t("unknownError"),
       );
     }
   };
@@ -157,13 +182,13 @@ function ForgotPasswordPageContent() {
       <div className="auth-content">
         <div className="auth-panel">
           <div className="mb-7 space-y-3">
-            <h1 className="auth-title mb-0">Восстановление пароля</h1>
+            <h1 className="auth-title mb-0">{t("forgot.title")}</h1>
             <p className="text-sm text-text-secondary leading-6">
               {resetFlow
                 ? maskedEmail
-                  ? `Введите код из письма для ${maskedEmail} и задайте новый пароль.`
-                  : "Введите код из письма и задайте новый пароль."
-                : "Укажите почту, и мы отправим код для смены пароля."}
+                  ? t("forgot.resetDescriptionEmail", { email: maskedEmail })
+                  : t("forgot.resetDescription")
+                : t("forgot.requestDescription")}
             </p>
           </div>
 
@@ -173,7 +198,7 @@ function ForgotPasswordPageContent() {
                 {successMessage}
               </div>
               <Link className="ui-button ui-button-primary" href="/login">
-                Вернуться ко входу
+                {t("backToSignIn")}
               </Link>
             </div>
           ) : resetFlow ? (
@@ -181,27 +206,27 @@ function ForgotPasswordPageContent() {
               <Input
                 autoComplete="one-time-code"
                 inputMode="numeric"
-                label="Код из письма"
+                label={t("forgot.code")}
                 maxLength={6}
                 onChange={(event) =>
                   setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
                 }
-                placeholder="Введите 6-значный код"
+                placeholder={t("forgot.codePlaceholder")}
                 value={code}
               />
               <Input
                 autoComplete="new-password"
-                label="Новый пароль"
+                label={t("forgot.newPassword")}
                 onChange={(event) => setNewPassword(event.target.value)}
-                placeholder="Введите новый пароль"
+                placeholder={t("forgot.newPasswordPlaceholder")}
                 type="password"
                 value={newPassword}
               />
               <Input
                 autoComplete="new-password"
-                label="Повторите новый пароль"
+                label={t("forgot.confirmNewPassword")}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Повторите новый пароль"
+                placeholder={t("forgot.confirmNewPasswordPlaceholder")}
                 type="password"
                 value={confirmPassword}
               />
@@ -224,7 +249,7 @@ function ForgotPasswordPageContent() {
                   }}
                   type="button"
                 >
-                  Изменить почту
+                  {t("forgot.changeEmail")}
                 </button>
                 <button
                   className="ui-button ui-button-primary"
@@ -233,8 +258,8 @@ function ForgotPasswordPageContent() {
                 >
                   <LoadingButtonContent
                     isLoading={resetPassword.isPending}
-                    label="Сохранить пароль"
-                    loadingLabel="Сохранение..."
+                    label={t("forgot.savePassword")}
+                    loadingLabel={t("forgot.saving")}
                   />
                 </button>
               </div>
@@ -246,9 +271,9 @@ function ForgotPasswordPageContent() {
             >
               <Input
                 autoComplete="email"
-                label="Почта"
+                label={t("email")}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="Адрес электронной почты"
+                placeholder={t("emailPlaceholder")}
                 type="email"
                 value={email}
               />
@@ -264,7 +289,7 @@ function ForgotPasswordPageContent() {
                   className="text-sm text-text-secondary transition-colors hover:text-text-heading"
                   href="/login"
                 >
-                  Назад ко входу
+                  {t("forgot.back")}
                 </Link>
                 <button
                   className="ui-button ui-button-primary"
@@ -273,8 +298,8 @@ function ForgotPasswordPageContent() {
                 >
                   <LoadingButtonContent
                     isLoading={requestPasswordReset.isPending}
-                    label="Получить код"
-                    loadingLabel="Отправка..."
+                    label={t("forgot.getCode")}
+                    loadingLabel={t("forgot.sending")}
                   />
                 </button>
               </div>

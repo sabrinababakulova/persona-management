@@ -15,6 +15,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
@@ -43,6 +44,7 @@ import {
   LoadingState,
 } from "~/app/_components/motion-system";
 import { useDebouncedValue } from "~/app/_components/use-debounced-value";
+import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 
 function compactValues(values: string[]) {
@@ -60,20 +62,22 @@ function DotSeparator({
 function formatSalary(
   salaryExpectation: number,
   salaryCurrency: string,
+  formatNumber: (value: number) => string,
+  fallback: string,
 ): string {
   if (!salaryExpectation) {
-    return "Не указано";
+    return fallback;
   }
 
-  const formatted = new Intl.NumberFormat("ru-RU").format(salaryExpectation);
+  const formatted = formatNumber(salaryExpectation);
   return salaryCurrency === "USD" ? `$${formatted}+` : `${formatted} UZS`;
 }
 
-function toAiSummaryLines(aiAnalysis: string) {
+function toAiSummaryLines(aiAnalysis: string, fallback: string) {
   const normalized = aiAnalysis.trim();
 
   if (!normalized) {
-    return ["AI-анализ пока недоступен"];
+    return [fallback];
   }
 
   const lines = normalized
@@ -156,6 +160,7 @@ function VacancyFunnelHeader({
   id: string;
   title: string;
 }) {
+  const t = useTranslations("Funnel");
   const metadata = [experienceId, areaId].filter(
     (value) => value.trim().length > 0,
   );
@@ -164,7 +169,7 @@ function VacancyFunnelHeader({
     <section className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
       <div className="flex flex-col gap-4">
         <p className="font-medium text-base text-text-secondary uppercase leading-none">
-          Воронка по вакансии
+          {t("title")}
         </p>
 
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
@@ -195,12 +200,12 @@ function VacancyFunnelHeader({
           className="ui-button ui-button-primary w-full justify-between sm:w-auto sm:min-w-48"
           href={`/vacancies/${id}`}
         >
-          <span className="font-medium">Больше о вакансии</span>
+          <span className="font-medium">{t("moreAboutVacancy")}</span>
           <ChevronRightIcon className="h-3 w-3 shrink-0" />
         </Link>
 
         <button
-          aria-label="Дополнительные действия"
+          aria-label={t("moreActions")}
           className="inline-flex h-[22px] w-[22px] items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
           type="button"
         >
@@ -226,6 +231,8 @@ function VacancyStageCandidateCard({
   vacancyId: string;
   vacancyTitle: string;
 }) {
+  const format = useFormatter();
+  const t = useTranslations("Funnel");
   const subtitleTokens = compactValues([
     candidate.city.toUpperCase(),
     candidate.experience.toUpperCase(),
@@ -234,6 +241,7 @@ function VacancyStageCandidateCard({
   // older rows that predate it fall back to the candidate-level résumé summary.
   const aiSummaryLines = toAiSummaryLines(
     candidate.matchAnalysis || candidate.aiAnalysis,
+    t("aiUnavailable"),
   );
   const positionTokens = compactValues([
     candidate.currentCompany,
@@ -277,12 +285,12 @@ function VacancyStageCandidateCard({
                   </div>
                 ))
               ) : (
-                <span className="font-medium">Кандидат</span>
+                <span className="font-medium">{t("candidate")}</span>
               )}
             </div>
 
             <button
-              aria-label="Дополнительные действия по кандидату"
+              aria-label={t("candidateActions")}
               className="inline-flex h-4 w-4 items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
               type="button"
             >
@@ -309,7 +317,7 @@ function VacancyStageCandidateCard({
               <span className="font-bold text-xs leading-none">AI</span>
             </div>
             <span className="font-semibold text-xs leading-none">
-              {candidate.matchScore}% соответствия
+              {t("match", { score: candidate.matchScore })}
             </span>
           </div>
 
@@ -326,7 +334,7 @@ function VacancyStageCandidateCard({
       <div className="flex flex-col gap-4">
         <CandidateCardSection
           icon={<OutlineBriefcaseIcon className="h-[14px] w-[14px]" />}
-          title="Текущая должность и навыки"
+          title={t("currentPositionAndSkills")}
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
             {positionTokens.length > 0 ? (
@@ -337,14 +345,14 @@ function VacancyStageCandidateCard({
                 </div>
               ))
             ) : (
-              <span className="text-text-placeholder">Нет данных</span>
+              <span className="text-text-placeholder">{t("noData")}</span>
             )}
           </div>
         </CandidateCardSection>
 
         <CandidateCardSection
           icon={<MailIcon className="h-[14px] w-[14px]" />}
-          title="Контакты"
+          title={t("contacts")}
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
             {contactTokens.length > 0 ? (
@@ -355,26 +363,28 @@ function VacancyStageCandidateCard({
                 </div>
               ))
             ) : (
-              <span className="text-text-placeholder">Нет данных</span>
+              <span className="text-text-placeholder">{t("noData")}</span>
             )}
           </div>
         </CandidateCardSection>
 
         <CandidateCardSection
           icon={<DollarIcon className="h-[14px] w-[14px]" />}
-          title="Зарплатные ожидания"
+          title={t("salaryExpectation")}
         >
           <p className="text-sm text-text-heading leading-[1.3]">
             {formatSalary(
               candidate.salaryExpectation,
               candidate.salaryCurrency,
+              (value) => format.number(value),
+              t("notSpecified"),
             )}
           </p>
         </CandidateCardSection>
 
         <CandidateCardSection
           icon={<VacancyResponsesIcon className="h-[14px] w-[14px]" />}
-          title="Отклики на другие вакансии"
+          title={t("otherApplications")}
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
             {candidate.relatedVacancies.length > 0 ? (
@@ -390,7 +400,9 @@ function VacancyStageCandidateCard({
                 </div>
               ))
             ) : (
-              <span className="text-text-placeholder">Нет откликов</span>
+              <span className="text-text-placeholder">
+                {t("noApplications")}
+              </span>
             )}
           </div>
         </CandidateCardSection>
@@ -409,9 +421,9 @@ function VacancyStageCandidateCard({
       ) : null}
 
       <p className="text-text-heading text-xs leading-[1.3]">
-        Источник:{" "}
+        {t("source")}{" "}
         <span className="text-primary-blue">
-          {candidate.source.trim() || "Не указан"}
+          {candidate.source.trim() || t("notSpecified")}
         </span>
       </p>
 
@@ -431,7 +443,7 @@ function VacancyStageCandidateCard({
           }}
           type="button"
         >
-          Быстрый просмотр CV
+          {t("quickCv")}
         </button>
       </div>
     </article>
@@ -509,6 +521,7 @@ function VacancyStageSection({
   vacancyId: string;
   vacancyTitle: string;
 }) {
+  const t = useTranslations("Funnel");
   const { isOver, setNodeRef } = useDroppable({
     id: stageValue,
     disabled: isDndDisabled,
@@ -532,7 +545,7 @@ function VacancyStageSection({
         <div className="flex items-center gap-2">
           {canAddCandidate ? (
             <button
-              aria-label={`Добавить кандидата в этап ${label}`}
+              aria-label={t("addToStage", { stage: label })}
               className="inline-flex h-5 w-5 items-center justify-center text-primary-blue transition-colors hover:text-primary-blue-hover"
               onClick={onAddCandidate}
               type="button"
@@ -541,7 +554,7 @@ function VacancyStageSection({
             </button>
           ) : null}
           <button
-            aria-label={`Сортировка кандидатов этапа ${label}`}
+            aria-label={t("sortStage", { stage: label })}
             className="inline-flex h-4 w-4 items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
             type="button"
           >
@@ -553,7 +566,7 @@ function VacancyStageSection({
       <div className="mt-4 flex flex-col gap-4">
         {candidates.length === 0 ? (
           <div className="rounded-lg border border-border-input bg-bg-light px-4 py-6 text-sm text-text-secondary">
-            На этом этапе пока нет кандидатов.
+            {t("emptyStage")}
           </div>
         ) : (
           candidates.map((candidate) => (
@@ -575,6 +588,10 @@ function VacancyStageSection({
 }
 
 export default function VacancyFunnelPage() {
+  const t = useTranslations("Funnel");
+  const navigationT = useTranslations("Navigation");
+  const vacanciesT = useTranslations("Vacancies");
+  const localizeLookups = useLookupLocalizer();
   const { id } = useParams() as { id: string };
   const utils = api.useUtils();
   const [assignmentStage, setAssignmentStage] = useState<{
@@ -601,8 +618,12 @@ export default function VacancyFunnelPage() {
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
   const statusOptions = useMemo(
-    () => lookups?.statusOptions ?? [],
-    [lookups?.statusOptions],
+    () => localizeLookups(lookups?.statusOptions, "candidateStatuses"),
+    [localizeLookups, lookups?.statusOptions],
+  );
+  const sourceOptions = useMemo(
+    () => localizeLookups(lookups?.sources, "sources"),
+    [localizeLookups, lookups?.sources],
   );
   const activeFilterCount = countActiveFilters(appliedFilters);
 
@@ -778,7 +799,7 @@ export default function VacancyFunnelPage() {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label="Собираем воронку кандидатов..." />
+        <LoadingState label={t("loading")} />
       </div>
     );
   }
@@ -788,7 +809,7 @@ export default function VacancyFunnelPage() {
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
         <FeedbackPresence show>
           <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
-            Воронка вакансии не найдена
+            {t("notFound")}
           </div>
         </FeedbackPresence>
       </div>
@@ -799,9 +820,9 @@ export default function VacancyFunnelPage() {
     <main className="min-h-full bg-bg-canvas">
       <div className="app-page flex flex-col gap-5">
         <Breadcrumbs
-          label={`${data.title} / Воронка`}
+          label={`${data.title} / ${vacanciesT("funnel")}`}
           rootHref="/vacancies"
-          rootLabel="Вакансии"
+          rootLabel={navigationT("vacancies")}
         />
 
         <VacancyFunnelHeader
@@ -813,16 +834,13 @@ export default function VacancyFunnelPage() {
 
         {isHhVacancy ? (
           <div className="rounded-lg border border-border-input bg-bg-light px-4 py-3 text-sm text-text-secondary">
-            Кандидаты и этапы загружены из hh.uz. Добавление кандидатов в
-            воронку на этой странице недоступно.
+            {t("hhReadonly")}
           </div>
         ) : null}
 
         {data.hhAccessDenied ? (
           <div className="rounded-lg border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-danger-red text-sm">
-            У вашего аккаунта hh.uz нет доступа к откликам этой вакансии.
-            Кандидаты с hh.uz не отображаются в воронке. Проверьте права
-            менеджера или подключённый аккаунт hh.uz.
+            {t("hhAccessDenied")}
           </div>
         ) : null}
 
@@ -832,7 +850,7 @@ export default function VacancyFunnelPage() {
             <input
               className="ui-search"
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Поиск кандидатов"
+              placeholder={t("search")}
               type="text"
               value={searchQuery}
             />
@@ -847,7 +865,7 @@ export default function VacancyFunnelPage() {
             type="button"
           >
             <FilterIcon className="h-5 w-5" />
-            <span>Добавить фильтры</span>
+            <span>{t("addFilters")}</span>
             <span
               className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
                 activeFilterCount > 0
@@ -911,7 +929,7 @@ export default function VacancyFunnelPage() {
           setIsFilterModalOpen(false);
         }}
         onClose={() => setIsFilterModalOpen(false)}
-        sourceOptions={lookups?.sources}
+        sourceOptions={sourceOptions}
         statusOptions={statusOptions}
       />
 

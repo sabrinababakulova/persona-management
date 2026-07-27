@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { CandidateSelector } from "./candidate-selector";
 import { Modal } from "./modal";
@@ -24,6 +25,8 @@ export function AssignCandidateToVacancyModal({
   stageLabel,
   vacancyId,
 }: AssignCandidateToVacancyModalProps) {
+  const t = useTranslations("Components");
+  const commonT = useTranslations("Common");
   const [selectedCandidate, setSelectedCandidate] = useState<{
     id: string;
     label: string;
@@ -39,7 +42,7 @@ export function AssignCandidateToVacancyModal({
 
   const handleAssign = () => {
     if (!selectedCandidate) {
-      setLocalError("Выберите кандидата");
+      setLocalError(t("selectCandidate"));
       return;
     }
 
@@ -49,20 +52,20 @@ export function AssignCandidateToVacancyModal({
 
   return (
     <Modal
-      description={`Выберите кандидата, которого нужно добавить на этап "${stageLabel}".`}
+      description={t("addCandidateDescription", { stage: stageLabel })}
       isOpen={isOpen}
       maxWidthClassName="max-w-[520px]"
       onClose={onClose}
-      title="Добавить кандидата"
+      title={t("addCandidate")}
     >
       <div className="flex flex-col gap-5">
         <div className="rounded-lg bg-primary-blue-light px-3 py-2 text-primary-blue text-sm leading-[1.4]">
-          Этап: {stageLabel}
+          {t("stage", { stage: stageLabel })}
         </div>
 
         <CandidateSelector
           disabled={isAssigning}
-          label="Кандидат"
+          label={t("candidate")}
           onChange={setSelectedCandidate}
           selectedCandidateId={selectedCandidate?.id}
           selectedCandidateLabel={selectedCandidate?.label}
@@ -82,7 +85,7 @@ export function AssignCandidateToVacancyModal({
             onClick={onClose}
             type="button"
           >
-            Отмена
+            {commonT("cancel")}
           </button>
           <button
             className="ui-button ui-button-primary"
@@ -92,8 +95,8 @@ export function AssignCandidateToVacancyModal({
           >
             <LoadingButtonContent
               isLoading={isAssigning}
-              label="Добавить кандидата"
-              loadingLabel="Добавление..."
+              label={t("addCandidate")}
+              loadingLabel={t("adding")}
             />
           </button>
         </div>

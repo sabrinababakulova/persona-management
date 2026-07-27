@@ -6,6 +6,7 @@ import {
   motion,
   useReducedMotion,
 } from "motion/react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -166,10 +167,12 @@ export function MotionToast({ message }: MotionToastProps) {
 export function LoadingState({
   className,
   compact = false,
-  label = "Загрузка...",
+  label,
 }: LoadingStateProps) {
+  const t = useTranslations("Common");
   const shouldReduceMotion = useReducedMotion();
   const sizeClassName = compact ? "h-6 w-6" : "h-9 w-9";
+  const resolvedLabel = label ?? t("loading");
 
   return (
     <motion.div
@@ -214,7 +217,7 @@ export function LoadingState({
           }
         />
       </div>
-      <span className={compact ? "text-xs" : "text-sm"}>{label}</span>
+      <span className={compact ? "text-xs" : "text-sm"}>{resolvedLabel}</span>
     </motion.div>
   );
 }

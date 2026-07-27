@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "./header";
+import { LocaleSwitcher } from "./locale-switcher";
 import { RouteTransition } from "./motion-system";
 import { Sidebar } from "./sidebar";
 
@@ -49,9 +50,14 @@ export function AppShell({ children }: AppShellProps) {
 
   if (isAuthScreenRoute) {
     return (
-      <RouteTransition className="min-h-screen" routeKey={pathname}>
-        {children}
-      </RouteTransition>
+      <>
+        <div className="fixed top-4 right-4 z-50">
+          <LocaleSwitcher variant="auth" />
+        </div>
+        <RouteTransition className="min-h-screen" routeKey={pathname}>
+          {children}
+        </RouteTransition>
+      </>
     );
   }
 

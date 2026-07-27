@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
@@ -36,13 +37,7 @@ type BasicVacancyFormErrors = Partial<
   Record<keyof BasicVacancyFormData | "_form", string>
 >;
 
-const REQUIRED_FIELDS: ReadonlyArray<{
-  key: keyof BasicVacancyFormData;
-  label: string;
-}> = [
-  { key: "title", label: "Название вакансии" },
-  { key: "descriptionHtml", label: "Описание вакансии" },
-];
+const REQUIRED_FIELD_KEYS = ["title", "descriptionHtml"] as const;
 
 export type CreateVacancyFormInitialData = Partial<BasicVacancyFormData> & {
   name?: string;
@@ -78,12 +73,15 @@ function getSalaryCurrency(value: string): "UZS" | "USD" {
 export function CreateVacancyForm({
   vacancyId,
   initialData,
-  breadcrumbLabel = "Добавление вакансии",
-  pageHeading = "Добавление вакансии",
+  breadcrumbLabel,
+  pageHeading,
   bannerContent,
   readOnly = false,
   onSaved,
 }: CreateVacancyFormProps = {}) {
+  const t = useTranslations("VacancyForm");
+  const commonT = useTranslations("Common");
+  const navigationT = useTranslations("Navigation");
   const router = useRouter();
   const utils = api.useUtils();
   const isEditMode = Boolean(vacancyId);
@@ -93,6 +91,8 @@ export function CreateVacancyForm({
   );
   const [errors, setErrors] = useState<BasicVacancyFormErrors>({});
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const resolvedBreadcrumbLabel = breadcrumbLabel ?? t("addTitle");
+  const resolvedPageHeading = pageHeading ?? t("addTitle");
 
   useEffect(() => {
     if (!isEditMode) {
@@ -102,20 +102,21 @@ export function CreateVacancyForm({
   }, [initialData, isEditMode]);
 
   const progress = useMemo(() => {
-    const missing = REQUIRED_FIELDS.filter(
-      ({ key }) => formData[key].trim() === "",
-    ).map(({ label }) => label);
+    const missing = REQUIRED_FIELD_KEYS.filter(
+      (key) => formData[key].trim() === "",
+    ).map((key) => (key === "title" ? t("vacancyTitle") : t("description")));
 
     return {
-      total: REQUIRED_FIELDS.length,
-      filled: REQUIRED_FIELDS.length - missing.length,
+      total: REQUIRED_FIELD_KEYS.length,
+      filled: REQUIRED_FIELD_KEYS.length - missing.length,
       missing,
       percentage: Math.round(
-        ((REQUIRED_FIELDS.length - missing.length) / REQUIRED_FIELDS.length) *
+        ((REQUIRED_FIELD_KEYS.length - missing.length) /
+          REQUIRED_FIELD_KEYS.length) *
           100,
       ),
     };
-  }, [formData]);
+  }, [formData, t]);
 
   const createVacancy = api.vacancies.create.useMutation({
     onSuccess: async (createdVacancy) => {
@@ -132,7 +133,7 @@ export function CreateVacancyForm({
     onError: (error) => {
       setErrors((previous) => ({
         ...previous,
-        _form: error.message || "Не удалось сохранить вакансию",
+        _form: error.message || t("saveError"),
       }));
     },
   });
@@ -140,7 +141,7 @@ export function CreateVacancyForm({
   const updateVacancy = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setUpdateMessage("Изменения сохранены");
+      setUpdateMessage(t("saved"));
       if (vacancyId) {
         await Promise.all([
           utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -152,7 +153,7 @@ export function CreateVacancyForm({
       setUpdateMessage(null);
       setErrors((previous) => ({
         ...previous,
-        _form: error.message || "Не удалось сохранить изменения",
+        _form: error.message || t("updateError"),
       }));
     },
   });
@@ -180,11 +181,11 @@ export function CreateVacancyForm({
     const nextErrors: BasicVacancyFormErrors = {};
 
     if (!formData.title.trim()) {
-      nextErrors.title = "Введите название вакансии";
+      nextErrors.title = t("titleRequired");
     }
 
     if (!formData.descriptionHtml.trim()) {
-      nextErrors.descriptionHtml = "Введите описание вакансии";
+      nextErrors.descriptionHtml = t("descriptionRequired");
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -248,13 +249,13 @@ export function CreateVacancyForm({
   return (
     <div className="w-full max-w-[1040px]">
       <Breadcrumbs
-        label={breadcrumbLabel}
+        label={resolvedBreadcrumbLabel}
         rootHref="/vacancies"
-        rootLabel="Вакансии"
+        rootLabel={navigationT("vacancies")}
       />
 
       <div className="page-header mt-5">
-        <h1 className="page-title">{pageHeading}</h1>
+        <h1 className="page-title">{resolvedPageHeading}</h1>
       </div>
 
       {bannerContent && <div className="mb-6">{bannerContent}</div>}
@@ -272,16 +273,16 @@ export function CreateVacancyForm({
             className="surface-card scroll-mt-24 p-5 sm:p-6"
             id="basic-information"
           >
-            <ClosableSection title="Основная информация">
+            <ClosableSection title={t("mainInformation")}>
               <div className="flex min-w-0 flex-col gap-2">
                 <Input
                   disabled={readOnly}
-                  label="Название вакансии"
+                  label={t("vacancyTitle")}
                   maxLength={255}
                   onChange={(event) =>
                     handleFieldChange("title", event.target.value)
                   }
-                  placeholder="Например, Frontend Developer"
+                  placeholder={t("titlePlaceholder")}
                   value={formData.title}
                 />
                 {errors.title && (
@@ -292,12 +293,12 @@ export function CreateVacancyForm({
                 <RichTextEditor
                   disabled={readOnly}
                   id="description-html"
-                  label="Описание вакансии"
+                  label={t("description")}
                   maxLength={20000}
                   onChange={(html) =>
                     handleFieldChange("descriptionHtml", html)
                   }
-                  placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
+                  placeholder={t("descriptionPlaceholder")}
                   value={formData.descriptionHtml}
                 />
                 {errors.descriptionHtml && (
@@ -310,12 +311,12 @@ export function CreateVacancyForm({
           </div>
 
           <div className="surface-card scroll-mt-24 p-5 sm:p-6" id="conditions">
-            <ClosableSection title="Условия">
+            <ClosableSection title={t("conditions")}>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Input
                   disabled={readOnly}
                   inputMode="numeric"
-                  label="Зарплата от"
+                  label={t("salaryFrom")}
                   maxLength={20}
                   onChange={(event) =>
                     handleFieldChange(
@@ -323,13 +324,13 @@ export function CreateVacancyForm({
                       formatNumberWithSpaces(event.target.value),
                     )
                   }
-                  placeholder="например, 5 000 000"
+                  placeholder={t("salaryFromPlaceholder")}
                   value={formData.salaryFrom}
                 />
                 <Input
                   disabled={readOnly}
                   inputMode="numeric"
-                  label="Зарплата до"
+                  label={t("salaryTo")}
                   maxLength={20}
                   onChange={(event) =>
                     handleFieldChange(
@@ -337,12 +338,12 @@ export function CreateVacancyForm({
                       formatNumberWithSpaces(event.target.value),
                     )
                   }
-                  placeholder="например, 8 000 000"
+                  placeholder={t("salaryToPlaceholder")}
                   value={formData.salaryTo}
                 />
                 <Dropdown
                   disabled={readOnly}
-                  label="Валюта"
+                  label={t("currency")}
                   onChange={(value) =>
                     handleFieldChange("salaryCurrency", value)
                   }
@@ -353,7 +354,7 @@ export function CreateVacancyForm({
 
               <Input
                 disabled={readOnly}
-                label="Контактный телефон"
+                label={t("contactPhone")}
                 onChange={(event) =>
                   handleFieldChange("contactPhone", event.target.value)
                 }
@@ -385,7 +386,7 @@ export function CreateVacancyForm({
               onClick={handleCancel}
               type="button"
             >
-              {readOnly ? "Назад" : "Отмена"}
+              {readOnly ? commonT("back") : commonT("cancel")}
             </button>
             {!readOnly && (
               <button
@@ -396,8 +397,10 @@ export function CreateVacancyForm({
               >
                 <LoadingButtonContent
                   isLoading={isSaving}
-                  label={isEditMode ? "Сохранить изменения" : "Продолжить"}
-                  loadingLabel="Сохранение..."
+                  label={
+                    isEditMode ? commonT("saveChanges") : commonT("continue")
+                  }
+                  loadingLabel={commonT("saving")}
                 />
               </button>
             )}

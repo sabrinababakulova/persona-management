@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { StatsCardProps } from "~/types/components/stats-card-props";
 import { TrendDownIcon, TrendUpIcon } from "./icons";
 import { motion } from "./motion-system";
@@ -11,6 +12,7 @@ export function StatsCard({
   changeType,
   period,
 }: StatsCardProps) {
+  const t = useTranslations("Common");
   const changeColors = {
     positive: "bg-success-green-bg text-success-green",
     negative: "bg-danger-red-bg text-danger-red",
@@ -35,7 +37,7 @@ export function StatsCard({
           className="font-semibold text-primary-blue text-sm hover:text-primary-blue-hover"
           type="button"
         >
-          Детали
+          {t("details")}
         </button>
       </div>
       <div className="flex items-end gap-3">

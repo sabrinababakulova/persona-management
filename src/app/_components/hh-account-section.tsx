@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../_components/motion-system";
 
 export function HhAccountSection() {
+  const t = useTranslations("Integrations");
   const utils = api.useUtils();
 
   const { data: account, isLoading } = api.integrations.getHhAccount.useQuery();
@@ -21,16 +23,16 @@ export function HhAccountSection() {
   const isConnected = !!account?.hasTokens && !!account?.employerId;
 
   return (
-    <ClosableSection title="hh.uz аккаунт">
+    <ClosableSection title={t("hhAccount")}>
       {isLoading ? (
-        <LoadingState compact label="Проверяем подключение..." />
+        <LoadingState compact label={t("checkingConnection")} />
       ) : null}
 
       {!isLoading && isConnected && (
         <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
           <p className="text-sm text-text-heading">
-            <span className="font-medium">Статус:</span>{" "}
-            <span className="text-success-green">Подключен</span>
+            <span className="font-medium">{t("status")}:</span>{" "}
+            <span className="text-success-green">{t("connected")}</span>
           </p>
           <p className="text-text-secondary text-xs">
             Employer ID: {account.employerId}
@@ -45,12 +47,9 @@ export function HhAccountSection() {
 
       {!isLoading && !isConnected && (
         <div className="rounded-lg border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-sm text-text-heading">
-            Подключите hh.uz через OAuth.
-          </p>
+          <p className="text-sm text-text-heading">{t("connectOauth")}</p>
           <p className="mt-1 text-text-secondary text-xs leading-[1.4]">
-            Client ID и Client Secret берутся из серверных переменных окружения.
-            Employer ID определяется автоматически после авторизации в hh.uz.
+            {t("oauthDescription")}
           </p>
         </div>
       )}
@@ -60,7 +59,7 @@ export function HhAccountSection() {
           className="ui-button ui-button-soft"
           href="/api/integrations/hh/connect"
         >
-          {isConnected ? "Переподключить hh.uz" : "Подключить hh.uz"}
+          {isConnected ? t("reconnectHh") : t("connectHh")}
         </a>
 
         {account && (
@@ -74,8 +73,8 @@ export function HhAccountSection() {
           >
             <LoadingButtonContent
               isLoading={removeAccount.isPending}
-              label="Отключить"
-              loadingLabel="Отключение..."
+              label={t("disconnect")}
+              loadingLabel={t("disconnecting")}
             />
           </button>
         )}

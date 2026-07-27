@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Input } from "~/app/_components/input";
 import { api } from "~/trpc/react";
@@ -11,6 +12,7 @@ import {
 } from "../_components/motion-system";
 
 export function TelegramChannelsSection() {
+  const t = useTranslations("Integrations");
   const [newChannelId, setNewChannelId] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +50,8 @@ export function TelegramChannelsSection() {
   };
 
   return (
-    <ClosableSection title="Telegram каналы">
-      {isLoading ? <LoadingState compact label="Загрузка каналов..." /> : null}
+    <ClosableSection title={t("telegramChannels")}>
+      {isLoading ? <LoadingState compact label={t("loadingChannels")} /> : null}
 
       {channels && channels.length > 0 && (
         <div className="space-y-2">
@@ -74,7 +76,7 @@ export function TelegramChannelsSection() {
                 onClick={() => removeChannel.mutate({ id: ch.id })}
                 type="button"
               >
-                Удалить
+                {t("delete")}
               </button>
             </div>
           ))}
@@ -82,20 +84,20 @@ export function TelegramChannelsSection() {
       )}
 
       {channels && channels.length === 0 && (
-        <p className="text-sm text-text-secondary">Нет добавленных каналов</p>
+        <p className="text-sm text-text-secondary">{t("noChannels")}</p>
       )}
 
       <div className="space-y-3">
         <Input
-          label="ID канала"
+          label={t("channelId")}
           onChange={(e) => setNewChannelId(e.target.value)}
-          placeholder="@channelname или -1001234567890"
+          placeholder={t("channelIdPlaceholder")}
           value={newChannelId}
         />
         <Input
-          label="Название (необязательно)"
+          label={t("optionalName")}
           onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="Например: Вакансии IT"
+          placeholder={t("channelNamePlaceholder")}
           value={newLabel}
         />
 
@@ -111,8 +113,8 @@ export function TelegramChannelsSection() {
         >
           <LoadingButtonContent
             isLoading={addChannel.isPending}
-            label="Добавить канал"
-            loadingLabel="Добавление..."
+            label={t("addChannel")}
+            loadingLabel={t("adding")}
           />
         </button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { ClosableSection } from "~/app/_components/closable-section";
@@ -23,18 +24,6 @@ import { PublicationConfirmationModal } from "./publication-confirmation-modal";
 /** Per-field error messages plus an optional `_form` entry for form-level errors. */
 type HhErrors = Partial<Record<keyof HhPublicationFields | "_form", string>>;
 type HhSubmitAction = "local" | "hhDraft" | "publish";
-
-const HH_SUBMIT_ACTION_OPTIONS: { value: HhSubmitAction; label: string }[] = [
-  { value: "local", label: "Сохранить в Persona" },
-  { value: "hhDraft", label: "Сохранить черновик на hh.uz" },
-  { value: "publish", label: "Опубликовать на hh.uz" },
-];
-
-const HH_SUBMIT_BUTTON_LABEL: Record<HhSubmitAction, string> = {
-  local: "Сохранить",
-  hhDraft: "Сохранить черновик",
-  publish: "Опубликовать",
-};
 
 /** Returns true when the supplied HTML contains visible text (ignores empty tags like `<p></p>`). */
 function hasMeaningfulHtml(html: string): boolean {
@@ -76,6 +65,9 @@ export function HhPublicationForm({
   vacancyId: string;
   pubId?: string;
 }) {
+  const t = useTranslations("Publications");
+  const commonT = useTranslations("Common");
+  const navigationT = useTranslations("Navigation");
   const router = useRouter();
   const utils = api.useUtils();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
@@ -88,6 +80,16 @@ export function HhPublicationForm({
   const [errors, setErrors] = useState<HhErrors>({});
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [submitAction, setSubmitAction] = useState<HhSubmitAction>("hhDraft");
+  const submitActionOptions: { value: HhSubmitAction; label: string }[] = [
+    { value: "local", label: t("hh.savePersona") },
+    { value: "hhDraft", label: t("hh.saveDraft") },
+    { value: "publish", label: t("hh.publish") },
+  ];
+  const submitButtonLabels: Record<HhSubmitAction, string> = {
+    local: t("hh.save"),
+    hhDraft: t("hh.saveDraftButton"),
+    publish: t("publish"),
+  };
 
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
 
@@ -194,7 +196,7 @@ export function HhPublicationForm({
   const createPublication = api.vacancies.create.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Публикация сохранены");
+      setSavedMessage(t("saved"));
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
         utils.vacancies.list.invalidate(),
@@ -207,7 +209,7 @@ export function HhPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setErrors({
-        _form: error.message || "Не удалось сохранить изменения",
+        _form: error.message || t("hh.saveError"),
       });
     },
   });
@@ -215,7 +217,7 @@ export function HhPublicationForm({
   const updatePublication = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Публикация обновлена");
+      setSavedMessage(t("updated"));
       await Promise.all([
         pubId
           ? utils.vacancies.get.invalidate({ id: pubId })
@@ -230,7 +232,7 @@ export function HhPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setErrors({
-        _form: error.message || "Не удалось обновить публикацию",
+        _form: error.message || t("hh.updateError"),
       });
     },
   });
@@ -246,7 +248,7 @@ export function HhPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setErrors({
-        _form: error.message || "Не удалось опубликовать на hh.uz",
+        _form: error.message || t("hh.publishError"),
       });
     },
   });
@@ -267,20 +269,23 @@ export function HhPublicationForm({
     onSuccess: async (result) => {
       setErrors({});
       const details = [
-        result.publicationReady ? "готов к публикации" : "нужно дополнить",
+        result.publicationReady ? t("hh.ready") : t("hh.incomplete"),
         result.ignoredFields.length > 0
-          ? `hh.uz не сохранил поля: ${result.ignoredFields.join(", ")}`
+          ? t("hh.ignoredFields", { fields: result.ignoredFields.join(", ") })
           : null,
         result.validationErrors.length > 0
-          ? `есть замечания: ${result.validationErrors
-              .map((item) => item.value)
-              .join(", ")}`
+          ? t("hh.issues", {
+              issues: result.validationErrors
+                .map((item) => item.value)
+                .join(", "),
+            })
           : null,
       ].filter((item): item is string => Boolean(item));
       setSavedMessage(
-        `Черновик hh.uz сохранён: ${result.hhDraftId}${
-          details.length > 0 ? ` (${details.join("; ")})` : ""
-        }`,
+        t("hh.draftSaved", {
+          id: result.hhDraftId,
+          details: details.length > 0 ? ` (${details.join("; ")})` : "",
+        }),
       );
       await Promise.all([
         pubId
@@ -295,7 +300,7 @@ export function HhPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setErrors({
-        _form: error.message || "Не удалось сохранить черновик на hh.uz",
+        _form: error.message || t("hh.draftError"),
       });
     },
   });
@@ -321,9 +326,9 @@ export function HhPublicationForm({
     const trimmedTitle = fields.title.trim();
 
     if (!trimmedTitle) {
-      next.title = "Введите название публикации";
+      next.title = t("titleRequired");
     } else if (trimmedTitle.length > 255) {
-      next.title = "Название не должно быть длиннее 255 символов";
+      next.title = t("titleMax");
     }
 
     if (Object.keys(next).length > 0) {
@@ -342,30 +347,30 @@ export function HhPublicationForm({
     }
 
     if (!fields.areaId) {
-      next.areaId = "Выберите город";
+      next.areaId = t("hh.selectCityError");
     }
     if (!fields.professionalRoleId) {
-      next.professionalRoleId = "Выберите профессиональную роль";
+      next.professionalRoleId = t("hh.selectRoleError");
     }
     if (!fields.employmentId) {
-      next.employmentId = "Выберите тип занятости";
+      next.employmentId = t("hh.selectEmploymentError");
     }
     if (!fields.scheduleId) {
-      next.scheduleId = "Выберите график";
+      next.scheduleId = t("hh.selectScheduleError");
     }
     if (!fields.experienceId) {
-      next.experienceId = "Выберите опыт";
+      next.experienceId = t("hh.selectExperienceError");
     }
     if (!fields.billingTypeId) {
-      next.billingTypeId = "Выберите тип публикации";
+      next.billingTypeId = t("hh.selectPublicationTypeError");
     }
     if (!fields.vacancyTypeId) {
-      next.vacancyTypeId = "Выберите тип вакансии";
+      next.vacancyTypeId = t("hh.selectVacancyTypeError");
     }
     if (!hasMeaningfulHtml(fields.descriptionHtml)) {
-      next.descriptionHtml = "Заполните описание вакансии";
+      next.descriptionHtml = t("hh.vacancyDescriptionRequired");
     } else if (fields.descriptionHtml.length < 200) {
-      next.descriptionHtml = "Описание должно быть не короче 200 символов";
+      next.descriptionHtml = t("hh.descriptionMin");
     }
 
     if (Object.keys(next).length > 0) {
@@ -563,7 +568,7 @@ export function HhPublicationForm({
     return (
       <LoadingState
         className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label="Загрузка вакансии..."
+        label={t("vacancyLoading")}
       />
     );
   }
@@ -571,7 +576,7 @@ export function HhPublicationForm({
   if (!vacancyQuery.data) {
     return (
       <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Вакансия не найдена
+        {t("vacancyNotFound")}
       </main>
     );
   }
@@ -581,26 +586,26 @@ export function HhPublicationForm({
       <div className="app-page-narrow flex flex-col">
         <div className="w-full">
           <Breadcrumbs
-            label="Публикация на hh.uz"
+            label={t("hh.pageTitle")}
             parent={{
-              label: vacancyQuery.data.title || "Вакансия",
+              label: vacancyQuery.data.title || t("vacancy"),
               href: `/vacancies/${vacancyId}`,
             }}
             rootHref="/vacancies"
-            rootLabel="Вакансии"
+            rootLabel={navigationT("vacancies")}
           />
 
-          <h1 className="page-title mt-5 mb-5">Публикация на hh.uz</h1>
+          <h1 className="page-title mt-5 mb-5">{t("hh.pageTitle")}</h1>
 
           <FeedbackPresence className="mb-4" show={hhLookupsQuery.isError}>
             <div className="mb-4 rounded-lg border border-danger-red-bg bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
-              Не удалось загрузить справочники hh.uz.{" "}
+              {t("hh.lookupsError")}{" "}
               <button
                 className="underline"
                 onClick={() => void hhLookupsQuery.refetch()}
                 type="button"
               >
-                Повторить
+                {commonT("retry")}
               </button>
             </div>
           </FeedbackPresence>
@@ -610,15 +615,15 @@ export function HhPublicationForm({
               className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="basic-information"
             >
-              <ClosableSection title="Основная информация hh.uz">
+              <ClosableSection title={t("hh.mainInfo")}>
                 <div className="flex min-w-0 flex-col gap-2">
                   <Input
-                    label="Название публикации"
+                    label={t("publicationTitle")}
                     maxLength={255}
                     onChange={(event) =>
                       setHhField("title", event.target.value)
                     }
-                    placeholder="Введите название публикации"
+                    placeholder={t("titlePlaceholder")}
                     value={fields.title}
                   />
                   {errors.title && (
@@ -631,11 +636,11 @@ export function HhPublicationForm({
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex min-w-0 flex-col gap-2">
                     <SearchableSelect
-                      label="Город"
+                      label={t("hh.city")}
                       onChange={(value) => handleFieldChange("areaId", value)}
                       options={areaOptions}
-                      placeholder="Выберите город"
-                      searchPlaceholder="Найти город"
+                      placeholder={t("hh.selectCity")}
+                      searchPlaceholder={t("hh.searchCity")}
                       value={fields.areaId}
                     />
                     {errors.areaId && (
@@ -647,13 +652,13 @@ export function HhPublicationForm({
 
                   <div className="flex min-w-0 flex-col gap-2">
                     <SearchableSelect
-                      label="Профессиональная роль"
+                      label={t("hh.role")}
                       onChange={(value) =>
                         handleFieldChange("professionalRoleId", value)
                       }
                       options={professionalRoleOptions}
-                      placeholder="Выберите роль"
-                      searchPlaceholder="Найти роль"
+                      placeholder={t("hh.selectRole")}
+                      searchPlaceholder={t("hh.searchRole")}
                       value={fields.professionalRoleId}
                     />
                     {errors.professionalRoleId && (
@@ -667,12 +672,12 @@ export function HhPublicationForm({
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
-                      label="Тип занятости"
+                      label={t("hh.employment")}
                       onChange={(value) =>
                         handleFieldChange("employmentId", value)
                       }
                       options={employmentOptions}
-                      placeholder="Выберите тип"
+                      placeholder={t("hh.selectType")}
                       value={fields.employmentId}
                     />
                     {errors.employmentId && (
@@ -684,12 +689,12 @@ export function HhPublicationForm({
 
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
-                      label="График работы"
+                      label={t("hh.schedule")}
                       onChange={(value) =>
                         handleFieldChange("scheduleId", value)
                       }
                       options={scheduleOptions}
-                      placeholder="Выберите график"
+                      placeholder={t("hh.selectSchedule")}
                       value={fields.scheduleId}
                     />
                     {errors.scheduleId && (
@@ -703,12 +708,12 @@ export function HhPublicationForm({
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
-                      label="Опыт работы"
+                      label={t("hh.experience")}
                       onChange={(value) =>
                         handleFieldChange("experienceId", value)
                       }
                       options={experienceOptions}
-                      placeholder="Выберите опыт"
+                      placeholder={t("hh.selectExperience")}
                       value={fields.experienceId}
                     />
                     {errors.experienceId && (
@@ -720,12 +725,12 @@ export function HhPublicationForm({
 
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
-                      label="Тип вакансии"
+                      label={t("hh.vacancyType")}
                       onChange={(value) =>
                         handleFieldChange("vacancyTypeId", value)
                       }
                       options={vacancyTypeOptions}
-                      placeholder="Выберите тип вакансии"
+                      placeholder={t("hh.selectVacancyType")}
                       value={fields.vacancyTypeId}
                     />
                     {errors.vacancyTypeId && (
@@ -739,12 +744,12 @@ export function HhPublicationForm({
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="flex min-w-0 flex-col gap-2">
                     <Dropdown
-                      label="Тип публикации"
+                      label={t("hh.publicationType")}
                       onChange={(value) =>
                         handleFieldChange("billingTypeId", value)
                       }
                       options={billingTypeOptions}
-                      placeholder="Выберите тип публикации"
+                      placeholder={t("hh.selectPublicationType")}
                       value={fields.billingTypeId}
                     />
                     {errors.billingTypeId && (
@@ -761,15 +766,15 @@ export function HhPublicationForm({
               className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="description"
             >
-              <ClosableSection title="Описание">
+              <ClosableSection title={t("hh.descriptionTitle")}>
                 <RichTextEditor
                   id="hh-description-html"
-                  label="Описание для hh.uz (минимум 200 символов)"
+                  label={t("hh.descriptionLabel")}
                   maxLength={20000}
                   onChange={(html) =>
                     handleFieldChange("descriptionHtml", html)
                   }
-                  placeholder="Опишите вакансию: обязанности, требования, условия. Используйте списки и заголовки."
+                  placeholder={t("hh.descriptionPlaceholder")}
                   value={fields.descriptionHtml}
                 />
                 {errors.descriptionHtml && (
@@ -778,9 +783,7 @@ export function HhPublicationForm({
                   </p>
                 )}
                 <p className="text-text-secondary text-xs">
-                  hh.uz принимает только базовое форматирование: абзацы, списки,
-                  заголовки H3/H4, жирный, курсив и ссылки. Описание должно
-                  содержать хотя бы один список.
+                  {t("hh.formattingHint")}
                 </p>
               </ClosableSection>
             </div>
@@ -803,9 +806,9 @@ export function HhPublicationForm({
               <div className="flex flex-wrap items-end gap-3">
                 <Dropdown
                   className="w-full min-w-[240px] sm:w-[260px]"
-                  label="Действие"
+                  label={t("hh.action")}
                   onChange={(value) => setSubmitAction(value as HhSubmitAction)}
-                  options={HH_SUBMIT_ACTION_OPTIONS}
+                  options={submitActionOptions}
                   value={submitAction}
                 />
                 <button
@@ -815,7 +818,7 @@ export function HhPublicationForm({
                   }
                   type="button"
                 >
-                  Назад
+                  {commonT("back")}
                 </button>
                 <button
                   className="ui-button ui-button-primary"
@@ -835,8 +838,8 @@ export function HhPublicationForm({
                       saveDraftToHH.isPending ||
                       publishToHH.isPending
                     }
-                    label={HH_SUBMIT_BUTTON_LABEL[submitAction]}
-                    loadingLabel="Сохранение..."
+                    label={submitButtonLabels[submitAction]}
+                    loadingLabel={commonT("saving")}
                   />
                 </button>
               </div>
@@ -846,10 +849,8 @@ export function HhPublicationForm({
       </div>
 
       <PublicationConfirmationModal
-        confirmLabel="Опубликовать"
-        description={
-          "Публикация будет опубликована на hh.uz. Иначе текущая активная публикация будет в неактивном состоянии."
-        }
+        confirmLabel={t("publish")}
+        description={t("hh.confirmDescription")}
         isOpen={isPublishConfirmOpen}
         isPending={
           createPublication.isPending ||
@@ -859,8 +860,8 @@ export function HhPublicationForm({
         onClose={() => setIsPublishConfirmOpen(false)}
         onConfirm={() => void handlePublish()}
         onReject={() => setIsPublishConfirmOpen(false)}
-        rejectLabel="Отмена"
-        title={"Опубликовать публикацию?"}
+        rejectLabel={commonT("cancel")}
+        title={t("publishQuestion")}
       />
     </main>
   );

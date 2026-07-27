@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { FeedbackPresence } from "./_components/motion-system";
 
@@ -9,6 +10,8 @@ type AppErrorProps = {
 };
 
 export default function AppError({ error, reset }: AppErrorProps) {
+  const t = useTranslations("Errors");
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -23,10 +26,10 @@ export default function AppError({ error, reset }: AppErrorProps) {
             </span>
             <div>
               <h1 className="font-semibold text-lg text-text-heading">
-                Не удалось загрузить страницу
+                {t("pageTitle")}
               </h1>
               <p className="mt-1 text-sm text-text-secondary">
-                Попробуйте повторить действие — ваши данные не потеряны.
+                {t("pageDescription")}
               </p>
             </div>
           </div>
@@ -35,7 +38,7 @@ export default function AppError({ error, reset }: AppErrorProps) {
             onClick={reset}
             type="button"
           >
-            Повторить
+            {t("retry")}
           </button>
         </section>
       </FeedbackPresence>

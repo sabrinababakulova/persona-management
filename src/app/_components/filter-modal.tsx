@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 import { Checkbox } from "./checkbox";
@@ -46,6 +47,7 @@ export function FilterModal({
   cityOptions,
   sourceOptions,
 }: FilterModalProps) {
+  const t = useTranslations("Components");
   const [draft, setDraft] = useState<FilterModalFilters>(initialFilters);
   const initialFiltersRef = useRef(initialFilters);
 
@@ -82,12 +84,12 @@ export function FilterModal({
       isOpen={isOpen}
       maxWidthClassName="max-w-[480px]"
       onClose={onClose}
-      title="Фильтры"
+      title={t("filters")}
     >
       <div className="flex flex-col gap-5">
         <div>
           <div className="mb-3 font-medium text-sm text-text-secondary">
-            Статус
+            {t("status")}
           </div>
           <div className="flex flex-col gap-2.5">
             {statusOptions.map((option) => (
@@ -112,27 +114,27 @@ export function FilterModal({
 
         <div>
           <div className="mb-3 font-medium text-sm text-text-secondary">
-            Город
+            {t("city")}
           </div>
           {cityOptions && cityOptions.length > 0 ? (
             <Dropdown
               hideLabel
-              label="Город"
+              label={t("city")}
               onChange={(value) =>
                 setDraft((prev) => ({ ...prev, city: value }))
               }
               options={cityOptions}
-              placeholder="Выберите город"
+              placeholder={t("selectCity")}
               value={draft.city}
             />
           ) : (
             <Input
               hideLabel
-              label="Город"
+              label={t("city")}
               onChange={(e) =>
                 setDraft((prev) => ({ ...prev, city: e.target.value }))
               }
-              placeholder="Введите город"
+              placeholder={t("enterCity")}
               value={draft.city}
             />
           )}
@@ -143,7 +145,7 @@ export function FilterModal({
             <div className="h-px bg-border-input" />
             <div>
               <div className="mb-3 font-medium text-sm text-text-secondary">
-                Источник
+                {t("source")}
               </div>
               <div className="flex flex-col gap-2.5">
                 {sourceOptions.map((option) => (
@@ -172,14 +174,14 @@ export function FilterModal({
             onClick={() => onApply(EMPTY_FILTER_MODAL_FILTERS)}
             type="button"
           >
-            Сбросить
+            {t("reset")}
           </button>
           <button
             className="ui-button ui-button-primary flex-1"
             onClick={() => onApply(draft)}
             type="button"
           >
-            Применить
+            {t("apply")}
           </button>
         </div>
       </div>

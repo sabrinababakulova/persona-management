@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
 
@@ -104,23 +105,6 @@ function getVacancyStatusLabel(
   );
 }
 
-function formatVacancyPublishedAt(value?: string): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsedDate);
-}
-
 function toVacancyDetailPath(vacancy: VacancyTableItem) {
   return `/vacancies/${vacancy.id}`;
 }
@@ -129,12 +113,20 @@ function toVacancyFunnelPath(vacancy: VacancyTableItem) {
   return `/vacancies/${vacancy.id}/funnel`;
 }
 
-function renderMobileMeta(item: VacancyTableItem) {
+function MobileMeta({ item }: { item: VacancyTableItem }) {
+  const t = useTranslations("Vacancies");
+
   return (
     <>
-      <span>Регион (hh.uz): {item.areaId || "-"}</span>
-      <span>Отклики: {item.responses}</span>
-      <span>Занятость: {item.employmentId || "-"}</span>
+      <span>
+        {t("region")}: {item.areaId || "-"}
+      </span>
+      <span>
+        {t("responses")}: {item.responses}
+      </span>
+      <span>
+        {t("employment")}: {item.employmentId || "-"}
+      </span>
     </>
   );
 }
@@ -144,7 +136,7 @@ export function VacancyTable({
   title,
   headerAction,
   isLoading = false,
-  loadingLabel = "Загрузка вакансий...",
+  loadingLabel,
   emptyState,
   pagination,
   vacancyStatusOptions,
@@ -160,7 +152,11 @@ export function VacancyTable({
   bodyClassName,
   rowClassName,
 }: VacancyTableProps) {
+  const t = useTranslations("Vacancies");
+  const common = useTranslations("Common");
+  const format = useFormatter();
   const showTitleBar = Boolean(title) || Boolean(headerAction);
+  const resolvedLoadingLabel = loadingLabel ?? t("loading");
 
   return (
     <div
@@ -188,27 +184,27 @@ export function VacancyTable({
         )}
       >
         <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Название</span>
+          <span>{common("name")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Статус</span>
+          <span>{common("status")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Регион (hh.uz)</span>
+          <span>{t("region")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Отклики</span>
+          <span>{t("responses")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Занятость</span>
+          <span>{t("employment")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
         <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
-          <span>Связи</span>
+          <span>{t("links")}</span>
         </div>
         <div className="col-span-1" />
       </div>
@@ -216,7 +212,7 @@ export function VacancyTable({
       {isLoading ? (
         <LoadingState
           className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
-          label={loadingLabel}
+          label={resolvedLoadingLabel}
         />
       ) : (
         <>
@@ -227,9 +223,17 @@ export function VacancyTable({
                   vacancyStatusTone[item.status] ?? vacancyStatusTone.active;
                 const connections = getVacancyConnectionIconsMeta(item);
                 const isHhVacancy = item.source === "hh.uz";
-                const publishedAtLabel = formatVacancyPublishedAt(
-                  item.publishedAt,
-                );
+                const publishedDate = item.publishedAt
+                  ? new Date(item.publishedAt)
+                  : null;
+                const publishedAtLabel =
+                  publishedDate && !Number.isNaN(publishedDate.getTime())
+                    ? format.dateTime(publishedDate, {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                    : null;
                 const statusPending = isStatusPending?.(item) ?? false;
 
                 return (
@@ -274,7 +278,7 @@ export function VacancyTable({
                         )}
                         {publishedAtLabel && (
                           <div className="mt-1 truncate text-text-placeholder text-xs leading-none">
-                            Опубликовано: {publishedAtLabel}
+                            {t("published")} {publishedAtLabel}
                           </div>
                         )}
                       </div>
@@ -295,7 +299,9 @@ export function VacancyTable({
                           className={`${statusTone.containerClassName} relative inline-flex min-w-28 items-center overflow-hidden rounded-md px-1`}
                         >
                           <select
-                            aria-label={`Статус вакансии ${item.title}`}
+                            aria-label={t("statusFor", {
+                              title: item.title,
+                            })}
                             className={`h-8 w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
                             disabled={statusPending}
                             onChange={(event) => {
@@ -361,7 +367,7 @@ export function VacancyTable({
                         href={getFunnelPath(item)}
                       >
                         <FunnelIcon className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">Воронка</span>
+                        <span className="hidden xl:inline">{t("funnel")}</span>
                       </Link>
                       <button
                         className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
@@ -372,7 +378,7 @@ export function VacancyTable({
                     </div>
 
                     <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
-                      {renderMobileMeta(item)}
+                      <MobileMeta item={item} />
                     </div>
                   </motion.div>
                 );
@@ -382,7 +388,7 @@ export function VacancyTable({
             {items.length === 0 &&
               (emptyState ?? (
                 <div className="px-4 py-10 text-center text-sm text-text-placeholder">
-                  Вакансии не найдены
+                  {t("empty")}
                 </div>
               ))}
           </div>

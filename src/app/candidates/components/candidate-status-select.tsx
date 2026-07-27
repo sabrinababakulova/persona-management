@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
@@ -65,6 +66,7 @@ export function CandidateStatusSelect({
   onError,
   onSuccess,
 }: CandidateStatusSelectProps) {
+  const t = useTranslations("CandidateDetail");
   const utils = api.useUtils();
   const availableStatusValues = useMemo(
     () => new Set(statusOptions.map((option) => option.value)),
@@ -158,7 +160,7 @@ export function CandidateStatusSelect({
       className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-lg px-1`}
     >
       <select
-        aria-label={`Статус кандидата ${candidateName}`}
+        aria-label={t("statusFor", { name: candidateName })}
         className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
         disabled={updateCandidateStatus.isPending || statusOptions.length === 0}
         onChange={(event) => handleStatusChange(event.target.value)}

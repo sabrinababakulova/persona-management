@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FeedbackPresence,
@@ -35,6 +36,7 @@ export default function MailVerificationPage({
   onBack,
   onSubmit,
 }: MailVerificationPageProps) {
+  const t = useTranslations("Auth");
   const [code, setCode] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const maskedEmail = useMemo(() => maskEmail(email), [email]);
@@ -129,18 +131,20 @@ export default function MailVerificationPage({
       <div className="auth-content">
         <div className="auth-panel">
           <div className="flex flex-col gap-4 text-text-heading">
-            <h1 className="auth-title mb-0">Подтвердите почту</h1>
+            <h1 className="auth-title mb-0">{t("verification.title")}</h1>
             <p className="text-sm text-text-secondary leading-6">
               {maskedEmail
-                ? `Мы отправили 6-значный код на почту ${maskedEmail}`
-                : "Мы отправили 6-значный код на вашу почту"}
+                ? t("verification.sentTo", { email: maskedEmail })
+                : t("verification.sent")}
             </p>
           </div>
 
           <div className="mt-8 flex items-start gap-2.5 sm:gap-4">
             {CODE_SLOTS.map((slot) => (
               <input
-                aria-label={`Код ${slot + 1}`}
+                aria-label={t("verification.digitLabel", {
+                  position: slot + 1,
+                })}
                 className="h-12 min-w-0 flex-1 rounded-lg border border-border-input bg-bg-input text-center font-semibold text-text-heading text-xl outline-none focus:border-primary-blue sm:w-12 sm:flex-none"
                 inputMode="numeric"
                 key={`verification-digit-${slot}`}
@@ -169,7 +173,7 @@ export default function MailVerificationPage({
               onClick={onBack}
               type="button"
             >
-              Назад
+              {t("back")}
             </button>
 
             <button
@@ -180,8 +184,8 @@ export default function MailVerificationPage({
             >
               <LoadingButtonContent
                 isLoading={isSubmitting}
-                label="Подтвердить"
-                loadingLabel="Проверка..."
+                label={t("verification.submit")}
+                loadingLabel={t("verification.submitting")}
               />
             </button>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { Checkbox } from "~/app/_components/checkbox";
@@ -67,10 +68,16 @@ export function PersonHunterPublicationForm({
   vacancyId: string;
   pubId?: string;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("Publications");
+  const commonT = useTranslations("Common");
+  const navigationT = useTranslations("Navigation");
   const router = useRouter();
   const utils = api.useUtils();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
-  const configQuery = api.vacancies.getPersonHunterConfig.useQuery();
+  const configQuery = api.vacancies.getPersonHunterConfig.useQuery({
+    lang: locale,
+  });
   // When editing, pull the live PersonHunters data as a fallback for fields not stored locally
   // (publications created before `personHunterMeta` existed have no saved meta).
   const personHunterPublicationQuery =
@@ -96,7 +103,7 @@ export function PersonHunterPublicationForm({
   const [cityId, setCityId] = useState("");
   const [currencyId, setCurrencyId] = useState("");
   const [statusId, setStatusId] = useState("");
-  const [lang, setLang] = useState("ru");
+  const [lang, setLang] = useState(locale);
 
   // Multi-select reference IDs.
   const [employmentIds, setEmploymentIds] = useState<number[]>([]);
@@ -198,7 +205,7 @@ export function PersonHunterPublicationForm({
   const publishPersonHunter = api.vacancies.publishPersonHunter.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Опубликовано на PersonHunters");
+      setSavedMessage(t("personHunter.published"));
       setIsConfirmOpen(false);
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -213,7 +220,7 @@ export function PersonHunterPublicationForm({
       setSavedMessage(null);
       setIsConfirmOpen(false);
       setErrors({
-        _form: error.message || "Не удалось опубликовать на PersonHunters",
+        _form: error.message || t("personHunter.publishError"),
       });
     },
   });
@@ -229,7 +236,7 @@ export function PersonHunterPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setIsConfirmOpen(false);
-      setErrors({ _form: error.message || "Не удалось сохранить публикацию" });
+      setErrors({ _form: error.message || t("saveError") });
     },
   });
 
@@ -238,7 +245,7 @@ export function PersonHunterPublicationForm({
   const updatePublication = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Публикация обновлена");
+      setSavedMessage(t("updated"));
       setIsConfirmOpen(false);
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -252,7 +259,7 @@ export function PersonHunterPublicationForm({
     onError: (error) => {
       setSavedMessage(null);
       setIsConfirmOpen(false);
-      setErrors({ _form: error.message || "Не удалось обновить публикацию" });
+      setErrors({ _form: error.message || t("updateError") });
     },
   });
 
@@ -317,30 +324,30 @@ export function PersonHunterPublicationForm({
     const next: PersonHunterErrors = {};
 
     if (!name.trim()) {
-      next.name = "Введите название вакансии";
+      next.name = t("personHunter.vacancyTitleRequired");
     }
     if (!hasMeaningfulHtml(duties)) {
-      next.duties = "Заполните обязанности";
+      next.duties = t("personHunter.dutiesRequired");
     }
     if (!hasMeaningfulHtml(requirements)) {
-      next.requirements = "Заполните требования";
+      next.requirements = t("personHunter.requirementsRequired");
     }
     if (!hasMeaningfulHtml(conditions)) {
-      next.conditions = "Заполните условия";
+      next.conditions = t("personHunter.conditionsRequired");
     }
     if (employmentIds.length === 0) {
-      next.employments = "Выберите тип занятости";
+      next.employments = t("personHunter.employmentRequired");
     }
     if (scheduleIds.length === 0) {
-      next.schedules = "Выберите график работы";
+      next.schedules = t("personHunter.scheduleRequired");
     }
 
     const from = Number(experienceFrom);
     const to = Number(experienceTo);
     if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to < 0) {
-      next.experience = "Укажите корректный опыт работы";
+      next.experience = t("personHunter.experienceInvalid");
     } else if (to < from) {
-      next.experience = "«Опыт до» не может быть меньше «опыта от»";
+      next.experience = t("personHunter.experienceRangeInvalid");
     }
 
     setErrors(next);
@@ -409,7 +416,7 @@ export function PersonHunterPublicationForm({
     return (
       <LoadingState
         className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label="Загрузка публикации..."
+        label={t("publicationLoading")}
       />
     );
   }
@@ -417,7 +424,7 @@ export function PersonHunterPublicationForm({
   if (!vacancyQuery.data) {
     return (
       <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Вакансия не найдена
+        {t("vacancyNotFound")}
       </main>
     );
   }
@@ -427,35 +434,36 @@ export function PersonHunterPublicationForm({
       <div className="app-page-narrow flex flex-col">
         <div className="w-full">
           <Breadcrumbs
-            label="Публикация на PersonHunters"
+            label={t("personHunter.pageTitle")}
             parent={{
-              label: vacancyQuery.data.title || "Вакансия",
+              label: vacancyQuery.data.title || t("vacancy"),
               href: `/vacancies/${vacancyId}`,
             }}
             rootHref="/vacancies"
-            rootLabel="Вакансии"
+            rootLabel={navigationT("vacancies")}
           />
 
-          <h1 className="page-title mt-5 mb-5">Публикация на PersonHunters</h1>
+          <h1 className="page-title mt-5 mb-5">
+            {t("personHunter.pageTitle")}
+          </h1>
         </div>
 
         <FeedbackPresence show={!isConfigured}>
           <div className="mb-5 w-full rounded-lg border border-danger-red bg-status-closed-bg px-4 py-3 text-danger-red text-sm leading-5">
-            Интеграция PersonHunters не настроена: отсутствует API-ключ
-            (PERSON_HUNTER_API_KEY).
+            {t("personHunter.notConfigured")}
           </div>
         </FeedbackPresence>
 
         <div className="mt-2 flex w-full flex-col gap-5">
           {/* Content */}
           <div className="surface-card scroll-mt-24 p-5 sm:p-6">
-            <ClosableSection title="Контент публикации">
+            <ClosableSection title={t("personHunter.content")}>
               <div className="flex min-w-0 flex-col gap-2">
                 <Input
-                  label="Название вакансии"
+                  label={t("personHunter.vacancyTitle")}
                   maxLength={500}
                   onChange={(event) => setName(event.currentTarget.value)}
-                  placeholder="Например, PHP Разработчик"
+                  placeholder={t("personHunter.vacancyPlaceholder")}
                   value={name}
                 />
                 {errorText("name")}
@@ -463,20 +471,20 @@ export function PersonHunterPublicationForm({
 
               <RichTextEditor
                 id="person-hunter-description"
-                label="Описание компании"
+                label={t("personHunter.companyDescription")}
                 maxLength={20000}
                 onChange={setDescription}
-                placeholder="Краткое описание компании (необязательно)"
+                placeholder={t("personHunter.companyDescriptionPlaceholder")}
                 value={description}
               />
 
               <div className="flex min-w-0 flex-col gap-2">
                 <RichTextEditor
                   id="person-hunter-duties"
-                  label="Обязанности"
+                  label={t("personHunter.duties")}
                   maxLength={20000}
                   onChange={setDuties}
-                  placeholder="Что предстоит делать"
+                  placeholder={t("personHunter.dutiesPlaceholder")}
                   value={duties}
                 />
                 {errorText("duties")}
@@ -485,10 +493,10 @@ export function PersonHunterPublicationForm({
               <div className="flex min-w-0 flex-col gap-2">
                 <RichTextEditor
                   id="person-hunter-requirements"
-                  label="Требования"
+                  label={t("personHunter.requirements")}
                   maxLength={20000}
                   onChange={setRequirements}
-                  placeholder="Что мы ожидаем от кандидата"
+                  placeholder={t("personHunter.requirementsPlaceholder")}
                   value={requirements}
                 />
                 {errorText("requirements")}
@@ -497,10 +505,10 @@ export function PersonHunterPublicationForm({
               <div className="flex min-w-0 flex-col gap-2">
                 <RichTextEditor
                   id="person-hunter-conditions"
-                  label="Условия"
+                  label={t("personHunter.conditions")}
                   maxLength={20000}
                   onChange={setConditions}
-                  placeholder="Что мы предлагаем"
+                  placeholder={t("personHunter.conditionsPlaceholder")}
                   value={conditions}
                 />
                 {errorText("conditions")}
@@ -510,41 +518,41 @@ export function PersonHunterPublicationForm({
 
           {/* Placement / references */}
           <div className="surface-card scroll-mt-24 p-5 sm:p-6">
-            <ClosableSection title="Параметры вакансии">
+            <ClosableSection title={t("personHunter.parameters")}>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Dropdown
-                  label="Отрасль"
+                  label={t("personHunter.industry")}
                   onChange={setIndustryId}
                   options={toDropdownOptions(references?.industries ?? [])}
                   value={industryId}
                 />
                 <Dropdown
-                  label="Статус"
+                  label={t("personHunter.status")}
                   onChange={setStatusId}
                   options={toDropdownOptions(references?.statuses ?? [])}
                   value={statusId}
                 />
                 <Dropdown
-                  label="Страна"
+                  label={t("personHunter.country")}
                   onChange={setCountryId}
                   options={toDropdownOptions(references?.countries ?? [])}
                   value={countryId}
                 />
                 <Dropdown
-                  label="Регион (область)"
+                  label={t("personHunter.region")}
                   onChange={setRegionId}
                   options={toDropdownOptions(references?.regions ?? [])}
                   value={regionId}
                 />
                 <Dropdown
-                  label="Город"
+                  label={t("personHunter.city")}
                   onChange={setCityId}
                   options={toDropdownOptions(references?.cities ?? [])}
                   value={cityId}
                 />
                 <Dropdown
-                  label="Язык публикации"
-                  onChange={setLang}
+                  label={t("personHunter.language")}
+                  onChange={(value) => setLang(value as "ru" | "uz" | "en")}
                   options={languageOptions}
                   value={lang}
                 />
@@ -553,7 +561,7 @@ export function PersonHunterPublicationForm({
               <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="flex flex-col gap-3">
                   <span className="font-medium text-base text-text-label leading-[1.4]">
-                    Тип занятости
+                    {t("personHunter.employment")}
                   </span>
                   {(references?.employments ?? []).map((option) => (
                     <div className="flex items-center gap-2" key={option.id}>
@@ -573,7 +581,7 @@ export function PersonHunterPublicationForm({
 
                 <div className="flex flex-col gap-3">
                   <span className="font-medium text-base text-text-label leading-[1.4]">
-                    График работы
+                    {t("personHunter.schedule")}
                   </span>
                   {(references?.schedules ?? []).map((option) => (
                     <div className="flex items-center gap-2" key={option.id}>
@@ -595,7 +603,7 @@ export function PersonHunterPublicationForm({
               <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Input
                   inputMode="numeric"
-                  label="Опыт работы от (лет)"
+                  label={t("personHunter.experienceFrom")}
                   onChange={(event) =>
                     setExperienceFrom(
                       event.currentTarget.value.replace(/\D/g, ""),
@@ -606,7 +614,7 @@ export function PersonHunterPublicationForm({
                 />
                 <Input
                   inputMode="numeric"
-                  label="Опыт работы до (лет)"
+                  label={t("personHunter.experienceTo")}
                   onChange={(event) =>
                     setExperienceTo(
                       event.currentTarget.value.replace(/\D/g, ""),
@@ -622,32 +630,32 @@ export function PersonHunterPublicationForm({
 
           {/* Salary */}
           <div className="surface-card scroll-mt-24 p-5 sm:p-6">
-            <ClosableSection title="Зарплата">
+            <ClosableSection title={t("personHunter.salary")}>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Input
                   inputMode="numeric"
-                  label="Зарплата от"
+                  label={t("personHunter.salaryFrom")}
                   maxLength={20}
                   onChange={(event) =>
                     setPayFrom(
                       formatNumberWithSpaces(event.currentTarget.value),
                     )
                   }
-                  placeholder="например, 5 000 000"
+                  placeholder={t("personHunter.salaryFromPlaceholder")}
                   value={payFrom}
                 />
                 <Input
                   inputMode="numeric"
-                  label="Зарплата до"
+                  label={t("personHunter.salaryTo")}
                   maxLength={20}
                   onChange={(event) =>
                     setPayTo(formatNumberWithSpaces(event.currentTarget.value))
                   }
-                  placeholder="например, 8 000 000"
+                  placeholder={t("personHunter.salaryToPlaceholder")}
                   value={payTo}
                 />
                 <Dropdown
-                  label="Валюта"
+                  label={t("personHunter.currency")}
                   onChange={setCurrencyId}
                   options={toDropdownOptions(references?.currencies ?? [])}
                   value={currencyId}
@@ -675,7 +683,7 @@ export function PersonHunterPublicationForm({
                 }
                 type="button"
               >
-                Назад
+                {commonT("back")}
               </button>
               <button
                 className="ui-button ui-button-primary"
@@ -685,8 +693,8 @@ export function PersonHunterPublicationForm({
               >
                 <LoadingButtonContent
                   isLoading={isSubmitting}
-                  label={pubId ? "Сохранить изменения" : "Опубликовать"}
-                  loadingLabel={pubId ? "Сохранение..." : "Публикация..."}
+                  label={pubId ? commonT("saveChanges") : t("publish")}
+                  loadingLabel={pubId ? commonT("saving") : t("publishing")}
                 />
               </button>
             </div>
@@ -695,19 +703,19 @@ export function PersonHunterPublicationForm({
       </div>
 
       <PublicationConfirmationModal
-        confirmLabel={pubId ? "Обновить" : "Опубликовать"}
+        confirmLabel={pubId ? t("update") : t("publish")}
         description={
           pubId
-            ? "Изменения будут сохранены и обновлены на PersonHunters."
-            : "Публикация будет сохранена и отправлена на PersonHunters."
+            ? t("personHunter.updateDescription")
+            : t("personHunter.publishDescription")
         }
         isOpen={isConfirmOpen}
         isPending={isSubmitting}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmSubmit}
         onReject={() => setIsConfirmOpen(false)}
-        rejectLabel="Отмена"
-        title={pubId ? "Обновить публикацию?" : "Опубликовать публикацию?"}
+        rejectLabel={commonT("cancel")}
+        title={pubId ? t("updateQuestion") : t("publishQuestion")}
       />
     </main>
   );

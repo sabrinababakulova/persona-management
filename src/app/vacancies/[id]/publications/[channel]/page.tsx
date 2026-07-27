@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { HhPublicationForm } from "./hh-publication-form";
 import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
 import { TgPublicationForm } from "./tg-publication-form";
@@ -23,6 +24,7 @@ export default async function VacancyPublicationChannelPage({
   params: Promise<{ id: string; channel: string }>;
 }) {
   const { id, channel } = await params;
+  const t = await getTranslations("VacancyDetail");
 
   if (channel === "hh.uz") {
     return <HhPublicationForm vacancyId={id} />;
@@ -41,7 +43,9 @@ export default async function VacancyPublicationChannelPage({
   return (
     <main className="flex h-full flex-1 overflow-auto bg-bg-canvas">
       <div className="app-page flex min-h-full flex-col">
-        <h1 className="page-title">Публикация: {channelName}</h1>
+        <h1 className="page-title">
+          {t("publicationFor", { channel: channelName })}
+        </h1>
       </div>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   ActionDropdown,
@@ -20,18 +21,6 @@ import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
-/** Dropdown entries shown when the user opens the "Создать публикацию" menu. */
-const CHANNEL_OPTIONS: ActionDropdownItem[] = [
-  { value: "linkedin", label: "Для LinkedIn", iconSrc: "/linkedin.svg" },
-  { value: "hh.uz", label: "Для HH", iconSrc: "/hh.svg" },
-  { value: "telegram", label: "Для Telegram", iconSrc: "/telegram.svg" },
-  {
-    value: "person-hunter",
-    label: "Для PersonHunters",
-    iconSrc: "/person-hunter.svg",
-  },
-];
-
 /** Brand assets used to render the "Канал" column for each known platform. */
 const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
@@ -40,18 +29,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
 };
 
-const ACTIVE_STATUS_OPTIONS = [
-  { value: "active", label: "Активна" },
-  { value: "inactive", label: "Неактивна" },
-];
-
 type PublicationState = "published" | "draft" | "local";
-
-const PUBLICATION_STATE_LABEL: Record<PublicationState, string> = {
-  published: "Опубликовано",
-  draft: "Черновик",
-  local: "Локально",
-};
 
 const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
   published: "bg-status-active-bg text-status-active",
@@ -77,12 +55,15 @@ function getPublicationState(publication: {
  * Returns the external URL where the published vacancy can be viewed, or `null` for publications
  * that have no public destination yet (drafts, local-only).
  */
-function getPublicationExternalUrl(publication: {
-  destination?: string | null;
-  hhVacancyId?: string | null;
-  personHunterUniqueCode?: string | null;
-  telegramPostId?: string | null;
-}): string | null {
+function getPublicationExternalUrl(
+  publication: {
+    destination?: string | null;
+    hhVacancyId?: string | null;
+    personHunterUniqueCode?: string | null;
+    telegramPostId?: string | null;
+  },
+  locale: string,
+): string | null {
   if (publication.destination === "hh.uz" && publication.hhVacancyId) {
     return `https://hh.uz/vacancy/${publication.hhVacancyId}`;
   }
@@ -92,7 +73,7 @@ function getPublicationExternalUrl(publication: {
     publication.destination === "person-hunter" &&
     publication.personHunterUniqueCode
   ) {
-    return `https://personhunters.com/ru/vacancy/${publication.personHunterUniqueCode}`;
+    return `https://personhunters.com/${locale}/vacancy/${publication.personHunterUniqueCode}`;
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
@@ -120,7 +101,7 @@ function normalizeVacancyStatus(
 function CopyIcon({ className }: { className?: string }) {
   return (
     <svg
-      aria-label="Copy Icon"
+      aria-hidden="true"
       className={className}
       fill="none"
       stroke="currentColor"
@@ -136,22 +117,6 @@ function CopyIcon({ className }: { className?: string }) {
   );
 }
 
-/** Formats a Date or ISO string to "DD.MM.YYYY" in the ru-RU locale; returns "" on invalid input. */
-function formatDate(value?: Date | string | null): string {
-  if (!value) {
-    return "";
-  }
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
 /**
  * Renders the "Версии публикаций" list for a vacancy.
  *
@@ -162,9 +127,40 @@ function formatDate(value?: Date | string | null): string {
  * actions on rows the user has selected via the row checkboxes.
  */
 export function PublicationsTable() {
+  const format = useFormatter();
+  const locale = useLocale();
+  const t = useTranslations("Publications");
+  const commonT = useTranslations("Common");
   const router = useRouter();
   const { id: parentVacancyId } = useParams() as { id: string };
   const utils = api.useUtils();
+  const channelOptions: ActionDropdownItem[] = [
+    {
+      value: "linkedin",
+      label: t("table.forLinkedIn"),
+      iconSrc: "/linkedin.svg",
+    },
+    { value: "hh.uz", label: t("table.forHh"), iconSrc: "/hh.svg" },
+    {
+      value: "telegram",
+      label: t("table.forTelegram"),
+      iconSrc: "/telegram.svg",
+    },
+    {
+      value: "person-hunter",
+      label: t("table.forPersonHunters"),
+      iconSrc: "/person-hunter.svg",
+    },
+  ];
+  const activeStatusOptions = [
+    { value: "active", label: t("table.active") },
+    { value: "inactive", label: t("table.inactive") },
+  ];
+  const publicationStateLabels: Record<PublicationState, string> = {
+    published: t("table.published"),
+    draft: t("table.draft"),
+    local: t("table.local"),
+  };
 
   const { data: publications } = api.vacancies.listPublications.useQuery(
     { parentVacancyId },
@@ -243,7 +239,7 @@ export function PublicationsTable() {
 
     duplicatePublication.mutate({
       parentId: publication.parentId,
-      title: `${publication.title} (копия)`,
+      title: `${publication.title} (${t("table.copySuffix")})`,
       status: normalizeVacancyStatus(publication.status),
       responses: publication.responses ?? 0,
       areaId: publication.areaId ?? undefined,
@@ -334,11 +330,11 @@ export function PublicationsTable() {
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="page-title">Версии публикаций</h2>
+        <h2 className="page-title">{t("table.versions")}</h2>
         <ActionDropdown
-          items={CHANNEL_OPTIONS}
+          items={channelOptions}
           onSelect={handleChannelSelect}
-          triggerLabel="Создать публикацию"
+          triggerLabel={t("table.create")}
         />
       </div>
 
@@ -346,23 +342,23 @@ export function PublicationsTable() {
         <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
-            <span>Название</span>
+            <span>{t("table.name")}</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-1 flex items-center gap-1">
-            <span>Канал</span>
+            <span>{t("table.channel")}</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-2 flex items-center gap-1">
-            <span>Состояние</span>
+            <span>{t("table.state")}</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-2 flex items-center gap-1">
-            <span>Статус</span>
+            <span>{t("table.status")}</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-2 flex items-center gap-1">
-            <span>Дата создания</span>
+            <span>{t("table.createdAt")}</span>
             <SortIcon className="h-4 w-4" />
           </div>
           <div className="col-span-1" />
@@ -371,9 +367,20 @@ export function PublicationsTable() {
         {publications?.map((pub) => {
           const platform = pub.destination;
           const icon = platform ? CHANNEL_ICONS[platform] : undefined;
-          const dateLabel = formatDate(pub.createdAt);
+          const createdAt =
+            typeof pub.createdAt === "string"
+              ? new Date(pub.createdAt)
+              : pub.createdAt;
+          const dateLabel =
+            createdAt && !Number.isNaN(createdAt.getTime())
+              ? format.dateTime(createdAt, {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
+              : "";
           const state = getPublicationState(pub);
-          const externalUrl = getPublicationExternalUrl(pub);
+          const externalUrl = getPublicationExternalUrl(pub, locale);
           return (
             <div
               className="grid grid-cols-12 items-center gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
@@ -416,7 +423,7 @@ export function PublicationsTable() {
                 <span
                   className={`inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs leading-none ${PUBLICATION_STATE_CLASS[state]}`}
                 >
-                  {PUBLICATION_STATE_LABEL[state]}
+                  {publicationStateLabels[state]}
                 </span>
               </div>
               <div className="col-span-2 lg:col-span-2">
@@ -432,7 +439,7 @@ export function PublicationsTable() {
                   iconClassName={
                     pub.isActive ? "text-status-active" : "text-status-closed"
                   }
-                  label="Статус публикации"
+                  label={t("table.publicationStatus")}
                   onChange={(value) =>
                     onStatusChange(
                       pub.id,
@@ -440,7 +447,7 @@ export function PublicationsTable() {
                       pub.destination ?? "",
                     )
                   }
-                  options={ACTIVE_STATUS_OPTIONS}
+                  options={activeStatusOptions}
                   value={pub.isActive ? "active" : "inactive"}
                 />
               </div>
@@ -449,7 +456,7 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-3 flex items-center justify-end gap-3 lg:col-span-1">
                 <button
-                  aria-label="Редактировать"
+                  aria-label={t("table.edit")}
                   className="text-text-placeholder transition-colors hover:text-text-heading"
                   onClick={() => onEdit?.(pub.id, pub.destination ?? "")}
                   type="button"
@@ -457,7 +464,7 @@ export function PublicationsTable() {
                   <PencilIcon className="h-4 w-4" />
                 </button>
                 <button
-                  aria-label="Дублировать"
+                  aria-label={t("table.duplicate")}
                   className="text-text-placeholder transition-colors hover:text-text-heading"
                   disabled={duplicatePublication.isPending}
                   onClick={() => onCopy?.(pub.id)}
@@ -466,7 +473,7 @@ export function PublicationsTable() {
                   <CopyIcon className="h-4 w-4" />
                 </button>
                 <button
-                  aria-label="Удалить"
+                  aria-label={t("table.delete")}
                   className="text-accent-red transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
                   disabled={pub.isActive || deletePublication.isPending}
                   onClick={() => onDelete?.(pub.id)}
@@ -484,21 +491,21 @@ export function PublicationsTable() {
             className="ui-button ui-button-secondary min-h-9 px-3"
             type="button"
           >
-            <span>Действия</span>
+            <span>{t("table.actions")}</span>
             <ChevronDownIcon className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <Modal
-        ariaLabel="Подтверждение удаления публикации"
+        ariaLabel={t("table.deleteConfirm")}
         isOpen={Boolean(deleteCandidateId)}
         onClose={() => setDeleteCandidateId(null)}
-        title="Удалить публикацию?"
+        title={t("table.deleteConfirm")}
       >
         <div className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary leading-[1.4]">
-            Are you sure you want to delete publication?
+            {t("table.deleteDescription")}
           </p>
           <div className="flex justify-end gap-3">
             <button
@@ -506,7 +513,7 @@ export function PublicationsTable() {
               onClick={() => setDeleteCandidateId(null)}
               type="button"
             >
-              Отмена
+              {commonT("cancel")}
             </button>
             <button
               className="ui-button bg-accent-red text-white hover:opacity-90"
@@ -516,8 +523,8 @@ export function PublicationsTable() {
             >
               <LoadingButtonContent
                 isLoading={deletePublication.isPending}
-                label="Удалить"
-                loadingLabel="Удаление..."
+                label={commonT("delete")}
+                loadingLabel={t("table.deleting")}
               />
             </button>
           </div>
@@ -525,14 +532,14 @@ export function PublicationsTable() {
       </Modal>
 
       <Modal
-        ariaLabel="Публикация удалена из Telegram"
+        ariaLabel={t("table.telegramDeleted")}
         isOpen={isTelegramDeleteSuccess}
         onClose={() => setIsTelegramDeleteSuccess(false)}
-        title="Успешно удалено"
+        title={t("table.deletedTitle")}
       >
         <div className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary leading-[1.4]">
-            Публикация удалена из Telegram-канала.
+            {t("table.deletedDescription")}
           </p>
           <div className="flex justify-end">
             <button
@@ -540,22 +547,21 @@ export function PublicationsTable() {
               onClick={() => setIsTelegramDeleteSuccess(false)}
               type="button"
             >
-              Понятно
+              {t("table.understood")}
             </button>
           </div>
         </div>
       </Modal>
 
       <Modal
-        ariaLabel="Публикация не может быть деактивирована"
+        ariaLabel={t("table.deactivationBlocked")}
         isOpen={isDeactivationBlocked}
         onClose={() => setIsDeactivationBlocked(false)}
-        title="Публикация не может быть деактивирована"
+        title={t("table.deactivationBlocked")}
       >
         <div className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary leading-[1.4]">
-            Вы не можете деактивировать эту публикацию, так как её нельзя
-            удалить в Telegram.
+            {t("table.deactivationBlockedDescription")}
           </p>
           <div className="flex justify-end">
             <button
@@ -563,7 +569,7 @@ export function PublicationsTable() {
               onClick={() => setIsDeactivationBlocked(false)}
               type="button"
             >
-              Понятно
+              {t("table.understood")}
             </button>
           </div>
         </div>
@@ -572,14 +578,14 @@ export function PublicationsTable() {
       <PublicationConfirmationModal
         description={
           pendingStatusChange?.destination === "telegram"
-            ? "Публикация будет удалена из Telegram-канала."
+            ? t("table.telegramDeactivate")
             : pendingStatusChange?.destination === "person-hunter"
               ? pendingStatusChange?.isActive
-                ? "Публикация будет опубликована на PersonHunters."
-                : "Публикация будет скрыта на PersonHunters."
+                ? t("table.personHunterActivate")
+                : t("table.personHunterDeactivate")
               : pendingStatusChange?.isActive
-                ? "Публикация будет опубликована на hh.uz"
-                : "Публикация будет архивирована в hh.uz"
+                ? t("table.hhActivate")
+                : t("table.hhDeactivate")
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}
@@ -588,8 +594,8 @@ export function PublicationsTable() {
         onReject={() => setPendingStatusChange(null)}
         title={
           pendingStatusChange?.isActive
-            ? "Активировать публикацию?"
-            : "Деактивировать публикацию?"
+            ? t("table.activateQuestion")
+            : t("table.deactivateQuestion")
         }
       />
     </div>
