@@ -33,6 +33,10 @@
   object-fit: contain;
 }
 
+#app .module-bar-logo .custom-logo {
+  object-fit: contain;
+}
+
 #app .public-view .content {
   width: min(360px, calc(100vw - 48px));
 }
