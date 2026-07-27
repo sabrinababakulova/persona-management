@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { PencilIcon, PlusIcon, TrashIcon } from "~/app/_components/icons";
@@ -16,9 +17,15 @@ import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-b
 import { CandidateStatusSelect } from "~/app/candidates/components/candidate-status-select";
 import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summary-card";
 import { ResumeDownloadButton } from "~/app/candidates/components/resume-download-button";
+import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 
 export default function CandidateDetailPage() {
+  const t = useTranslations("CandidateDetail");
+  const navigationT = useTranslations("Navigation");
+  const vacanciesT = useTranslations("Vacancies");
+  const commonT = useTranslations("Common");
+  const localizeLookups = useLookupLocalizer();
   const params = useParams();
   const searchParams = useSearchParams();
   const candidateId = typeof params.id === "string" ? params.id : "";
@@ -32,7 +39,10 @@ export default function CandidateDetailPage() {
     id: candidateId,
   });
   const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
-  const statusOptions = lookups?.statusOptions ?? [];
+  const statusOptions = localizeLookups(
+    lookups?.statusOptions,
+    "candidateStatuses",
+  );
   const addCandidateNote = api.candidates.addNote.useMutation({
     onSuccess: async () => {
       setNoteContent("");
@@ -41,7 +51,7 @@ export default function CandidateDetailPage() {
       await utils.candidates.get.invalidate({ id: candidateId });
     },
     onError: (error) => {
-      setNoteError(error.message || "Не удалось сохранить заметку");
+      setNoteError(error.message || t("noteSaveError"));
     },
   });
 
@@ -59,7 +69,7 @@ export default function CandidateDetailPage() {
     const trimmedContent = noteContent.trim();
 
     if (!trimmedContent) {
-      setNoteError("Введите комментарий");
+      setNoteError(t("noteRequired"));
       return;
     }
 
@@ -73,7 +83,7 @@ export default function CandidateDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label="Загружаем профиль кандидата..." />
+        <LoadingState label={t("loading")} />
       </div>
     );
   }
@@ -83,7 +93,7 @@ export default function CandidateDetailPage() {
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
         <FeedbackPresence show>
           <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
-            Кандидат не найден
+            {t("notFound")}
           </div>
         </FeedbackPresence>
       </div>
@@ -95,7 +105,7 @@ export default function CandidateDetailPage() {
     : undefined;
   const hasFunnelSource = fromVacancyId.length > 0;
   const funnelVacancyTitle =
-    fromVacancyTitle || fromRelatedVacancy?.title || "Вакансия";
+    fromVacancyTitle || fromRelatedVacancy?.title || t("vacancy");
 
   return (
     <>
@@ -110,18 +120,22 @@ export default function CandidateDetailPage() {
                 hasFunnelSource
                   ? {
                       href: `/vacancies/${fromVacancyId}/funnel`,
-                      label: `${funnelVacancyTitle} / Воронка`,
+                      label: `${funnelVacancyTitle} / ${vacanciesT("funnel")}`,
                     }
                   : undefined
               }
               rootHref={hasFunnelSource ? "/vacancies" : "/candidates"}
-              rootLabel={hasFunnelSource ? "Вакансии" : "Кандидаты"}
+              rootLabel={
+                hasFunnelSource
+                  ? navigationT("vacancies")
+                  : navigationT("candidates")
+              }
             />
           </div>
 
           {/* Page Title */}
           <div className="page-header">
-            <h1 className="page-title">Профиль кандидата</h1>
+            <h1 className="page-title">{t("title")}</h1>
 
             <CandidateStatusSelect
               candidateId={candidate.id}
@@ -143,7 +157,7 @@ export default function CandidateDetailPage() {
                   <span className="inline-flex items-center rounded-full bg-status-danger-soft px-2 py-0.5 font-semibold text-accent-red text-xs leading-none">
                     hh.uz
                   </span>
-                  Открыть профиль на hh.uz →
+                  {t("openHh")}
                 </a>
               )}
 
@@ -190,7 +204,7 @@ export default function CandidateDetailPage() {
                 {/* Recruiter Notes */}
                 <div className="surface-card p-5">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="section-title">Заметки рекрутера</h3>
+                    <h3 className="section-title">{t("recruiterNotes")}</h3>
                     <button
                       className="text-primary-blue hover:text-primary-blue-dark"
                       onClick={() => setIsAddNoteModalOpen(true)}
@@ -235,7 +249,7 @@ export default function CandidateDetailPage() {
 
                 {/* Recent Activities */}
                 <div className="surface-card p-5">
-                  <h3 className="section-title mb-4">Последние действия</h3>
+                  <h3 className="section-title mb-4">{t("recentActivity")}</h3>
 
                   <div className="space-y-4">
                     {candidate.activities.map((activity) => (
@@ -282,9 +296,9 @@ export default function CandidateDetailPage() {
 
                 {/* Communication */}
                 <div className="surface-card p-5">
-                  <h3 className="section-title">Коммуникация</h3>
+                  <h3 className="section-title">{t("communication")}</h3>
                   <div className="mt-4 text-sm text-text-muted">
-                    История коммуникации будет отображаться здесь
+                    {t("communicationEmpty")}
                   </div>
                 </div>
               </div>
@@ -294,23 +308,23 @@ export default function CandidateDetailPage() {
       </main>
 
       <Modal
-        description="Добавьте комментарий о кандидате. Автор заметки будет определен автоматически."
+        description={t("newNoteDescription")}
         isOpen={isAddNoteModalOpen}
         maxWidthClassName="max-w-[520px]"
         onClose={closeAddNoteModal}
-        title="Новая заметка"
+        title={t("newNote")}
       >
         <div className="flex flex-col gap-4">
           <Textarea
             hideLabel
-            label="Комментарий"
+            label={t("comment")}
             onChange={(event) => {
               setNoteContent(event.target.value);
               if (noteError) {
                 setNoteError(null);
               }
             }}
-            placeholder="Оставьте комментарий о кандидате"
+            placeholder={t("commentPlaceholder")}
             textareaClassName="min-h-[140px]"
             value={noteContent}
           />
@@ -328,7 +342,7 @@ export default function CandidateDetailPage() {
               onClick={closeAddNoteModal}
               type="button"
             >
-              Отмена
+              {commonT("cancel")}
             </button>
             <button
               className="ui-button ui-button-primary"
@@ -338,8 +352,8 @@ export default function CandidateDetailPage() {
             >
               <LoadingButtonContent
                 isLoading={addCandidateNote.isPending}
-                label="Сохранить"
-                loadingLabel="Сохранение..."
+                label={commonT("save")}
+                loadingLabel={commonT("saving")}
               />
             </button>
           </div>

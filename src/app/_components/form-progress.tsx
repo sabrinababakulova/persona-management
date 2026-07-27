@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { FormProgressProps } from "~/types/components/form-progress-props";
 
 export function FormProgress({
@@ -6,14 +7,16 @@ export function FormProgress({
   total,
   missing,
 }: FormProgressProps) {
+  const t = useTranslations("Components");
+
   return (
     <div className="mb-6 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="font-semibold text-primary-blue text-sm">
-          {percentage}% заполнено
+          {t("formPercentage", { percentage })}
         </span>
         <span className="text-text-placeholder text-xs">
-          {filled} из {total} полей
+          {t("formFields", { filled, total })}
         </span>
       </div>
       <div className="h-2 w-full rounded-xl bg-border-input">
@@ -24,7 +27,7 @@ export function FormProgress({
       </div>
       {missing.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-text-placeholder">Осталось заполнить:</span>
+          <span className="text-text-placeholder">{t("remainingFields")}</span>
           {missing.map((field) => (
             <span className="font-medium text-accent-red" key={field}>
               {field}

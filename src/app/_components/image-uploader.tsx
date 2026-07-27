@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   ImageUploadPlaceholderIcon,
@@ -25,19 +26,18 @@ function isAllowedImageType(value: string): value is ImageMimeType {
 }
 
 /** Reads a file into a base64 string without the `data:` URL prefix. */
-function readFileAsBase64(file: File): Promise<string> {
+function readFileAsBase64(file: File, errorMessage: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") {
-        reject(new Error("Не удалось прочитать файл"));
+        reject(new Error(errorMessage));
         return;
       }
       resolve(result.slice(result.indexOf(",") + 1));
     };
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("Не удалось прочитать файл"));
+    reader.onerror = () => reject(reader.error ?? new Error(errorMessage));
     reader.readAsDataURL(file);
   });
 }
@@ -69,6 +69,7 @@ export function ImageUploader({
   onUploaded,
   disabled = false,
 }: ImageUploaderProps) {
+  const t = useTranslations("Components");
   const inputId = useId();
   const objectUrlRef = useRef<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
@@ -104,12 +105,12 @@ export function ImageUploader({
     }
 
     if (!isAllowedImageType(file.type)) {
-      setError("Допустимые форматы: JPEG, PNG, WebP, GIF");
+      setError(t("imageFormats"));
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setError("Максимальный размер файла — 5 МБ");
+      setError(t("imageSizeLimit"));
       return;
     }
 
@@ -117,7 +118,7 @@ export function ImageUploader({
     setError(null);
 
     try {
-      const dataBase64 = await readFileAsBase64(file);
+      const dataBase64 = await readFileAsBase64(file, t("fileReadError"));
 
       const { fileId } = await uploadImage.mutateAsync({
         dataBase64,
@@ -131,7 +132,7 @@ export function ImageUploader({
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : "Не удалось загрузить изображение",
+          : t("imageUploadError"),
       );
     } finally {
       setIsUploading(false);
@@ -155,11 +156,11 @@ export function ImageUploader({
         <label
           className="group relative block h-[72px] w-[72px] cursor-pointer overflow-hidden rounded-full bg-bg-active-menu focus-within:ring-2 focus-within:ring-primary-blue focus-within:ring-offset-2"
           htmlFor={inputId}
-          title="Изменить аватар"
+          title={t("changeAvatar")}
         >
           {previewUrl ? (
             <Image
-              alt="Аватар"
+              alt={t("avatar")}
               className="h-full w-full object-cover"
               height={72}
               src={previewUrl}
@@ -186,13 +187,13 @@ export function ImageUploader({
   return (
     <div className="flex w-full flex-col gap-1">
       <label
-        aria-label="Выбрать изображение"
+        aria-label={t("selectImage")}
         className="group flex w-full cursor-pointer flex-col overflow-hidden rounded-lg border border-border-input bg-bg-input transition-colors hover:bg-bg-hover"
         htmlFor={inputId}
       >
         {previewUrl ? (
           <Image
-            alt="Предпросмотр изображения"
+            alt={t("imagePreview")}
             className="aspect-16/7 w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
             height={700}
             src={previewUrl}
@@ -208,12 +209,12 @@ export function ImageUploader({
           <span className="font-semibold text-lg leading-none">
             <LoadingButtonContent
               isLoading={isUploading}
-              label="Добавить изображение"
-              loadingLabel="Загрузка изображения..."
+              label={t("addImage")}
+              loadingLabel={t("imageUploading")}
             />
           </span>
           <span className="text-text-secondary text-xs leading-[1.35]">
-            Нажмите на обложку, чтобы выбрать файл
+            {t("selectImageHint")}
           </span>
         </span>
         {fileInput}

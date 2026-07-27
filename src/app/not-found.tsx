@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { motion } from "./_components/motion-system";
 
 export default function NotFound() {
+  const t = useTranslations("Errors");
+
   return (
     <main className="flex min-h-[70vh] items-center justify-center bg-bg-canvas px-6">
       <motion.section
@@ -19,13 +22,13 @@ export default function NotFound() {
           404
         </motion.div>
         <h1 className="font-semibold text-text-heading text-xl">
-          Страница не найдена
+          {t("notFoundTitle")}
         </h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Возможно, адрес изменился или страница была удалена.
+          {t("notFoundDescription")}
         </p>
         <Link className="ui-button ui-button-primary mt-5" href="/dashboard">
-          Вернуться на главную
+          {t("backHome")}
         </Link>
       </motion.section>
     </main>

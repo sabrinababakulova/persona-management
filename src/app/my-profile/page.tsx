@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { companies, users } from "~/server/db/schema";
@@ -16,6 +17,7 @@ export default async function MyProfilePage({
   searchParams,
 }: MyProfilePageProps) {
   const session = await auth();
+  const t = await getTranslations("Profile");
 
   if (!session?.user) {
     redirect("/login");
@@ -55,7 +57,7 @@ export default async function MyProfilePage({
       avatarSrc={getDirectusAssetUrl(user?.avatarFileId) ?? user?.image ?? ""}
       companyName={companyName}
       initialSection={initialSection}
-      userCity="Ташкент"
+      userCity={t("tashkent")}
       userEmail={session.user.email ?? ""}
       userFullName={session.user.name ?? ""}
     />

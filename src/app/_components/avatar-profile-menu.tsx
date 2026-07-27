@@ -4,6 +4,7 @@ import Cookies from "js-cookie";
 import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import {
   ImageUploadPlaceholderIcon,
@@ -35,6 +36,7 @@ const clearClientStorage = () => {
 };
 
 export function AvatarProfileMenu() {
+  const t = useTranslations("Components");
   const { status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -94,7 +96,7 @@ export function AvatarProfileMenu() {
       <motion.button
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label="Профиль"
+        aria-label={t("profile")}
         className="h-10 w-10 overflow-hidden rounded-full bg-primary-blue-light outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
@@ -103,7 +105,7 @@ export function AvatarProfileMenu() {
       >
         {avatarSrc ? (
           <Image
-            alt="Профиль"
+            alt={t("profile")}
             className="h-full w-full object-cover"
             height={40}
             src={avatarSrc}
@@ -133,7 +135,7 @@ export function AvatarProfileMenu() {
               role="menuitem"
             >
               <ProfileOutlineIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
-              <span className="text-sm leading-none">Мой профиль</span>
+              <span className="text-sm leading-none">{t("myProfile")}</span>
             </Link>
             <button
               className="flex h-10 w-full items-center gap-2 border-border-light border-t px-3 text-left text-text-secondary transition-[background-color,color] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-60"
@@ -144,7 +146,7 @@ export function AvatarProfileMenu() {
             >
               <LogoutIcon className="h-4 w-4 shrink-0 text-text-placeholder" />
               <span className="text-sm leading-none">
-                {isLoggingOut ? "Выход..." : "Выйти"}
+                {isLoggingOut ? t("signingOut") : t("signOut")}
               </span>
             </button>
           </motion.div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
 import {
   AIGenerationIcon,
@@ -37,6 +38,8 @@ export function QuickOverview({
   isOpen,
   onClose,
 }: QuickOverviewProps) {
+  const format = useFormatter();
+  const t = useTranslations("CandidateDetail");
   const dialogPanelRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -118,8 +121,8 @@ export function QuickOverview({
       return "";
     }
 
-    return candidate.aiAnalysis.trim() || "AI-анализ пока недоступен";
-  }, [candidate]);
+    return candidate.aiAnalysis.trim() || t("aiUnavailable");
+  }, [candidate, t]);
 
   const positionAndSkillTokens = useMemo(() => {
     if (!candidate) {
@@ -168,7 +171,7 @@ export function QuickOverview({
         >
           <motion.button
             animate={{ opacity: 1 }}
-            aria-label="Закрыть окно быстрого обзора кандидата"
+            aria-label={t("quickClose")}
             className="absolute inset-0 bg-text-heading/20"
             exit={{ opacity: 0 }}
             initial={{ opacity: 0 }}
@@ -188,14 +191,14 @@ export function QuickOverview({
               isLoading ? (
                 <LoadingState
                   className="min-h-[180px] text-text-placeholder"
-                  label="Загрузка кандидата..."
+                  label={t("quickLoading")}
                 />
               ) : (
                 <p
                   className="text-sm text-text-placeholder leading-[1.3]"
                   id="candidate-quick-overview-description"
                 >
-                  Данные кандидата не найдены
+                  {t("quickNotFound")}
                 </p>
               )
             ) : (
@@ -225,7 +228,7 @@ export function QuickOverview({
                     <div className="mb-2 flex items-center gap-1.5">
                       <AIGenerationIcon />
                       <span className="font-bold text-xs leading-none">
-                        AI сводка
+                        AI {t("aiSummary")}
                       </span>
                     </div>
                     <p
@@ -241,7 +244,7 @@ export function QuickOverview({
                   <div className="flex flex-col gap-2">
                     <SectionTitle
                       icon={<BriefcaseIcon />}
-                      title="Текущая должность и навыки"
+                      title={t("currentPositionAndSkills")}
                     />
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
                       {positionAndSkillTokens.length > 0 ? (
@@ -253,14 +256,14 @@ export function QuickOverview({
                         ))
                       ) : (
                         <span className="text-text-placeholder">
-                          Нет данных
+                          {t("emptySection")}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <SectionTitle icon={<MailIcon />} title="Контакты" />
+                    <SectionTitle icon={<MailIcon />} title={t("contacts")} />
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
                       {contactTokens.length > 0 ? (
                         contactTokens.map((token, index) => (
@@ -271,7 +274,7 @@ export function QuickOverview({
                         ))
                       ) : (
                         <span className="text-text-placeholder">
-                          Нет данных
+                          {t("emptySection")}
                         </span>
                       )}
                     </div>
@@ -280,12 +283,12 @@ export function QuickOverview({
                   <div className="flex flex-col gap-2">
                     <SectionTitle
                       icon={<DollarIcon />}
-                      title="Зарплатные ожидания"
+                      title={t("salaryExpectation")}
                     />
                     <p className="text-sm leading-[1.3]">
                       {candidate.salaryExpectation > 0
-                        ? `${candidate.salaryCurrency === "USD" ? "$" : ""}${candidate.salaryExpectation}+`
-                        : "Не указано"}
+                        ? `${candidate.salaryCurrency === "USD" ? "$" : ""}${format.number(candidate.salaryExpectation)}+`
+                        : t("notSpecified")}
                     </p>
                   </div>
                 </div>
@@ -301,9 +304,9 @@ export function QuickOverview({
                 </div>
 
                 <p className="w-full text-xs leading-[1.3]">
-                  Источник:{" "}
+                  {t("source")}{" "}
                   <span className="text-primary-blue">
-                    {candidate.source || "Не указан"}
+                    {candidate.source || t("notSpecified")}
                   </span>
                 </p>
 
@@ -327,7 +330,7 @@ export function QuickOverview({
                     }}
                     type="button"
                   >
-                    Быстрый просмотр CV
+                    {t("quickCv")}
                   </button>
                 </div>
               </>

@@ -3,28 +3,29 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
-import { registerFormSchema } from "~/schemas/register";
+import { createRegisterFormSchema } from "~/schemas/register";
 import MailVerificationPage from "./mail-verification";
 
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
 const FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function getRegisterErrorMessage(code?: string | null) {
+function getRegisterErrorKey(code?: string | null) {
   switch (code) {
     case "rate_limited":
-      return "Слишком много попыток. Попробуйте позже.";
+      return "registerErrors.rateLimited" as const;
     case "invalid_data":
-      return "Проверьте корректность введенных данных.";
+      return "registerErrors.invalidData" as const;
     case "registration_failed":
-      return "Не удалось создать аккаунт. Возможно, он уже существует.";
+      return "registerErrors.failedExisting" as const;
     default:
-      return "Не удалось создать аккаунт. Проверьте введенные данные.";
+      return "registerErrors.failed" as const;
   }
 }
 
@@ -37,6 +38,8 @@ export default function RegisterPage() {
 }
 
 function RegisterPageContent() {
+  const t = useTranslations("Auth");
+  const validation = useTranslations("Validation");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [firstName, setFirstName] = useState("");
@@ -52,6 +55,20 @@ function RegisterPageContent() {
   const [verificationErrorMessage, setVerificationErrorMessage] = useState<
     string | null
   >(null);
+  const registerFormSchema = useMemo(
+    () =>
+      createRegisterFormSchema({
+        firstNameRequired: validation("firstNameRequired"),
+        lastNameRequired: validation("lastNameRequired"),
+        invalidEmail: validation("invalidEmail"),
+        passwordMin: validation("passwordMin"),
+        passwordMax: validation("passwordMax"),
+        passwordSpecial: validation("passwordSpecial"),
+        passwordUppercase: validation("passwordUppercase"),
+        passwordsMismatch: validation("passwordsMismatch"),
+      }),
+    [validation],
+  );
 
   const verificationFlowId = useMemo(() => {
     const step = searchParams.get("step");
@@ -90,7 +107,7 @@ function RegisterPageContent() {
     });
 
     if (!parsed.success) {
-      setErrorMessage(parsed.error.issues[0]?.message ?? "Неверные данные");
+      setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
       return;
     }
 
@@ -107,14 +124,14 @@ function RegisterPageContent() {
       });
 
       if (result?.code === "rate_limited") {
-        setErrorMessage("Слишком много попыток. Попробуйте позже.");
+        setErrorMessage(t("registerErrors.rateLimited"));
         setIsSubmitting(false);
         return;
       }
 
       const responseCode = result?.code ?? "";
       if (!responseCode.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)) {
-        setErrorMessage(getRegisterErrorMessage(responseCode || result?.error));
+        setErrorMessage(t(getRegisterErrorKey(responseCode || result?.error)));
         setIsSubmitting(false);
         return;
       }
@@ -123,9 +140,7 @@ function RegisterPageContent() {
         VERIFICATION_REQUIRED_CODE_PREFIX.length,
       );
       if (!FLOW_ID_REGEX.test(flowId)) {
-        setErrorMessage(
-          "Не удалось начать подтверждение почты. Повторите попытку.",
-        );
+        setErrorMessage(t("registerErrors.verificationStart"));
         setIsSubmitting(false);
         return;
       }
@@ -135,7 +150,7 @@ function RegisterPageContent() {
         `/register?step=mail-verification&flow=${encodeURIComponent(flowId)}`,
       );
     } catch {
-      setErrorMessage("Что-то пошло не так!");
+      setErrorMessage(t("unknownError"));
       setIsSubmitting(false);
     }
   };
@@ -158,21 +173,21 @@ function RegisterPageContent() {
 
       if (result?.code === "rate_limited") {
         setVerificationErrorMessage(
-          "Слишком много попыток. Подождите и попробуйте снова.",
+          t("registerErrors.verificationRateLimited"),
         );
         setIsVerifyingCode(false);
         return;
       }
 
       if (result?.error) {
-        setVerificationErrorMessage("Неверный или истекший код подтверждения.");
+        setVerificationErrorMessage(t("registerErrors.invalidCode"));
         setIsVerifyingCode(false);
         return;
       }
 
       window.location.href = "/dashboard";
     } catch {
-      setVerificationErrorMessage("Что-то пошло не так!");
+      setVerificationErrorMessage(t("unknownError"));
       setIsVerifyingCode(false);
     }
   };
@@ -184,7 +199,7 @@ function RegisterPageContent() {
     try {
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch {
-      setErrorMessage("Не удалось продолжить через Google.");
+      setErrorMessage(t("registerErrors.google"));
       setIsGoogleSubmitting(false);
     }
   };
@@ -212,7 +227,7 @@ function RegisterPageContent() {
       ) : (
         <div className="auth-content">
           <div className="auth-panel">
-            <h1 className="auth-title">Создать аккаунт</h1>
+            <h1 className="auth-title">{t("createAccount")}</h1>
 
             {isGoogleAvailable && (
               <>
@@ -225,14 +240,14 @@ function RegisterPageContent() {
                   <span className="text-lg">G</span>
                   <span>
                     {isGoogleSubmitting
-                      ? "Переход..."
-                      : "Продолжить через Google"}
+                      ? t("redirecting")
+                      : t("continueGoogle")}
                   </span>
                 </button>
 
                 <div className="mb-6 flex items-center gap-3">
                   <div className="h-px flex-1 bg-border-input" />
-                  <span className="text-text-muted text-xs">или</span>
+                  <span className="text-text-muted text-xs">{t("or")}</span>
                   <div className="h-px flex-1 bg-border-input" />
                 </div>
               </>
@@ -245,13 +260,13 @@ function RegisterPageContent() {
                     className="font-semibold text-sm text-text-label leading-5"
                     htmlFor="register-first-name"
                   >
-                    Имя
+                    {t("firstName")}
                   </label>
                   <input
                     className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                     id="register-first-name"
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Ваше имя"
+                    placeholder={t("firstNamePlaceholder")}
                     type="text"
                     value={firstName}
                   />
@@ -262,13 +277,13 @@ function RegisterPageContent() {
                     className="font-semibold text-sm text-text-label leading-5"
                     htmlFor="register-last-name"
                   >
-                    Фамилия
+                    {t("lastName")}
                   </label>
                   <input
                     className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                     id="register-last-name"
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Ваша фамилия"
+                    placeholder={t("lastNamePlaceholder")}
                     type="text"
                     value={lastName}
                   />
@@ -280,13 +295,13 @@ function RegisterPageContent() {
                   className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-email"
                 >
-                  Корпоративная почта
+                  {t("corporateEmail")}
                 </label>
                 <input
                   className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-email"
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Адрес электронной почты"
+                  placeholder={t("emailPlaceholder")}
                   type="email"
                   value={email}
                 />
@@ -297,14 +312,14 @@ function RegisterPageContent() {
                   className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-password"
                 >
-                  Пароль
+                  {t("password")}
                 </label>
                 <input
                   className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-password"
                   minLength={8}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Введите ваш пароль"
+                  placeholder={t("passwordPlaceholder")}
                   type="password"
                   value={password}
                 />
@@ -315,14 +330,14 @@ function RegisterPageContent() {
                   className="font-semibold text-sm text-text-label leading-5"
                   htmlFor="register-confirm-password"
                 >
-                  Повторите пароль
+                  {t("confirmPassword")}
                 </label>
                 <input
                   className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                   id="register-confirm-password"
                   minLength={8}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Введите ваш пароль"
+                  placeholder={t("passwordPlaceholder")}
                   type="password"
                   value={confirmPassword}
                 />
@@ -342,8 +357,8 @@ function RegisterPageContent() {
                 >
                   <LoadingButtonContent
                     isLoading={isSubmitting}
-                    label="Создать аккаунт"
-                    loadingLabel="Создание..."
+                    label={t("createAccount")}
+                    loadingLabel={t("creatingAccount")}
                   />
                 </button>
               </div>

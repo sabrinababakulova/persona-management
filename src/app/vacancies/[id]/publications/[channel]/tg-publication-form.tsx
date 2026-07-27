@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import { Checkbox } from "~/app/_components/checkbox";
@@ -32,6 +33,9 @@ export function TgPublicationForm({
   vacancyId: string;
   pubId?: string;
 }) {
+  const t = useTranslations("Publications");
+  const commonT = useTranslations("Common");
+  const navigationT = useTranslations("Navigation");
   const router = useRouter();
   const utils = api.useUtils();
   const vacancyQuery = api.vacancies.get.useQuery({ id: pubId ?? vacancyId });
@@ -81,7 +85,7 @@ export function TgPublicationForm({
   const publishTelegram = api.vacancies.publishTelegram.useMutation({
     onSuccess: async (_result, variables) => {
       setErrors({});
-      setSavedMessage("Публикация опубликована");
+      setSavedMessage(t("telegram.published"));
       setIsPublishConfirmOpen(false);
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -97,7 +101,7 @@ export function TgPublicationForm({
       setSavedMessage(null);
       setIsPublishConfirmOpen(false);
       setErrors({
-        _form: error.message || "Не удалось опубликовать в Telegram",
+        _form: error.message || t("telegram.publishError"),
       });
     },
   });
@@ -121,7 +125,7 @@ export function TgPublicationForm({
       setSavedMessage(null);
       setIsPublishConfirmOpen(false);
       setErrors({
-        _form: error.message || "Не удалось сохранить публикацию",
+        _form: error.message || t("saveError"),
       });
     },
   });
@@ -129,7 +133,7 @@ export function TgPublicationForm({
   const updatePublication = api.vacancies.update.useMutation({
     onSuccess: async () => {
       setErrors({});
-      setSavedMessage("Публикация обновлена");
+      setSavedMessage(t("updated"));
       setIsPublishConfirmOpen(false);
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -146,7 +150,7 @@ export function TgPublicationForm({
       setSavedMessage(null);
       setIsPublishConfirmOpen(false);
       setErrors({
-        _form: error.message || "Не удалось обновить публикацию",
+        _form: error.message || t("updateError"),
       });
     },
   });
@@ -185,18 +189,18 @@ export function TgPublicationForm({
     const title = fields.title.trim();
 
     if (!title) {
-      next.title = "Введите название публикации";
+      next.title = t("titleRequired");
     } else if (title.length > 255) {
-      next.title = "Название не должно быть длиннее 255 символов";
+      next.title = t("titleMax");
     }
 
     if (!hasMeaningfulHtml(fields.description)) {
-      next.description = "Заполните описание публикации";
+      next.description = t("descriptionRequired");
     }
 
     // Channels are chosen only on create; edit mode keeps the original channels.
     if (!pubId && selectedChannelIds.length === 0) {
-      next.channels = "Выберите хотя бы один канал";
+      next.channels = t("telegram.selectChannel");
     }
 
     if (Object.keys(next).length > 0) {
@@ -260,7 +264,7 @@ export function TgPublicationForm({
     return (
       <LoadingState
         className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label="Загрузка вакансии..."
+        label={t("vacancyLoading")}
       />
     );
   }
@@ -268,7 +272,7 @@ export function TgPublicationForm({
   if (!vacancyQuery.data) {
     return (
       <main className="flex h-full flex-1 items-center justify-center text-text-placeholder">
-        Вакансия не найдена
+        {t("vacancyNotFound")}
       </main>
     );
   }
@@ -278,16 +282,16 @@ export function TgPublicationForm({
       <div className="app-page-narrow flex flex-col">
         <div className="w-full">
           <Breadcrumbs
-            label="Публикация в Telegram"
+            label={t("telegram.pageTitle")}
             parent={{
-              label: vacancyQuery.data.title || "Вакансия",
+              label: vacancyQuery.data.title || t("vacancy"),
               href: `/vacancies/${vacancyId}`,
             }}
             rootHref="/vacancies"
-            rootLabel="Вакансии"
+            rootLabel={navigationT("vacancies")}
           />
 
-          <h1 className="page-title mt-5 mb-5">Публикация в Telegram</h1>
+          <h1 className="page-title mt-5 mb-5">{t("telegram.pageTitle")}</h1>
         </div>
 
         <div className="w-full">
@@ -308,15 +312,15 @@ export function TgPublicationForm({
               className="surface-card scroll-mt-24 p-5 sm:p-6"
               id="telegram-publication"
             >
-              <ClosableSection title="Контент публикации">
+              <ClosableSection title={t("telegram.content")}>
                 <div className="flex min-w-0 flex-col gap-2">
                   <Input
-                    label="Название"
+                    label={t("title")}
                     maxLength={255}
                     onChange={(event) =>
                       handleFieldChange("title", event.currentTarget.value)
                     }
-                    placeholder="Введите название публикации"
+                    placeholder={t("titlePlaceholder")}
                     value={fields.title}
                   />
                   {errors.title && (
@@ -329,10 +333,10 @@ export function TgPublicationForm({
                 <div className="flex min-w-0 flex-col gap-2">
                   <RichTextEditor
                     id="telegram-description-html"
-                    label="Описание"
+                    label={t("description")}
                     maxLength={20000}
                     onChange={(html) => handleFieldChange("description", html)}
-                    placeholder="Опишите публикацию: обязанности, требования, условия. Используйте списки и заголовки."
+                    placeholder={t("descriptionPlaceholder")}
                     value={fields.description}
                   />
                   {errors.description && (
@@ -345,19 +349,18 @@ export function TgPublicationForm({
             </div>
 
             <div className="surface-card scroll-mt-24 p-5 sm:p-6">
-              <ClosableSection title="Каналы публикации">
+              <ClosableSection title={t("telegram.channels")}>
                 {channelsQuery.isLoading ? (
-                  <LoadingState compact label="Загрузка каналов..." />
+                  <LoadingState compact label={t("telegram.loadingChannels")} />
                 ) : (channelsQuery.data?.length ?? 0) === 0 ? (
                   <p className="text-danger-red text-xs leading-[1.4]">
-                    Нет добавленных Telegram-каналов. Добавьте канал в
-                    настройках профиля.
+                    {t("telegram.noChannels")}
                   </p>
                 ) : (
                   <div className="flex min-w-0 flex-col gap-3">
                     {pubId && (
                       <p className="text-text-placeholder text-xs leading-[1.4]">
-                        Каналы нельзя изменить после публикации.
+                        {t("telegram.channelsLocked")}
                       </p>
                     )}
                     {channelsQuery.data?.map((channel) => (
@@ -413,7 +416,7 @@ export function TgPublicationForm({
                   }
                   type="button"
                 >
-                  Назад
+                  {commonT("back")}
                 </button>
                 <button
                   className="ui-button ui-button-primary"
@@ -423,8 +426,8 @@ export function TgPublicationForm({
                 >
                   <LoadingButtonContent
                     isLoading={isSubmitting}
-                    label={pubId ? "Сохранить изменения" : "Опубликовать"}
-                    loadingLabel={pubId ? "Сохранение..." : "Публикация..."}
+                    label={pubId ? commonT("saveChanges") : t("publish")}
+                    loadingLabel={pubId ? commonT("saving") : t("publishing")}
                   />
                 </button>
               </div>
@@ -434,19 +437,19 @@ export function TgPublicationForm({
       </div>
 
       <PublicationConfirmationModal
-        confirmLabel={pubId ? "Обновить" : "Опубликовать"}
+        confirmLabel={pubId ? t("update") : t("publish")}
         description={
           pubId
-            ? "Изменения будут сохранены в базе данных без публикации в Telegram."
-            : "Публикация будет сохранена и отправлена в Telegram."
+            ? t("telegram.saveDescription")
+            : t("telegram.publishDescription")
         }
         isOpen={isPublishConfirmOpen}
         isPending={isSubmitting}
         onClose={() => setIsPublishConfirmOpen(false)}
         onConfirm={handleConfirmSubmit}
         onReject={() => setIsPublishConfirmOpen(false)}
-        rejectLabel="Отмена"
-        title={pubId ? "Обновить публикацию?" : "Опубликовать публикацию?"}
+        rejectLabel={commonT("cancel")}
+        title={pubId ? t("updateQuestion") : t("publishQuestion")}
       />
     </main>
   );

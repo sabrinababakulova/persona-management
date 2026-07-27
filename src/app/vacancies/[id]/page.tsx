@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
 import {
@@ -27,17 +28,17 @@ type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
  */
 function buildInitialData(
   vacancy: VacancyDetail,
+  formatNumber: (value: number) => string,
 ): CreateVacancyFormInitialData {
-  const formatter = new Intl.NumberFormat("ru-RU");
   return {
     name: vacancy.title,
     salaryFrom:
       vacancy.salaryFrom !== undefined && vacancy.salaryFrom !== null
-        ? formatter.format(vacancy.salaryFrom)
+        ? formatNumber(vacancy.salaryFrom)
         : "",
     salaryTo:
       vacancy.salaryTo !== undefined && vacancy.salaryTo !== null
-        ? formatter.format(vacancy.salaryTo)
+        ? formatNumber(vacancy.salaryTo)
         : "",
     salaryCurrency: vacancy.salaryCurrency ?? "UZS",
     descriptionHtml: vacancy.descriptionHtml ?? "",
@@ -53,6 +54,9 @@ function buildInitialData(
  * vacancy is linked to hh.uz; otherwise it shows a "not yet published" placeholder.
  */
 export default function VacancyDetailPage() {
+  const format = useFormatter();
+  const t = useTranslations("VacancyDetail");
+  const vacancyFormT = useTranslations("VacancyForm");
   const { id: vacancyId } = useParams() as { id: string };
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,8 +75,19 @@ export default function VacancyDetailPage() {
   });
 
   const initialData = useMemo(
-    () => (vacancy ? buildInitialData(vacancy) : undefined),
-    [vacancy],
+    () =>
+      vacancy
+        ? buildInitialData(vacancy, (value) => format.number(value))
+        : undefined,
+    [format, vacancy],
+  );
+  const sideMenuItems = useMemo(
+    () => [
+      { id: "description", label: t("descriptionMenu") },
+      { id: "publications", label: t("publicationsMenu") },
+      { id: "preview", label: t("previewMenu") },
+    ],
+    [t],
   );
   const stepParam = searchParams.get("step");
   const normalizedStepParam =
@@ -92,7 +107,7 @@ export default function VacancyDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label="Загружаем вакансию..." />
+        <LoadingState label={t("loading")} />
       </div>
     );
   }
@@ -102,7 +117,7 @@ export default function VacancyDetailPage() {
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
         <FeedbackPresence show>
           <div className="rounded-xl border border-danger-red/20 bg-danger-red-bg px-5 py-4 text-danger-red text-sm">
-            Вакансия не найдена
+            {t("notFound")}
           </div>
         </FeedbackPresence>
       </div>
@@ -137,10 +152,9 @@ export default function VacancyDetailPage() {
           !
         </span>
         <div>
-          <p className="font-semibold leading-[1.4]">Эта вакансия в архиве.</p>
+          <p className="font-semibold leading-[1.4]">{t("archivedTitle")}</p>
           <p className="mt-1 text-text-secondary leading-[1.4]">
-            Переведите её в активный статус, чтобы продолжить редактирование на
-            hh.uz.
+            {t("archivedDescription")}
           </p>
           {restoreFromArchive.error && (
             <p className="mt-2 text-accent-red leading-[1.4]">
@@ -150,17 +164,17 @@ export default function VacancyDetailPage() {
         </div>
       </div>
       <label className="flex shrink-0 items-center gap-2 text-text-secondary text-xs uppercase">
-        <span className="sr-only">Статус вакансии</span>
+        <span className="sr-only">{t("status")}</span>
         <div className="relative inline-flex min-w-[140px] items-center overflow-hidden rounded-lg border border-status-outline-border bg-bg-light">
           <select
-            aria-label="Статус вакансии"
+            aria-label={t("status")}
             className="h-[36px] w-full appearance-none bg-transparent px-3 pr-8 font-semibold text-text-heading text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70"
             disabled={restoreFromArchive.isPending}
             onChange={(event) => handleStatusChange(event.target.value)}
             value={vacancy.status ?? "archive"}
           >
-            <option value="archive">В архиве</option>
-            <option value="active">Активна</option>
+            <option value="archive">{t("archived")}</option>
+            <option value="active">{t("active")}</option>
           </select>
           <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-text-heading" />
         </div>
@@ -173,7 +187,7 @@ export default function VacancyDetailPage() {
       <div className="app-page flex flex-col gap-5 lg:flex-row lg:gap-8">
         <SideMenu
           activeId={activeSectionId}
-          items={SIDE_MENU_ITEMS.map((item) => ({ ...item }))}
+          items={sideMenuItems}
           onSelect={goToStep}
         />
 
@@ -183,7 +197,7 @@ export default function VacancyDetailPage() {
               bannerContent={archivedBanner}
               breadcrumbLabel={vacancy.title}
               initialData={initialData}
-              pageHeading={vacancy.title || "Редактирование вакансии"}
+              pageHeading={vacancy.title || vacancyFormT("editTitle")}
               readOnly={isArchivedHh}
               vacancyId={vacancyId}
             />
@@ -193,7 +207,7 @@ export default function VacancyDetailPage() {
             </div>
           ) : (
             <div className="w-full max-w-225">
-              <h1 className="page-title mb-5">Предпросмотр</h1>
+              <h1 className="page-title mb-5">{t("preview")}</h1>
               <PreviewStep />
             </div>
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { ChevronUpIcon } from "~/app/_components/icons";
 import { AnimatePresence, motion } from "./motion-system";
@@ -11,6 +12,7 @@ export const ClosableSection = ({
   children: React.ReactNode;
   title: string;
 }) => {
+  const t = useTranslations("Components");
   const [isSectionOpen, setIsSectionOpen] = useState(true);
   return (
     <section className="space-y-5">
@@ -18,7 +20,7 @@ export const ClosableSection = ({
         <h2 className="section-title">{title}</h2>
         <button
           aria-expanded={isSectionOpen}
-          aria-label={`Свернуть или развернуть ${title}`}
+          aria-label={t("toggleSection", { title })}
           className="rounded p-1 text-text-secondary transition-[background-color,color,transform] duration-200 ease-out hover:bg-bg-hover hover:text-text-heading"
           onClick={() => setIsSectionOpen((prev) => !prev)}
           type="button"

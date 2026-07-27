@@ -1,12 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChevronDownIcon } from "./icons";
 
 export const PERIOD_FILTER_OPTIONS = [
-  { label: "1 день", value: "day" },
-  { label: "1 неделя", value: "week" },
-  { label: "1 месяц", value: "month" },
-  { label: "1 год", value: "year" },
+  { value: "day" },
+  { value: "week" },
+  { value: "month" },
+  { value: "year" },
 ] as const;
 
 export type PeriodFilterValue = (typeof PERIOD_FILTER_OPTIONS)[number]["value"];
@@ -22,6 +23,8 @@ export function PeriodFilter({
   onChange,
   value,
 }: PeriodFilterProps) {
+  const t = useTranslations("Components");
+
   return (
     <div className="relative self-start sm:self-auto">
       <select
@@ -32,7 +35,7 @@ export function PeriodFilter({
       >
         {PERIOD_FILTER_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {t(`period.${option.value}`)}
           </option>
         ))}
       </select>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "~/app/_components/icons";
 import type { BasicInfoSectionProps } from "~/types/candidates/basic-info-section";
 import { Dropdown } from "../../_components/dropdown";
@@ -22,6 +23,8 @@ export function BasicInfoSection({
   onRemoveContact,
   onContactChange,
 }: BasicInfoSectionProps) {
+  const t = useTranslations("CandidateForm");
+
   return (
     <section className="surface-card mb-5 p-5 sm:p-6">
       <button
@@ -29,7 +32,7 @@ export function BasicInfoSection({
         onClick={onToggle}
         type="button"
       >
-        <h2 className="section-title">Основная информация</h2>
+        <h2 className="section-title">{t("basicInfo")}</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -43,9 +46,9 @@ export function BasicInfoSection({
             <Input
               className={errors.fullName ? "border-danger-red" : undefined}
               id="fullName"
-              label="Ф.И.О"
+              label={t("fullName")}
               onChange={(e) => onInputChange("fullName", e.target.value)}
-              placeholder="Введите полное имя"
+              placeholder={t("fullNamePlaceholder")}
               type="text"
               value={fullName}
             />
@@ -59,9 +62,9 @@ export function BasicInfoSection({
               <Input
                 className={errors.city ? "border-danger-red" : undefined}
                 id="city"
-                label="Город"
+                label={t("city")}
                 onChange={(e) => onInputChange("city", e.target.value)}
-                placeholder="Введите город"
+                placeholder={t("cityPlaceholder")}
                 type="text"
                 value={city}
               />
@@ -73,10 +76,10 @@ export function BasicInfoSection({
             <div className="flex flex-1 flex-col gap-2">
               <Dropdown
                 id="currentPosition"
-                label="Должность"
+                label={t("position")}
                 onChange={(value) => onInputChange("currentPosition", value)}
                 options={positions}
-                placeholder="Выберите должность"
+                placeholder={t("selectPosition")}
                 value={currentPosition}
               />
             </div>
@@ -85,7 +88,7 @@ export function BasicInfoSection({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm text-text-label leading-5">
-                Контакты
+                {t("contacts")}
               </span>
               <button
                 className="text-primary-blue hover:text-primary-blue/80"
@@ -103,11 +106,11 @@ export function BasicInfoSection({
                 <div className="min-w-0 flex-1">
                   <Input
                     hideLabel
-                    label="Контакт"
+                    label={t("contact")}
                     onChange={(e) =>
                       onContactChange(contact.id, "value", e.target.value)
                     }
-                    placeholder="@username или номер телефона"
+                    placeholder={t("contactPlaceholder")}
                     type="text"
                     value={contact.value}
                   />
@@ -116,7 +119,7 @@ export function BasicInfoSection({
                   className="min-w-0 flex-1 sm:min-w-52"
                   hideLabel
                   iconClassName="h-4 w-4 right-2 text-text-placeholder"
-                  label="Тип контакта"
+                  label={t("contactType")}
                   onChange={(value) =>
                     onContactChange(contact.id, "type", value)
                   }
@@ -139,10 +142,10 @@ export function BasicInfoSection({
           <div className="flex flex-col gap-2">
             <Dropdown
               id="source"
-              label="Источник"
+              label={t("source")}
               onChange={(value) => onInputChange("source", value)}
               options={sources}
-              placeholder="Выберите источник"
+              placeholder={t("selectSource")}
               value={source}
             />
           </div>

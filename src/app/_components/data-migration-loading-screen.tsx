@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { AnimatePresence, LoadingState, motion } from "./motion-system";
 
 type DataMigrationLoadingScreenProps = {
@@ -9,6 +10,8 @@ type DataMigrationLoadingScreenProps = {
 export function DataMigrationLoadingScreen({
   isLoading,
 }: DataMigrationLoadingScreenProps) {
+  const t = useTranslations("Components");
+
   return (
     <AnimatePresence>
       {isLoading ? (
@@ -27,14 +30,14 @@ export function DataMigrationLoadingScreen({
             exit={{ opacity: 0, scale: 0.98, y: 8 }}
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
           >
-            <LoadingState label="Синхронизация" />
+            <LoadingState label={t("synchronization")} />
 
             <div className="space-y-2 text-center">
               <h2 className="font-semibold text-text-heading text-xl leading-tight">
-                Переносим ваши данные
+                {t("migratingData")}
               </h2>
               <p className="text-sm text-text-secondary leading-5">
-                Синхронизируем интеграции. Это займёт немного времени.
+                {t("migratingDataDescription")}
               </p>
             </div>
           </motion.div>

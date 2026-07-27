@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon } from "./icons";
 
@@ -63,6 +64,7 @@ export function TablePagination({
   totalItems,
   totalPages,
 }: TablePaginationProps) {
+  const t = useTranslations("Components");
   const rangeStart = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const rangeEnd =
     totalItems > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
@@ -70,7 +72,11 @@ export function TablePagination({
   return (
     <div className="flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-text-placeholder text-xs">
-        {rangeStart}-{rangeEnd} из {totalItems}
+        {t("paginationRange", {
+          start: rangeStart,
+          end: rangeEnd,
+          total: totalItems,
+        })}
       </div>
 
       <div className="flex items-center gap-2">
@@ -80,7 +86,7 @@ export function TablePagination({
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           type="button"
         >
-          Назад
+          {t("previous")}
         </button>
         <span className="min-w-16 text-center text-sm text-text-secondary">
           {currentPage} / {totalPages}
@@ -91,12 +97,12 @@ export function TablePagination({
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           type="button"
         >
-          Вперед
+          {t("next")}
         </button>
       </div>
 
       <label className="flex items-center gap-3 text-sm text-text-secondary">
-        <span>Количество</span>
+        <span>{t("rowsPerPage")}</span>
         <div className="relative">
           <select
             className="h-9 min-w-20 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-light px-3 pr-8 text-sm text-text-secondary"

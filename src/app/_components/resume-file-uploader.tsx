@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import { api } from "~/trpc/react";
@@ -36,6 +37,7 @@ export function ResumeFileUploader({
   onUploadingChange,
   className,
 }: ResumeFileUploaderProps) {
+  const t = useTranslations("Components");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
@@ -82,14 +84,13 @@ export function ResumeFileUploader({
       setResumeFileSize(uploadedResume.resumeFileSize);
       if (uploadedResume.prefillStatus === "failed") {
         setUploadError(
-          uploadedResume.prefillErrorMessage ??
-            "Не удалось проанализировать резюме автоматически",
+          uploadedResume.prefillErrorMessage ?? t("resumeAnalysisError"),
         );
       }
       onUploaded?.(uploadedResume);
     } catch (error) {
       setUploadError(
-        error instanceof Error ? error.message : "Не удалось загрузить резюме",
+        error instanceof Error ? error.message : t("resumeUploadError"),
       );
     } finally {
       event.target.value = "";
@@ -116,18 +117,18 @@ export function ResumeFileUploader({
           <span className="font-medium text-base text-text-placeholder leading-[1.4]">
             <LoadingButtonContent
               isLoading={uploadResume.isPending}
-              label="Загрузите PDF файл"
-              loadingLabel="Загрузка..."
+              label={t("uploadPdf")}
+              loadingLabel={t("uploading")}
             />
           </span>
         </div>
         <p className="font-normal text-text-disabled text-xs leading-[1.4]">
-          Файл должен быть менее 10МБ
+          {t("resumeSizeLimit")}
         </p>
       </button>
       <FeedbackPresence show={Boolean(resumeFileName)}>
         <p className="mt-1 font-medium text-success-green text-xs leading-[1.4]">
-          Загружено: {resumeFileName}
+          {t("uploaded")} {resumeFileName}
           {resumeFileSize ? ` (${resumeFileSize})` : ""}
         </p>
       </FeedbackPresence>

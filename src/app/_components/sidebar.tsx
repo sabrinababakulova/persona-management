@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import {
   BrandLogoIcon,
@@ -23,6 +24,7 @@ type SidebarProps = {
 
 export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("Navigation");
   const utils = api.useUtils();
 
   // "New since you last looked" counts for the Vacancies / Candidates badges.
@@ -49,24 +51,24 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
   const navItems: NavItem[] = [
     {
-      label: "Главная",
+      label: t("home"),
       href: "/dashboard",
       icon: <HomeIcon className="h-6 w-6" />,
     },
     {
-      label: "Вакансии",
+      label: t("vacancies"),
       href: "/vacancies",
       icon: <OutlineBriefcaseIcon className="h-6 w-6" />,
       badge: counts?.newVacancies || undefined,
     },
     {
-      label: "Кандидаты",
+      label: t("candidates"),
       href: "/candidates",
       icon: <UsersIcon className="h-6 w-6" />,
       badge: counts?.newCandidates || undefined,
     },
     {
-      label: "Настройки",
+      label: t("settings"),
       href: "/my-profile?section=company-settings",
       icon: <SettingsIcon className="h-6 w-6" />,
     },
@@ -97,7 +99,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
         </div>
 
         <button
-          aria-label="Закрыть боковое меню"
+          aria-label={t("closeSidebar")}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-sidebar-hover hover:text-text-placeholder-hover lg:hidden"
           onClick={onClose}
           type="button"

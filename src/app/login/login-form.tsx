@@ -4,32 +4,34 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProviders, signIn, useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 
-function getLoginErrorMessage(code?: string | null) {
+function getLoginErrorKey(code?: string | null) {
   switch (code) {
     case "missing_credentials":
-      return "Введите почту и пароль.";
+      return "loginErrors.missingCredentials" as const;
     case "rate_limited":
-      return "Слишком много попыток входа. Попробуйте позже.";
+      return "loginErrors.rateLimited" as const;
     case "user_not_found":
-      return "Пользователь с такой почтой не найден.";
+      return "loginErrors.userNotFound" as const;
     case "password_incorrect":
-      return "Неверный пароль. Попробуйте еще раз.";
+      return "loginErrors.passwordIncorrect" as const;
     case "email_not_verified":
-      return "Подтвердите почту перед входом в аккаунт.";
+      return "loginErrors.emailNotVerified" as const;
     case "password_sign_in_unavailable":
-      return "Для этого аккаунта вход по паролю недоступен.";
+      return "loginErrors.passwordUnavailable" as const;
     default:
-      return "Не удалось войти. Проверьте введенные данные.";
+      return "loginErrors.default" as const;
   }
 }
 
 export default function LoginForm() {
+  const t = useTranslations("Auth");
   const router = useRouter();
   const { status } = useSession();
   const [email, setEmail] = useState("");
@@ -74,7 +76,7 @@ export default function LoginForm() {
 
       const authCode = result?.code ?? result?.error;
       if (authCode) {
-        setErrorMessage(getLoginErrorMessage(authCode));
+        setErrorMessage(t(getLoginErrorKey(authCode)));
         setPassword("");
         setIsSubmitting(false);
         return;
@@ -82,7 +84,7 @@ export default function LoginForm() {
 
       window.location.href = "/dashboard";
     } catch {
-      setErrorMessage("Что-то пошло не так!");
+      setErrorMessage(t("loginErrors.default"));
       setIsSubmitting(false);
     }
   };
@@ -93,7 +95,7 @@ export default function LoginForm() {
     try {
       await signIn("google", { callbackUrl: "/dashboard" });
     } catch {
-      setErrorMessage("Не удалось войти через Google.");
+      setErrorMessage(t("loginErrors.google"));
       setIsGoogleSubmitting(false);
     }
   };
@@ -115,7 +117,7 @@ export default function LoginForm() {
       <div className="auth-content">
         <div className="auth-panel">
           {/* Title */}
-          <h1 className="auth-title">Войти</h1>
+          <h1 className="auth-title">{t("signIn")}</h1>
           {isGoogleAvailable && (
             <>
               <button
@@ -132,13 +134,13 @@ export default function LoginForm() {
                   width={24}
                 />
                 <span>
-                  {isGoogleSubmitting ? "Переход..." : "Войти через Google"}
+                  {isGoogleSubmitting ? t("redirecting") : t("signInGoogle")}
                 </span>
               </button>
 
               <div className="mb-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-border-input" />
-                <span className="text-text-muted text-xs">или</span>
+                <span className="text-text-muted text-xs">{t("or")}</span>
                 <div className="h-px flex-1 bg-border-input" />
               </div>
             </>
@@ -151,13 +153,13 @@ export default function LoginForm() {
                 className="font-semibold text-sm text-text-label leading-5"
                 htmlFor="login-email"
               >
-                Почта
+                {t("email")}
               </label>
               <input
                 className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                 id="login-email"
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Адрес электронной почты"
+                placeholder={t("emailPlaceholder")}
                 type="email"
                 value={email}
               />
@@ -169,13 +171,13 @@ export default function LoginForm() {
                 className="font-semibold text-sm text-text-label leading-5"
                 htmlFor="login-password"
               >
-                Пароль
+                {t("password")}
               </label>
               <input
                 className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
                 id="login-password"
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Введите ваш пароль"
+                placeholder={t("passwordPlaceholder")}
                 type="password"
                 value={password}
               />
@@ -183,7 +185,7 @@ export default function LoginForm() {
                 className="mt-1 text-right text-text-muted text-xs leading-[1.4] transition-colors hover:text-text-heading"
                 href="/forgot-password"
               >
-                Забыли пароль?
+                {t("forgotPassword")}
               </Link>
             </div>
 
@@ -199,7 +201,7 @@ export default function LoginForm() {
                 className="ui-button ui-button-soft flex-1"
                 href="/register"
               >
-                Создать аккаунт
+                {t("createAccount")}
               </Link>
               <button
                 className="ui-button ui-button-primary flex-1"
@@ -208,8 +210,8 @@ export default function LoginForm() {
               >
                 <LoadingButtonContent
                   isLoading={isSubmitting}
-                  label="Войти"
-                  loadingLabel="Вход..."
+                  label={t("signIn")}
+                  loadingLabel={t("signingIn")}
                 />
               </button>
             </div>

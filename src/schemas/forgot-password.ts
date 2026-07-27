@@ -1,35 +1,70 @@
 import { z } from "zod";
 
-const passwordSchema = z
-  .string()
-  .min(8, "Пароль должен быть не менее 8 символов")
-  .max(255, "Слишком длинный пароль")
-  .regex(/[^A-Za-z0-9]/, "Пароль должен содержать специальные символы")
-  .regex(/[A-ZА-ЯЁ]/, "Пароль должен содержать символы верхнего регистра");
+export type ForgotPasswordValidationMessages = {
+  invalidEmail: string;
+  passwordMin: string;
+  passwordMax: string;
+  passwordSpecial: string;
+  passwordUppercase: string;
+  invalidFlow: string;
+  invalidCode: string;
+  confirmPassword: string;
+  passwordsMismatch: string;
+};
 
-export const forgotPasswordRequestSchema = z.object({
-  email: z.string().trim().email("Неверный формат почты").toLowerCase(),
-});
+const russianMessages: ForgotPasswordValidationMessages = {
+  invalidEmail: "Неверный формат почты",
+  passwordMin: "Пароль должен быть не менее 8 символов",
+  passwordMax: "Слишком длинный пароль",
+  passwordSpecial: "Пароль должен содержать специальные символы",
+  passwordUppercase: "Пароль должен содержать символы верхнего регистра",
+  invalidFlow: "Некорректный идентификатор сброса",
+  invalidCode: "Введите 6-значный код",
+  confirmPassword: "Повторите новый пароль",
+  passwordsMismatch: "Новый пароль и подтверждение не совпадают",
+};
 
-export const forgotPasswordResetSchema = z
-  .object({
-    flowId: z.string().uuid("Некорректный идентификатор сброса"),
-    code: z.string().regex(/^\d{6}$/, "Введите 6-значный код"),
-    newPassword: passwordSchema,
-    confirmPassword: z
-      .string()
-      .min(1, "Повторите новый пароль")
-      .max(255, "Слишком длинный пароль"),
-  })
-  .superRefine((data, ctx) => {
-    if (data.newPassword !== data.confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Новый пароль и подтверждение не совпадают",
-        path: ["confirmPassword"],
-      });
-    }
+export function createForgotPasswordRequestSchema(
+  messages: ForgotPasswordValidationMessages = russianMessages,
+) {
+  return z.object({
+    email: z.string().trim().email(messages.invalidEmail).toLowerCase(),
   });
+}
+
+export function createForgotPasswordResetSchema(
+  messages: ForgotPasswordValidationMessages = russianMessages,
+) {
+  const passwordSchema = z
+    .string()
+    .min(8, messages.passwordMin)
+    .max(255, messages.passwordMax)
+    .regex(/[^A-Za-z0-9]/, messages.passwordSpecial)
+    .regex(/[A-ZА-ЯЁ]/, messages.passwordUppercase);
+
+  return z
+    .object({
+      flowId: z.string().uuid(messages.invalidFlow),
+      code: z.string().regex(/^\d{6}$/, messages.invalidCode),
+      newPassword: passwordSchema,
+      confirmPassword: z
+        .string()
+        .min(1, messages.confirmPassword)
+        .max(255, messages.passwordMax),
+    })
+    .superRefine((data, ctx) => {
+      if (data.newPassword !== data.confirmPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: messages.passwordsMismatch,
+          path: ["confirmPassword"],
+        });
+      }
+    });
+}
+
+export const forgotPasswordRequestSchema = createForgotPasswordRequestSchema();
+export const forgotPasswordResetSchema = createForgotPasswordResetSchema();
 
 export type ForgotPasswordRequestInput = z.infer<
   typeof forgotPasswordRequestSchema

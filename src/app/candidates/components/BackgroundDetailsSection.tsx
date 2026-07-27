@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "~/app/_components/icons";
 import { Input } from "~/app/_components/input";
 import { Textarea } from "~/app/_components/textarea";
@@ -25,6 +26,8 @@ export function BackgroundDetailsSection({
   onRemoveEducation,
   onEducationChange,
 }: BackgroundDetailsSectionProps) {
+  const t = useTranslations("CandidateForm");
+
   return (
     <section className="surface-card mb-5 p-5 sm:p-6">
       <button
@@ -32,7 +35,7 @@ export function BackgroundDetailsSection({
         onClick={onToggle}
         type="button"
       >
-        <h2 className="section-title">Опыт и образование</h2>
+        <h2 className="section-title">{t("background")}</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -45,7 +48,7 @@ export function BackgroundDetailsSection({
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg text-text-heading leading-tight">
-                Опыт работы
+                {t("workExperience")}
               </h3>
               <button
                 className="text-primary-blue hover:text-primary-blue-hover"
@@ -63,7 +66,7 @@ export function BackgroundDetailsSection({
               >
                 <div className="mb-4 flex items-center justify-between">
                   <p className="font-semibold text-sm text-text-heading leading-5">
-                    Место работы {index + 1}
+                    {t("workplace", { index: index + 1 })}
                   </p>
                   {workExperience.length > 1 && (
                     <button
@@ -88,7 +91,7 @@ export function BackgroundDetailsSection({
                             ? "border-danger-red"
                             : undefined
                         }
-                        label="Компания"
+                        label={t("company")}
                         onChange={(event) =>
                           onWorkExperienceChange(
                             item.id,
@@ -96,7 +99,7 @@ export function BackgroundDetailsSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Например, Tech Solutions Inc."
+                        placeholder={t("companyPlaceholder")}
                         type="text"
                         value={item.company}
                       />
@@ -123,7 +126,7 @@ export function BackgroundDetailsSection({
                             ? "border-danger-red"
                             : undefined
                         }
-                        label="Должность"
+                        label={t("position")}
                         onChange={(event) =>
                           onWorkExperienceChange(
                             item.id,
@@ -131,7 +134,7 @@ export function BackgroundDetailsSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Например, Network Engineer"
+                        placeholder={t("positionPlaceholder")}
                         type="text"
                         value={item.position}
                       />
@@ -156,7 +159,7 @@ export function BackgroundDetailsSection({
                           ? "border-danger-red"
                           : undefined
                       }
-                      label="Период"
+                      label={t("period")}
                       onChange={(event) =>
                         onWorkExperienceChange(
                           item.id,
@@ -164,7 +167,7 @@ export function BackgroundDetailsSection({
                           event.target.value,
                         )
                       }
-                      placeholder="Например, Январь 2024 - Сейчас"
+                      placeholder={t("workPeriodPlaceholder")}
                       type="text"
                       value={item.period}
                     />
@@ -191,7 +194,7 @@ export function BackgroundDetailsSection({
                           ? "border-danger-red"
                           : undefined
                       }
-                      label="Описание обязанностей"
+                      label={t("responsibilities")}
                       onChange={(event) =>
                         onWorkExperienceChange(
                           item.id,
@@ -199,9 +202,7 @@ export function BackgroundDetailsSection({
                           event.target.value,
                         )
                       }
-                      placeholder={
-                        "Каждая новая строка будет сохранена как отдельный пункт"
-                      }
+                      placeholder={t("responsibilitiesPlaceholder")}
                       value={item.description}
                     />
                     {getFieldError(
@@ -224,7 +225,7 @@ export function BackgroundDetailsSection({
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg text-text-heading leading-tight">
-                Образование
+                {t("education")}
               </h3>
               <button
                 className="text-primary-blue hover:text-primary-blue-hover"
@@ -242,7 +243,7 @@ export function BackgroundDetailsSection({
               >
                 <div className="mb-4 flex items-center justify-between">
                   <p className="font-semibold text-sm text-text-heading leading-5">
-                    Образование {index + 1}
+                    {t("educationItem", { index: index + 1 })}
                   </p>
                   {education.length > 1 && (
                     <button
@@ -267,7 +268,7 @@ export function BackgroundDetailsSection({
                             ? "border-danger-red"
                             : undefined
                         }
-                        label="Учебное заведение"
+                        label={t("institution")}
                         onChange={(event) =>
                           onEducationChange(
                             item.id,
@@ -275,7 +276,7 @@ export function BackgroundDetailsSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Например, Inha University in Tashkent"
+                        placeholder={t("institutionPlaceholder")}
                         type="text"
                         value={item.institution}
                       />
@@ -299,11 +300,11 @@ export function BackgroundDetailsSection({
                             ? "border-danger-red"
                             : undefined
                         }
-                        label="GPA / оценка"
+                        label={t("gpa")}
                         onChange={(event) =>
                           onEducationChange(item.id, "gpa", event.target.value)
                         }
-                        placeholder="Например, GPA 4.5"
+                        placeholder={t("gpaPlaceholder")}
                         type="text"
                         value={item.gpa}
                       />
@@ -321,7 +322,7 @@ export function BackgroundDetailsSection({
                             ? "border-danger-red"
                             : undefined
                         }
-                        label="Период обучения"
+                        label={t("educationPeriod")}
                         onChange={(event) =>
                           onEducationChange(
                             item.id,
@@ -329,7 +330,7 @@ export function BackgroundDetailsSection({
                             event.target.value,
                           )
                         }
-                        placeholder="Например, Январь 2020 - Июнь 2024"
+                        placeholder={t("educationPeriodPlaceholder")}
                         type="text"
                         value={item.period}
                       />

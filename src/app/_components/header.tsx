@@ -1,23 +1,20 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AvatarProfileMenu } from "~/app/_components/avatar-profile-menu";
-import {
-  BellIcon,
-  ChevronDownIcon,
-  GlobeIcon,
-  MenuIcon,
-  SearchIcon,
-} from "~/app/_components/icons";
+import { BellIcon, MenuIcon, SearchIcon } from "~/app/_components/icons";
 import type { HeaderProps } from "~/types/components/header-props";
+import { LocaleSwitcher } from "./locale-switcher";
 
 export function Header({
   searchQuery,
   onSearchQueryChange,
-  searchPlaceholder = "Что вы хотите найти?",
+  searchPlaceholder,
   isSidebarOpen = true,
   onSidebarToggle,
 }: HeaderProps) {
+  const t = useTranslations("Navigation");
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const currentQuery = searchQuery ?? internalSearchQuery;
 
@@ -34,9 +31,7 @@ export function Header({
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             aria-expanded={isSidebarOpen}
-            aria-label={
-              isSidebarOpen ? "Свернуть боковое меню" : "Открыть боковое меню"
-            }
+            aria-label={isSidebarOpen ? t("collapseSidebar") : t("openSidebar")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover"
             onClick={onSidebarToggle}
             type="button"
@@ -49,7 +44,7 @@ export function Header({
             <input
               className="h-10 w-full rounded-lg border border-transparent bg-bg-input py-2 pr-4 pl-9 text-sm text-text-heading placeholder:text-text-placeholder focus:border-primary-blue focus:bg-bg-light focus:outline-none"
               onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={searchPlaceholder ?? t("search")}
               type="text"
               value={currentQuery}
             />
@@ -57,17 +52,12 @@ export function Header({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <button
-            className="hidden h-10 items-center gap-1 rounded-lg px-2 text-text-placeholder hover:bg-bg-hover sm:flex"
-            type="button"
-          >
-            <GlobeIcon className="h-4 w-4" />
-            <span className="font-medium text-sm leading-none">Ру</span>
-            <ChevronDownIcon className="h-3 w-3" />
-          </button>
+          <div>
+            <LocaleSwitcher />
+          </div>
 
           <button
-            aria-label="Уведомления"
+            aria-label={t("notifications")}
             className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-blue-light text-primary-blue hover:bg-primary-blue-light-hover"
             type="button"
           >

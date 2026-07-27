@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -38,7 +39,7 @@ function normalizeSearchValue(value: string) {
 export function SearchableSelect({
   label,
   options,
-  placeholder = "Выберите значение",
+  placeholder,
   value,
   onChange,
   id,
@@ -47,9 +48,13 @@ export function SearchableSelect({
   fieldClassName,
   iconClassName,
   disabled = false,
-  searchPlaceholder = "Поиск",
-  emptyMessage = "Ничего не найдено",
+  searchPlaceholder,
+  emptyMessage,
 }: SearchableSelectProps) {
+  const t = useTranslations("Components");
+  const resolvedPlaceholder = placeholder ?? t("selectValue");
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t("search");
+  const resolvedEmptyMessage = emptyMessage ?? t("nothingFound");
   const generatedId = useId();
   const selectId = id ?? generatedId;
   const panelId = `${selectId}-panel`;
@@ -149,7 +154,7 @@ export function SearchableSelect({
     return () => window.cancelAnimationFrame(frameId);
   }, [isOpen, updatePanelPosition]);
 
-  const selectedLabel = selectedOption?.label ?? placeholder;
+  const selectedLabel = selectedOption?.label ?? resolvedPlaceholder;
 
   return (
     <div
@@ -221,7 +226,7 @@ export function SearchableSelect({
                           onChange={(event) =>
                             setSearchQuery(event.target.value)
                           }
-                          placeholder={searchPlaceholder}
+                          placeholder={resolvedSearchPlaceholder}
                           ref={searchInputRef}
                           type="text"
                           value={searchQuery}
@@ -268,7 +273,7 @@ export function SearchableSelect({
                           className="flex min-h-28 items-center justify-center px-3 text-center text-sm text-text-placeholder"
                           initial={{ opacity: 0, y: 4 }}
                         >
-                          {emptyMessage}
+                          {resolvedEmptyMessage}
                         </motion.div>
                       )}
                     </div>

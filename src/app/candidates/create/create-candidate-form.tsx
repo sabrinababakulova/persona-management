@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
 import { Dropdown } from "~/app/_components/dropdown";
 import { FormProgress } from "~/app/_components/form-progress";
 import { AIGenerationIcon } from "~/app/_components/icons";
@@ -14,7 +15,8 @@ import {
   ResumeFileUploader,
   type ResumeUploadMeta,
 } from "~/app/_components/resume-file-uploader";
-import { candidateFormSchema } from "~/schemas/candidate";
+import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
+import { createCandidateFormSchema } from "~/schemas/candidate";
 import { api } from "~/trpc/react";
 import type { CandidateFormData } from "~/types/candidates/candidate-form-data";
 import type {
@@ -31,17 +33,14 @@ import { ConditionsSection } from "../components/ConditionsSection";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 
-// Required fields for progress tracking
-const REQUIRED_FIELDS = [
-  { key: "fullName", label: "Ф.И.О" },
-  { key: "city", label: "Город" },
-  { key: "salaryExpectation", label: "Зарплата" },
-] as const;
-
 // Helper to generate unique IDs
 const generateId = () => crypto.randomUUID();
 
 export function CreateCandidateForm() {
+  const t = useTranslations("CandidateForm");
+  const common = useTranslations("Common");
+  const validation = useTranslations("Validation");
+  const localizeLookups = useLookupLocalizer();
   const router = useRouter();
   const utils = api.useUtils();
   const [candidateDraftId] = useState(() => crypto.randomUUID());
@@ -50,14 +49,64 @@ export function CreateCandidateForm() {
   const [backgroundOpen, setBackgroundOpen] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [isResumeUploading, setIsResumeUploading] = useState(false);
+  const candidateFormSchema = useMemo(
+    () =>
+      createCandidateFormSchema({
+        contactType: validation("candidateContactType"),
+        contactRequired: validation("candidateContactRequired"),
+        language: validation("candidateLanguage"),
+        languageLevel: validation("candidateLanguageLevel"),
+        company: validation("candidateCompany"),
+        position: validation("candidatePosition"),
+        period: validation("candidatePeriod"),
+        description: validation("candidateDescription"),
+        experienceDescription: validation("candidateExperienceDescription"),
+        institution: validation("candidateInstitution"),
+        gpa: validation("candidateGpa"),
+        educationPeriod: validation("candidateEducationPeriod"),
+        fullName: validation("candidateFullName"),
+        city: validation("candidateCity"),
+      }),
+    [validation],
+  );
 
   // Use non-suspense query so the page doesn't 500 if lookups fail.
   const {
-    data: candidateLookups,
+    data: rawCandidateLookups,
     isError: isLookupsError,
     isLoading: isLookupsLoading,
     refetch: refetchLookups,
   } = api.lookups.getCandidateCreateOptions.useQuery();
+  const candidateLookups = useMemo(
+    () =>
+      rawCandidateLookups
+        ? {
+            ...rawCandidateLookups,
+            contactTypes: localizeLookups(
+              rawCandidateLookups.contactTypes,
+              "contactTypes",
+            ),
+            sources: localizeLookups(rawCandidateLookups.sources, "sources"),
+            positions: localizeLookups(
+              rawCandidateLookups.positions,
+              "positions",
+            ),
+            languages: localizeLookups(
+              rawCandidateLookups.languages,
+              "languages",
+            ),
+            languageLevels: localizeLookups(
+              rawCandidateLookups.languageLevels,
+              "languageLevels",
+            ),
+            statusOptions: localizeLookups(
+              rawCandidateLookups.statusOptions,
+              "candidateStatuses",
+            ),
+          }
+        : undefined,
+    [localizeLookups, rawCandidateLookups],
+  );
 
   // Form state
   const [formData, setFormData] = useState<CandidateFormData>({
@@ -107,7 +156,16 @@ export function CreateCandidateForm() {
     },
   ]);
 
-  const progress = calculateCandidateFormProgress(formData, REQUIRED_FIELDS);
+  const requiredFields = useMemo(
+    () =>
+      [
+        { key: "fullName", label: t("fullName") },
+        { key: "city", label: t("city") },
+        { key: "salaryExpectation", label: t("salary") },
+      ] as const,
+    [t],
+  );
+  const progress = calculateCandidateFormProgress(formData, requiredFields);
 
   useEffect(() => {
     if (!candidateLookups) {
@@ -135,7 +193,7 @@ export function CreateCandidateForm() {
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem(
             CREATE_CANDIDATE_SUCCESS_KEY,
-            "Кандидат сохранен",
+            t("candidateSaved"),
           );
         }
         router.push("/candidates");
@@ -147,7 +205,7 @@ export function CreateCandidateForm() {
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(
           CREATE_CANDIDATE_SUCCESS_KEY,
-          "Кандидат успешно добавлен",
+          t("candidateAdded"),
         );
       }
       router.push("/candidates");
@@ -156,7 +214,7 @@ export function CreateCandidateForm() {
       console.error("Failed to create candidate:", error);
       setErrors((prev) => ({
         ...prev,
-        _form: error.message || "Не удалось сохранить кандидата",
+        _form: error.message || t("saveError"),
       }));
     },
   });
@@ -376,7 +434,7 @@ export function CreateCandidateForm() {
         const path = error.path.join(".");
         newErrors[path] = error.message;
       }
-      newErrors._form = "Не удалось сохранить: проверьте выделенные поля ниже.";
+      newErrors._form = t("validationError");
       setErrors(newErrors);
       // Expand every section so the highlighted fields are visible.
       setBasicInfoOpen(true);
@@ -415,22 +473,20 @@ export function CreateCandidateForm() {
 
   if (isLookupsLoading) {
     return (
-      <LoadingState className="min-h-[50vh]" label="Загрузка справочников..." />
+      <LoadingState className="min-h-[50vh]" label={t("loadingLookups")} />
     );
   }
 
   if (isLookupsError || !candidateLookups) {
     return (
       <div className="mx-auto mt-16 w-full max-w-[758px] rounded-xl border border-danger-red-bg bg-danger-red-bg p-6 text-danger-red">
-        <p className="mb-4 text-sm">
-          Не удалось загрузить справочники из базы данных.
-        </p>
+        <p className="mb-4 text-sm">{t("lookupsError")}</p>
         <button
           className="ui-button ui-button-primary"
           onClick={() => void refetchLookups()}
           type="button"
         >
-          Повторить
+          {common("retry")}
         </button>
       </div>
     );
@@ -530,12 +586,12 @@ export function CreateCandidateForm() {
     <div className="relative flex w-full min-w-0 justify-center">
       <div className="app-page-narrow">
         <div className="page-header">
-          <h1 className="page-title">Добавление кандидата</h1>
+          <h1 className="page-title">{t("addCandidate")}</h1>
           <Dropdown
             fieldClassName="h-9 px-2 py-2 pr-6 text-sm leading-none"
             hideLabel
             iconClassName="right-2 text-text-placeholder"
-            label="Статус"
+            label={t("status")}
             onChange={(value) => handleInputChange("status", value)}
             options={candidateLookups.statusOptions}
             value={formData.status}
@@ -551,12 +607,12 @@ export function CreateCandidateForm() {
 
         <section className="surface-card mb-5 flex flex-col gap-5 p-5 sm:p-6">
           <div className="flex items-center justify-between">
-            <h2 className="section-title">Резюме</h2>
+            <h2 className="section-title">{t("resume")}</h2>
             <button
               className="ui-button min-h-9 bg-ai-violet/10 px-3 text-ai-violet hover:bg-ai-violet/15"
               type="button"
             >
-              Заполнить поля
+              {t("fillFields")}
             </button>
           </div>
           <ResumeFileUploader
@@ -568,7 +624,7 @@ export function CreateCandidateForm() {
           />
           <p className="flex items-center gap-1.5 font-medium text-ai-violet text-sm">
             <AIGenerationIcon className="h-4 w-4" />
-            AI Мы проанализируем резюме и автозаполним поля
+            AI {t("resumeAutofill")}
           </p>
         </section>
 
@@ -642,8 +698,8 @@ export function CreateCandidateForm() {
           >
             <LoadingButtonContent
               isLoading={createCandidate.isPending}
-              label="Сохранить кандидата"
-              loadingLabel="Сохранение..."
+              label={t("saveCandidate")}
+              loadingLabel={common("saving")}
             />
           </button>
         </div>

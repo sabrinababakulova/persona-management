@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { DownloadIcon } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
@@ -27,28 +28,27 @@ type ExportFormat = "pdf" | "docx";
 type DownloadKey = "hh" | "person-hunters" | "custom";
 
 /** Section keys must match the server's PROFILE_SECTIONS; order here is the default. */
-const SECTION_LABELS: Record<string, string> = {
-  experience: "Стаж",
-  dateOfBirth: "Дата рождения",
-  languages: "Языки",
-  education: "Образование",
-  workExperience: "Опыт работы",
-  additionalInfo: "Доп. информация",
-  salary: "Зарплатные ожидания",
-};
+const DEFAULT_ORDER = [
+  "experience",
+  "dateOfBirth",
+  "languages",
+  "education",
+  "workExperience",
+  "additionalInfo",
+  "salary",
+] as const;
 
-const DEFAULT_ORDER = Object.keys(SECTION_LABELS);
+type SectionKey = (typeof DEFAULT_ORDER)[number];
 
 async function downloadFromUrl(
   url: string,
   fileName: string,
+  fallbackError: string,
   init?: RequestInit,
 ) {
   const response = await fetch(url, init);
   if (!response.ok) {
-    // Surface the route's JSON error (e.g. "Резюме недоступно на hh.uz",
-    // "Кандидат не найден") instead of a bare status code.
-    let message = `Не удалось скачать файл (${response.status})`;
+    let message = `${fallbackError} (${response.status})`;
     try {
       const data = (await response.json()) as { error?: string };
       if (data?.error) {
@@ -91,10 +91,14 @@ function GripIcon() {
 
 function SortableSectionRow({
   id,
+  label,
+  dragLabel,
   checked,
   onToggle,
 }: {
   id: string;
+  label: string;
+  dragLabel: string;
   checked: boolean;
   onToggle: () => void;
 }) {
@@ -120,7 +124,7 @@ function SortableSectionRow({
       style={style}
     >
       <button
-        aria-label="Перетащить раздел"
+        aria-label={dragLabel}
         className="cursor-grab touch-none text-text-placeholder hover:text-text-secondary"
         type="button"
         {...attributes}
@@ -135,7 +139,7 @@ function SortableSectionRow({
           onChange={onToggle}
           type="checkbox"
         />
-        {SECTION_LABELS[id]}
+        {label}
       </label>
     </li>
   );
@@ -184,10 +188,13 @@ export function ResumeDownloadButton({
   candidateId: string;
   hasHhResume: boolean;
 }) {
+  const t = useTranslations("ResumeExport");
   const [isOpen, setIsOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>("pdf");
-  const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
-  const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_ORDER));
+  const [order, setOrder] = useState<SectionKey[]>([...DEFAULT_ORDER]);
+  const [selected, setSelected] = useState<Set<SectionKey>>(
+    new Set(DEFAULT_ORDER),
+  );
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [downloading, setDownloading] = useState<DownloadKey | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -198,7 +205,7 @@ export function ResumeDownloadButton({
 
   const isBusy = downloading !== null;
 
-  const toggleSection = (value: string) => {
+  const toggleSection = (value: SectionKey) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(value)) {
@@ -216,8 +223,8 @@ export function ResumeDownloadButton({
       setOrder((prev) =>
         arrayMove(
           prev,
-          prev.indexOf(active.id as string),
-          prev.indexOf(over.id as string),
+          prev.indexOf(active.id as SectionKey),
+          prev.indexOf(over.id as SectionKey),
         ),
       );
     }
@@ -226,7 +233,7 @@ export function ResumeDownloadButton({
   const onLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     if (file && !["image/png", "image/jpeg"].includes(file.type)) {
-      setError("Логотип должен быть PNG или JPEG");
+      setError(t("invalidLogo"));
       return;
     }
     setError(null);
@@ -245,13 +252,13 @@ export function ResumeDownloadButton({
     setDownloading(key);
     setError(null);
     try {
-      await downloadFromUrl(url, fileName, init);
+      await downloadFromUrl(url, fileName, t("downloadError"), init);
     } catch (downloadError) {
       console.error(`Failed to download ${key} resume`, downloadError);
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "Не удалось скачать файл",
+          : t("downloadError"),
       );
     } finally {
       setDownloading(null);
@@ -272,7 +279,7 @@ export function ResumeDownloadButton({
         <span className="inline-flex items-center rounded-full bg-primary-blue-light px-2 py-0.5 font-semibold text-primary-blue text-xs leading-none">
           PDF
         </span>
-        Скачать резюме
+        {t("title")}
         <DownloadIcon className="h-4 w-4" />
       </button>
 
@@ -280,7 +287,7 @@ export function ResumeDownloadButton({
         isOpen={isOpen}
         maxWidthClassName="max-w-[520px]"
         onClose={() => setIsOpen(false)}
-        title="Скачать резюме"
+        title={t("title")}
       >
         <div className="flex flex-col gap-4">
           {/* hh.uz — original file, always PDF */}
@@ -289,7 +296,7 @@ export function ResumeDownloadButton({
               <div>
                 <p className="font-semibold text-sm text-text-heading">hh.uz</p>
                 <p className="text-text-secondary text-xs">
-                  Оригинальное резюме с hh.uz (PDF)
+                  {t("hhDescription")}
                 </p>
               </div>
               <button
@@ -306,14 +313,14 @@ export function ResumeDownloadButton({
               >
                 <LoadingButtonContent
                   isLoading={downloading === "hh"}
-                  label="Скачать"
-                  loadingLabel="Загрузка..."
+                  label={t("download")}
+                  loadingLabel={t("downloading")}
                 />
               </button>
             </div>
             {!hasHhResume && (
               <p className="mt-2 text-text-placeholder text-xs">
-                Резюме с hh.uz недоступно для этого кандидата
+                {t("hhUnavailable")}
               </p>
             )}
           </section>
@@ -326,7 +333,7 @@ export function ResumeDownloadButton({
                   Person Hunters
                 </p>
                 <p className="text-text-secondary text-xs">
-                  Брендированный шаблон
+                  {t("brandedTemplate")}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -349,8 +356,8 @@ export function ResumeDownloadButton({
                 >
                   <LoadingButtonContent
                     isLoading={downloading === "person-hunters"}
-                    label="Скачать"
-                    loadingLabel="Загрузка..."
+                    label={t("download")}
+                    loadingLabel={t("downloading")}
                   />
                 </button>
               </div>
@@ -360,10 +367,10 @@ export function ResumeDownloadButton({
           {/* Custom — drag to reorder, check to include, pick format */}
           <section className="rounded-xl border border-border-input p-4">
             <p className="font-semibold text-sm text-text-heading">
-              Свой формат
+              {t("customFormat")}
             </p>
             <p className="text-text-secondary text-xs">
-              Перетащите разделы, чтобы изменить порядок, и отметьте нужные
+              {t("customDescription")}
             </p>
             <DndContext
               collisionDetection={closestCenter}
@@ -378,8 +385,10 @@ export function ResumeDownloadButton({
                   {order.map((value) => (
                     <SortableSectionRow
                       checked={selected.has(value)}
+                      dragLabel={t("dragSection")}
                       id={value}
                       key={value}
+                      label={t(`sections.${value}`)}
                       onToggle={() => toggleSection(value)}
                     />
                   ))}
@@ -390,7 +399,7 @@ export function ResumeDownloadButton({
             {/* Optional logo placed at the top of the custom resume */}
             <div className="mt-3 flex items-center gap-2">
               <label className="cursor-pointer rounded-lg border border-border-input bg-bg-input px-3 py-1.5 font-medium text-text-secondary text-xs transition-colors hover:text-text-heading">
-                Загрузить логотип
+                {t("uploadLogo")}
                 <input
                   accept="image/png,image/jpeg"
                   className="hidden"
@@ -408,7 +417,7 @@ export function ResumeDownloadButton({
                     onClick={() => setLogoFile(null)}
                     type="button"
                   >
-                    Убрать
+                    {t("remove")}
                   </button>
                 </span>
               )}
@@ -441,14 +450,14 @@ export function ResumeDownloadButton({
               >
                 <LoadingButtonContent
                   isLoading={downloading === "custom"}
-                  label="Скачать"
-                  loadingLabel="Загрузка..."
+                  label={t("download")}
+                  loadingLabel={t("downloading")}
                 />
               </button>
             </div>
             {orderedSelected.length === 0 && (
               <p className="mt-2 text-text-placeholder text-xs">
-                Выберите хотя бы один раздел
+                {t("selectSection")}
               </p>
             )}
           </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   ChevronUpIcon,
@@ -136,6 +137,7 @@ function EducationEntry({ institution, gpa, period }: EducationItem) {
 }
 
 function ResumeRow({ name, size, url }: ResumeFile) {
+  const t = useTranslations("CandidateDetail");
   const downloadControl = url ? (
     <Link
       className="text-primary-blue transition-colors hover:text-primary-blue-hover"
@@ -160,7 +162,7 @@ function ResumeRow({ name, size, url }: ResumeFile) {
 
         <div className="min-w-0">
           <p className="truncate font-medium text-base text-text-heading leading-none">
-            {name || "Файл не загружен"}
+            {name || t("fileMissing")}
           </p>
           {size ? (
             <p className="mt-1 text-sm text-text-placeholder leading-none">
@@ -176,9 +178,11 @@ function ResumeRow({ name, size, url }: ResumeFile) {
 }
 
 function EmptySectionState() {
+  const t = useTranslations("CandidateDetail");
+
   return (
     <p className="text-sm text-text-placeholder leading-[1.3]">
-      no information
+      {t("emptySection")}
     </p>
   );
 }
@@ -189,6 +193,7 @@ export function CandidateBackgroundCard({
   resumeFile,
   defaultExpandedSections,
 }: CandidateBackgroundCardProps) {
+  const t = useTranslations("CandidateDetail");
   const [isExperienceExpanded, setIsExperienceExpanded] = useState(
     defaultExpandedSections?.experience ?? true,
   );
@@ -202,7 +207,7 @@ export function CandidateBackgroundCard({
         <SectionHeader
           isExpanded={isExperienceExpanded}
           onToggle={() => setIsExperienceExpanded((value) => !value)}
-          title="Опыт работы"
+          title={t("workExperience")}
         />
 
         {isExperienceExpanded ? (
@@ -230,7 +235,7 @@ export function CandidateBackgroundCard({
         <SectionHeader
           isExpanded={isEducationExpanded}
           onToggle={() => setIsEducationExpanded((value) => !value)}
-          title="Образование"
+          title={t("education")}
         />
 
         {isEducationExpanded ? (

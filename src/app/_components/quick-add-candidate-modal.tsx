@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type {
   QuickAddCandidateModalProps,
@@ -28,6 +29,8 @@ export function QuickAddCandidateModal({
   sourceOptions = [],
   statusOptions = [],
 }: QuickAddCandidateModalProps) {
+  const t = useTranslations("CandidateForm");
+  const common = useTranslations("Common");
   const [fullName, setFullName] = useState("");
   const [contactValue, setContactValue] = useState("");
   const [contactType, setContactType] = useState(
@@ -141,15 +144,15 @@ export function QuickAddCandidateModal({
 
   const handleSave = () => {
     if (!fullName.trim()) {
-      setLocalError("Введите Ф.И.О");
+      setLocalError(t("enterFullName"));
       return;
     }
     if (contactValue.trim() && !contactType) {
-      setLocalError("Выберите тип контакта");
+      setLocalError(t("selectContactType"));
       return;
     }
     if (statusOptions.length > 0 && !status) {
-      setLocalError("Выберите статус кандидата");
+      setLocalError(t("selectCandidateStatus"));
       return;
     }
 
@@ -182,13 +185,13 @@ export function QuickAddCandidateModal({
             className="font-semibold text-text-heading text-xl leading-[1.1]"
             id="quick-add-candidate-modal-title"
           >
-            Быстрое добавление кандидата
+            {t("quickAdd")}
           </h2>
           <Dropdown
             fieldClassName="h-8 px-2 py-2 pr-6 text-sm leading-none"
             hideLabel
             iconClassName="right-2 text-text-placeholder"
-            label="Статус"
+            label={t("status")}
             onChange={(value) => setStatus(value)}
             options={statusOptions}
             value={status}
@@ -200,13 +203,13 @@ export function QuickAddCandidateModal({
             className="font-medium text-base text-text-label leading-[1.4]"
             htmlFor="quick-add-fullname"
           >
-            Ф.И.О
+            {t("fullName")}
           </label>
           <input
             className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
             id="quick-add-fullname"
             onChange={(event) => setFullName(event.target.value)}
-            placeholder="Введите полное имя"
+            placeholder={t("fullNamePlaceholder")}
             type="text"
             value={fullName}
           />
@@ -215,7 +218,7 @@ export function QuickAddCandidateModal({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <p className="font-medium text-base text-text-label leading-[1.4]">
-              Контакты
+              {t("contacts")}
             </p>
             <button
               className="text-3xl text-primary-blue leading-none"
@@ -228,7 +231,7 @@ export function QuickAddCandidateModal({
             <input
               className="h-11 w-full max-w-72 rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
               onChange={(event) => setContactValue(event.target.value)}
-              placeholder="@username или номер телефона"
+              placeholder={t("contactPlaceholder")}
               type="text"
               value={contactValue}
             />
@@ -238,7 +241,7 @@ export function QuickAddCandidateModal({
               hideLabel
               iconClassName="h-5 w-5 right-2 text-text-placeholder"
               id="quick-add-contact-type"
-              label="Тип контакта"
+              label={t("contactType")}
               onChange={setContactType}
               options={contactTypeOptions}
               value={contactType}
@@ -249,7 +252,7 @@ export function QuickAddCandidateModal({
         <Dropdown
           fieldClassName="bg-bg-input"
           id="quick-add-source"
-          label="Источник"
+          label={t("source")}
           onChange={setSource}
           options={sourceOptions}
           value={source}
@@ -257,7 +260,7 @@ export function QuickAddCandidateModal({
 
         <div className="flex flex-col gap-1">
           <p className="font-medium text-base text-text-label leading-[1.4]">
-            Резюме
+            {t("resume")}
           </p>
           <ResumeFileUploader
             candidateId={candidateDraftId}
@@ -271,7 +274,7 @@ export function QuickAddCandidateModal({
               <AIGenerationIcon />
               AI
             </span>
-            Мы проанализируем резюме и сохраним информацию о кандидате
+            {t("resumeSaveInfo")}
           </p>
         </div>
 
@@ -287,7 +290,7 @@ export function QuickAddCandidateModal({
             href="/candidates/create"
             onClick={onAddMoreData}
           >
-            Добавить больше данных
+            {t("addMoreData")}
           </Link>
           <button
             className="ui-button ui-button-primary"
@@ -297,8 +300,8 @@ export function QuickAddCandidateModal({
           >
             <LoadingButtonContent
               isLoading={isSaving}
-              label="Сохранить кандидата"
-              loadingLabel="Сохранение..."
+              label={t("saveCandidate")}
+              loadingLabel={common("saving")}
             />
           </button>
         </div>

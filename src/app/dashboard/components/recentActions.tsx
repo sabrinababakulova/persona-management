@@ -1,13 +1,16 @@
+import { useTranslations } from "next-intl";
 import type { RecentActionsProps } from "~/types/components/recent-actions";
 
 export const RecentActions = ({
   recentActivities = [],
 }: RecentActionsProps) => {
+  const t = useTranslations("Dashboard");
+
   return (
     <div className="surface-card flex min-h-56 flex-col gap-4 overflow-hidden p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm text-text-secondary leading-5">
-          Последние действия
+          {t("recentActions")}
         </h3>
       </div>
 

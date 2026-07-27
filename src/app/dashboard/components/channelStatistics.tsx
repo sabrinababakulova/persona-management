@@ -1,10 +1,11 @@
+import { useTranslations } from "next-intl";
 import { ChannelStatisticsChartIcon } from "~/app/_components/icons";
 import type {
   ChannelStat,
   ChannelStatisticsProps,
 } from "~/types/components/channel-statistics";
 
-const CHANNEL_ORDER = ["hh.uz", "telegram", "rabota.uz", "Другие"] as const;
+const CHANNEL_ORDER = ["hh.uz", "telegram", "rabota.uz", "other"] as const;
 
 const CHANNEL_COLORS: Record<
   (typeof CHANNEL_ORDER)[number],
@@ -22,7 +23,7 @@ const CHANNEL_COLORS: Record<
     strokeClassName: "stroke-chart-orange",
     fillClassName: "bg-chart-orange",
   },
-  Другие: {
+  other: {
     strokeClassName: "stroke-chart-blue",
     fillClassName: "bg-chart-blue",
   },
@@ -41,7 +42,7 @@ function normalizeChannelName(value: string) {
     return "rabota.uz" as const;
   }
 
-  return "Другие" as const;
+  return "other" as const;
 }
 
 function buildNormalizedStats(channelStats: ChannelStat[]) {
@@ -64,6 +65,7 @@ function buildNormalizedStats(channelStats: ChannelStat[]) {
 export function ChannelStatistics({
   channelStats = [],
 }: ChannelStatisticsProps) {
+  const t = useTranslations("Dashboard");
   const normalizedStats = buildNormalizedStats(channelStats);
   const total = normalizedStats.reduce((sum, item) => sum + item.percentage, 0);
   const safeTotal = total > 0 ? total : 1;
@@ -86,7 +88,7 @@ export function ChannelStatistics({
     <div className="surface-card flex min-h-56 flex-col gap-4 overflow-hidden p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm text-text-secondary leading-5">
-          Статистика по каналам
+          {t("channelStatistics")}
         </h3>
       </div>
 
@@ -108,7 +110,7 @@ export function ChannelStatistics({
                   className={`size-4 shrink-0 rounded ${item.colorClasses.fillClassName}`}
                 />
                 <p className="font-semibold text-sm text-text-heading leading-none">
-                  {item.name}
+                  {item.name === "other" ? t("other") : item.name}
                 </p>
               </div>
 

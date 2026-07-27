@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronDownIcon, SearchIcon } from "./icons";
@@ -24,11 +25,13 @@ export function CandidateSelector({
   disabled = false,
   label,
   onChange,
-  placeholder = "Выберите кандидата",
+  placeholder,
   selectedCandidateId,
   selectedCandidateLabel,
   vacancyId,
 }: CandidateSelectorProps) {
+  const t = useTranslations("Components");
+  const commonT = useTranslations("Common");
   const selectId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,7 +99,8 @@ export function CandidateSelector({
   const options = data?.items ?? [];
   const totalItems = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  const selectedLabel = selectedCandidateLabel?.trim() || placeholder;
+  const selectedLabel =
+    selectedCandidateLabel?.trim() || placeholder || t("selectCandidate");
 
   return (
     <div
@@ -145,7 +149,7 @@ export function CandidateSelector({
                         setSearchQuery(event.target.value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Поиск кандидата"
+                      placeholder={t("searchCandidate")}
                       ref={searchInputRef}
                       type="text"
                       value={searchQuery}
@@ -157,7 +161,7 @@ export function CandidateSelector({
                   {isLoading || isFetching ? (
                     <LoadingState
                       className="min-h-[180px] text-text-placeholder"
-                      label="Загрузка кандидатов..."
+                      label={t("loadingCandidates")}
                     />
                   ) : options.length > 0 ? (
                     options.map((candidate) => {
@@ -195,7 +199,7 @@ export function CandidateSelector({
                     })
                   ) : (
                     <div className="flex min-h-[180px] items-center justify-center px-3 text-center text-sm text-text-placeholder">
-                      Кандидаты не найдены
+                      {t("candidatesNotFound")}
                     </div>
                   )}
                 </div>
@@ -209,7 +213,7 @@ export function CandidateSelector({
                     }
                     type="button"
                   >
-                    Назад
+                    {commonT("back")}
                   </button>
 
                   <span className="text-text-placeholder text-xs">
@@ -230,7 +234,7 @@ export function CandidateSelector({
                         }}
                         type="button"
                       >
-                        Очистить
+                        {commonT("clear")}
                       </button>
                     ) : null}
 
@@ -247,7 +251,7 @@ export function CandidateSelector({
                       }
                       type="button"
                     >
-                      Вперед
+                      {commonT("next")}
                     </button>
                   </div>
                 </div>

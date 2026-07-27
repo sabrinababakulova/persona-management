@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ConditionsSectionProps } from "~/types/candidates/conditions-section";
 import { Dropdown } from "../../_components/dropdown";
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "../../_components/icons";
@@ -24,6 +25,8 @@ export function ConditionsSection({
   onRemoveLanguage,
   onLanguageChange,
 }: ConditionsSectionProps) {
+  const t = useTranslations("CandidateForm");
+
   return (
     <section className="surface-card mb-5 p-5 sm:p-6">
       <button
@@ -31,7 +34,7 @@ export function ConditionsSection({
         onClick={onToggle}
         type="button"
       >
-        <h2 className="section-title">Условия</h2>
+        <h2 className="section-title">{t("conditions")}</h2>
         <ChevronUpIcon
           className={`h-4 w-4 text-text-placeholder transition-transform ${
             isOpen ? "" : "rotate-180"
@@ -72,13 +75,13 @@ export function ConditionsSection({
             }
             id="salaryExpectation"
             inputClassName="placeholder:text-text-placeholder"
-            label="Зарплата"
+            label={t("salary")}
             onChange={(e) =>
               onSalaryChange(
                 e.target.value ? Number(e.target.value) : undefined,
               )
             }
-            placeholder="Введите сумму"
+            placeholder={t("salaryPlaceholder")}
             type="number"
             value={salaryExpectation ?? ""}
           />
@@ -87,7 +90,7 @@ export function ConditionsSection({
             <Dropdown
               iconClassName="h-5 w-5 text-text-placeholder"
               id="skills"
-              label="Ключевые навыки"
+              label={t("keySkills")}
               onChange={(value) => {
                 if (value) {
                   onToggleSkill(value);
@@ -99,8 +102,8 @@ export function ConditionsSection({
               }))}
               placeholder={
                 skills.length > 0
-                  ? `${skills.length} навыков выбрано`
-                  : "Выберите навыки"
+                  ? t("skillsSelected", { count: skills.length })
+                  : t("selectSkills")
               }
               value=""
             />
@@ -125,7 +128,7 @@ export function ConditionsSection({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm text-text-label leading-5">
-                Языки
+                {t("languages")}
               </span>
               <button
                 className="text-primary-blue hover:text-primary-blue/80"
@@ -147,27 +150,27 @@ export function ConditionsSection({
                       className="flex-1"
                       hideLabel
                       iconClassName="h-5 w-5 text-text-placeholder"
-                      label="Язык"
+                      label={t("language")}
                       onChange={(value) =>
                         onLanguageChange(language.id, "name", value)
                       }
                       options={languageOptions.map((lang) => ({
-                        value: lang.label,
+                        value: lang.value,
                         label: lang.label,
                       }))}
-                      placeholder="Выберите язык"
+                      placeholder={t("selectLanguage")}
                       value={language.name}
                     />
                     <Dropdown
                       className="w-40"
                       hideLabel
                       iconClassName="h-5 w-5 text-text-placeholder"
-                      label="Уровень"
+                      label={t("level")}
                       onChange={(value) =>
                         onLanguageChange(language.id, "level", value)
                       }
                       options={languageLevelOptions}
-                      placeholder="Уровень"
+                      placeholder={t("level")}
                       value={language.level}
                     />
                     {languages.length > 1 && (
