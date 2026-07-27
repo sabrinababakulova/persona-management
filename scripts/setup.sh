@@ -62,6 +62,10 @@ echo "=== 7. Registering tables in Directus admin panel ==="
 "$SCRIPT_DIR/register-directus-collections.sh"
 
 echo ""
+echo "=== 8. Applying Talanty branding to Directus ==="
+"$SCRIPT_DIR/configure-directus-branding.sh"
+
+echo ""
 echo "=========================================="
 echo "Setup complete!"
 echo "  Database:  localhost:$DB_PORT"
