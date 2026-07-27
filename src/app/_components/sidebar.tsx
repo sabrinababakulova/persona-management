@@ -94,7 +94,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
             <BrandLogoIcon className="h-full w-full" />
           </div>
           <span className="font-semibold text-white text-xl tracking-tight">
-            Persona
+            Talanty
           </span>
         </div>
 
