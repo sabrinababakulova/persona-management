@@ -15,6 +15,7 @@
     "db:seed": "bun run src/server/db/seed-demo-data.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
+    "directus:brand": "bash scripts/configure-directus-branding.sh",
     "i18n:check": "bun run scripts/check-i18n-catalogs.ts",
     "preview": "next build && next start",
     "start": "next start",

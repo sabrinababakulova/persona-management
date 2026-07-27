@@ -1,0 +1,117 @@
+/*
+ * Talanty branding for Directus 11.
+ *
+ * Most colors, typography, and component tokens are configured through
+ * Directus's supported theme overrides. These small layout refinements make
+ * the public login view mirror talanty.uz without replacing the Directus app.
+ */
+
+#app .public-view .container {
+  width: min(500px, 100%);
+  background: #fff8ef;
+  box-shadow: 24px 0 72px rgb(28 26 30 / 14%);
+}
+
+#app .public-view .title-box {
+  align-items: center;
+  gap: 16px;
+}
+
+#app .public-view .title-box .logo {
+  width: 132px;
+  height: 48px;
+  padding: 7px 10px;
+  border: 1px solid #e5dcd3;
+  border-radius: 12px;
+  /* biome-ignore lint/complexity/noImportantStyles: Directus sets the project color inline. */
+  background: #fff !important;
+}
+
+#app .public-view .title-box .logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#app .public-view .content {
+  width: min(360px, calc(100vw - 48px));
+}
+
+#app .public-view .header .type-title {
+  color: #1c1a1e;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.045em;
+}
+
+#app .public-view .header p,
+#app .public-view .forgot-password,
+#app .public-view .notice {
+  color: #716964;
+}
+
+#app .public-view .v-input .input {
+  min-height: 52px;
+  border-radius: 14px;
+}
+
+#app .public-view .v-button.sign-in .button {
+  min-height: 52px;
+  border-radius: 999px;
+  background: #1c1a1e;
+  color: #fff8ef;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+#app .public-view .v-button.sign-in .button:hover {
+  background: #fd372c;
+  transform: translateY(-1px);
+}
+
+#app .public-view .v-button.sign-in .button:focus-visible {
+  outline: 3px solid rgb(253 55 44 / 28%);
+  outline-offset: 3px;
+}
+
+#app .public-view .art {
+  background-color: #9575de;
+}
+
+#app .public-view .note-container {
+  left: auto;
+  right: 28px;
+  bottom: 28px;
+  width: auto;
+  height: auto;
+  max-width: min(420px, calc(100% - 56px));
+  padding: 9px 16px;
+  border: 1px solid rgb(255 248 239 / 55%);
+  border-radius: 999px;
+  background: rgb(28 26 30 / 78%);
+  color: #fff8ef;
+  backdrop-filter: blur(16px);
+}
+
+#app .public-view .note-container p {
+  margin: 0;
+}
+
+#app .public-view .note-container a {
+  color: #ecf43f;
+}
+
+@media (max-width: 800px) {
+  #app .public-view .container {
+    width: 100%;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app .public-view .v-button.sign-in .button {
+    transition: none;
+  }
+}
