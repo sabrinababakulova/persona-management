@@ -202,6 +202,70 @@ database_column_exists() {
   [ "$exists" = "t" ]
 }
 
+delete_directus_metadata_if_present() {
+  local path="$1"
+  local label="$2"
+  local status
+
+  echo -n "Removing deprecated '$label' metadata... "
+  status=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+    "$DIRECTUS_URL$path" \
+    -H "Authorization: Bearer $TOKEN")
+
+  case "$status" in
+    204)
+      echo "REMOVED"
+      ;;
+    403|404)
+      # Directus returns 403 for some already-orphaned metadata paths.
+      echo "NOT_PRESENT"
+      ;;
+    *)
+      echo "HTTP $status"
+      return 1
+      ;;
+  esac
+}
+
+cleanup_deprecated_vacancy_publication_metadata() {
+  echo ""
+  echo "Cleaning deprecated vacancy publication metadata..."
+
+  # This alias used to render the removed vacancy_publication table on every
+  # vacancy item page. Once the table is gone, Directus' list-o2m interface
+  # crashes and turns the whole item page into a 404.
+  delete_directus_metadata_if_present \
+    "/fields/vacancy/publications" \
+    "vacancy.publications"
+
+  if database_table_exists "vacancy_publication"; then
+    # Some servers still contain legacy publication data. Deleting a Directus
+    # collection with a physical schema can drop that table, so preserve the
+    # data and only hide the deprecated collection from the Content module.
+    patch_collection "vacancy_publication" '{
+        "meta": {
+          "hidden": true,
+          "note": "DEPRECATED — сохранено только для совместимости. Публикации теперь находятся в vacancy."
+        }
+      }' "deprecated vacancy publications"
+    echo "Preserved physical vacancy_publication table."
+    return
+  fi
+
+  # With no physical table, the collection row and relation are metadata-only
+  # leftovers. Removing them matches Directus' clean state without touching
+  # application data.
+  delete_directus_metadata_if_present \
+    "/collections/vacancy_publication" \
+    "vacancy_publication collection"
+
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c \
+    "DELETE FROM directus_relations
+     WHERE many_collection = 'vacancy_publication'
+       AND many_field = 'vacancy_id';"
+  echo "Removed orphaned vacancy_publication relation metadata."
+}
+
 upsert_relation() {
   local collection="$1"
   local field="$2"
@@ -421,6 +485,11 @@ PYEOF
   fi
 }
 
+if [ "${1:-}" = "--cleanup-only" ]; then
+  cleanup_deprecated_vacancy_publication_metadata
+  exit 0
+fi
+
 # Get all non-directus collections
 TABLES=$(PGPASSWORD=$(echo "$DATABASE_URL" | awk -F':' '{print $3}' | awk -F'@' '{print $1}') \
   psql -h localhost \
@@ -443,6 +512,8 @@ for TABLE in $TABLES; do
     echo "HTTP $RESPONSE"
   fi
 done
+
+cleanup_deprecated_vacancy_publication_metadata
 
 echo ""
 echo "Fetching hh.uz dictionaries for vacancy lookups..."
