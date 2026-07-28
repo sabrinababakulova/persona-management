@@ -1,0 +1,23 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+PERSONA_PROJECT_DIR=__PROJECT_DIR__
+PERSONA_CRON_ENV_FILE=/etc/persona-management/cron.env
+PERSONA_DATABASE_ENV_FILE=__PROJECT_DIR__/.env
+PERSONA_CRON_LOCK_DIR=/run/lock/persona-management
+
+# Recreate the volatile lock directory on hosts that do not run systemd-tmpfiles.
+@reboot root install -d -m 0750 -o persona-cron -g persona-cron /run/lock/persona-management
+
+# hh.uz synchronization workers. These run without root privileges.
+* * * * * persona-cron /usr/local/lib/persona-management/hh-enrich-cron.sh >> /var/log/persona-management/hh-enrich.log 2>&1
+*/20 * * * * persona-cron /usr/local/lib/persona-management/hh-discover-cron.sh >> /var/log/persona-management/hh-discover.log 2>&1
+*/5 * * * * persona-cron /usr/local/lib/persona-management/hh-status-cron.sh >> /var/log/persona-management/hh-status.log 2>&1
+
+# Nightly PostgreSQL snapshot. Root is limited to this job because container
+# access is equivalent to root access on the host.
+17 2 * * * root /usr/local/lib/persona-management/backup-database.sh >> /var/log/persona-management/database-backup.log 2>&1
+
+# Restore the latest snapshot into an isolated temporary database every Sunday.
+43 3 * * 0 root /usr/local/lib/persona-management/verify-database-backup.sh >> /var/log/persona-management/database-restore-test.log 2>&1

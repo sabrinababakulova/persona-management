@@ -1,0 +1,24 @@
+/var/log/persona-management/*.log {
+    daily
+    rotate 14
+    maxsize 10M
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su persona-cron persona-cron
+}
+
+# Retire the legacy root-crontab logs after the jobs move to the directory
+# above. No new entries should be written to these files after installation.
+/var/log/hh-discover.log /var/log/hh-enrich.log /var/log/hh-status.log {
+    weekly
+    rotate 4
+    dateext
+    compress
+    missingok
+    notifempty
+    su root root
+}
