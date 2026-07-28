@@ -51,6 +51,9 @@ fi
 
 git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
 bun install --frozen-lockfile
+
+# Refuse schema changes unless a validated PostgreSQL snapshot succeeds first.
+run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
 bun run db:push
 bun run build
 
@@ -64,6 +67,8 @@ else
 fi
 
 pm2 save
+
+run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
 
 echo ""
 pm2 status "$APP_NAME"
