@@ -7,6 +7,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
+import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
 
 export const createTable = pgTableCreator((name) => name);
@@ -489,6 +490,77 @@ export const hhEnrichmentJobs = createTable(
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [index("hh_enrichment_job_claim_idx").on(t.status, t.runAfter)],
+);
+
+/**
+ * Durable inbox for resume documents received from the configured Telegram
+ * group (or from a one-time Telegram Desktop history export).
+ *
+ * The webhook only inserts rows. A separate worker claims them with
+ * `FOR UPDATE SKIP LOCKED`, downloads/stores the PDF, runs the Mastra agents,
+ * and creates the company-scoped candidate. The two unique indexes make
+ * Telegram's at-least-once webhook delivery and repeated file forwards safe.
+ */
+export const telegramResumeImports = createTable(
+  "telegram_resume_import",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar("company_id", { length: 255 })
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    vacancyId: d
+      .varchar("vacancy_id", { length: 255 })
+      .notNull()
+      .references(() => vacancies.id),
+    chatId: d.varchar("chat_id", { length: 64 }).notNull(),
+    messageId: d.integer("message_id").notNull(),
+    updateId: d.varchar("update_id", { length: 64 }),
+    /** `bot` for Bot API updates; `desktop_export` for historical backfills. */
+    source: d.varchar({ length: 30 }).notNull().default("bot"),
+    /** Bot-scoped id used to download a live Telegram document. */
+    fileId: d.varchar("file_id", { length: 255 }),
+    /** Stable Telegram id, or a SHA-256 identity for Desktop exports. */
+    fileUniqueId: d.varchar("file_unique_id", { length: 255 }).notNull(),
+    fileName: d.varchar("file_name", { length: 255 }).notNull(),
+    mimeType: d.varchar("mime_type", { length: 255 }),
+    fileSize: d.integer("file_size"),
+    messageDate: d.timestamp("message_date", { withTimezone: true }),
+    /**
+     * Preallocated before a Candidate exists. This deliberately has no FK:
+     * the same id is also used as the Directus storage key while processing.
+     */
+    candidateId: d.varchar("candidate_id", { length: 255 }).notNull(),
+    /** Directus id once the original resume has been stored durably. */
+    resumeFileId: d.varchar("resume_file_id", { length: 255 }),
+    /** Cached successful AI outputs prevent paying for them again after retries. */
+    prefillData: d.json("prefill_data").$type<CandidateResumePrefillData>(),
+    aiAnalysis: d.text("ai_analysis"),
+    /** `pending` | `processing` | `done` | `failed` | `ignored`. */
+    status: d.varchar({ length: 20 }).notNull().default("pending"),
+    attempts: d.integer().notNull().default(0),
+    runAfter: d
+      .timestamp("run_after", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lockedAt: d.timestamp("locked_at", { withTimezone: true }),
+    lastError: d.text("last_error"),
+    createdAt: d.timestamp({ withTimezone: true }).defaultNow().notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("telegram_resume_import_message_idx").on(t.chatId, t.messageId),
+    uniqueIndex("telegram_resume_import_file_idx").on(
+      t.companyId,
+      t.fileUniqueId,
+    ),
+    index("telegram_resume_import_claim_idx").on(t.status, t.runAfter),
+    index("telegram_resume_import_company_idx").on(t.companyId),
+  ],
 );
 
 // Activity log table for dashboard "Recent actions" feed

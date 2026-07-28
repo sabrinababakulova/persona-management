@@ -1,0 +1,2 @@
+ALTER TABLE "telegram_resume_import" ADD COLUMN "vacancy_id" varchar(255) NOT NULL;--> statement-breakpoint
+ALTER TABLE "telegram_resume_import" ADD CONSTRAINT "telegram_resume_import_vacancy_id_vacancy_id_fk" FOREIGN KEY ("vacancy_id") REFERENCES "public"."vacancy"("id") ON DELETE no action ON UPDATE no action;

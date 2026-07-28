@@ -26,6 +26,22 @@ export const env = createEnv({
     AUTH_URL: z.string().url().optional(),
     VERCEL_URL: z.string().optional(),
     TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+    TELEGRAM_RESUME_CHAT_ID: z
+      .string()
+      .regex(/^-?\d+$/, "TELEGRAM_RESUME_CHAT_ID must be a numeric chat id")
+      .optional(),
+    TELEGRAM_RESUME_COMPANY_ID: z.string().min(1).max(255).optional(),
+    TELEGRAM_RESUME_VACANCY_ID: z.string().min(1).max(255).optional(),
+    TELEGRAM_WEBHOOK_BASE_URL: z.string().url().optional(),
+    TELEGRAM_WEBHOOK_SECRET: z
+      .string()
+      .min(16)
+      .max(256)
+      .regex(
+        /^[A-Za-z0-9_-]+$/,
+        "TELEGRAM_WEBHOOK_SECRET may only contain A-Z, a-z, 0-9, _ and -",
+      )
+      .optional(),
     HH_CLIENT_ID: z.string().min(1).optional(),
     HH_CLIENT_SECRET: z.string().min(1).optional(),
     HH_REDIRECT_URI: z.string().url().optional(),
@@ -63,6 +79,11 @@ export const env = createEnv({
     AUTH_URL: process.env.AUTH_URL,
     VERCEL_URL: process.env.VERCEL_URL,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_RESUME_CHAT_ID: process.env.TELEGRAM_RESUME_CHAT_ID,
+    TELEGRAM_RESUME_COMPANY_ID: process.env.TELEGRAM_RESUME_COMPANY_ID,
+    TELEGRAM_RESUME_VACANCY_ID: process.env.TELEGRAM_RESUME_VACANCY_ID,
+    TELEGRAM_WEBHOOK_BASE_URL: process.env.TELEGRAM_WEBHOOK_BASE_URL,
+    TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
     HH_CLIENT_ID: process.env.HH_CLIENT_ID,
     HH_CLIENT_SECRET: process.env.HH_CLIENT_SECRET,
     HH_REDIRECT_URI: process.env.HH_REDIRECT_URI,

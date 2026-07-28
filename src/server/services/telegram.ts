@@ -1,23 +1,49 @@
+import { autoRetry } from "@grammyjs/auto-retry";
+import { Api, InputFile } from "grammy";
+import type { Message, Update } from "grammy/types";
+
 import { env } from "~/env";
+
+const TELEGRAM_API_ORIGIN = "https://api.telegram.org";
+const TELEGRAM_API_RETRY_ATTEMPTS = 2;
+const TELEGRAM_API_MAX_RETRY_DELAY_SECONDS = 15;
+
+let telegramApi: Api | null = null;
+let cachedBotId: number | null = null;
 
 export function isTelegramConfigured(): boolean {
   return !!env.TELEGRAM_BOT_TOKEN;
 }
 
-type TelegramSendResponse = {
-  ok: boolean;
-  result: {
-    message_id: number;
-    chat: { id: number; username?: string };
-  };
-};
+function requireTelegramToken() {
+  if (!env.TELEGRAM_BOT_TOKEN) {
+    throw new Error("Telegram bot token is not configured");
+  }
+  return env.TELEGRAM_BOT_TOKEN;
+}
 
-function parseTelegramSendResult(data: TelegramSendResponse): {
+export function createTelegramApi(token: string) {
+  const api = new Api(token);
+  api.config.use(
+    autoRetry({
+      maxRetryAttempts: TELEGRAM_API_RETRY_ATTEMPTS,
+      maxDelaySeconds: TELEGRAM_API_MAX_RETRY_DELAY_SECONDS,
+    }),
+  );
+  return api;
+}
+
+function getTelegramApi() {
+  telegramApi ??= createTelegramApi(requireTelegramToken());
+  return telegramApi;
+}
+
+function parseTelegramSendResult(message: Message): {
   messageId: number;
   messageUrl: string;
 } {
-  const messageId = data.result.message_id;
-  const chat = data.result.chat;
+  const messageId = message.message_id;
+  const chat = message.chat;
   const messageUrl = chat.username
     ? `https://t.me/${chat.username}/${messageId}`
     : `https://t.me/c/${String(chat.id).replace(/^-100/, "")}/${messageId}`;
@@ -29,51 +55,17 @@ export async function sendTelegramMessage(
   text: string,
   channelId: string,
 ): Promise<{ messageId: number; messageUrl: string }> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: channelId,
-      text,
-      parse_mode: "HTML",
-    }),
+  const message = await getTelegramApi().sendMessage(channelId, text, {
+    parse_mode: "HTML",
   });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${body}`);
-  }
-
-  const data = (await response.json()) as TelegramSendResponse;
-  return parseTelegramSendResult(data);
+  return parseTelegramSendResult(message);
 }
-
-let cachedBotId: number | null = null;
 
 async function getTelegramBotId(): Promise<number> {
   if (cachedBotId !== null) {
     return cachedBotId;
   }
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getMe`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${body}`);
-  }
-
-  const data = (await response.json()) as { result: { id: number } };
-  cachedBotId = data.result.id;
+  cachedBotId = (await getTelegramApi().getMe()).id;
   return cachedBotId;
 }
 
@@ -106,31 +98,13 @@ export function parseTelegramMessageUrl(
 
 /** Checks whether the bot has the `can_delete_messages` admin right in a chat. */
 export async function canBotDeleteMessages(chatId: string): Promise<boolean> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
   const botId = await getTelegramBotId();
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getChatMember`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, user_id: botId }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${body}`);
-  }
-
-  const data = (await response.json()) as {
-    result: { status: string; can_delete_messages?: boolean };
-  };
+  const member = await getTelegramApi().getChatMember(chatId, botId);
 
   // The channel creator can always delete; admins need the explicit right.
   return (
-    data.result.status === "creator" || data.result.can_delete_messages === true
+    member.status === "creator" ||
+    (member.status === "administrator" && member.can_delete_messages === true)
   );
 }
 
@@ -139,22 +113,7 @@ export async function deleteTelegramMessage(
   chatId: string,
   messageId: number,
 ): Promise<void> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/deleteMessage`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${body}`);
-  }
+  await getTelegramApi().deleteMessage(chatId, messageId);
 }
 
 /** Posts a photo with an optional HTML caption to a Telegram channel. */
@@ -163,31 +122,96 @@ export async function sendTelegramPhoto(
   caption: string,
   channelId: string,
 ): Promise<{ messageId: number; messageUrl: string }> {
-  if (!env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("Telegram bot token is not configured");
-  }
-
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`;
-
-  const form = new FormData();
-  form.append("chat_id", channelId);
-  if (caption) {
-    form.append("caption", caption);
-    form.append("parse_mode", "HTML");
-  }
-  form.append(
-    "photo",
-    new Blob([photo.data], { type: photo.contentType }),
-    photo.filename,
+  const message = await getTelegramApi().sendPhoto(
+    channelId,
+    new InputFile(new Uint8Array(photo.data), photo.filename),
+    {
+      ...(caption ? { caption, parse_mode: "HTML" as const } : {}),
+    },
   );
+  return parseTelegramSendResult(message);
+}
 
-  const response = await fetch(url, { method: "POST", body: form });
+export async function getTelegramBotProfile() {
+  return getTelegramApi().getMe();
+}
 
+export async function getTelegramWebhookInfo() {
+  return getTelegramApi().getWebhookInfo();
+}
+
+export async function getTelegramChat(chatId: string) {
+  return getTelegramApi().getChat(chatId);
+}
+
+export async function getTelegramChatMember(chatId: string, userId: number) {
+  return getTelegramApi().getChatMember(chatId, userId);
+}
+
+export async function getTelegramUpdates(input: {
+  offset?: number;
+  limit?: number;
+}): Promise<Update[]> {
+  return getTelegramApi().getUpdates({
+    ...(input.offset === undefined ? {} : { offset: input.offset }),
+    limit: input.limit ?? 100,
+    timeout: 0,
+    allowed_updates: ["message", "channel_post"],
+  });
+}
+
+export async function setTelegramResumeWebhook(input: {
+  url: string;
+  secretToken: string;
+}): Promise<void> {
+  await getTelegramApi().setWebhook(input.url, {
+    secret_token: input.secretToken,
+    allowed_updates: ["message", "channel_post"],
+    drop_pending_updates: false,
+    // Idempotency is already enforced in the database; keeping delivery
+    // serial also avoids needlessly competing AI queue inserts.
+    max_connections: 1,
+  });
+}
+
+export async function deleteTelegramWebhook(): Promise<void> {
+  await getTelegramApi().deleteWebhook({
+    drop_pending_updates: false,
+  });
+}
+
+export async function downloadTelegramFile(
+  fileId: string,
+  maximumBytes: number,
+): Promise<Buffer> {
+  const file = await getTelegramApi().getFile(fileId);
+
+  if (!file.file_path) {
+    throw new Error("Telegram getFile did not return file_path");
+  }
+  if (file.file_size !== undefined && file.file_size > maximumBytes) {
+    throw new Error(`Telegram file exceeds the ${maximumBytes}-byte limit`);
+  }
+  const token = requireTelegramToken();
+
+  const response = await fetch(
+    `${TELEGRAM_API_ORIGIN}/file/bot${token}/${file.file_path}`,
+  );
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${body}`);
+    throw new Error(
+      `Telegram file download failed (${response.status}): ${response.statusText}`,
+    );
   }
 
-  const data = (await response.json()) as TelegramSendResponse;
-  return parseTelegramSendResult(data);
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > maximumBytes) {
+    throw new Error(`Telegram file exceeds the ${maximumBytes}-byte limit`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length > maximumBytes) {
+    throw new Error(`Telegram file exceeds the ${maximumBytes}-byte limit`);
+  }
+
+  return buffer;
 }

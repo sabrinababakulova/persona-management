@@ -253,6 +253,20 @@
       "when": 1782712150897,
       "tag": "0035_blushing_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1785220069763,
+      "tag": "0036_common_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1785221136491,
+      "tag": "0037_third_morph",
+      "breakpoints": true
     }
   ]
 }
