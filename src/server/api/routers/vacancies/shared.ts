@@ -104,6 +104,11 @@ export function isHhVacancyId(value: string) {
   return value.startsWith("hh_");
 }
 
+/** Restricts recruiter-facing queries to vacancies owned by application users. */
+export function isUserVisibleVacancy() {
+  return eq(vacancies.isInternal, false);
+}
+
 export async function getVacanciesRelatedCandidates(
   db: DatabaseClient,
   vacancyIds: string[],

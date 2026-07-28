@@ -246,6 +246,7 @@ async function processTelegramResumeJob(
           eq(vacancies.id, job.vacancyId),
           eq(vacancies.companyId, job.companyId),
           eq(vacancies.isPublication, false),
+          eq(vacancies.isInternal, true),
         ),
       )
       .limit(1);

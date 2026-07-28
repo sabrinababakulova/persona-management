@@ -353,6 +353,11 @@ export const vacancies = createTable(
      * Replaces the deprecated `vacancy_publication` table.
      */
     isPublication: d.boolean("is_publication").notNull().default(false),
+    /**
+     * System-owned vacancies remain queryable in Directus but are excluded from
+     * every recruiter-facing application query.
+     */
+    isInternal: d.boolean("is_internal").notNull().default(false),
     /** Active flag for publications; ignored when `isPublication` is `false`. */
     isActive: d.boolean("is_active").notNull().default(true),
     /**

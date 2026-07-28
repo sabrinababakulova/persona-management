@@ -30,7 +30,11 @@ import {
   vacancyIdInputSchema,
   vacancyPublicationListInputSchema,
 } from "./schemas";
-import { getVacanciesRelatedCandidates, isHhVacancyId } from "./shared";
+import {
+  getVacanciesRelatedCandidates,
+  isHhVacancyId,
+  isUserVisibleVacancy,
+} from "./shared";
 
 export const getVacancyProcedure = protectedProcedure
   .input(vacancyIdInputSchema)
@@ -134,7 +138,11 @@ export const getVacancyProcedure = protectedProcedure
       .select()
       .from(vacancies)
       .where(
-        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+        ),
       )
       .limit(1);
 
@@ -171,7 +179,11 @@ export const getPersonHunterPublicationProcedure = protectedProcedure
       .select({ personHunterVacancyId: vacancies.personHunterVacancyId })
       .from(vacancies)
       .where(
-        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+        ),
       )
       .limit(1);
 
@@ -300,6 +312,7 @@ export const getHhVacancyDetailProcedure = protectedProcedure
           and(
             eq(vacancies.id, input.id),
             eq(vacancies.companyId, userCompanyId),
+            isUserVisibleVacancy(),
           ),
         )
         .limit(1);
@@ -350,6 +363,7 @@ export const listVacancyPublicationsProcedure = protectedProcedure
     const conditions = [
       eq(vacancies.companyId, userCompanyId),
       eq(vacancies.isPublication, true),
+      isUserVisibleVacancy(),
       eq(vacancies.parentId, input.parentVacancyId),
     ];
 
@@ -408,6 +422,7 @@ export const getPublicationTelegramPostsProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.publicationId),
           eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -536,7 +551,11 @@ export const getVacancyFunnelProcedure = protectedProcedure
       })
       .from(vacancies)
       .where(
-        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+        ),
       )
       .limit(1);
 
@@ -552,6 +571,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         and(
           eq(vacancies.parentId, input.id),
           eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
         ),
       );
     const funnelVacancyIds = funnelVacancyRows.map((row) => row.id);
@@ -589,6 +609,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
                   uniqueCandidateRows.map((candidate) => candidate.id),
                 ),
                 eq(vacancies.companyId, userCompanyId),
+                isUserVisibleVacancy(),
               ),
             )
             .orderBy(desc(candidateVacancies.id))

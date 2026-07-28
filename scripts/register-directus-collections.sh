@@ -1091,6 +1091,17 @@ patch_field "vacancy" "is_active" '{
     }
   }' "vacancy.is_active"
 
+patch_field "vacancy" "is_internal" '{
+    "type": "boolean",
+    "meta": {
+      "interface": "boolean",
+      "readonly": true,
+      "sort": 47,
+      "width": "half",
+      "note": "Системная вакансия: видна в Directus, но скрыта в основном приложении."
+    }
+  }' "vacancy.is_internal"
+
 patch_field "vacancy" "destination" '{
     "type": "string",
     "meta": {
@@ -1105,7 +1116,7 @@ patch_field "vacancy" "destination" '{
         "allowOther": false,
         "allowNone": true
       },
-      "sort": 47,
+      "sort": 48,
       "width": "half",
       "note": "Целевой канал. Null для базовых вакансий."
     }

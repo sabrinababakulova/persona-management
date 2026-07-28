@@ -1,5 +1,18 @@
-import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
-import { toVacancyStatus } from "~/server/api/routers/vacancies/shared";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  ne,
+  notExists,
+  or,
+} from "drizzle-orm";
+import {
+  isUserVisibleVacancy,
+  toVacancyStatus,
+} from "~/server/api/routers/vacancies/shared";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidates,
@@ -156,6 +169,7 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(vacancies.companyId, userCompanyId),
             eq(vacancies.status, "active"),
+            isUserVisibleVacancy(),
           ),
         ),
       ctx.db
@@ -207,6 +221,7 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(vacancies.companyId, userCompanyId),
             eq(vacancies.status, "active"),
+            isUserVisibleVacancy(),
           ),
         )
         .orderBy(desc(vacancies.createdAt))
@@ -222,7 +237,26 @@ export const dashboardRouter = createTRPCRouter({
           createdAt: recentActivityLogs.createdAt,
         })
         .from(recentActivityLogs)
-        .where(eq(recentActivityLogs.companyId, userCompanyId))
+        .where(
+          and(
+            eq(recentActivityLogs.companyId, userCompanyId),
+            or(
+              ne(recentActivityLogs.entityType, "vacancy"),
+              notExists(
+                ctx.db
+                  .select({ id: vacancies.id })
+                  .from(vacancies)
+                  .where(
+                    and(
+                      eq(vacancies.id, recentActivityLogs.entityId),
+                      eq(vacancies.companyId, userCompanyId),
+                      eq(vacancies.isInternal, true),
+                    ),
+                  ),
+              ),
+            ),
+          ),
+        )
         .orderBy(desc(recentActivityLogs.createdAt))
         .limit(RECENT_ACTIVITIES_LIMIT)
         .catch(() => []),

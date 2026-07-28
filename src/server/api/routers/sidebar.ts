@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { candidates, users, vacancies } from "~/server/db/schema";
+import { isUserVisibleVacancy } from "./vacancies/shared";
 
 /**
  * Sidebar router — powers the "new since you last looked" badges.
@@ -46,6 +47,7 @@ export const sidebarRouter = createTRPCRouter({
             eq(vacancies.companyId, user.companyId),
             // Base vacancies only — per-channel publications are not "new vacancies".
             eq(vacancies.isPublication, false),
+            isUserVisibleVacancy(),
             gt(vacancies.createdAt, user.vacanciesSeenAt),
           ),
         ),

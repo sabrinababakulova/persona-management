@@ -58,7 +58,12 @@ import {
   vacancyIdInputSchema,
   vacancyUpdateInputSchema,
 } from "./schemas";
-import { formatVacancy, isHhVacancyId, type SalaryCurrency } from "./shared";
+import {
+  formatVacancy,
+  isHhVacancyId,
+  isUserVisibleVacancy,
+  type SalaryCurrency,
+} from "./shared";
 
 /**
  * Per the hh.uz `vacancy-prolongation` schema, a 403 response can carry one of these
@@ -273,7 +278,11 @@ export const updateVacancyProcedure = protectedProcedure
       .select()
       .from(vacancies)
       .where(
-        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+        ),
       )
       .limit(1);
 
@@ -380,6 +389,7 @@ export const updateVacancyProcedure = protectedProcedure
           and(
             eq(vacancies.id, input.id),
             eq(vacancies.companyId, userCompanyId),
+            isUserVisibleVacancy(),
           ),
         )
         .returning();
@@ -711,7 +721,11 @@ export const updateVacancyProcedure = protectedProcedure
       .update(vacancies)
       .set(valuesToUpdate)
       .where(
-        and(eq(vacancies.id, input.id), eq(vacancies.companyId, userCompanyId)),
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+        ),
       )
       .returning();
 
@@ -767,6 +781,7 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, companyId),
           eq(vacancies.isPublication, true),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -814,6 +829,7 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, companyId),
           eq(vacancies.isPublication, true),
+          isUserVisibleVacancy(),
         ),
       )
       .returning({ id: vacancies.id, parentId: vacancies.parentId });
@@ -870,6 +886,7 @@ export const publishTelegramProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, companyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -934,6 +951,7 @@ export const publishTelegramProcedure = protectedProcedure
           and(
             eq(vacancies.id, vacancy.parentId),
             eq(vacancies.companyId, companyId),
+            isUserVisibleVacancy(),
           ),
         )
         .limit(1);
@@ -1054,7 +1072,7 @@ export const publishTelegramProcedure = protectedProcedure
       await ctx.db
         .update(vacancies)
         .set({ telegramPostId: firstMessageUrl })
-        .where(eq(vacancies.id, vacancy.id));
+        .where(and(eq(vacancies.id, vacancy.id), isUserVisibleVacancy()));
 
       if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
         await ctx.db
@@ -1064,6 +1082,7 @@ export const publishTelegramProcedure = protectedProcedure
             and(
               eq(vacancies.id, vacancy.parentId),
               eq(vacancies.companyId, companyId),
+              isUserVisibleVacancy(),
             ),
           );
       }
@@ -1173,6 +1192,7 @@ export const publishHhProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, companyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -1255,7 +1275,7 @@ export const publishHhProcedure = protectedProcedure
     await ctx.db
       .update(vacancies)
       .set({ hhVacancyId: result.id })
-      .where(eq(vacancies.id, vacancy.id));
+      .where(and(eq(vacancies.id, vacancy.id), isUserVisibleVacancy()));
 
     if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
       await ctx.db
@@ -1265,6 +1285,7 @@ export const publishHhProcedure = protectedProcedure
           and(
             eq(vacancies.id, vacancy.parentId),
             eq(vacancies.companyId, companyId),
+            isUserVisibleVacancy(),
           ),
         );
     }
@@ -1308,6 +1329,7 @@ export const saveHhDraftProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, companyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -1375,7 +1397,7 @@ export const saveHhDraftProcedure = protectedProcedure
       await ctx.db
         .update(vacancies)
         .set({ hhDraftId: result.id })
-        .where(eq(vacancies.id, vacancy.id));
+        .where(and(eq(vacancies.id, vacancy.id), isUserVisibleVacancy()));
 
       return {
         success: true,
@@ -1485,6 +1507,7 @@ export const publishPersonHunterProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, companyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -1542,7 +1565,7 @@ export const publishPersonHunterProcedure = protectedProcedure
     await ctx.db
       .update(vacancies)
       .set({ personHunterVacancyId, personHunterUniqueCode })
-      .where(eq(vacancies.id, vacancy.id));
+      .where(and(eq(vacancies.id, vacancy.id), isUserVisibleVacancy()));
 
     if (vacancy.parentId && vacancy.parentId !== vacancy.id) {
       await ctx.db
@@ -1552,6 +1575,7 @@ export const publishPersonHunterProcedure = protectedProcedure
           and(
             eq(vacancies.id, vacancy.parentId),
             eq(vacancies.companyId, companyId),
+            isUserVisibleVacancy(),
           ),
         );
     }

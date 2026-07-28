@@ -32,12 +32,13 @@ async function verifyConfiguration() {
         eq(vacancies.id, config.vacancyId),
         eq(vacancies.companyId, config.companyId),
         eq(vacancies.isPublication, false),
+        eq(vacancies.isInternal, true),
       ),
     )
     .limit(1);
   if (!vacancy) {
     throw new Error(
-      "TELEGRAM_RESUME_VACANCY_ID must be a base vacancy owned by TELEGRAM_RESUME_COMPANY_ID",
+      "TELEGRAM_RESUME_VACANCY_ID must be an internal base vacancy owned by TELEGRAM_RESUME_COMPANY_ID",
     );
   }
 

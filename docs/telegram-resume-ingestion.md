@@ -3,7 +3,9 @@
 The integration polls one configured Telegram group for new PDF resumes,
 stores them in Directus, extracts candidate data with the existing Mastra
 agents, creates company-scoped candidates, and links every candidate to one
-configured vacancy. Telegram Bot API calls use grammY's typed `Api` client
+configured vacancy. The configured vacancy is marked `is_internal`, so it
+remains available in Directus while being excluded from the recruiter-facing
+application. Telegram Bot API calls use grammY's typed `Api` client
 with bounded `auto-retry`; the application retains control of durable update
 acknowledgment and database retry backoff.
 
@@ -26,8 +28,8 @@ The setup command is idempotent and does all of the following:
 1. Verifies the bot, target group, bot membership/privacy, protected-content
    setting, database schema, and polling compatibility.
 2. Reuses the canonical `Default Company` (or creates it if it is missing).
-3. Creates the base vacancy `placeholder-vacancy` in that company unless it
-   already exists.
+3. Creates the internal base vacancy `placeholder-vacancy` in that company
+   unless it already exists. Internal vacancies are visible only in Directus.
 4. Writes `TELEGRAM_RESUME_CHAT_ID`, `TELEGRAM_RESUME_COMPANY_ID`, and
    `TELEGRAM_RESUME_VACANCY_ID` to `.env.local`.
 5. Installs one managed crontab entry that polls Telegram and processes one

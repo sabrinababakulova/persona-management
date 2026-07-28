@@ -19,7 +19,6 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "../src/server/db";
 import {
   companies,
-  recentActivityLogs,
   telegramResumeImports,
   vacancies,
 } from "../src/server/db/schema";
@@ -163,7 +162,11 @@ async function ensureCompanyAndVacancy(
     }
 
     let [vacancy] = await tx
-      .select({ id: vacancies.id, title: vacancies.title })
+      .select({
+        id: vacancies.id,
+        title: vacancies.title,
+        isInternal: vacancies.isInternal,
+      })
       .from(vacancies)
       .where(
         and(
@@ -189,26 +192,32 @@ async function ensureCompanyAndVacancy(
           salaryCurrency: "UZS",
           companyId: company.id,
           isPublication: false,
+          isInternal: true,
           isActive: false,
         })
-        .returning({ id: vacancies.id, title: vacancies.title });
-      vacancyCreated = true;
-
-      if (vacancy) {
-        await tx.insert(recentActivityLogs).values({
-          entityType: "vacancy",
-          entityId: vacancy.id,
-          companyId: company.id,
-          actorUserId: null,
-          actorName: "Система",
-          action: "Создана вакансия для импорта Telegram",
-          targetName: vacancy.title,
-          targetStatus: "Создана",
+        .returning({
+          id: vacancies.id,
+          title: vacancies.title,
+          isInternal: vacancies.isInternal,
         });
-      }
+      vacancyCreated = true;
     }
     if (!vacancy) {
       throw new Error("Failed to create the Telegram resume vacancy");
+    }
+    if (!vacancy.isInternal) {
+      [vacancy] = await tx
+        .update(vacancies)
+        .set({ isInternal: true })
+        .where(eq(vacancies.id, vacancy.id))
+        .returning({
+          id: vacancies.id,
+          title: vacancies.title,
+          isInternal: vacancies.isInternal,
+        });
+    }
+    if (!vacancy) {
+      throw new Error("Failed to mark the Telegram resume vacancy as internal");
     }
 
     return {

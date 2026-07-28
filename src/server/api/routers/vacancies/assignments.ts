@@ -15,7 +15,7 @@ import {
   vacancyAssignCandidateInputSchema,
   vacancyCandidateSearchInputSchema,
 } from "./schemas";
-import { isHhVacancyId } from "./shared";
+import { isHhVacancyId, isUserVisibleVacancy } from "./shared";
 
 export const searchVacancyCandidatesProcedure = protectedProcedure
   .input(vacancyCandidateSearchInputSchema)
@@ -43,6 +43,7 @@ export const searchVacancyCandidatesProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
         ),
       )
       .limit(1);
@@ -143,6 +144,7 @@ export const assignCandidateProcedure = protectedProcedure
             and(
               eq(vacancies.id, input.vacancyId),
               eq(vacancies.companyId, userCompanyId),
+              isUserVisibleVacancy(),
             ),
           )
           .limit(1),

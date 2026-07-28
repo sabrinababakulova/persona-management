@@ -18,6 +18,7 @@ import {
   formatHhVacancy,
   formatVacancy,
   getVacancyResponseCounts,
+  isUserVisibleVacancy,
 } from "./shared";
 
 /**
@@ -125,6 +126,7 @@ export const listVacanciesProcedure = protectedProcedure
     if (includeLocal) {
       const conditions: (SQL | undefined)[] = [
         eq(vacancies.companyId, userCompanyId),
+        isUserVisibleVacancy(),
         localSourceCondition(wantsLocalSource, wantsHhSource, sources.length),
       ];
 
@@ -193,7 +195,9 @@ export const listVacanciesProcedure = protectedProcedure
         status: vacancies.status,
       })
       .from(vacancies)
-      .where(eq(vacancies.companyId, userCompanyId));
+      .where(
+        and(eq(vacancies.companyId, userCompanyId), isUserVisibleVacancy()),
+      );
     const linkedHhVacancyIds = new Set(
       linkedRows
         .map((row) => row.hhVacancyId)

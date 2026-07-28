@@ -11,6 +11,7 @@ import {
 import type { HhResumeCandidate } from "~/server/services/hh";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 import { formatExperienceMonths } from "~/utils/russian-plural";
+import { isUserVisibleVacancy } from "../vacancies/shared";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -213,6 +214,7 @@ export async function buildCandidateDetailResponse({
       and(
         eq(candidateVacancies.candidateId, candidate.id),
         eq(vacancies.companyId, companyId),
+        isUserVisibleVacancy(),
       ),
     )
     .orderBy(desc(candidateVacancies.id));
