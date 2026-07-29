@@ -272,15 +272,33 @@ export function ResumeDownloadButton({
   return (
     <>
       <button
-        className="ui-button ui-button-secondary"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className={`ui-button group active:scale-100 ${
+          isOpen
+            ? "border border-primary-blue/45 bg-primary-blue-light text-primary-blue shadow-[0_0_0_3px_rgba(35,122,248,0.10)]"
+            : "ui-button-secondary"
+        }`}
         onClick={() => setIsOpen(true)}
         type="button"
       >
-        <span className="inline-flex items-center rounded-full bg-primary-blue-light px-2 py-0.5 font-semibold text-primary-blue text-xs leading-none">
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold text-xs leading-none transition-colors ${
+            isOpen
+              ? "bg-primary-blue text-white"
+              : "bg-primary-blue-light text-primary-blue"
+          }`}
+        >
           PDF
         </span>
         {t("title")}
-        <DownloadIcon className="h-4 w-4" />
+        <DownloadIcon
+          className={`h-4 w-4 transition-transform duration-200 ease-out ${
+            isOpen
+              ? "translate-y-0.5"
+              : "group-hover:translate-y-0.5 group-focus-visible:translate-y-0.5"
+          }`}
+        />
       </button>
 
       <Modal

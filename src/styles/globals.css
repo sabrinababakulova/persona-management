@@ -57,6 +57,7 @@
   --color-bg-overlay-medium: rgba(0, 0, 0, 0.35);
   --color-bg-overlay-strong: rgba(0, 0, 0, 0.4);
   --color-bg-overlay-none: rgba(0, 0, 0, 0);
+  --color-bg-overlay-modal: rgba(18, 32, 55, 0.34);
 
   /* Sidebar */
   --color-sidebar-bg: #1a1a1a;
@@ -123,6 +124,8 @@
   --shadow-menu: 0 8px 20px rgba(27, 39, 94, 0.08);
   --shadow-card-lg: 0 20px 50px rgba(16, 24, 40, 0.08);
   --shadow-modal: 6px 6px 26.2px 0 rgba(43, 48, 66, 0.1);
+  --shadow-dialog:
+    0 28px 80px rgba(16, 32, 56, 0.22), 0 6px 18px rgba(16, 32, 56, 0.08);
 
   /* Charts */
   --color-chart-pink: #f472b6;

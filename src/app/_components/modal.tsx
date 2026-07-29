@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { ModalProps } from "~/types/components/modal-props";
 import { CloseIcon } from "./icons";
 import { AnimatePresence, motion } from "./motion-system";
@@ -117,7 +118,11 @@ export function Modal({
   const labelledBy = ariaLabelledBy ?? titleId;
   const describedBy = ariaDescribedBy ?? descriptionId;
 
-  return (
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
       {isOpen ? (
         <motion.div
@@ -126,72 +131,67 @@ export function Modal({
           aria-label={ariaLabel}
           aria-labelledby={labelledBy}
           aria-modal="true"
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 ${containerClassName ?? ""}`}
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
+          className={`fixed inset-0 isolate z-[100] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6 ${containerClassName ?? ""}`}
+          exit={{ opacity: 1 }}
+          initial={{ opacity: 1 }}
           role="dialog"
-          transition={{ duration: 0.2, ease: MODAL_EASE }}
         >
-          <motion.button
+          <motion.div
             animate={{ opacity: 1 }}
-            aria-label={resolvedCloseButtonLabel}
-            className={`absolute inset-0 bg-text-heading/20 ${overlayClassName ?? ""}`}
-            data-motion="none"
+            aria-hidden="true"
+            className={`absolute inset-0 bg-bg-overlay-modal backdrop-blur-[6px] ${overlayClassName ?? ""}`}
             exit={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             onClick={closeOnBackdropClick ? onClose : undefined}
-            transition={{ duration: 0.2 }}
-            type="button"
+            transition={{ duration: 0.22, ease: MODAL_EASE }}
           />
 
           <motion.div
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`relative w-full rounded-xl border border-border-input bg-bg-light p-5 shadow-modal sm:p-6 ${maxWidthClassName} ${panelClassName ?? ""}`}
-            exit={{ opacity: 0, scale: 0.98, y: 10 }}
-            initial={{ opacity: 0, scale: 0.965, y: 18 }}
+            className={`relative z-10 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl border border-white/80 bg-bg-light p-5 shadow-dialog outline-none sm:max-h-[calc(100dvh-3rem)] sm:p-6 ${maxWidthClassName} ${panelClassName ?? ""}`}
+            exit={{
+              opacity: 0,
+              scale: 0.992,
+              y: 6,
+              transition: { duration: 0.18, ease: MODAL_EASE },
+            }}
+            initial={{ opacity: 0, scale: 0.985, y: 12 }}
             ref={dialogPanelRef}
             tabIndex={-1}
-            transition={{ duration: 0.28, ease: MODAL_EASE }}
+            transition={{ duration: 0.26, ease: MODAL_EASE }}
           >
-            <motion.button
+            <button
               aria-label={resolvedCloseButtonLabel}
-              className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading"
+              className="absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading active:bg-border-light"
               onClick={onClose}
               type="button"
-              whileHover={{ rotate: 6, scale: 1.06 }}
-              whileTap={{ scale: 0.9 }}
             >
               <CloseIcon className="h-4 w-4" />
-            </motion.button>
+            </button>
 
             <div className={`flex flex-col gap-4 ${contentClassName ?? ""}`}>
               {title && (
-                <motion.h2
-                  animate={{ opacity: 1, y: 0 }}
+                <h2
                   className={`pr-10 font-semibold text-text-heading text-xl leading-tight tracking-tight ${titleClassName ?? ""}`}
                   id={titleId}
-                  initial={{ opacity: 0, y: 5 }}
-                  transition={{ delay: 0.05, duration: 0.22 }}
                 >
                   {title}
-                </motion.h2>
+                </h2>
               )}
               {description && (
-                <motion.p
-                  animate={{ opacity: 1, y: 0 }}
+                <p
                   className={`text-sm text-text-secondary leading-5 ${descriptionClassName ?? ""}`}
                   id={descriptionId}
-                  initial={{ opacity: 0, y: 5 }}
-                  transition={{ delay: 0.08, duration: 0.22 }}
                 >
                   {description}
-                </motion.p>
+                </p>
               )}
               {children}
             </div>
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
