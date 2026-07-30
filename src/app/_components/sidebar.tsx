@@ -1,11 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import {
-  BrandLogoIcon,
   CloseIcon,
   HomeIcon,
   OutlineBriefcaseIcon,
@@ -88,15 +88,15 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div className="mb-8 flex items-center justify-between gap-3 px-2">
-        <div className="flex items-center gap-3">
-          <div className="relative h-9 w-9">
-            <BrandLogoIcon className="h-full w-full" />
-          </div>
-          <span className="font-semibold text-white text-xl tracking-tight">
-            Talanty
-          </span>
-        </div>
+      <div className="mb-4 flex items-center justify-between gap-3 px-2">
+        <Image
+          alt="Talanty"
+          // className="h-9 w-auto"
+          height={54}
+          priority
+          src="/white-logo.svg"
+          width={144}
+        />
 
         <button
           aria-label={t("closeSidebar")}
