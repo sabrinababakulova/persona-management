@@ -125,7 +125,31 @@ type FunnelStage = {
   value: string;
   label: string;
   candidates: FunnelCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
 };
+
+const FUNNEL_PAGE_SIZE = 10;
+
+function getFunnelPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 4) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+  if (currentPage <= 2) {
+    return [1, 2, "ellipsis", totalPages] as const;
+  }
+  if (currentPage >= totalPages - 1) {
+    return [1, "ellipsis", totalPages - 1, totalPages] as const;
+  }
+  return [
+    1,
+    "ellipsis-left",
+    currentPage,
+    "ellipsis-right",
+    totalPages,
+  ] as const;
+}
 
 function CandidateCardSection({
   children,
@@ -506,7 +530,10 @@ function VacancyStageSection({
   isHhSource,
   label,
   onAddCandidate,
+  onPageChange,
+  currentPage,
   stageValue,
+  totalPages,
   vacancyId,
   vacancyTitle,
 }: {
@@ -517,11 +544,15 @@ function VacancyStageSection({
   isHhSource?: boolean;
   label: string;
   onAddCandidate: () => void;
+  onPageChange: (page: number) => void;
+  currentPage: number;
   stageValue: string;
+  totalPages: number;
   vacancyId: string;
   vacancyTitle: string;
 }) {
   const t = useTranslations("Funnel");
+  const paginationItems = getFunnelPaginationItems(currentPage, totalPages);
   const { isOver, setNodeRef } = useDroppable({
     id: stageValue,
     disabled: isDndDisabled,
@@ -583,6 +614,60 @@ function VacancyStageSection({
           ))
         )}
       </div>
+
+      <nav
+        aria-label={t("stagePagination", { stage: label })}
+        className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-border-input bg-bg-light px-2 py-2"
+      >
+        <button
+          aria-label={t("previousPage")}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-input hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          type="button"
+        >
+          <ChevronRightIcon className="h-4 w-4 rotate-180" />
+        </button>
+
+        <div className="flex min-w-0 items-center justify-center gap-1">
+          {paginationItems.map((item) =>
+            typeof item === "number" ? (
+              <button
+                aria-current={item === currentPage ? "page" : undefined}
+                aria-label={t("goToPage", { page: item })}
+                className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 font-medium text-sm transition-colors ${
+                  item === currentPage
+                    ? "bg-primary-blue-light text-primary-blue"
+                    : "text-text-secondary hover:bg-bg-input hover:text-text-heading"
+                }`}
+                key={item}
+                onClick={() => onPageChange(item)}
+                type="button"
+              >
+                {item}
+              </button>
+            ) : (
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 min-w-5 items-center justify-center text-sm text-text-placeholder"
+                key={item}
+              >
+                …
+              </span>
+            ),
+          )}
+        </div>
+
+        <button
+          aria-label={t("nextPage")}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-input hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
+          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          type="button"
+        >
+          <ChevronRightIcon className="h-4 w-4" />
+        </button>
+      </nav>
     </section>
   );
 }
@@ -598,12 +683,8 @@ export default function VacancyFunnelPage() {
     label: string;
     value: string;
   } | null>(null);
-  const { data, isLoading } = api.vacancies.getFunnel.useQuery(
-    { id },
-    { enabled: Boolean(id) },
-  );
-  const isHhVacancy = data?.source === "hh.uz";
   const [localStages, setLocalStages] = useState<FunnelStage[] | null>(null);
+  const [stagePages, setStagePages] = useState<Record<string, number>>({});
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(
     null,
   );
@@ -614,6 +695,39 @@ export default function VacancyFunnelPage() {
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
   );
+  const funnelInput = useMemo(
+    () => ({
+      id,
+      search: debouncedSearchQuery || undefined,
+      city: appliedFilters.city.trim() || undefined,
+      sources:
+        appliedFilters.sources.length > 0 ? appliedFilters.sources : undefined,
+      statuses:
+        appliedFilters.statuses.length > 0
+          ? appliedFilters.statuses
+          : undefined,
+      stagePagination: Object.entries(stagePages)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([stage, page]) => ({
+          stage,
+          limit: FUNNEL_PAGE_SIZE,
+          offset: (page - 1) * FUNNEL_PAGE_SIZE,
+        })),
+    }),
+    [
+      id,
+      debouncedSearchQuery,
+      appliedFilters.city,
+      appliedFilters.sources,
+      appliedFilters.statuses,
+      stagePages,
+    ],
+  );
+  const { data, isLoading } = api.vacancies.getFunnel.useQuery(funnelInput, {
+    enabled: Boolean(id),
+    placeholderData: (previousData) => previousData,
+  });
+  const isHhVacancy = data?.source === "hh.uz";
   const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
@@ -631,6 +745,38 @@ export default function VacancyFunnelPage() {
     if (data?.stages) {
       setLocalStages(data.stages);
     }
+  }, [data?.stages]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: changing any server-side funnel filter must return every stage to page one
+  useEffect(() => {
+    setStagePages({});
+  }, [
+    debouncedSearchQuery,
+    appliedFilters.city,
+    appliedFilters.sources,
+    appliedFilters.statuses,
+  ]);
+
+  useEffect(() => {
+    if (!data?.stages) {
+      return;
+    }
+
+    setStagePages((currentPages) => {
+      let changed = false;
+      const nextPages = { ...currentPages };
+
+      for (const stage of data.stages) {
+        const totalPages = Math.max(1, Math.ceil(stage.total / stage.limit));
+        const currentPage = currentPages[stage.value] ?? 1;
+        if (currentPage > totalPages) {
+          nextPages[stage.value] = totalPages;
+          changed = true;
+        }
+      }
+
+      return changed ? nextPages : currentPages;
+    });
   }, [data?.stages]);
 
   const assignCandidateToVacancy = api.vacancies.assignCandidate.useMutation({
@@ -664,59 +810,6 @@ export default function VacancyFunnelPage() {
   );
 
   const stages = localStages ?? data?.stages ?? [];
-  const displayStages = useMemo<FunnelStage[]>(() => {
-    const normalizedQuery = debouncedSearchQuery.toLowerCase();
-    const cityFilter = appliedFilters.city.trim().toLowerCase();
-    const sourcesFilter = appliedFilters.sources;
-    const statusesFilter = appliedFilters.statuses;
-
-    return stages
-      .filter(
-        (stage) =>
-          statusesFilter.length === 0 || statusesFilter.includes(stage.value),
-      )
-      .map((stage) => {
-        const filtered = stage.candidates.filter((candidate) => {
-          if (normalizedQuery) {
-            const haystack = [
-              candidate.fullName,
-              candidate.currentPosition,
-              candidate.currentCompany,
-            ]
-              .join(" ")
-              .toLowerCase();
-            if (!haystack.includes(normalizedQuery)) {
-              return false;
-            }
-          }
-          if (
-            cityFilter &&
-            !candidate.city.toLowerCase().includes(cityFilter)
-          ) {
-            return false;
-          }
-          if (
-            sourcesFilter.length > 0 &&
-            !sourcesFilter.includes(candidate.source)
-          ) {
-            return false;
-          }
-          return true;
-        });
-
-        const sorted = [...filtered].sort(
-          (a, b) => b.matchScore - a.matchScore,
-        );
-
-        return { ...stage, candidates: sorted };
-      });
-  }, [
-    stages,
-    debouncedSearchQuery,
-    appliedFilters.city,
-    appliedFilters.sources,
-    appliedFilters.statuses,
-  ]);
   const activeCandidate = useMemo<FunnelCandidate | null>(() => {
     if (!activeCandidateId) {
       return null;
@@ -764,7 +857,11 @@ export default function VacancyFunnelPage() {
         }
         return true;
       });
-      return { ...stage, candidates: remaining };
+      return {
+        ...stage,
+        candidates: remaining,
+        total: Math.max(0, stage.total - 1),
+      };
     });
 
     if (!candidate) {
@@ -774,7 +871,11 @@ export default function VacancyFunnelPage() {
     const moved = candidate;
     const nextStages = withoutCandidate.map((stage) =>
       stage.value === targetStageValue
-        ? { ...stage, candidates: [...stage.candidates, moved] }
+        ? {
+            ...stage,
+            candidates: [...stage.candidates, moved],
+            total: stage.total + 1,
+          }
         : stage,
     );
 
@@ -885,26 +986,42 @@ export default function VacancyFunnelPage() {
           sensors={sensors}
         >
           <div className="flex gap-4 overflow-x-auto pb-2">
-            {displayStages.map((stage) => (
-              <VacancyStageSection
-                activeCandidateId={activeCandidateId}
-                canAddCandidate={!isHhVacancy}
-                candidates={stage.candidates}
-                isDndDisabled={isHhVacancy}
-                isHhSource={isHhVacancy}
-                key={stage.value}
-                label={stage.label}
-                onAddCandidate={() =>
-                  setAssignmentStage({
-                    label: stage.label,
-                    value: stage.value,
-                  })
-                }
-                stageValue={stage.value}
-                vacancyId={data.id}
-                vacancyTitle={data.title}
-              />
-            ))}
+            {stages.map((stage) => {
+              const currentPage = Math.floor(stage.offset / stage.limit) + 1;
+              const totalPages = Math.max(
+                1,
+                Math.ceil(stage.total / stage.limit),
+              );
+
+              return (
+                <VacancyStageSection
+                  activeCandidateId={activeCandidateId}
+                  canAddCandidate={!isHhVacancy}
+                  candidates={stage.candidates}
+                  currentPage={currentPage}
+                  isDndDisabled={isHhVacancy}
+                  isHhSource={isHhVacancy}
+                  key={stage.value}
+                  label={stage.label}
+                  onAddCandidate={() =>
+                    setAssignmentStage({
+                      label: stage.label,
+                      value: stage.value,
+                    })
+                  }
+                  onPageChange={(page) =>
+                    setStagePages((currentPages) => ({
+                      ...currentPages,
+                      [stage.value]: page,
+                    }))
+                  }
+                  stageValue={stage.value}
+                  totalPages={totalPages}
+                  vacancyId={data.id}
+                  vacancyTitle={data.title}
+                />
+              );
+            })}
           </div>
           <DragOverlay>
             {activeCandidate ? (

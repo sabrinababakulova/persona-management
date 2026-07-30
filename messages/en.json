@@ -45,6 +45,7 @@
     "home": "Home",
     "vacancies": "Vacancies",
     "candidates": "Candidates",
+    "newApplications": "New applications",
     "settings": "Settings",
     "closeSidebar": "Close sidebar",
     "collapseSidebar": "Collapse sidebar",
@@ -534,7 +535,11 @@
     "hhReadonly": "Candidates and stages were loaded from hh.uz. Candidates cannot be added to the funnel on this page.",
     "hhAccessDenied": "Your hh.uz account cannot access applications for this vacancy. hh.uz candidates are hidden from the funnel. Check the manager permissions or the connected hh.uz account.",
     "search": "Search candidates",
-    "addFilters": "Add filters"
+    "addFilters": "Add filters",
+    "stagePagination": "Pagination for {stage}",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "goToPage": "Go to page {page}"
   },
   "AuthError": {
     "accessDeniedTitle": "Sign-in not completed",

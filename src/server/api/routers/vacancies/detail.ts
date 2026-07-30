@@ -27,6 +27,7 @@ import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 
 import {
+  vacancyFunnelInputSchema,
   vacancyIdInputSchema,
   vacancyPublicationListInputSchema,
 } from "./schemas";
@@ -35,6 +36,84 @@ import {
   isHhVacancyId,
   isUserVisibleVacancy,
 } from "./shared";
+
+const DEFAULT_FUNNEL_PAGE_SIZE = 10;
+
+type FunnelStageRow = {
+  value: string;
+  label: string;
+};
+
+type FunnelFilterableCandidate = {
+  status: string;
+  fullName: string;
+  city: string;
+  currentPosition: string;
+  currentCompany: string;
+  source: string;
+  matchScore: number;
+};
+
+function buildPaginatedFunnelStages<T extends FunnelFilterableCandidate>(
+  stages: FunnelStageRow[],
+  candidates: T[],
+  input: z.infer<typeof vacancyFunnelInputSchema>,
+) {
+  const search = input.search?.trim().toLowerCase() ?? "";
+  const city = input.city?.trim().toLowerCase() ?? "";
+  const sources = new Set(input.sources?.filter(Boolean) ?? []);
+  const statuses = new Set(input.statuses?.filter(Boolean) ?? []);
+  const paginationByStage = new Map(
+    input.stagePagination?.map((pagination) => [
+      pagination.stage,
+      pagination,
+    ]) ?? [],
+  );
+
+  const filteredCandidates = candidates
+    .filter((candidate) => {
+      if (search) {
+        const haystack = [
+          candidate.fullName,
+          candidate.currentPosition,
+          candidate.currentCompany,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(search)) {
+          return false;
+        }
+      }
+      if (city && !candidate.city.toLowerCase().includes(city)) {
+        return false;
+      }
+      if (sources.size > 0 && !sources.has(candidate.source)) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  return stages
+    .filter((stage) => statuses.size === 0 || statuses.has(stage.value))
+    .map((stage) => {
+      const stageCandidates = filteredCandidates.filter(
+        (candidate) => candidate.status === stage.value,
+      );
+      const pagination = paginationByStage.get(stage.value);
+      const limit = pagination?.limit ?? DEFAULT_FUNNEL_PAGE_SIZE;
+      const offset = pagination?.offset ?? 0;
+
+      return {
+        value: stage.value,
+        label: stage.label,
+        candidates: stageCandidates.slice(offset, offset + limit),
+        total: stageCandidates.length,
+        limit,
+        offset,
+      };
+    });
+}
 
 export const getVacancyProcedure = protectedProcedure
   .input(vacancyIdInputSchema)
@@ -443,7 +522,7 @@ export const getPublicationTelegramPostsProcedure = protectedProcedure
   });
 
 export const getVacancyFunnelProcedure = protectedProcedure
-  .input(vacancyIdInputSchema)
+  .input(vacancyFunnelInputSchema)
   .query(async ({ ctx, input }) => {
     const userCompanyId = await getOptionalCompanyId(
       ctx.db,
@@ -515,6 +594,12 @@ export const getVacancyFunnelProcedure = protectedProcedure
           tags: [] as string[],
         }));
 
+        const stages = buildPaginatedFunnelStages(
+          stageRows,
+          normalizedCandidates,
+          input,
+        );
+
         return {
           id: input.id,
           title: hhVacancy.title,
@@ -522,14 +607,8 @@ export const getVacancyFunnelProcedure = protectedProcedure
           experienceId: "",
           source: "hh.uz" as const,
           hhAccessDenied,
-          candidates: normalizedCandidates,
-          stages: stageRows.map((stage) => ({
-            value: stage.value,
-            label: stage.label,
-            candidates: normalizedCandidates.filter(
-              (candidate) => candidate.status === stage.value,
-            ),
-          })),
+          candidates: stages.flatMap((stage) => stage.candidates),
+          stages,
         };
       } catch (error) {
         console.error("Failed to fetch HH vacancy funnel", {
@@ -589,48 +668,6 @@ export const getVacancyFunnelProcedure = protectedProcedure
       ).values(),
     ];
 
-    const relatedVacancyRows =
-      uniqueCandidateRows.length > 0
-        ? await ctx.db
-            .select({
-              candidateId: candidateVacancies.candidateId,
-              vacancyId: vacancies.id,
-              title: vacancies.title,
-            })
-            .from(candidateVacancies)
-            .innerJoin(
-              vacancies,
-              eq(candidateVacancies.vacancyId, vacancies.id),
-            )
-            .where(
-              and(
-                inArray(
-                  candidateVacancies.candidateId,
-                  uniqueCandidateRows.map((candidate) => candidate.id),
-                ),
-                eq(vacancies.companyId, userCompanyId),
-                isUserVisibleVacancy(),
-              ),
-            )
-            .orderBy(desc(candidateVacancies.id))
-        : [];
-
-    const relatedVacanciesByCandidate = new Map<
-      string,
-      { id: string; title: string }[]
-    >();
-    const scopedVacancyIdSet = new Set(scopedVacancyIds);
-
-    for (const row of relatedVacancyRows) {
-      if (scopedVacancyIdSet.has(row.vacancyId)) {
-        continue;
-      }
-
-      const existing = relatedVacanciesByCandidate.get(row.candidateId) ?? [];
-      existing.push({ id: row.vacancyId, title: row.title });
-      relatedVacanciesByCandidate.set(row.candidateId, existing);
-    }
-
     const normalizedCandidates = uniqueCandidateRows.map((candidate) => {
       const contacts = candidate.contacts ?? [];
       const phone = contacts.find((item) => item.type === "phone")?.value ?? "";
@@ -670,9 +707,66 @@ export const getVacancyFunnelProcedure = protectedProcedure
         resumeUrl: candidate.resumeFileId
           ? buildCandidateResumeUrl(candidate.id)
           : "",
-        relatedVacancies: relatedVacanciesByCandidate.get(candidate.id) ?? [],
+        relatedVacancies: [] as { id: string; title: string }[],
       };
     });
+    const paginatedStages = buildPaginatedFunnelStages(
+      stageRows,
+      normalizedCandidates,
+      input,
+    );
+    const paginatedCandidates = paginatedStages.flatMap(
+      (stage) => stage.candidates,
+    );
+    const relatedVacancyRows =
+      paginatedCandidates.length > 0
+        ? await ctx.db
+            .select({
+              candidateId: candidateVacancies.candidateId,
+              vacancyId: vacancies.id,
+              title: vacancies.title,
+            })
+            .from(candidateVacancies)
+            .innerJoin(
+              vacancies,
+              eq(candidateVacancies.vacancyId, vacancies.id),
+            )
+            .where(
+              and(
+                inArray(
+                  candidateVacancies.candidateId,
+                  paginatedCandidates.map((candidate) => candidate.id),
+                ),
+                eq(vacancies.companyId, userCompanyId),
+                isUserVisibleVacancy(),
+              ),
+            )
+            .orderBy(desc(candidateVacancies.id))
+        : [];
+
+    const relatedVacanciesByCandidate = new Map<
+      string,
+      { id: string; title: string }[]
+    >();
+    const scopedVacancyIdSet = new Set(scopedVacancyIds);
+
+    for (const row of relatedVacancyRows) {
+      if (scopedVacancyIdSet.has(row.vacancyId)) {
+        continue;
+      }
+
+      const existing = relatedVacanciesByCandidate.get(row.candidateId) ?? [];
+      existing.push({ id: row.vacancyId, title: row.title });
+      relatedVacanciesByCandidate.set(row.candidateId, existing);
+    }
+
+    const stages = paginatedStages.map((stage) => ({
+      ...stage,
+      candidates: stage.candidates.map((candidate) => ({
+        ...candidate,
+        relatedVacancies: relatedVacanciesByCandidate.get(candidate.id) ?? [],
+      })),
+    }));
 
     // hh.uz applicants are persisted by the candidate sync, so they arrive via
     // `getVacanciesRelatedCandidates` like any other candidate — no live fetch.
@@ -683,13 +777,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
       experienceId: vacancy.experienceId ?? "",
       source: "local" as const,
       hhAccessDenied: false,
-      candidates: normalizedCandidates,
-      stages: stageRows.map((stage) => ({
-        value: stage.value,
-        label: stage.label,
-        candidates: normalizedCandidates.filter(
-          (candidate) => candidate.status === stage.value,
-        ),
-      })),
+      candidates: stages.flatMap((stage) => stage.candidates),
+      stages,
     };
   });

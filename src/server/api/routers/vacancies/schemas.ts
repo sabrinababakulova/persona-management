@@ -18,6 +18,23 @@ export const vacancyIdInputSchema = z.object({
   id: z.string().min(1).max(255),
 });
 
+export const vacancyFunnelInputSchema = vacancyIdInputSchema.extend({
+  search: z.string().max(255).optional(),
+  city: z.string().max(255).optional(),
+  sources: z.array(z.string().max(255)).optional(),
+  statuses: z.array(z.string().max(50)).optional(),
+  stagePagination: z
+    .array(
+      z.object({
+        stage: z.string().min(1).max(50),
+        limit: z.number().int().min(1).max(50),
+        offset: z.number().int().min(0),
+      }),
+    )
+    .max(50)
+    .optional(),
+});
+
 export const vacancyCandidateSearchInputSchema = z.object({
   vacancyId: z.string().min(1).max(255),
   query: z.string().max(255),

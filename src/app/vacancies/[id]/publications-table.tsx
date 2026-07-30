@@ -339,7 +339,7 @@ export function PublicationsTable() {
       </div>
 
       <div className="surface-card overflow-hidden">
-        <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 text-sm text-text-placeholder lg:grid">
+        <div className="hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
             <span>{t("table.name")}</span>
@@ -487,10 +487,7 @@ export function PublicationsTable() {
         })}
 
         <div className="flex justify-end border-border-input border-t px-4 py-3">
-          <button
-            className="ui-button ui-button-secondary min-h-9 px-3"
-            type="button"
-          >
+          <button className="ui-button ui-button-secondary px-3" type="button">
             <span>{t("table.actions")}</span>
             <ChevronDownIcon className="h-4 w-4" />
           </button>

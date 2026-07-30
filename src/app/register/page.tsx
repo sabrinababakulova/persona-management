@@ -232,7 +232,7 @@ function RegisterPageContent() {
             {isGoogleAvailable && (
               <>
                 <button
-                  className="ui-button ui-button-secondary mb-6 h-11 w-full"
+                  className="ui-button ui-button-secondary mb-6 w-full"
                   disabled={isGoogleSubmitting || isSubmitting}
                   onClick={() => void handleGoogleSignIn()}
                   type="button"

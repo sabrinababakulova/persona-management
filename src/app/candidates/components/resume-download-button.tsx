@@ -276,7 +276,7 @@ export function ResumeDownloadButton({
         aria-haspopup="dialog"
         className={`ui-button group active:scale-100 ${
           isOpen
-            ? "border border-primary-blue/45 bg-primary-blue-light text-primary-blue shadow-[0_0_0_3px_rgba(35,122,248,0.10)]"
+            ? "border border-primary-blue/45 bg-primary-blue-light text-primary-blue shadow-[0_0_0_3px_rgba(253,55,44,0.10)]"
             : "ui-button-secondary"
         }`}
         onClick={() => setIsOpen(true)}
@@ -318,7 +318,7 @@ export function ResumeDownloadButton({
                 </p>
               </div>
               <button
-                className="ui-button ui-button-primary min-h-9 px-3"
+                className="ui-button ui-button-primary px-3"
                 disabled={isBusy || !hasHhResume}
                 onClick={() =>
                   run(
@@ -361,7 +361,7 @@ export function ResumeDownloadButton({
                   value={format}
                 />
                 <button
-                  className="ui-button ui-button-primary min-h-9 px-3"
+                  className="ui-button ui-button-primary px-3"
                   disabled={isBusy}
                   onClick={() =>
                     run(
@@ -448,7 +448,7 @@ export function ResumeDownloadButton({
                 value={format}
               />
               <button
-                className="ui-button ui-button-primary min-h-9 px-3"
+                className="ui-button ui-button-primary px-3"
                 disabled={isBusy || orderedSelected.length === 0}
                 onClick={() => {
                   const formData = new FormData();

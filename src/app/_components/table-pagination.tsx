@@ -81,7 +81,7 @@ export function TablePagination({
 
       <div className="flex items-center gap-2">
         <button
-          className="ui-button ui-button-secondary min-h-9 px-3"
+          className="ui-button ui-button-secondary px-3"
           disabled={currentPage === 1}
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           type="button"
@@ -92,7 +92,7 @@ export function TablePagination({
           {currentPage} / {totalPages}
         </span>
         <button
-          className="ui-button ui-button-secondary min-h-9 px-3"
+          className="ui-button ui-button-secondary px-3"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           type="button"

@@ -62,7 +62,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
       badge: counts?.newVacancies || undefined,
     },
     {
-      label: t("candidates"),
+      label: t("newApplications"),
       href: "/candidates",
       icon: <UsersIcon className="h-6 w-6" />,
       badge: counts?.newCandidates || undefined,

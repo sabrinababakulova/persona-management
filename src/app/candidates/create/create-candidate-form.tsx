@@ -609,7 +609,7 @@ export function CreateCandidateForm() {
           <div className="flex items-center justify-between">
             <h2 className="section-title">{t("resume")}</h2>
             <button
-              className="ui-button min-h-9 bg-ai-violet/10 px-3 text-ai-violet hover:bg-ai-violet/15"
+              className="ui-button bg-ai-violet/10 px-3 text-ai-violet hover:bg-ai-violet/15"
               type="button"
             >
               {t("fillFields")}

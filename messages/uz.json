@@ -45,6 +45,7 @@
     "home": "Bosh sahifa",
     "vacancies": "Vakansiyalar",
     "candidates": "Nomzodlar",
+    "newApplications": "Yangi arizalar",
     "settings": "Sozlamalar",
     "closeSidebar": "Yon menyuni yopish",
     "collapseSidebar": "Yon menyuni yig‘ish",
@@ -534,7 +535,11 @@
     "hhReadonly": "Nomzodlar va bosqichlar hh.uz saytidan yuklandi. Bu sahifada voronkaga nomzod qo‘shib bo‘lmaydi.",
     "hhAccessDenied": "hh.uz hisobingizda ushbu vakansiya arizalariga kirish huquqi yo‘q. hh.uz nomzodlari voronkada ko‘rsatilmaydi. Menejer huquqlari yoki ulangan hh.uz hisobini tekshiring.",
     "search": "Nomzodlarni qidirish",
-    "addFilters": "Filtr qo‘shish"
+    "addFilters": "Filtr qo‘shish",
+    "stagePagination": "“{stage}” bosqichi sahifalari",
+    "previousPage": "Oldingi sahifa",
+    "nextPage": "Keyingi sahifa",
+    "goToPage": "{page}-sahifaga o‘tish"
   },
   "AuthError": {
     "accessDeniedTitle": "Kirish amalga oshmadi",

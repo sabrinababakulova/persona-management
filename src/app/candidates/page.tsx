@@ -444,7 +444,7 @@ export default function CandidatesPage() {
               </div>
 
               <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
-                <div className="hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 lg:grid">
+                <div className="hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 lg:grid">
                   <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>{common("name")}</span>
                     <SortIcon className="h-4 w-4" />
@@ -483,7 +483,9 @@ export default function CandidatesPage() {
                           <motion.div
                             animate={{ opacity: 1, y: 0 }}
                             className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center ${
-                              index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"
+                              index % 2 === 0
+                                ? "bg-bg-light"
+                                : "bg-table-stripe-bg"
                             }`}
                             initial={{ opacity: 0, y: 7 }}
                             key={candidate.id}

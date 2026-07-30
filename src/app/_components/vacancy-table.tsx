@@ -12,7 +12,7 @@ type DashboardVacancy =
 type VacancyTableItem = Vacancy | DashboardVacancy;
 
 import { Checkbox } from "./checkbox";
-import { ChevronDownIcon, FunnelIcon, MoreIcon, SortIcon } from "./icons";
+import { ChevronDownIcon, MoreIcon, SortIcon } from "./icons";
 import { LoadingState, motion } from "./motion-system";
 
 type VacancyStatus = Vacancy["status"];
@@ -179,7 +179,7 @@ export function VacancyTable({
 
       <div
         className={cn(
-          "hidden grid-cols-12 border-border-input border-b bg-bg-input px-4 py-3 lg:grid",
+          "hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 lg:grid",
           columnHeaderClassName,
         )}
       >
@@ -242,7 +242,9 @@ export function VacancyTable({
                     className={cn(
                       "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center",
                       stripedRows &&
-                        (index % 2 === 0 ? "bg-bg-light" : "bg-bg-input"),
+                        (index % 2 === 0
+                          ? "bg-bg-light"
+                          : "bg-table-stripe-bg"),
                       rowClassName,
                     )}
                     initial={{ opacity: 0, y: 7 }}
@@ -363,11 +365,10 @@ export function VacancyTable({
 
                     <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
                       <Link
-                        className="flex items-center gap-1 font-medium text-primary-blue text-sm leading-none hover:text-primary-blue-hover"
+                        className="ui-button ui-button-primary h-6.5 min-h-6.5 min-w-20 shrink-0 whitespace-nowrap px-4"
                         href={getFunnelPath(item)}
                       >
-                        <FunnelIcon className="h-3.5 w-3.5" />
-                        <span className="hidden xl:inline">{t("funnel")}</span>
+                        {t("responses")}
                       </Link>
                       <button
                         className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
