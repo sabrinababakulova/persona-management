@@ -15,7 +15,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import {
@@ -41,6 +41,7 @@ import {
 import { useDebouncedValue } from "~/app/_components/use-debounced-value";
 import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
+import { PublicationsTable } from "../publications-table";
 
 function compactValues(values: string[]) {
   return values.map((value) => value.trim()).filter(Boolean);
@@ -113,17 +114,23 @@ type FunnelStage = {
 
 const FUNNEL_PAGE_SIZE = 10;
 
+type FunnelSection = "candidates" | "description" | "publications";
+
 function VacancyFunnelHeader({
+  activeSection,
   areaId,
   candidateCount,
   experienceId,
   id,
+  onSectionChange,
   title,
 }: {
+  activeSection: FunnelSection;
   areaId: string;
   candidateCount: number;
   experienceId: string;
   id: string;
+  onSectionChange: (section: FunnelSection) => void;
   title: string;
 }) {
   const t = useTranslations("Funnel");
@@ -174,33 +181,139 @@ function VacancyFunnelHeader({
         </div>
       </section>
 
-      <nav
+      <div
         aria-label={t("vacancySections")}
         className="flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-bg-input p-1"
+        role="tablist"
       >
-        <span
-          aria-current="page"
-          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-bg-light px-3 py-2 font-semibold text-sm text-text-heading shadow-sm"
+        <button
+          aria-controls="funnel-panel-candidates"
+          aria-selected={activeSection === "candidates"}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 font-semibold text-sm transition-[background-color,color,box-shadow] duration-200 ease-out ${
+            activeSection === "candidates"
+              ? "bg-bg-light text-text-heading shadow-sm"
+              : "text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
+          }`}
+          id="funnel-tab-candidates"
+          onClick={() => onSectionChange("candidates")}
+          role="tab"
+          type="button"
         >
           {t("candidatesTab")}
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-badge-red px-1.5 font-semibold text-bg-light text-xs">
             {candidateCount}
           </span>
-        </span>
-        <Link
-          className="shrink-0 rounded-lg px-3 py-2 font-medium text-sm text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
-          href={`/vacancies/${id}?step=description`}
+        </button>
+        <button
+          aria-controls="funnel-panel-description"
+          aria-selected={activeSection === "description"}
+          className={`shrink-0 rounded-lg px-3 py-2 font-medium text-sm transition-[background-color,color,box-shadow] duration-200 ease-out ${
+            activeSection === "description"
+              ? "bg-bg-light text-text-heading shadow-sm"
+              : "text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
+          }`}
+          id="funnel-tab-description"
+          onClick={() => onSectionChange("description")}
+          role="tab"
+          type="button"
         >
           {vacancyDetailT("descriptionMenu")}
-        </Link>
-        <Link
-          className="shrink-0 rounded-lg px-3 py-2 font-medium text-sm text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
-          href={`/vacancies/${id}?step=publications`}
+        </button>
+        <button
+          aria-controls="funnel-panel-publications"
+          aria-selected={activeSection === "publications"}
+          className={`shrink-0 rounded-lg px-3 py-2 font-medium text-sm transition-[background-color,color,box-shadow] duration-200 ease-out ${
+            activeSection === "publications"
+              ? "bg-bg-light text-text-heading shadow-sm"
+              : "text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
+          }`}
+          id="funnel-tab-publications"
+          onClick={() => onSectionChange("publications")}
+          role="tab"
+          type="button"
         >
           {vacancyDetailT("publicationsMenu")}
-        </Link>
-      </nav>
+        </button>
+      </div>
     </div>
+  );
+}
+
+function VacancyDescriptionPanel({ vacancyId }: { vacancyId: string }) {
+  const format = useFormatter();
+  const t = useTranslations("Funnel");
+  const vacancyFormT = useTranslations("VacancyForm");
+  const { data: vacancy, isLoading } = api.vacancies.get.useQuery(
+    { id: vacancyId },
+    { enabled: Boolean(vacancyId) },
+  );
+
+  if (isLoading) {
+    return (
+      <div className="surface-card flex min-h-48 items-center justify-center p-6">
+        <LoadingState compact label={t("loadingDescription")} />
+      </div>
+    );
+  }
+
+  if (!vacancy) {
+    return (
+      <div className="surface-card p-6 text-sm text-text-secondary">
+        {t("descriptionUnavailable")}
+      </div>
+    );
+  }
+
+  const salaryValues = [vacancy.salaryFrom, vacancy.salaryTo].filter(
+    (value): value is number => typeof value === "number",
+  );
+  const salary =
+    salaryValues.length > 0
+      ? `${salaryValues.map((value) => format.number(value)).join(" — ")} ${
+          vacancy.salaryCurrency ?? "UZS"
+        }`
+      : t("notSpecified");
+  const descriptionHtml = vacancy.descriptionHtml?.trim() ?? "";
+
+  return (
+    <section className="surface-card overflow-hidden">
+      <div className="border-border-light border-b p-5 sm:p-6">
+        <h2 className="section-title">{vacancyFormT("description")}</h2>
+        {descriptionHtml ? (
+          <div
+            className="mt-4 text-sm text-text-secondary leading-[1.65] [&_a]:text-primary-blue [&_a]:underline [&_h1]:mb-3 [&_h1]:font-semibold [&_h1]:text-base [&_h1]:text-text-heading [&_h2]:mb-3 [&_h2]:font-semibold [&_h2]:text-base [&_h2]:text-text-heading [&_li]:mb-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:mb-3 [&_ul]:ml-5 [&_ul]:list-disc"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: descriptionHtml is authored by the company in the vacancy editor
+            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          />
+        ) : (
+          <p className="mt-4 text-sm text-text-placeholder">
+            {t("descriptionEmpty")}
+          </p>
+        )}
+      </div>
+
+      <div className="p-5 sm:p-6">
+        <h2 className="section-title">{vacancyFormT("conditions")}</h2>
+        <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-lg bg-bg-input p-4">
+            <dt className="font-medium text-text-placeholder text-xs uppercase tracking-[0.08em]">
+              {t("salary")}
+            </dt>
+            <dd className="mt-2 font-semibold text-sm text-text-heading">
+              {salary}
+            </dd>
+          </div>
+          <div className="rounded-lg bg-bg-input p-4">
+            <dt className="font-medium text-text-placeholder text-xs uppercase tracking-[0.08em]">
+              {vacancyFormT("contactPhone")}
+            </dt>
+            <dd className="mt-2 font-semibold text-sm text-text-heading">
+              {vacancy.contactPhone?.trim() || t("notSpecified")}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
   );
 }
 
@@ -549,6 +662,8 @@ export default function VacancyFunnelPage() {
   const localizeLookups = useLookupLocalizer();
   const { id } = useParams() as { id: string };
   const utils = api.useUtils();
+  const [activeSection, setActiveSection] =
+    useState<FunnelSection>("candidates");
   const [assignmentStage, setAssignmentStage] = useState<{
     label: string;
     value: string;
@@ -752,6 +867,15 @@ export default function VacancyFunnelPage() {
     setAssignmentStage(null);
   };
 
+  const handleSectionChange = (section: FunnelSection) => {
+    setActiveSection(section);
+    if (section !== "candidates") {
+      setIsFilterModalOpen(false);
+      setAssignmentStage(null);
+      setActiveCandidateId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
@@ -787,121 +911,152 @@ export default function VacancyFunnelPage() {
         </nav>
 
         <VacancyFunnelHeader
+          activeSection={activeSection}
           areaId={data.areaId}
           candidateCount={totalCandidateCount}
           experienceId={data.experienceId}
           id={data.id}
+          onSectionChange={handleSectionChange}
           title={data.title}
         />
 
-        {isHhVacancy ? (
-          <div className="rounded-lg border border-border-input bg-bg-light px-4 py-3 text-sm text-text-secondary">
-            {t("hhReadonly")}
-          </div>
-        ) : null}
+        <div
+          aria-labelledby="funnel-tab-candidates"
+          hidden={activeSection !== "candidates"}
+          id="funnel-panel-candidates"
+          role="tabpanel"
+        >
+          <div className="flex flex-col gap-5">
+            {isHhVacancy ? (
+              <div className="rounded-lg border border-border-input bg-bg-light px-4 py-3 text-sm text-text-secondary">
+                {t("hhReadonly")}
+              </div>
+            ) : null}
 
-        {data.hhAccessDenied ? (
-          <div className="rounded-lg border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-danger-red text-sm">
-            {t("hhAccessDenied")}
-          </div>
-        ) : null}
+            {data.hhAccessDenied ? (
+              <div className="rounded-lg border border-danger-red-bg bg-danger-red-bg px-4 py-3 text-danger-red text-sm">
+                {t("hhAccessDenied")}
+              </div>
+            ) : null}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
-            <input
-              className="ui-search"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t("search")}
-              type="text"
-              value={searchQuery}
-            />
-          </div>
-          <button
-            className={`ui-button border-transparent bg-action-soft-bg text-primary-blue hover:bg-action-soft-bg-hover ${
-              activeFilterCount > 0 ? "ring-1 ring-primary-blue" : ""
-            }`}
-            onClick={() => setIsFilterModalOpen(true)}
-            type="button"
-          >
-            <FilterIcon className="h-5 w-5" />
-            <span>{t("addFilters")}</span>
-            <span
-              className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                activeFilterCount > 0
-                  ? "bg-primary-blue text-bg-light"
-                  : "bg-border-light text-text-label"
-              }`}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
+                <input
+                  className="ui-search"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={t("search")}
+                  type="text"
+                  value={searchQuery}
+                />
+              </div>
+              <button
+                className={`ui-button border-transparent bg-action-soft-bg text-primary-blue hover:bg-action-soft-bg-hover ${
+                  activeFilterCount > 0 ? "ring-1 ring-primary-blue" : ""
+                }`}
+                onClick={() => setIsFilterModalOpen(true)}
+                type="button"
+              >
+                <FilterIcon className="h-5 w-5" />
+                <span>{t("addFilters")}</span>
+                <span
+                  className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                    activeFilterCount > 0
+                      ? "bg-primary-blue text-bg-light"
+                      : "bg-border-light text-text-label"
+                  }`}
+                >
+                  {activeFilterCount > 0 ? activeFilterCount : "+"}
+                </span>
+              </button>
+            </div>
+
+            <DndContext
+              collisionDetection={pointerWithin}
+              onDragEnd={handleDragEnd}
+              onDragStart={handleDragStart}
+              sensors={sensors}
             >
-              {activeFilterCount > 0 ? activeFilterCount : "+"}
-            </span>
-          </button>
+              <div
+                className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3"
+                data-testid="funnel-board"
+              >
+                {stages.map((stage) => {
+                  const requestedLimit =
+                    stageLimits[stage.value] ?? FUNNEL_PAGE_SIZE;
+
+                  return (
+                    <VacancyStageSection
+                      activeCandidateId={activeCandidateId}
+                      canAddCandidate={!isHhVacancy}
+                      candidates={stage.candidates}
+                      isDndDisabled={isHhVacancy}
+                      isHhSource={isHhVacancy}
+                      isLoadingMore={isFetching && requestedLimit > stage.limit}
+                      key={stage.value}
+                      label={stage.label}
+                      onAddCandidate={() =>
+                        setAssignmentStage({
+                          label: stage.label,
+                          value: stage.value,
+                        })
+                      }
+                      onLoadMore={() =>
+                        setStageLimits((currentLimits) => ({
+                          ...currentLimits,
+                          [stage.value]:
+                            (currentLimits[stage.value] ?? FUNNEL_PAGE_SIZE) +
+                            FUNNEL_PAGE_SIZE,
+                        }))
+                      }
+                      stageValue={stage.value}
+                      total={stage.total}
+                      vacancyId={data.id}
+                      vacancyTitle={data.title}
+                    />
+                  );
+                })}
+              </div>
+              <DragOverlay>
+                {activeCandidate ? (
+                  <VacancyStageCandidateCard
+                    candidate={activeCandidate}
+                    isDragOverlay
+                    isHhSource={isHhVacancy}
+                    vacancyId={data.id}
+                    vacancyTitle={data.title}
+                  />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
         </div>
 
-        <DndContext
-          collisionDetection={pointerWithin}
-          onDragEnd={handleDragEnd}
-          onDragStart={handleDragStart}
-          sensors={sensors}
+        <div
+          aria-labelledby="funnel-tab-description"
+          hidden={activeSection !== "description"}
+          id="funnel-panel-description"
+          role="tabpanel"
         >
-          <div
-            className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3"
-            data-testid="funnel-board"
-          >
-            {stages.map((stage) => {
-              const requestedLimit =
-                stageLimits[stage.value] ?? FUNNEL_PAGE_SIZE;
+          <VacancyDescriptionPanel vacancyId={data.id} />
+        </div>
 
-              return (
-                <VacancyStageSection
-                  activeCandidateId={activeCandidateId}
-                  canAddCandidate={!isHhVacancy}
-                  candidates={stage.candidates}
-                  isDndDisabled={isHhVacancy}
-                  isHhSource={isHhVacancy}
-                  isLoadingMore={isFetching && requestedLimit > stage.limit}
-                  key={stage.value}
-                  label={stage.label}
-                  onAddCandidate={() =>
-                    setAssignmentStage({
-                      label: stage.label,
-                      value: stage.value,
-                    })
-                  }
-                  onLoadMore={() =>
-                    setStageLimits((currentLimits) => ({
-                      ...currentLimits,
-                      [stage.value]:
-                        (currentLimits[stage.value] ?? FUNNEL_PAGE_SIZE) +
-                        FUNNEL_PAGE_SIZE,
-                    }))
-                  }
-                  stageValue={stage.value}
-                  total={stage.total}
-                  vacancyId={data.id}
-                  vacancyTitle={data.title}
-                />
-              );
-            })}
+        <div
+          aria-labelledby="funnel-tab-publications"
+          hidden={activeSection !== "publications"}
+          id="funnel-panel-publications"
+          role="tabpanel"
+        >
+          <div className="surface-card p-4 sm:p-6">
+            <PublicationsTable />
           </div>
-          <DragOverlay>
-            {activeCandidate ? (
-              <VacancyStageCandidateCard
-                candidate={activeCandidate}
-                isDragOverlay
-                isHhSource={isHhVacancy}
-                vacancyId={data.id}
-                vacancyTitle={data.title}
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        </div>
       </div>
 
       <FilterModal
         cityOptions={vacancyLookups?.cities}
         initialFilters={appliedFilters}
-        isOpen={isFilterModalOpen}
+        isOpen={activeSection === "candidates" && isFilterModalOpen}
         onApply={(filters) => {
           setAppliedFilters(filters);
           setIsFilterModalOpen(false);
@@ -914,7 +1069,11 @@ export default function VacancyFunnelPage() {
       <AssignCandidateToVacancyModal
         errorMessage={assignCandidateToVacancy.error?.message}
         isAssigning={assignCandidateToVacancy.isPending}
-        isOpen={assignmentStage !== null && !isHhVacancy}
+        isOpen={
+          activeSection === "candidates" &&
+          assignmentStage !== null &&
+          !isHhVacancy
+        }
         onAssignCandidate={(candidateId) => {
           if (!assignmentStage) {
             return;
