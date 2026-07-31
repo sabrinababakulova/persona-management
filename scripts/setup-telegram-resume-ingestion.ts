@@ -23,7 +23,6 @@ import {
   vacancies,
 } from "../src/server/db/schema";
 import {
-  deleteTelegramWebhook,
   getTelegramBotProfile,
   getTelegramChat,
   getTelegramChatMember,
@@ -41,7 +40,6 @@ type SetupOptions = {
   vacancyTitle: string;
   envFile: string;
   installCron: boolean;
-  replaceWebhook: boolean;
 };
 
 function readOption(name: string) {
@@ -74,7 +72,6 @@ function parseOptions(): SetupOptions {
     vacancyTitle: readOption("--vacancy-title") ?? DEFAULT_VACANCY_TITLE,
     envFile: path.resolve(readOption("--env-file") ?? ".env.local"),
     installCron: !process.argv.includes("--no-cron"),
-    replaceWebhook: process.argv.includes("--replace-webhook"),
   };
 }
 
@@ -90,10 +87,7 @@ function assertOptions(options: SetupOptions) {
   }
 }
 
-async function verifyTelegramForPolling(
-  chatId: string,
-  replaceWebhook: boolean,
-) {
+async function verifyTelegram(chatId: string) {
   const bot = await getTelegramBotProfile();
   const chat = await getTelegramChat(chatId);
   const membership = await getTelegramChatMember(chatId, bot.id);
@@ -118,18 +112,16 @@ async function verifyTelegramForPolling(
   }
 
   const webhook = await getTelegramWebhookInfo();
-  if (webhook.url && !replaceWebhook) {
-    throw new Error(
-      "A Telegram webhook is already configured. Re-run with " +
-        "--replace-webhook to switch this bot to cron polling without " +
-        "dropping pending updates.",
-    );
-  }
 
   return {
     bot: bot.username ? `@${bot.username}` : String(bot.id),
     chat: chat.title ?? String(chat.id),
-    webhookConfigured: Boolean(webhook.url),
+    webhook: {
+      configured: Boolean(webhook.url),
+      url: webhook.url || null,
+      pendingUpdates: webhook.pending_update_count,
+      lastError: webhook.last_error_message ?? null,
+    },
   };
 }
 
@@ -403,7 +395,6 @@ async function prepareMacOsCronRuntime(
   try {
     const build = await runProcess(process.execPath, [
       "build",
-      path.join(appDir, "scripts", "import-pending-telegram-resumes.ts"),
       path.join(appDir, "scripts", "drain-telegram-resumes.ts"),
       "--target=bun",
       "--outdir",
@@ -415,18 +406,14 @@ async function prepareMacOsCronRuntime(
       );
     }
 
-    const runnerName = "telegram-resumes-poll-cron.sh";
+    const runnerName = "telegram-resumes-worker-cron.sh";
     await copyFile(
       path.join(appDir, "scripts", runnerName),
       path.join(stagingDir, runnerName),
     );
     await chmod(path.join(stagingDir, runnerName), 0o700);
 
-    for (const fileName of [
-      "import-pending-telegram-resumes.js",
-      "drain-telegram-resumes.js",
-      runnerName,
-    ]) {
+    for (const fileName of ["drain-telegram-resumes.js", runnerName]) {
       await rename(
         path.join(stagingDir, fileName),
         path.join(workerDir, fileName),
@@ -467,7 +454,7 @@ async function prepareMacOsCronRuntime(
   await writePrivateEnvFile(runtimeEnvFile, runtimeValues);
 
   return {
-    runner: path.join(workerDir, "telegram-resumes-poll-cron.sh"),
+    runner: path.join(workerDir, "telegram-resumes-worker-cron.sh"),
     envFile: runtimeEnvFile,
     workerDir,
     logFile: path.join(workerDir, "telegram-resumes-cron.log"),
@@ -486,7 +473,7 @@ async function installCron(
   const sourceCronScript = path.join(
     appDir,
     "scripts",
-    "telegram-resumes-poll-cron.sh",
+    "telegram-resumes-worker-cron.sh",
   );
   await chmod(sourceCronScript, 0o755);
   const runtime =
@@ -539,10 +526,7 @@ async function main() {
 
   await verifyDatabaseSchema();
   await verifyDirectusStorageToken();
-  const telegram = await verifyTelegramForPolling(
-    options.chatId,
-    options.replaceWebhook,
-  );
+  const telegram = await verifyTelegram(options.chatId);
   const database = await ensureCompanyAndVacancy(
     options.companyName.trim(),
     options.vacancyTitle.trim(),
@@ -559,19 +543,13 @@ async function main() {
         vacancyId: database.vacancy.id,
       })
     : null;
-  let removedWebhook = false;
-  if (options.installCron && telegram.webhookConfigured) {
-    await deleteTelegramWebhook();
-    removedWebhook = true;
-  }
-
   console.log(
     JSON.stringify(
       {
         telegram: {
           bot: telegram.bot,
           chat: telegram.chat,
-          removedWebhook,
+          webhook: telegram.webhook,
         },
         company: {
           ...database.company,

@@ -78,7 +78,9 @@ async function main() {
       env.AUTH_URL ??
       (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : undefined);
     if (!publicOrigin) {
-      throw new Error("AUTH_URL or VERCEL_URL is required to set the webhook");
+      throw new Error(
+        "TELEGRAM_WEBHOOK_BASE_URL, AUTH_URL, or VERCEL_URL is required to set the webhook",
+      );
     }
 
     const webhookUrl = new URL(
