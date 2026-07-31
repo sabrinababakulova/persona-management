@@ -15,10 +15,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
-import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
 import {
   countActiveFilters,
   EMPTY_FILTER_MODAL_FILTERS,
@@ -28,16 +27,12 @@ import {
 import {
   AIGenerationIcon,
   ChevronRightIcon,
-  DollarIcon,
   DownloadIcon,
   FilterIcon,
-  MailIcon,
   MoreIcon,
-  OutlineBriefcaseIcon,
   PlusIcon,
   SearchIcon,
   SortIcon,
-  VacancyResponsesIcon,
 } from "~/app/_components/icons";
 import {
   FeedbackPresence,
@@ -57,20 +52,6 @@ function DotSeparator({
   className?: string;
 }) {
   return <span className={className}>|</span>;
-}
-
-function formatSalary(
-  salaryExpectation: number,
-  salaryCurrency: string,
-  formatNumber: (value: number) => string,
-  fallback: string,
-): string {
-  if (!salaryExpectation) {
-    return fallback;
-  }
-
-  const formatted = formatNumber(salaryExpectation);
-  return salaryCurrency === "USD" ? `$${formatted}+` : `${formatted} UZS`;
 }
 
 function toAiSummaryLines(aiAnalysis: string, fallback: string) {
@@ -132,111 +113,94 @@ type FunnelStage = {
 
 const FUNNEL_PAGE_SIZE = 10;
 
-function getFunnelPaginationItems(currentPage: number, totalPages: number) {
-  if (totalPages <= 4) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-  if (currentPage <= 2) {
-    return [1, 2, "ellipsis", totalPages] as const;
-  }
-  if (currentPage >= totalPages - 1) {
-    return [1, "ellipsis", totalPages - 1, totalPages] as const;
-  }
-  return [
-    1,
-    "ellipsis-left",
-    currentPage,
-    "ellipsis-right",
-    totalPages,
-  ] as const;
-}
-
-function CandidateCardSection({
-  children,
-  icon,
-  title,
-}: {
-  children: React.ReactNode;
-  icon: React.ReactNode;
-  title: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-1.5 text-text-placeholder">
-        <span className="flex h-[14px] w-[14px] items-center justify-center">
-          {icon}
-        </span>
-        <p className="font-medium text-xs leading-none">{title}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 function VacancyFunnelHeader({
   areaId,
+  candidateCount,
   experienceId,
   id,
   title,
 }: {
   areaId: string;
+  candidateCount: number;
   experienceId: string;
   id: string;
   title: string;
 }) {
   const t = useTranslations("Funnel");
+  const vacancyDetailT = useTranslations("VacancyDetail");
   const metadata = [experienceId, areaId].filter(
     (value) => value.trim().length > 0,
   );
 
   return (
-    <section className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-      <div className="flex flex-col gap-4">
-        <p className="font-medium text-base text-text-secondary uppercase leading-none">
-          {t("title")}
-        </p>
-
+    <div className="flex flex-col gap-5">
+      <section className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
           <h1 className="page-title">{title}</h1>
 
-          {metadata.length > 0 && (
+          {metadata.length > 0 ? (
             <div className="flex flex-wrap items-center gap-3 md:gap-4">
-              {metadata.map((value, index) => (
+              {metadata.map((value) => (
                 <div className="flex items-center gap-3 md:gap-4" key={value}>
-                  {index > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="hidden h-[18px] w-px bg-border-input md:block"
-                    />
-                  )}
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-[24px] w-px bg-border-input md:block"
+                  />
                   <span className="font-medium text-3xl text-text-secondary leading-none md:text-3xl">
                     {value}
                   </span>
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
-      </div>
 
-      <div className="flex items-center gap-2 self-start md:self-end">
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <Link
+            className="ui-button w-full justify-between bg-action-soft-bg text-primary-blue hover:bg-action-soft-bg-hover sm:w-auto sm:min-w-48"
+            href={`/vacancies/${id}`}
+          >
+            <span className="font-medium">{t("moreAboutVacancy")}</span>
+            <ChevronRightIcon className="h-3 w-3 shrink-0" />
+          </Link>
+
+          <button
+            aria-label={t("moreActions")}
+            className="inline-flex h-[22px] w-[22px] items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
+            type="button"
+          >
+            <MoreIcon className="h-[18px] w-[18px]" />
+          </button>
+        </div>
+      </section>
+
+      <nav
+        aria-label={t("vacancySections")}
+        className="flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-xl bg-bg-input p-1"
+      >
+        <span
+          aria-current="page"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-bg-light px-3 py-2 font-semibold text-sm text-text-heading shadow-sm"
+        >
+          {t("candidatesTab")}
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-badge-red px-1.5 font-semibold text-bg-light text-xs">
+            {candidateCount}
+          </span>
+        </span>
         <Link
-          className="ui-button ui-button-primary w-full justify-between sm:w-auto sm:min-w-48"
-          href={`/vacancies/${id}`}
+          className="shrink-0 rounded-lg px-3 py-2 font-medium text-sm text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
+          href={`/vacancies/${id}?step=description`}
         >
-          <span className="font-medium">{t("moreAboutVacancy")}</span>
-          <ChevronRightIcon className="h-3 w-3 shrink-0" />
+          {vacancyDetailT("descriptionMenu")}
         </Link>
-
-        <button
-          aria-label={t("moreActions")}
-          className="inline-flex h-[22px] w-[22px] items-center justify-center text-text-secondary transition-colors hover:text-text-heading"
-          type="button"
+        <Link
+          className="shrink-0 rounded-lg px-3 py-2 font-medium text-sm text-text-secondary hover:bg-bg-panel-hover hover:text-text-heading"
+          href={`/vacancies/${id}?step=publications`}
         >
-          <MoreIcon className="h-[18px] w-[18px]" />
-        </button>
-      </div>
-    </section>
+          {vacancyDetailT("publicationsMenu")}
+        </Link>
+      </nav>
+    </div>
   );
 }
 
@@ -255,7 +219,6 @@ function VacancyStageCandidateCard({
   vacancyId: string;
   vacancyTitle: string;
 }) {
-  const format = useFormatter();
   const t = useTranslations("Funnel");
   const subtitleTokens = compactValues([
     candidate.city.toUpperCase(),
@@ -277,11 +240,6 @@ function VacancyStageCandidateCard({
       ),
     ...candidate.skills.slice(0, 1),
   ]);
-  const contactTokens = compactValues([
-    candidate.contacts.phone,
-    candidate.contacts.telegram,
-    candidate.contacts.email,
-  ]);
   const candidateDetailId = isHhSource ? `hh_${candidate.id}` : candidate.id;
   const candidateDetailParams = new URLSearchParams({
     fromVacancyId: vacancyId,
@@ -291,7 +249,7 @@ function VacancyStageCandidateCard({
 
   return (
     <article
-      className={`surface-card flex w-full flex-col gap-5 p-4 md:w-72 ${
+      className={`surface-card flex w-full flex-col gap-4 p-4 hover:border-border-control hover:shadow-menu motion-safe:hover:-translate-y-0.5 md:w-72 ${
         isDragging ? "opacity-40" : ""
       } ${isDragOverlay ? "rotate-2 cursor-grabbing shadow-2xl" : ""}`}
     >
@@ -323,20 +281,19 @@ function VacancyStageCandidateCard({
           </div>
 
           <Link
-            className={`font-semibold text-base leading-[1.1] transition-colors ${
-              isHhSource
-                ? "text-primary-blue hover:text-primary-blue-hover"
-                : "text-text-heading hover:text-primary-blue"
-            }`}
+            className="font-semibold text-base text-text-heading leading-[1.1] transition-colors hover:text-primary-blue"
             href={candidateDetailHref}
           >
             {candidate.fullName}
           </Link>
         </div>
 
-        <div className="rounded-md bg-status-offer-bg p-2 text-status-offer">
+        <div
+          className="rounded-md bg-ai-analysis-bg p-2 text-text-heading"
+          data-testid="funnel-ai-analysis"
+        >
           <div className="mb-2 flex items-center gap-1.5">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 text-accent-pink">
               <AIGenerationIcon className="h-3 w-3" />
               <span className="font-bold text-xs leading-none">AI</span>
             </div>
@@ -347,90 +304,36 @@ function VacancyStageCandidateCard({
 
           <div className="flex flex-col gap-1">
             {aiSummaryLines.map((line) => (
-              <p className="text-xs leading-[1.3]" key={line}>
-                - {line}
+              <p
+                className="flex items-start gap-1.5 text-text-secondary text-xs leading-[1.3]"
+                key={line}
+              >
+                <span
+                  aria-hidden="true"
+                  className="font-bold text-success-green"
+                >
+                  +
+                </span>
+                <span>{line}</span>
               </p>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <CandidateCardSection
-          icon={<OutlineBriefcaseIcon className="h-[14px] w-[14px]" />}
-          title={t("currentPositionAndSkills")}
-        >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
-            {positionTokens.length > 0 ? (
-              positionTokens.map((token, index) => (
-                <div className="flex items-center gap-2" key={token}>
-                  {index > 0 ? <DotSeparator /> : null}
-                  <span>{token}</span>
-                </div>
-              ))
-            ) : (
-              <span className="text-text-placeholder">{t("noData")}</span>
-            )}
-          </div>
-        </CandidateCardSection>
-
-        <CandidateCardSection
-          icon={<MailIcon className="h-[14px] w-[14px]" />}
-          title={t("contacts")}
-        >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-heading leading-[1.3]">
-            {contactTokens.length > 0 ? (
-              contactTokens.map((token, index) => (
-                <div className="flex items-center gap-2" key={token}>
-                  {index > 0 ? <DotSeparator /> : null}
-                  <span>{token}</span>
-                </div>
-              ))
-            ) : (
-              <span className="text-text-placeholder">{t("noData")}</span>
-            )}
-          </div>
-        </CandidateCardSection>
-
-        <CandidateCardSection
-          icon={<DollarIcon className="h-[14px] w-[14px]" />}
-          title={t("salaryExpectation")}
-        >
-          <p className="text-sm text-text-heading leading-[1.3]">
-            {formatSalary(
-              candidate.salaryExpectation,
-              candidate.salaryCurrency,
-              (value) => format.number(value),
-              t("notSpecified"),
-            )}
-          </p>
-        </CandidateCardSection>
-
-        <CandidateCardSection
-          icon={<VacancyResponsesIcon className="h-[14px] w-[14px]" />}
-          title={t("otherApplications")}
-        >
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-[1.3]">
-            {candidate.relatedVacancies.length > 0 ? (
-              candidate.relatedVacancies.slice(0, 2).map((vacancy, index) => (
-                <div className="flex items-center gap-2" key={vacancy.id}>
-                  {index > 0 ? <DotSeparator /> : null}
-                  <Link
-                    className="text-primary-blue transition-colors hover:text-primary-blue-hover"
-                    href={`/vacancies/${vacancy.id}`}
-                  >
-                    {vacancy.title}
-                  </Link>
-                </div>
-              ))
-            ) : (
-              <span className="text-text-placeholder">
-                {t("noApplications")}
-              </span>
-            )}
-          </div>
-        </CandidateCardSection>
-      </div>
+      {positionTokens.length > 0 ? (
+        <div className="flex flex-wrap items-start gap-1.5">
+          {positionTokens.slice(0, 4).map((token) => (
+            <span
+              className="rounded-lg bg-badge-soft-green-bg px-2 py-1.5 font-semibold text-text-heading text-xs uppercase leading-none"
+              data-testid="funnel-skill-badge"
+              key={token}
+            >
+              ✓ {token}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {candidate.tags.length > 0 ? (
         <div className="flex flex-wrap items-start gap-1.5">
@@ -444,21 +347,15 @@ function VacancyStageCandidateCard({
         </div>
       ) : null}
 
-      <p className="text-text-heading text-xs leading-[1.3]">
-        {t("source")}{" "}
-        <span className="text-primary-blue">
-          {candidate.source.trim() || t("notSpecified")}
-        </span>
-      </p>
-
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 border-border-light border-t pt-3">
         <div className="flex items-center gap-1 text-text-placeholder">
           <DownloadIcon className="h-[18px] w-[18px]" />
           <p className="font-medium text-base leading-none">CV</p>
         </div>
 
         <button
-          className="inline-flex h-[34px] items-center justify-center rounded-lg bg-primary-blue-light px-3 font-medium text-primary-blue text-sm leading-none transition-colors hover:bg-primary-blue-light-hover disabled:cursor-not-allowed disabled:text-text-disabled"
+          className="inline-flex h-[34px] items-center justify-center rounded-lg bg-action-soft-bg px-3 font-medium text-primary-blue text-sm leading-none transition-colors hover:bg-action-soft-bg-hover disabled:cursor-not-allowed disabled:text-text-disabled"
+          data-testid="funnel-cv-button"
           disabled={!candidate.resumeUrl}
           onClick={() => {
             if (candidate.resumeUrl) {
@@ -528,12 +425,12 @@ function VacancyStageSection({
   canAddCandidate,
   isDndDisabled,
   isHhSource,
+  isLoadingMore,
   label,
   onAddCandidate,
-  onPageChange,
-  currentPage,
+  onLoadMore,
   stageValue,
-  totalPages,
+  total,
   vacancyId,
   vacancyTitle,
 }: {
@@ -542,17 +439,21 @@ function VacancyStageSection({
   canAddCandidate: boolean;
   isDndDisabled: boolean;
   isHhSource?: boolean;
+  isLoadingMore: boolean;
   label: string;
   onAddCandidate: () => void;
-  onPageChange: (page: number) => void;
-  currentPage: number;
+  onLoadMore: () => void;
   stageValue: string;
-  totalPages: number;
+  total: number;
   vacancyId: string;
   vacancyTitle: string;
 }) {
   const t = useTranslations("Funnel");
-  const paginationItems = getFunnelPaginationItems(currentPage, totalPages);
+  const remainingCandidateCount = Math.max(0, total - candidates.length);
+  const nextCandidateCount = Math.min(
+    FUNNEL_PAGE_SIZE,
+    remainingCandidateCount,
+  );
   const { isOver, setNodeRef } = useDroppable({
     id: stageValue,
     disabled: isDndDisabled,
@@ -561,17 +462,23 @@ function VacancyStageSection({
 
   return (
     <section
-      className={`w-full shrink-0 rounded-xl border bg-bg-input p-4 transition-colors lg:w-80 ${
+      className={`w-full shrink-0 rounded-xl border p-4 transition-[background-color,border-color,box-shadow] duration-200 ease-out lg:w-80 ${
         isOver
-          ? "border-primary-blue bg-primary-blue-light"
-          : "border-border-input"
+          ? "border-primary-blue bg-action-soft-bg shadow-menu"
+          : "border-transparent bg-bg-input"
       }`}
+      data-testid="funnel-stage"
       ref={setNodeRef}
     >
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-medium text-base text-text-secondary leading-none">
-          {label}
-        </h2>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h2 className="truncate font-semibold text-base text-text-heading leading-none">
+            {label}
+          </h2>
+          <span className="font-medium text-sm text-text-placeholder leading-none">
+            {total}
+          </span>
+        </div>
 
         <div className="flex items-center gap-2">
           {canAddCandidate ? (
@@ -615,59 +522,23 @@ function VacancyStageSection({
         )}
       </div>
 
-      <nav
-        aria-label={t("stagePagination", { stage: label })}
-        className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-border-input bg-bg-light px-2 py-2"
-      >
+      {remainingCandidateCount > 0 ? (
         <button
-          aria-label={t("previousPage")}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-input hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
-          disabled={currentPage <= 1}
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          aria-label={t("loadMoreForStage", {
+            count: nextCandidateCount,
+            stage: label,
+          })}
+          className="mt-4 inline-flex w-full items-center justify-center py-4 font-semibold text-base text-text-placeholder transition-[color,opacity,transform] duration-200 ease-out hover:text-primary-blue active:scale-[0.98] disabled:cursor-wait disabled:opacity-55"
+          data-testid="funnel-load-more"
+          disabled={isLoadingMore}
+          onClick={onLoadMore}
           type="button"
         >
-          <ChevronRightIcon className="h-4 w-4 rotate-180" />
+          {isLoadingMore
+            ? t("loadingMore")
+            : t("loadMore", { count: nextCandidateCount })}
         </button>
-
-        <div className="flex min-w-0 items-center justify-center gap-1">
-          {paginationItems.map((item) =>
-            typeof item === "number" ? (
-              <button
-                aria-current={item === currentPage ? "page" : undefined}
-                aria-label={t("goToPage", { page: item })}
-                className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 font-medium text-sm transition-colors ${
-                  item === currentPage
-                    ? "bg-primary-blue-light text-primary-blue"
-                    : "text-text-secondary hover:bg-bg-input hover:text-text-heading"
-                }`}
-                key={item}
-                onClick={() => onPageChange(item)}
-                type="button"
-              >
-                {item}
-              </button>
-            ) : (
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 min-w-5 items-center justify-center text-sm text-text-placeholder"
-                key={item}
-              >
-                …
-              </span>
-            ),
-          )}
-        </div>
-
-        <button
-          aria-label={t("nextPage")}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-input hover:text-text-heading disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent"
-          disabled={currentPage >= totalPages}
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          type="button"
-        >
-          <ChevronRightIcon className="h-4 w-4" />
-        </button>
-      </nav>
+      ) : null}
     </section>
   );
 }
@@ -675,7 +546,6 @@ function VacancyStageSection({
 export default function VacancyFunnelPage() {
   const t = useTranslations("Funnel");
   const navigationT = useTranslations("Navigation");
-  const vacanciesT = useTranslations("Vacancies");
   const localizeLookups = useLookupLocalizer();
   const { id } = useParams() as { id: string };
   const utils = api.useUtils();
@@ -684,7 +554,7 @@ export default function VacancyFunnelPage() {
     value: string;
   } | null>(null);
   const [localStages, setLocalStages] = useState<FunnelStage[] | null>(null);
-  const [stagePages, setStagePages] = useState<Record<string, number>>({});
+  const [stageLimits, setStageLimits] = useState<Record<string, number>>({});
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(
     null,
   );
@@ -706,12 +576,12 @@ export default function VacancyFunnelPage() {
         appliedFilters.statuses.length > 0
           ? appliedFilters.statuses
           : undefined,
-      stagePagination: Object.entries(stagePages)
+      stagePagination: Object.entries(stageLimits)
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([stage, page]) => ({
+        .map(([stage, limit]) => ({
           stage,
-          limit: FUNNEL_PAGE_SIZE,
-          offset: (page - 1) * FUNNEL_PAGE_SIZE,
+          limit,
+          offset: 0,
         })),
     }),
     [
@@ -720,13 +590,16 @@ export default function VacancyFunnelPage() {
       appliedFilters.city,
       appliedFilters.sources,
       appliedFilters.statuses,
-      stagePages,
+      stageLimits,
     ],
   );
-  const { data, isLoading } = api.vacancies.getFunnel.useQuery(funnelInput, {
-    enabled: Boolean(id),
-    placeholderData: (previousData) => previousData,
-  });
+  const { data, isFetching, isLoading } = api.vacancies.getFunnel.useQuery(
+    funnelInput,
+    {
+      enabled: Boolean(id),
+      placeholderData: (previousData) => previousData,
+    },
+  );
   const isHhVacancy = data?.source === "hh.uz";
   const { data: lookups } = api.lookups.getCandidateCreateOptions.useQuery();
   const { data: vacancyLookups } =
@@ -747,37 +620,15 @@ export default function VacancyFunnelPage() {
     }
   }, [data?.stages]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: changing any server-side funnel filter must return every stage to page one
+  // biome-ignore lint/correctness/useExhaustiveDependencies: changing a server-side filter resets every stage to the initial ten candidates
   useEffect(() => {
-    setStagePages({});
+    setStageLimits({});
   }, [
     debouncedSearchQuery,
     appliedFilters.city,
     appliedFilters.sources,
     appliedFilters.statuses,
   ]);
-
-  useEffect(() => {
-    if (!data?.stages) {
-      return;
-    }
-
-    setStagePages((currentPages) => {
-      let changed = false;
-      const nextPages = { ...currentPages };
-
-      for (const stage of data.stages) {
-        const totalPages = Math.max(1, Math.ceil(stage.total / stage.limit));
-        const currentPage = currentPages[stage.value] ?? 1;
-        if (currentPage > totalPages) {
-          nextPages[stage.value] = totalPages;
-          changed = true;
-        }
-      }
-
-      return changed ? nextPages : currentPages;
-    });
-  }, [data?.stages]);
 
   const assignCandidateToVacancy = api.vacancies.assignCandidate.useMutation({
     onSuccess: async () => {
@@ -810,6 +661,10 @@ export default function VacancyFunnelPage() {
   );
 
   const stages = localStages ?? data?.stages ?? [];
+  const totalCandidateCount = stages.reduce(
+    (total, stage) => total + stage.total,
+    0,
+  );
   const activeCandidate = useMemo<FunnelCandidate | null>(() => {
     if (!activeCandidateId) {
       return null;
@@ -920,14 +775,20 @@ export default function VacancyFunnelPage() {
   return (
     <main className="min-h-full bg-bg-canvas">
       <div className="app-page flex flex-col gap-5">
-        <Breadcrumbs
-          label={`${data.title} / ${vacanciesT("funnel")}`}
-          rootHref="/vacancies"
-          rootLabel={navigationT("vacancies")}
-        />
+        <nav
+          aria-label={t("breadcrumb")}
+          className="flex min-w-0 items-center gap-2 font-semibold text-text-placeholder text-xs uppercase tracking-[0.16em]"
+        >
+          <Link className="shrink-0 hover:text-text-heading" href="/vacancies">
+            ← {navigationT("vacancies")}
+          </Link>
+          <span aria-hidden="true">·</span>
+          <span className="min-w-0 truncate">{t("title")}</span>
+        </nav>
 
         <VacancyFunnelHeader
           areaId={data.areaId}
+          candidateCount={totalCandidateCount}
           experienceId={data.experienceId}
           id={data.id}
           title={data.title}
@@ -957,10 +818,8 @@ export default function VacancyFunnelPage() {
             />
           </div>
           <button
-            className={`ui-button ui-button-secondary ${
-              activeFilterCount > 0
-                ? "border-primary-blue bg-primary-blue/5"
-                : "border-border-light bg-bg-light"
+            className={`ui-button border-transparent bg-action-soft-bg text-primary-blue hover:bg-action-soft-bg-hover ${
+              activeFilterCount > 0 ? "ring-1 ring-primary-blue" : ""
             }`}
             onClick={() => setIsFilterModalOpen(true)}
             type="button"
@@ -985,22 +844,22 @@ export default function VacancyFunnelPage() {
           onDragStart={handleDragStart}
           sensors={sensors}
         >
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div
+            className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-3"
+            data-testid="funnel-board"
+          >
             {stages.map((stage) => {
-              const currentPage = Math.floor(stage.offset / stage.limit) + 1;
-              const totalPages = Math.max(
-                1,
-                Math.ceil(stage.total / stage.limit),
-              );
+              const requestedLimit =
+                stageLimits[stage.value] ?? FUNNEL_PAGE_SIZE;
 
               return (
                 <VacancyStageSection
                   activeCandidateId={activeCandidateId}
                   canAddCandidate={!isHhVacancy}
                   candidates={stage.candidates}
-                  currentPage={currentPage}
                   isDndDisabled={isHhVacancy}
                   isHhSource={isHhVacancy}
+                  isLoadingMore={isFetching && requestedLimit > stage.limit}
                   key={stage.value}
                   label={stage.label}
                   onAddCandidate={() =>
@@ -1009,14 +868,16 @@ export default function VacancyFunnelPage() {
                       value: stage.value,
                     })
                   }
-                  onPageChange={(page) =>
-                    setStagePages((currentPages) => ({
-                      ...currentPages,
-                      [stage.value]: page,
+                  onLoadMore={() =>
+                    setStageLimits((currentLimits) => ({
+                      ...currentLimits,
+                      [stage.value]:
+                        (currentLimits[stage.value] ?? FUNNEL_PAGE_SIZE) +
+                        FUNNEL_PAGE_SIZE,
                     }))
                   }
                   stageValue={stage.value}
-                  totalPages={totalPages}
+                  total={stage.total}
                   vacancyId={data.id}
                   vacancyTitle={data.title}
                 />

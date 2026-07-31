@@ -27,7 +27,7 @@ export const vacancyFunnelInputSchema = vacancyIdInputSchema.extend({
     .array(
       z.object({
         stage: z.string().min(1).max(50),
-        limit: z.number().int().min(1).max(50),
+        limit: z.number().int().min(1).max(1000),
         offset: z.number().int().min(0),
       }),
     )

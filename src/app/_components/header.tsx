@@ -26,23 +26,23 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-header-border border-b bg-bg-frosted px-4 py-2.5 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 w-full bg-bg-frosted px-4 py-3 backdrop-blur-xl sm:px-6">
       <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             aria-expanded={isSidebarOpen}
             aria-label={isSidebarOpen ? t("collapseSidebar") : t("openSidebar")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover lg:hidden"
             onClick={onSidebarToggle}
             type="button"
           >
             <MenuIcon className="h-5 w-5" />
           </button>
 
-          <div className="relative w-full max-w-sm">
+          <div className="relative w-full max-w-lg">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-secondary" />
             <input
-              className="h-10 w-full rounded-lg border border-transparent bg-bg-input py-2 pr-4 pl-9 text-sm text-text-heading placeholder:text-text-placeholder focus:border-primary-blue focus:bg-bg-light focus:outline-none"
+              className="h-10 w-full rounded-lg border border-border-light bg-bg-light py-2 pr-4 pl-9 text-sm text-text-heading shadow-sm placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder ?? t("search")}
               type="text"
@@ -58,10 +58,14 @@ export function Header({
 
           <button
             aria-label={t("notifications")}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-blue-light text-primary-blue hover:bg-primary-blue-light-hover"
+            className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-heading shadow-sm hover:border-border-control hover:bg-bg-panel-hover"
             type="button"
           >
             <BellIcon className="h-5 w-5" />
+            <span
+              aria-hidden="true"
+              className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary-blue ring-2 ring-bg-light"
+            />
           </button>
 
           <AvatarProfileMenu />

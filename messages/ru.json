@@ -51,7 +51,7 @@
     "collapseSidebar": "Свернуть боковое меню",
     "openSidebar": "Открыть боковое меню",
     "notifications": "Уведомления",
-    "search": "Что вы хотите найти?"
+    "search": "Поиск по вакансиям и кандидатам..."
   },
   "Common": {
     "back": "Назад",
@@ -512,6 +512,9 @@
   },
   "Funnel": {
     "title": "Воронка по вакансии",
+    "breadcrumb": "Навигация по вакансии",
+    "vacancySections": "Разделы вакансии",
+    "candidatesTab": "Кандидаты",
     "moreAboutVacancy": "Больше о вакансии",
     "moreActions": "Дополнительные действия",
     "candidate": "Кандидат",
@@ -536,10 +539,9 @@
     "hhAccessDenied": "У вашего аккаунта hh.uz нет доступа к откликам этой вакансии. Кандидаты с hh.uz не отображаются в воронке. Проверьте права менеджера или подключённый аккаунт hh.uz.",
     "search": "Поиск кандидатов",
     "addFilters": "Добавить фильтры",
-    "stagePagination": "Страницы этапа «{stage}»",
-    "previousPage": "Предыдущая страница",
-    "nextPage": "Следующая страница",
-    "goToPage": "Перейти на страницу {page}"
+    "loadMore": "Показать ещё {count}",
+    "loadMoreForStage": "Показать ещё {count} кандидатов на этапе «{stage}»",
+    "loadingMore": "Загружаем..."
   },
   "AuthError": {
     "accessDeniedTitle": "Вход не выполнен",

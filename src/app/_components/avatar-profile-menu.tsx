@@ -37,7 +37,7 @@ const clearClientStorage = () => {
 
 export function AvatarProfileMenu() {
   const t = useTranslations("Components");
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +46,13 @@ export function AvatarProfileMenu() {
     enabled: status === "authenticated",
   });
   const avatarSrc = avatar?.avatarUrl ?? "";
+  const avatarInitial = (
+    session?.user?.name?.trim() ||
+    session?.user?.email?.trim() ||
+    ""
+  )
+    .charAt(0)
+    .toUpperCase();
 
   useEffect(() => {
     if (!isOpen) {
@@ -97,7 +104,7 @@ export function AvatarProfileMenu() {
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={t("profile")}
-        className="h-10 w-10 overflow-hidden rounded-full bg-primary-blue-light outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
+        className="h-10 w-10 overflow-hidden rounded-full border border-bg-light bg-primary-blue text-bg-light shadow-sm outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
         whileHover={{ scale: 1.045 }}
@@ -112,8 +119,12 @@ export function AvatarProfileMenu() {
             unoptimized
             width={40}
           />
+        ) : avatarInitial ? (
+          <span className="flex h-full w-full items-center justify-center font-semibold text-sm">
+            {avatarInitial}
+          </span>
         ) : (
-          <span className="flex h-full w-full items-center justify-center text-icon-secondary">
+          <span className="flex h-full w-full items-center justify-center text-bg-light">
             <ImageUploadPlaceholderIcon className="h-6 w-6" />
           </span>
         )}

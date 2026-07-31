@@ -56,6 +56,10 @@
   --color-bg-avatar: #f2c1bc;
   --color-bg-panel-hover: #fbf7ef;
   --color-bg-frosted: rgba(248, 243, 233, 0.92);
+  --color-action-soft-bg: #fee8e6;
+  --color-action-soft-bg-hover: #fdd9d5;
+  --color-badge-soft-green-bg: #e4f1e6;
+  --color-ai-analysis-bg: #fbe9f5;
   --color-bg-overlay-soft: rgba(0, 0, 0, 0.2);
   --color-bg-overlay-medium: rgba(0, 0, 0, 0.35);
   --color-bg-overlay-strong: rgba(0, 0, 0, 0.4);

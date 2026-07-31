@@ -51,7 +51,7 @@
     "collapseSidebar": "Yon menyuni yig‘ish",
     "openSidebar": "Yon menyuni ochish",
     "notifications": "Bildirishnomalar",
-    "search": "Nimani qidirmoqchisiz?"
+    "search": "Vakansiyalar va nomzodlarni qidirish..."
   },
   "Common": {
     "back": "Orqaga",
@@ -512,6 +512,9 @@
   },
   "Funnel": {
     "title": "Vakansiya voronkasi",
+    "breadcrumb": "Vakansiya navigatsiyasi",
+    "vacancySections": "Vakansiya bo‘limlari",
+    "candidatesTab": "Nomzodlar",
     "moreAboutVacancy": "Vakansiya haqida batafsil",
     "moreActions": "Qo‘shimcha harakatlar",
     "candidate": "Nomzod",
@@ -536,10 +539,9 @@
     "hhAccessDenied": "hh.uz hisobingizda ushbu vakansiya arizalariga kirish huquqi yo‘q. hh.uz nomzodlari voronkada ko‘rsatilmaydi. Menejer huquqlari yoki ulangan hh.uz hisobini tekshiring.",
     "search": "Nomzodlarni qidirish",
     "addFilters": "Filtr qo‘shish",
-    "stagePagination": "“{stage}” bosqichi sahifalari",
-    "previousPage": "Oldingi sahifa",
-    "nextPage": "Keyingi sahifa",
-    "goToPage": "{page}-sahifaga o‘tish"
+    "loadMore": "Yana {count} ta ko‘rsatish",
+    "loadMoreForStage": "“{stage}” bosqichida yana {count} ta nomzodni ko‘rsatish",
+    "loadingMore": "Yuklanmoqda..."
   },
   "AuthError": {
     "accessDeniedTitle": "Kirish amalga oshmadi",

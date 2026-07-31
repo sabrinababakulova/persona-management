@@ -51,7 +51,7 @@
     "collapseSidebar": "Collapse sidebar",
     "openSidebar": "Open sidebar",
     "notifications": "Notifications",
-    "search": "What would you like to find?"
+    "search": "Search vacancies and candidates..."
   },
   "Common": {
     "back": "Back",
@@ -512,6 +512,9 @@
   },
   "Funnel": {
     "title": "Vacancy funnel",
+    "breadcrumb": "Vacancy navigation",
+    "vacancySections": "Vacancy sections",
+    "candidatesTab": "Candidates",
     "moreAboutVacancy": "More about vacancy",
     "moreActions": "More actions",
     "candidate": "Candidate",
@@ -536,10 +539,9 @@
     "hhAccessDenied": "Your hh.uz account cannot access applications for this vacancy. hh.uz candidates are hidden from the funnel. Check the manager permissions or the connected hh.uz account.",
     "search": "Search candidates",
     "addFilters": "Add filters",
-    "stagePagination": "Pagination for {stage}",
-    "previousPage": "Previous page",
-    "nextPage": "Next page",
-    "goToPage": "Go to page {page}"
+    "loadMore": "Show {count} more",
+    "loadMoreForStage": "Show {count} more candidates in {stage}",
+    "loadingMore": "Loading..."
   },
   "AuthError": {
     "accessDeniedTitle": "Sign-in not completed",
