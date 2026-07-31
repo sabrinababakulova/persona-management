@@ -1,20 +1,36 @@
 # Telegram candidate resume ingestion
 
-The integration polls one configured Telegram group for new PDF resumes,
-stores them in Directus, extracts candidate data with the existing Mastra
-agents, creates company-scoped candidates, and links every candidate to one
-configured vacancy. The configured vacancy is marked `is_internal`, so it
-remains available in Directus while being excluded from the recruiter-facing
-application. Telegram Bot API calls use grammY's typed `Api` client
-with bounded `auto-retry`; the application retains control of durable update
-acknowledgment and database retry backoff.
+Production ingestion uses a Telegram webhook. Telegram sends each new
+`message` or `channel_post` update to the Next.js application, the webhook
+stores matching PDF documents in a durable PostgreSQL queue, and a separate
+worker processes that queue.
+
+```text
+New Telegram document
+        |
+        v
+Telegram POSTs an Update to the webhook
+        |
+        v
+Webhook validates its secret and inserts a queue row
+        |
+        v
+Resume worker downloads the file
+        |
+        v
+Directus upload -> Mastra analysis -> candidate saved
+```
+
+The webhook does not run file downloads or AI work. This keeps its response
+fast and lets Telegram retry failed deliveries safely. Unique database indexes
+on the Telegram message id and file unique id make retries idempotent.
 
 ## One-time setup
 
 Apply the database schema and make sure the application's normal server
-environment is configured. In particular, the setup and worker require
-`DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, Directus credentials, and the Gemini API
-key used by the resume agents.
+environment is configured. The setup and worker require `DATABASE_URL`,
+`TELEGRAM_BOT_TOKEN`, Directus credentials, and the Gemini API key used by the
+resume agents.
 
 Run:
 
@@ -23,19 +39,20 @@ bun run db:push
 bun run telegram:resume:setup
 ```
 
-The setup command is idempotent and does all of the following:
+The setup command is idempotent and:
 
-1. Verifies the bot, target group, bot membership/privacy, protected-content
-   setting, database schema, and polling compatibility.
-2. Reuses the canonical `Default Company` (or creates it if it is missing).
-3. Creates the internal base vacancy `placeholder-vacancy` in that company
-   unless it already exists. Internal vacancies are visible only in Directus.
+1. Verifies the bot, target group, bot membership/privacy,
+   protected-content setting, database schema, and Directus access.
+2. Reuses the canonical `Default Company`, or creates it if missing.
+3. Creates the internal base vacancy `placeholder-vacancy` unless it exists.
 4. Writes `TELEGRAM_RESUME_CHAT_ID`, `TELEGRAM_RESUME_COMPANY_ID`, and
    `TELEGRAM_RESUME_VACANCY_ID` to `.env.local`.
-5. Installs one managed crontab entry that polls Telegram and processes one
-   eligible resume every minute.
+5. Installs a managed cron entry that processes one queued resume per minute.
 
-The defaults use Telegram group `-4910953100`. They can be overridden:
+The worker cron never calls `getUpdates` and does not modify the bot's webhook.
+For validation without changing crontab, add `--no-cron`.
+
+The defaults can be overridden:
 
 ```bash
 bun run telegram:resume:setup \
@@ -44,8 +61,6 @@ bun run telegram:resume:setup \
   --vacancy-title=placeholder-vacancy \
   --env-file=.env.local
 ```
-
-For validation without changing crontab, add `--no-cron`.
 
 If setup reports that `DIRECTUS_TOKEN` is invalid but the configured Directus
 administrator credentials are current, rotate and persist a verified static
@@ -56,54 +71,68 @@ bun run directus:token:repair
 bun run telegram:resume:setup
 ```
 
-Telegram does not allow `getUpdates` polling while a webhook is configured.
-If this bot currently has a webhook and it should be replaced by this cron
-poller, explicitly run:
+## Register the production webhook
+
+Deploy the application with these server-side variables:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_RESUME_CHAT_ID`
+- `TELEGRAM_RESUME_COMPANY_ID`
+- `TELEGRAM_RESUME_VACANCY_ID`
+- `TELEGRAM_WEBHOOK_BASE_URL` (the public HTTPS application origin)
+- `TELEGRAM_WEBHOOK_SECRET` (optional; derived from `AUTH_SECRET` by default)
+
+After the deployment is healthy, register the webhook once:
 
 ```bash
-bun run telegram:resume:setup --replace-webhook
+bun run telegram:resume:webhook:set
+bun run telegram:resume:status
 ```
 
-That removes the webhook without dropping pending updates.
+Registration performs a signed preflight request before calling
+`setWebhook`. It subscribes only to `message` and `channel_post` updates and
+keeps pending updates. `telegram:resume:status` reports the current URL,
+pending update count, and Telegram's latest delivery error.
 
-## Cron behavior
+Telegram supports either `getUpdates` or a webhook for a bot, not both. This
+integration no longer contains or schedules a `getUpdates` poller. See the
+[Telegram Bot API update delivery documentation](https://core.telegram.org/bots/api#getting-updates).
 
-The installed entry runs `scripts/telegram-resumes-poll-cron.sh` once per
-minute. The runner:
+## Queue worker
 
-- asks Bun to load the base `.env` followed by the exact environment file
-  selected during setup, so dotenv values do not have to be evaluated as shell
-  code;
-- pulls every currently pending Bot API update and acknowledges a batch only
-  after it has been persisted in PostgreSQL;
-- processes at most one eligible resume, leaving the remainder for subsequent
-  minutes;
-- uses a PID-aware lock so slow AI processing cannot overlap with the next
-  cron invocation;
+The setup-installed entry runs
+`scripts/telegram-resumes-worker-cron.sh` once per minute. It:
+
+- asks Bun to load the base `.env` followed by the environment file selected
+  during setup;
+- processes at most one eligible queue item per invocation;
+- uses a PID-aware lock so slow AI processing cannot overlap;
 - on macOS, installs a bundled runtime under
   `~/Library/Application Support/persona-management/telegram-resume-worker`;
-  this avoids the operating system denying `cron` access to repositories under
-  the privacy-protected `Desktop` directory;
-- appends output to the log path printed by the setup command. This is
-  `storage/logs/telegram-resumes-cron.log` on Linux and lives beside the
-  bundled runtime on macOS.
+- appends output to the log path printed by setup.
 
-Running the setup command again replaces only its own marked cron line and
-does not duplicate it or alter unrelated crontab entries.
-
-Check the installed entry and follow its output:
+Running setup again replaces only its own marked cron line. Inspect the local
+worker with:
 
 ```bash
 crontab -l
 tail -f "storage/logs/telegram-resumes-cron.log"
 ```
 
-On macOS, use the absolute `logFile` path printed by setup instead.
+On macOS, use the absolute `logFile` path printed by setup.
 
-Run either stage manually when troubleshooting:
+For hosted production, a scheduler can call the equivalent authenticated
+endpoint instead:
+
+```text
+GET /api/cron/telegram-resumes
+Authorization: Bearer <AUTH_SECRET>
+```
+
+Only one worker mechanism is needed. Run the worker manually when
+troubleshooting:
 
 ```bash
-bun run telegram:resume:pending
 bun run telegram:resume:drain
 ```
 
@@ -112,21 +141,24 @@ bun run telegram:resume:drain
 - Only documents from the configured numeric chat id are considered.
 - PDF files up to 10 MB are accepted. Invalid, empty, oversized, and non-PDF
   documents are retained as `ignored` queue records with a reason.
-- Unique database indexes on Telegram message id and file unique id make Bot
-  API retries and repeated forwards idempotent.
-- The worker stores the PDF in Directus, runs the existing Mastra resume
-  analyzer and summary agents, creates the candidate, and creates its
-  `vacancy_candidate` link in one database transaction.
-- Successful AI output is cached on the queue row so a later database retry
-  does not pay for the same analysis again.
+- The worker downloads the file from Telegram, stores it in Directus, runs the
+  existing Mastra resume analyzer and summary agents, creates the candidate,
+  and creates its `vacancy_candidate` link in one database transaction.
+- Successful AI output is cached on the queue row, so a later database retry
+  does not repeat the analysis.
 - Transient errors retry up to five times with exponential backoff.
 - Queue jobs use `FOR UPDATE SKIP LOCKED`, adding database-level protection
   against concurrent workers.
 
-The Telegram Bot API does not expose arbitrary group history. Polling sees only
-updates Telegram still retains (currently no more than 24 hours), so the cron
-must remain installed for ongoing ingestion:
-<https://core.telegram.org/bots/api#getting-updates>.
+The Bot API does not expose arbitrary Telegram group history. New updates are
+delivered after webhook registration, while Telegram retains undelivered
+updates for [no longer than 24 hours](https://core.telegram.org/bots/api#getting-updates).
+Use the existing Telegram Desktop export import for an intentional historical
+backfill:
+
+```bash
+bun run telegram:resume:history -- <path-to-result.json>
+```
 
 ## Queue inspection
 

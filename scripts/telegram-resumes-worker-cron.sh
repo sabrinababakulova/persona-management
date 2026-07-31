@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Pulls new Telegram updates into PostgreSQL, then processes at most one resume.
+# Processes at most one Telegram resume already queued by the webhook.
 # Installed once per minute by setup-telegram-resume-ingestion.ts.
 #
 set -euo pipefail
@@ -20,7 +20,6 @@ fi
 BUN_ARGS=()
 if [[ -n "${TELEGRAM_RESUME_WORKER_DIR:-}" ]]; then
   cd "$TELEGRAM_RESUME_WORKER_DIR"
-  POLL_ENTRY="$TELEGRAM_RESUME_WORKER_DIR/import-pending-telegram-resumes.js"
   DRAIN_ENTRY="$TELEGRAM_RESUME_WORKER_DIR/drain-telegram-resumes.js"
 else
   cd "$APP_DIR"
@@ -28,7 +27,6 @@ else
   if [[ -f "$BASE_ENV_FILE" ]] && [[ "$BASE_ENV_FILE" != "$TELEGRAM_RESUME_ENV_FILE" ]]; then
     BUN_ARGS+=("--env-file=$BASE_ENV_FILE")
   fi
-  POLL_ENTRY="scripts/import-pending-telegram-resumes.ts"
   DRAIN_ENTRY="scripts/drain-telegram-resumes.ts"
 fi
 BUN_ARGS+=("--env-file=$TELEGRAM_RESUME_ENV_FILE")
@@ -67,5 +65,4 @@ release_lock() {
 acquire_lock
 trap release_lock EXIT INT TERM
 
-"$BUN_BIN" "${BUN_ARGS[@]}" run "$POLL_ENTRY"
 "$BUN_BIN" "${BUN_ARGS[@]}" run "$DRAIN_ENTRY" --once

@@ -1,6 +1,6 @@
 import { autoRetry } from "@grammyjs/auto-retry";
 import { Api, InputFile } from "grammy";
-import type { Message, Update } from "grammy/types";
+import type { Message } from "grammy/types";
 
 import { env } from "~/env";
 
@@ -148,18 +148,6 @@ export async function getTelegramChatMember(chatId: string, userId: number) {
   return getTelegramApi().getChatMember(chatId, userId);
 }
 
-export async function getTelegramUpdates(input: {
-  offset?: number;
-  limit?: number;
-}): Promise<Update[]> {
-  return getTelegramApi().getUpdates({
-    ...(input.offset === undefined ? {} : { offset: input.offset }),
-    limit: input.limit ?? 100,
-    timeout: 0,
-    allowed_updates: ["message", "channel_post"],
-  });
-}
-
 export async function setTelegramResumeWebhook(input: {
   url: string;
   secretToken: string;
@@ -171,12 +159,6 @@ export async function setTelegramResumeWebhook(input: {
     // Idempotency is already enforced in the database; keeping delivery
     // serial also avoids needlessly competing AI queue inserts.
     max_connections: 1,
-  });
-}
-
-export async function deleteTelegramWebhook(): Promise<void> {
-  await getTelegramApi().deleteWebhook({
-    drop_pending_updates: false,
   });
 }
 
