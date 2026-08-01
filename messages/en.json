@@ -311,7 +311,9 @@
     "createCompany": "Create a new company",
     "createCompanyDescription": "Tell us about your company. You become its admin and can edit these details and invite colleagues.",
     "joinCompany": "Join an existing company",
-    "joinCompanyHint": "To join a company, ask its admin to send you an invitation link and open it."
+    "joinCompanyHint": "To join a company, ask its admin to send you an invitation link and open it.",
+    "creatingCompany": "Creating the company...",
+    "signOutAndUseAnotherAccount": "Sign out and use another account"
   },
   "Invite": {
     "title": "Team invitation",

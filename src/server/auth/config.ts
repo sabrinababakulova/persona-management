@@ -92,28 +92,30 @@ function getClientIp(request: Request) {
   return "unknown";
 }
 
-async function ensureOAuthUserDefaults(userId: string) {
-  await db
-    .insert(companies)
-    .values({
-      id: DEFAULT_COMPANY_ID,
-      name: "Default Company",
-    })
-    .onConflictDoNothing({ target: companies.id });
-
-  await db
-    .update(users)
-    .set({
-      companyId: DEFAULT_COMPANY_ID,
-    })
-    .where(and(eq(users.id, userId), isNull(users.companyId)));
-
+/**
+ * Google vouches for the address, so the account counts as verified.
+ *
+ * It deliberately does NOT hand out a company: a Google sign-up has not been through the
+ * "create or join a company" step yet, and `/onboarding/company` asks for it on first visit.
+ */
+async function markEmailVerified(userId: string) {
   await db
     .update(users)
     .set({
       emailVerified: new Date(),
     })
     .where(and(eq(users.id, userId), isNull(users.emailVerified)));
+}
+
+/** Null for an account that has not picked a company yet — see `/onboarding/company`. */
+async function getUserCompanyId(userId: string) {
+  const [user] = await db
+    .select({ companyId: users.companyId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user?.companyId ?? null;
 }
 
 /** True when the master account removed this person from the company. */
@@ -360,10 +362,9 @@ const providers: NextAuthConfig["providers"] = [
                   name: `${firstName} ${lastName}`.trim(),
                   password: hashedPassword,
                   hasSeenWelcomeModal: false,
-                  companyId:
-                    invitation?.companyId ??
-                    createdCompanyId ??
-                    DEFAULT_COMPANY_ID,
+                  // No invite and no company payload (an older client): leave it unset and let
+                  // `/onboarding/company` ask, instead of dropping them into a shared company.
+                  companyId: invitation?.companyId ?? createdCompanyId ?? null,
                   // Only the person who creates a company is its admin — and its permanent
                   // master account, which no later role change can transfer.
                   role: createdCompanyId
@@ -591,7 +592,7 @@ const providers: NextAuthConfig["providers"] = [
           .set({ emailVerified: new Date() })
           .where(eq(users.id, user.id));
 
-        await ensureOAuthUserDefaults(user.id);
+        await markEmailVerified(user.id);
 
         await Promise.all([
           clearIdentifier(verificationIdentifier),
@@ -716,7 +717,7 @@ const providers: NextAuthConfig["providers"] = [
         clearIdentifier(loginRateByIpIdentifier),
       ]);
 
-      await ensureOAuthUserDefaults(user.id);
+      await markEmailVerified(user.id);
 
       return {
         id: user.id,
@@ -778,12 +779,14 @@ export const authConfig = {
         return false;
       }
 
-      await ensureOAuthUserDefaults(user.id);
+      await markEmailVerified(user.id);
       return true;
     },
     jwt: async ({ token, user }) => {
-      if (user) {
+      if (user?.id) {
         (token as { id?: string }).id = user.id;
+        (token as { needsCompany?: boolean }).needsCompany =
+          !(await getUserCompanyId(user.id));
         return token;
       }
 
@@ -795,6 +798,7 @@ export const authConfig = {
           .select({
             passwordChangedAt: users.passwordChangedAt,
             deactivatedAt: users.deactivatedAt,
+            companyId: users.companyId,
           })
           .from(users)
           .where(eq(users.id, tokenId))
@@ -803,6 +807,8 @@ export const authConfig = {
         if (dbUser?.deactivatedAt) {
           return { ...token, id: undefined };
         }
+
+        (token as { needsCompany?: boolean }).needsCompany = !dbUser?.companyId;
 
         if (dbUser?.passwordChangedAt) {
           const changedAtSec = Math.floor(

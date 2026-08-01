@@ -329,7 +329,8 @@ JWT strategy — no database sessions. User ID injected via JWT + session callba
 1. **Register** (3 steps in the UI): personal details → "join an existing company" or "create a new company" → the company form. The company fields ride along as `company*` credentials, the server validates them with `updateCompanySchema`, creates the company, and makes the new account its **admin**. Then the usual path: hash password, create unverified user, generate 6-digit code, send email via Yandex SMTP. An `?invite=` token skips both company steps and joins the inviting company as a `member`; no company data at all (Google, older clients) falls back to the default company.
 2. **Verify**: User enters code → server validates HMAC hash → sets `emailVerified` timestamp
 3. **Login**: Email + password checked → bcrypt comparison → JWT issued
-4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
+4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile`, `/onboarding` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
+5. **Google sign-up**: OAuth accounts get no company (the credentials registration form is where companies are normally chosen). The `jwt` callback sets `needsCompany` on the token and the middleware sends those users to `/onboarding/company`, which reuses the registration company step and calls `company.createForCurrentUser`.
 
 ### Company roles
 _Full walk-through of roles, sign-up, and the invite flow: `docs/company-roles-and-signup.md`._
@@ -397,7 +398,7 @@ Validation errors, modal open state, and per-channel publish progress remain in 
 | `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram`, `getPersonHunterConfig` (enabled flag + reference dictionaries), `getPersonHunterPublication`, `publishPersonHunter` | Protected |
 | `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
 | `profile` | `changePassword` (rate-limited) | Protected |
-| `company` | `get` (includes `role`, `isMaster`, `canEdit`, `canManageMembers`), `listMembers`, `acceptInvitation` | Protected |
+| `company` | `get` (includes `role`, `isMaster`, `canEdit`, `canManageMembers`), `listMembers`, `acceptInvitation`, `createForCurrentUser` (onboarding — only for accounts without a company) | Protected |
 | `company` | `update`, `updateLogo`, `listInvitations`, `createInvitation`, `revokeInvitation` | Protected + **admin only** (`requireCompanyAdmin`) |
 | `company` | `updateMemberRole`, `setMemberActive` | Protected + **master only** (`requireCompanyMaster`) |
 | `company` | `getInvitation` (company name behind an invite token) | Public |

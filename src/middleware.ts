@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+const ONBOARDING_PATH = "/onboarding/company";
+
 export async function middleware(request: NextRequest) {
   const forwardedProto = request.headers
     .get("x-forwarded-proto")
@@ -23,6 +25,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Signed in but without a company — a Google sign-up, which never passed through the company
+  // step of registration. The rest of the app stays out of reach until they create or join one.
+  const needsCompany = token?.needsCompany === true;
+  const isOnboarding = request.nextUrl.pathname.startsWith("/onboarding");
+
+  if (needsCompany && !isOnboarding) {
+    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+  }
+
   return NextResponse.next();
 }
 
@@ -33,5 +44,6 @@ export const config = {
     "/candidates/:path*",
     "/vacancies/:path*",
     "/my-profile/:path*",
+    "/onboarding/:path*",
   ],
 };

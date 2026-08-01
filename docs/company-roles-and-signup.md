@@ -91,11 +91,31 @@ Validates the code (8 attempts / 15 min per flow and per IP), sets `emailVerifie
 3. JWT session (no DB sessions). `passwordChangedAt` newer than the token's `iat` invalidates the session on refresh.
 4. Redirect: `/dashboard`, or back to `/invite/<token>` when the user arrived from an invite link (`/login?invite=…`).
 
-Google OAuth (enabled only when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set) refuses deactivated accounts, then runs `ensureOAuthUserDefaults`: default company, `member`, e-mail marked verified.
+Google OAuth (enabled only when `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are set) refuses deactivated accounts and marks the e-mail verified. It deliberately does **not** assign a company — see "Company onboarding" below.
 
 The `jwt` callback re-reads the user on every session refresh: a deactivated account (or a password changed after the token was issued) drops the session id, so the app treats it as signed out.
 
-`src/middleware.ts` gates `/dashboard`, `/candidates`, `/vacancies`, `/my-profile`. `/invite/*` is public.
+`src/middleware.ts` gates `/dashboard`, `/candidates`, `/vacancies`, `/my-profile`, `/onboarding`. `/invite/*` is public.
+
+## Company onboarding (Google sign-ups)
+
+A Google sign-in never passes through the registration form, so the account arrives with no
+company. Instead of dropping it into a shared default company, the app asks:
+
+1. The `jwt` callback puts `needsCompany` in the token (`true` while `users.companyId` is null).
+2. `src/middleware.ts` redirects any signed-in request with `needsCompany` to `/onboarding/company`.
+3. That page shows the same "create a company or join one" step as registration — both render
+   `CompanySetupSteps` (`src/app/_components/company-setup-steps.tsx`) — and submits to
+   `company.createForCurrentUser`, which creates the company and makes the account its `admin`
+   and master. It also offers signing out, for someone who used the wrong Google account.
+4. On success the client refreshes the session (`useSession().update()`) so the token drops
+   `needsCompany`, then reloads into `/dashboard`.
+
+An invite link still short-circuits this: `/invite/<token>` is public, so a Google user coming
+from an invite signs in, lands back on the invite page and joins that company as a `member`.
+
+A stale cookie (token says "no company", database disagrees) cannot cause a redirect loop: the
+onboarding page renders a client that refreshes the session and moves on by itself.
 
 ## Inviting people
 
@@ -125,7 +145,8 @@ Unknown, expired, and revoked tokens are indistinguishable to the caller — all
 | Company + invite API | `src/server/api/routers/company.ts` |
 | Registration / login / OAuth | `src/server/auth/config.ts` |
 | Invite tokens | `src/server/company/invitations.ts`, `src/shared/invitation-token.ts` |
-| Sign-up UI | `src/app/register/page.tsx` |
+| Sign-up UI | `src/app/register/page.tsx`, `src/app/_components/company-setup-steps.tsx` |
+| Company onboarding | `src/app/onboarding/company/` |
 | Invite landing page | `src/app/invite/[token]/` |
 | Company settings UI | `src/app/my-profile/company-profile-section.tsx`, `company-profile-view.tsx`, `company-invite-section.tsx`, `member-manager-modal.tsx` |
 | Schema | `src/server/db/schema.ts` (`companies`, `users`, `companyInvitations`) |

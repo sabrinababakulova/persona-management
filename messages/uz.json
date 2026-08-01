@@ -311,7 +311,9 @@
     "createCompany": "Yangi kompaniya yaratish",
     "createCompanyDescription": "Kompaniyangiz haqida ma'lumot bering. Siz uning administratori bo'lasiz: ma'lumotlarni tahrirlash va hamkasblarni taklif qilish imkoniga ega bo'lasiz.",
     "joinCompany": "Mavjud kompaniyaga qo'shilish",
-    "joinCompanyHint": "Kompaniyaga qo'shilish uchun uning administratoridan taklif havolasini so'rang va uni oching."
+    "joinCompanyHint": "Kompaniyaga qo'shilish uchun uning administratoridan taklif havolasini so'rang va uni oching.",
+    "creatingCompany": "Kompaniya yaratilmoqda...",
+    "signOutAndUseAnotherAccount": "Chiqish va boshqa hisob bilan kirish"
   },
   "Invite": {
     "title": "Jamoaga taklif",

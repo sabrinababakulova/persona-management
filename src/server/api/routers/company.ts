@@ -119,6 +119,60 @@ export const companyRouter = createTRPCRouter({
     };
   }),
 
+  /**
+   * Creates a company for an account that does not have one yet.
+   *
+   * The registration form normally does this, but a Google sign-up skips it — those accounts
+   * finish the step at `/onboarding/company`. Like registration, the creator becomes the
+   * company's admin and its master account.
+   */
+  createForCurrentUser: protectedProcedure
+    .input(updateCompanySchema)
+    .mutation(async ({ ctx, input }) => {
+      const [currentUser] = await ctx.db
+        .select({ companyId: users.companyId })
+        .from(users)
+        .where(eq(users.id, ctx.session.user.id))
+        .limit(1);
+
+      if (!currentUser) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Пользователь не найден",
+        });
+      }
+
+      if (currentUser.companyId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Вы уже состоите в компании",
+        });
+      }
+
+      const [company] = await ctx.db
+        .insert(companies)
+        .values(toCompanyColumns(input))
+        .returning({ id: companies.id });
+
+      if (!company) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Не удалось создать компанию",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({
+          companyId: company.id,
+          role: COMPANY_ROLE_ADMIN,
+          isMasterAccount: true,
+        })
+        .where(eq(users.id, ctx.session.user.id));
+
+      return { success: true, companyId: company.id };
+    }),
+
   update: protectedProcedure
     .input(updateCompanySchema)
     .mutation(async ({ ctx, input }) => {
