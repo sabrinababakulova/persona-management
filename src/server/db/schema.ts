@@ -145,7 +145,7 @@ export const accounts = createTable(
     userId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     type: d.varchar({ length: 255 }).$type<AdapterAccount["type"]>().notNull(),
     provider: d.varchar({ length: 255 }).notNull(),
     providerAccountId: d.varchar({ length: 255 }).notNull(),
@@ -174,7 +174,7 @@ export const sessions = createTable(
     userId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
   }),
   (t) => [index("t_user_id_idx").on(t.userId)],
@@ -655,7 +655,10 @@ export const recentActivityLogs = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => companies.id),
-    actorUserId: d.varchar({ length: 255 }).references(() => users.id),
+    /** Null once the actor's account is deleted — `actorName` keeps the log readable. */
+    actorUserId: d
+      .varchar({ length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
     actorName: d.varchar({ length: 255 }).notNull(),
     action: d.varchar({ length: 255 }).notNull(),
     targetName: d.varchar({ length: 255 }).notNull(),
@@ -778,7 +781,7 @@ export const userTelegramChannels = createTable(
     userId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     channelId: d.varchar({ length: 255 }).notNull(),
     label: d.varchar({ length: 255 }),
     createdAt: d
@@ -830,7 +833,7 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
   userId: d
     .varchar({ length: 255 })
     .notNull()
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: "cascade" })
     .unique(),
   clientId: d.varchar({ length: 255 }),
   clientSecret: d.varchar({ length: 500 }),

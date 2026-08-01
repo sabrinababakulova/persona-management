@@ -49,4 +49,4 @@ Path alias: `~/` → `./src/`. ESM project (`"type": "module"`).
 
 ## Deploy gotcha
 
-Production deploy (`scripts/deploy.sh`) uses **`bun run db:push`** — it applies `schema.ts` directly and does **not** run migration `.sql` files. So any data backfill in a migration must also be handled in code, and new `NOT NULL` columns need a DB-level default (`.defaultNow()` / `.default(...)`) so push can add them to populated tables.
+Production deploy (`scripts/deploy.sh`) uses **`bun run db:push`** — it applies `schema.ts` directly and does **not** run migration `.sql` files. So any data backfill in a migration must also be handled in code, and new `NOT NULL` columns need a DB-level default (`.defaultNow()` / `.default(...)`) so push can add them to populated tables. Push also leaves the migration ledger empty, so `bun run db:migrate` later replays old migrations and fails — use `bun run db:migrate-custom`, which skips changes the database already has.

@@ -302,6 +302,13 @@
       "when": 1785598313483,
       "tag": "0042_closed_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785599229335,
+      "tag": "0043_icy_shatterstar",
+      "breakpoints": true
     }
   ]
 }
