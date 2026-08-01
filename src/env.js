@@ -14,6 +14,11 @@ export const env = createEnv({
       .default("development"),
     MAIL_LOGIN: z.string(),
     MAIL_LOGIN_PASSWORD: z.string(),
+    /**
+     * Local development only: skips the emailed 6-digit code, so registration signs you in
+     * straight away. Ignored unless NODE_ENV is "development" — see `src/server/auth/config.ts`.
+     */
+    SKIP_EMAIL_VERIFICATION: z.enum(["true", "false"]).optional(),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
@@ -67,6 +72,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     MAIL_LOGIN: process.env.MAIL_LOGIN,
     MAIL_LOGIN_PASSWORD: process.env.MAIL_LOGIN_PASSWORD,
+    SKIP_EMAIL_VERIFICATION: process.env.SKIP_EMAIL_VERIFICATION,
     GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

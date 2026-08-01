@@ -68,6 +68,21 @@ class AuthFlowError extends CredentialsSignin {
 
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
 
+/**
+ * Local-development escape hatch: register (and sign in) without the emailed 6-digit code.
+ *
+ * Double-gated — the flag alone does nothing outside `NODE_ENV=development`, so a stray
+ * `SKIP_EMAIL_VERIFICATION=true` in a production environment cannot weaken the real flow.
+ */
+const SKIP_EMAIL_VERIFICATION =
+  env.NODE_ENV === "development" && env.SKIP_EMAIL_VERIFICATION === "true";
+
+if (SKIP_EMAIL_VERIFICATION) {
+  console.warn(
+    "[auth] SKIP_EMAIL_VERIFICATION is on — accounts are created pre-verified. Development only.",
+  );
+}
+
 function getClientIp(request: Request) {
   // Prefer x-real-ip set by the reverse proxy (most reliable)
   const realIp = request.headers.get("x-real-ip")?.trim();
@@ -382,6 +397,39 @@ const providers: NextAuthConfig["providers"] = [
             createdUserId = verificationUserId;
           }
 
+          if (SKIP_EMAIL_VERIFICATION) {
+            const [verifiedUser] = await db
+              .update(users)
+              .set({ emailVerified: new Date() })
+              .where(eq(users.id, verificationUserId))
+              .returning({
+                id: users.id,
+                email: users.email,
+                name: users.name,
+                avatarFileId: users.avatarFileId,
+                image: users.image,
+              });
+
+            if (!verifiedUser) {
+              throw new AuthFlowError("registration_failed");
+            }
+
+            if (invitation) {
+              await markInvitationUsed(invitation.id);
+            }
+
+            // Returning a user signs them in right away — no code, no e-mail.
+            return {
+              id: verifiedUser.id,
+              email: verifiedUser.email,
+              name: verifiedUser.name ?? undefined,
+              image:
+                getDirectusAssetUrl(verifiedUser.avatarFileId) ??
+                verifiedUser.image ??
+                undefined,
+            };
+          }
+
           const flowId = generateEmailVerificationFlowId();
           verificationIdentifier =
             createEmailVerificationIdentifier(verificationUserId);
@@ -679,13 +727,21 @@ const providers: NextAuthConfig["providers"] = [
       }
 
       if (!user.emailVerified) {
-        await bcrypt.hash(password, 12);
-        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-        await recordAttempt(
-          loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_WINDOW_MS,
-        );
-        throw new AuthFlowError("email_not_verified");
+        if (!SKIP_EMAIL_VERIFICATION) {
+          await bcrypt.hash(password, 12);
+          await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+          await recordAttempt(
+            loginRateByIpIdentifier,
+            LOGIN_RATE_LIMIT_WINDOW_MS,
+          );
+          throw new AuthFlowError("email_not_verified");
+        }
+
+        // Development: accounts left unverified by an earlier run can still sign in.
+        await db
+          .update(users)
+          .set({ emailVerified: new Date() })
+          .where(eq(users.id, user.id));
       }
 
       // Removed from their company by the master account: the row survives, the access does not.

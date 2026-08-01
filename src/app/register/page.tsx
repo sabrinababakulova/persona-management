@@ -167,6 +167,13 @@ function RegisterPageContent() {
         return;
       }
 
+      // With SKIP_EMAIL_VERIFICATION (local development) the server signs the account in
+      // instead of asking for a code, so there is no verification step to move to.
+      if (result?.ok && !result.error && !result.code) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
       const responseCode = result?.code ?? "";
       if (!responseCode.startsWith(VERIFICATION_REQUIRED_CODE_PREFIX)) {
         setErrorMessage(t(getRegisterErrorKey(responseCode || result?.error)));

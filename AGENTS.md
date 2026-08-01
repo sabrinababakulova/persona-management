@@ -236,6 +236,7 @@ Defined and validated in `src/env.js`:
 | `HH_REDIRECT_URI` | No | hh.uz OAuth callback URL |
 | `MAIL_LOGIN` | Yes | Yandex SMTP email address (sender) |
 | `MAIL_LOGIN_PASSWORD` | Yes | Yandex SMTP app password |
+| `SKIP_EMAIL_VERIFICATION` | No | `"true"` skips the emailed 6-digit code so registration signs you in straight away. **Local development only** — ignored unless `NODE_ENV=development`. |
 | `DIRECTUS_URL` | Yes | Directus CMS/file storage base URL |
 | `DIRECTUS_TOKEN` | Yes | Directus API token |
 | `NODE_ENV` | No | `"development"` (default) / `"test"` / `"production"` |

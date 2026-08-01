@@ -80,7 +80,7 @@ Retrying registration with the same unverified e-mail updates the company create
 
 ### Verification (`mode: "verify-code"`)
 
-Validates the code (8 attempts / 15 min per flow and per IP), sets `emailVerified`, fills a *null* company with the default one — so a company chosen at step 3 is preserved — and issues the session.
+Validates the code (8 attempts / 15 min per flow and per IP), sets `emailVerified` and issues the session. A company chosen at step 3 is preserved.
 
 ## Sign-in
 
