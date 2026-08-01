@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { companies, users } from "~/server/db/schema";
+import { isCompanyAdmin } from "~/shared/company-roles";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 type DatabaseClient = typeof import("~/server/db").db;
@@ -38,6 +39,65 @@ export async function getRequiredCompanyId(
   }
 
   return companyId;
+}
+
+export type CompanyMembership = {
+  companyId: string;
+  role: string;
+  isAdmin: boolean;
+};
+
+/** The company the user belongs to plus the role they hold in it. */
+export async function getCompanyMembership(
+  database: DatabaseClient,
+  userId: string | undefined,
+): Promise<CompanyMembership> {
+  if (!userId) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Пользователь не авторизован",
+    });
+  }
+
+  const [membership] = await database
+    .select({ companyId: users.companyId, role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!membership?.companyId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "У вас не привязана компания",
+    });
+  }
+
+  return {
+    companyId: membership.companyId,
+    role: membership.role,
+    isAdmin: isCompanyAdmin(membership.role),
+  };
+}
+
+/**
+ * Same as `getCompanyMembership`, but rejects everyone except the company admin.
+ *
+ * Used by every mutation that changes company-wide state — members get the read-only view.
+ */
+export async function requireCompanyAdmin(
+  database: DatabaseClient,
+  userId: string | undefined,
+): Promise<CompanyMembership> {
+  const membership = await getCompanyMembership(database, userId);
+
+  if (!membership.isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Только администратор компании может изменять эти данные",
+    });
+  }
+
+  return membership;
 }
 
 export async function ensureUserCompanyId(userId: string) {

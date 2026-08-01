@@ -5,10 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getProviders, signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { Input } from "~/app/_components/input";
 import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
+import { Textarea } from "~/app/_components/textarea";
+import type { UpdateCompanyInput } from "~/schemas/company";
+import { createUpdateCompanySchema } from "~/schemas/company";
 import { createRegisterFormSchema } from "~/schemas/register";
 import {
   buildInvitePath,
@@ -20,6 +24,24 @@ import MailVerificationPage from "./mail-verification";
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
 const FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const AUTH_INPUT_CLASS =
+  "h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none";
+
+/**
+ * Sign-up runs in three steps: personal details → "join or create a company" → the company
+ * form. Arriving with an invite token skips both company steps — the company is already decided.
+ */
+type RegisterStep = "account" | "company-choice" | "company-form";
+
+const EMPTY_COMPANY: UpdateCompanyInput = {
+  name: "",
+  city: "",
+  country: "",
+  description: "",
+  website: "",
+  phone: "",
+};
 
 function getRegisterErrorKey(code?: string | null) {
   switch (code) {
@@ -44,6 +66,7 @@ export default function RegisterPage() {
 
 function RegisterPageContent() {
   const t = useTranslations("Auth");
+  const companyText = useTranslations("Company");
   const validation = useTranslations("Validation");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,6 +75,9 @@ function RegisterPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [step, setStep] = useState<RegisterStep>("account");
+  const [company, setCompany] = useState<UpdateCompanyInput>(EMPTY_COMPANY);
+  const [showJoinHint, setShowJoinHint] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isGoogleAvailable, setIsGoogleAvailable] = useState(false);
@@ -60,6 +86,7 @@ function RegisterPageContent() {
   const [verificationErrorMessage, setVerificationErrorMessage] = useState<
     string | null
   >(null);
+
   const registerFormSchema = useMemo(
     () =>
       createRegisterFormSchema({
@@ -75,6 +102,20 @@ function RegisterPageContent() {
     [validation],
   );
 
+  const companySchema = useMemo(
+    () =>
+      createUpdateCompanySchema({
+        nameRequired: companyText("validation.nameRequired"),
+        nameTooLong: companyText("validation.nameTooLong"),
+        cityTooLong: companyText("validation.cityTooLong"),
+        countryTooLong: companyText("validation.countryTooLong"),
+        descriptionTooLong: companyText("validation.descriptionTooLong"),
+        websiteInvalid: companyText("validation.websiteInvalid"),
+        phoneTooLong: companyText("validation.phoneTooLong"),
+      }),
+    [companyText],
+  );
+
   // Registering from an invite link puts the new account straight into the inviting company.
   const inviteToken = useMemo(() => {
     const token = searchParams.get("invite");
@@ -87,10 +128,14 @@ function RegisterPageContent() {
   );
 
   const verificationFlowId = useMemo(() => {
-    const step = searchParams.get("step");
+    const verificationStep = searchParams.get("step");
     const flow = searchParams.get("flow");
 
-    if (step !== "mail-verification" || !flow || !FLOW_ID_REGEX.test(flow)) {
+    if (
+      verificationStep !== "mail-verification" ||
+      !flow ||
+      !FLOW_ID_REGEX.test(flow)
+    ) {
       return null;
     }
 
@@ -110,10 +155,12 @@ function RegisterPageContent() {
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const setCompanyField = (field: keyof UpdateCompanyInput, value: string) => {
     setErrorMessage(null);
+    setCompany((previous) => ({ ...previous, [field]: value }));
+  };
 
+  const submitRegistration = async (newCompany: UpdateCompanyInput | null) => {
     const parsed = registerFormSchema.safeParse({
       firstName,
       lastName,
@@ -123,6 +170,7 @@ function RegisterPageContent() {
     });
 
     if (!parsed.success) {
+      setStep("account");
       setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
       return;
     }
@@ -137,6 +185,12 @@ function RegisterPageContent() {
         email: parsed.data.email,
         password: parsed.data.password,
         inviteToken: inviteToken ?? "",
+        companyName: newCompany?.name ?? "",
+        companyCity: newCompany?.city ?? "",
+        companyCountry: newCompany?.country ?? "",
+        companyDescription: newCompany?.description ?? "",
+        companyWebsite: newCompany?.website ?? "",
+        companyPhone: newCompany?.phone ?? "",
         redirect: false,
       });
 
@@ -173,6 +227,45 @@ function RegisterPageContent() {
       setErrorMessage(t("unknownError"));
       setIsSubmitting(false);
     }
+  };
+
+  const handleAccountSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMessage(null);
+
+    const parsed = registerFormSchema.safeParse({
+      firstName,
+      lastName,
+      email,
+      password,
+      confirmPassword,
+    });
+
+    if (!parsed.success) {
+      setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
+      return;
+    }
+
+    // The invite link already answers "which company?" — skip straight to account creation.
+    if (inviteToken) {
+      void submitRegistration(null);
+      return;
+    }
+
+    setStep("company-choice");
+  };
+
+  const handleCompanySubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMessage(null);
+
+    const parsed = companySchema.safeParse(company);
+    if (!parsed.success) {
+      setErrorMessage(parsed.error.issues[0]?.message ?? t("invalidData"));
+      return;
+    }
+
+    void submitRegistration(parsed.data);
   };
 
   const handleCodeSubmit = async (code: string) => {
@@ -225,6 +318,15 @@ function RegisterPageContent() {
       setIsGoogleSubmitting(false);
     }
   };
+
+  const errorBanner = (
+    <FeedbackPresence show={Boolean(errorMessage)}>
+      <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
+        {errorMessage}
+      </div>
+    </FeedbackPresence>
+  );
+
   return (
     <div className="auth-layout">
       <div className="auth-art">
@@ -253,148 +355,293 @@ function RegisterPageContent() {
       ) : (
         <div className="auth-content">
           <div className="auth-panel">
-            <h1 className="auth-title">{t("createAccount")}</h1>
-
-            {invitation && (
-              <p className="mb-6 rounded-lg border border-primary-blue/20 bg-primary-blue-light px-3 py-2 text-primary-blue text-sm leading-[1.4]">
-                {t("invitedToCompany", { company: invitation.companyName })}
-              </p>
-            )}
-
-            {isGoogleAvailable && (
+            {step === "account" && (
               <>
-                <button
-                  className="ui-button ui-button-secondary mb-6 w-full"
-                  disabled={isGoogleSubmitting || isSubmitting}
-                  onClick={() => void handleGoogleSignIn()}
-                  type="button"
-                >
-                  <span className="text-lg">G</span>
-                  <span>
-                    {isGoogleSubmitting
-                      ? t("redirecting")
-                      : t("continueGoogle")}
-                  </span>
-                </button>
+                <h1 className="auth-title">{t("createAccount")}</h1>
 
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border-input" />
-                  <span className="text-text-muted text-xs">{t("or")}</span>
-                  <div className="h-px flex-1 bg-border-input" />
-                </div>
+                {invitation && (
+                  <p className="mb-6 rounded-lg border border-primary-blue/20 bg-primary-blue-light px-3 py-2 text-primary-blue text-sm leading-[1.4]">
+                    {t("invitedToCompany", { company: invitation.companyName })}
+                  </p>
+                )}
+
+                {isGoogleAvailable && (
+                  <>
+                    <button
+                      className="ui-button ui-button-secondary mb-6 w-full"
+                      disabled={isGoogleSubmitting || isSubmitting}
+                      onClick={() => void handleGoogleSignIn()}
+                      type="button"
+                    >
+                      <span className="text-lg">G</span>
+                      <span>
+                        {isGoogleSubmitting
+                          ? t("redirecting")
+                          : t("continueGoogle")}
+                      </span>
+                    </button>
+
+                    <div className="mb-6 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border-input" />
+                      <span className="text-text-muted text-xs">{t("or")}</span>
+                      <div className="h-px flex-1 bg-border-input" />
+                    </div>
+                  </>
+                )}
+
+                <form
+                  className="flex flex-col gap-5"
+                  onSubmit={handleAccountSubmit}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex flex-1 flex-col gap-1.5">
+                      <label
+                        className="font-semibold text-sm text-text-label leading-5"
+                        htmlFor="register-first-name"
+                      >
+                        {t("firstName")}
+                      </label>
+                      <input
+                        className={AUTH_INPUT_CLASS}
+                        id="register-first-name"
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder={t("firstNamePlaceholder")}
+                        type="text"
+                        value={firstName}
+                      />
+                    </div>
+
+                    <div className="flex flex-1 flex-col gap-1.5">
+                      <label
+                        className="font-semibold text-sm text-text-label leading-5"
+                        htmlFor="register-last-name"
+                      >
+                        {t("lastName")}
+                      </label>
+                      <input
+                        className={AUTH_INPUT_CLASS}
+                        id="register-last-name"
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder={t("lastNamePlaceholder")}
+                        type="text"
+                        value={lastName}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      className="font-semibold text-sm text-text-label leading-5"
+                      htmlFor="register-email"
+                    >
+                      {t("corporateEmail")}
+                    </label>
+                    <input
+                      className={AUTH_INPUT_CLASS}
+                      id="register-email"
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t("emailPlaceholder")}
+                      type="email"
+                      value={email}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      className="font-semibold text-sm text-text-label leading-5"
+                      htmlFor="register-password"
+                    >
+                      {t("password")}
+                    </label>
+                    <input
+                      className={AUTH_INPUT_CLASS}
+                      id="register-password"
+                      minLength={8}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t("passwordPlaceholder")}
+                      type="password"
+                      value={password}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label
+                      className="font-semibold text-sm text-text-label leading-5"
+                      htmlFor="register-confirm-password"
+                    >
+                      {t("confirmPassword")}
+                    </label>
+                    <input
+                      className={AUTH_INPUT_CLASS}
+                      id="register-confirm-password"
+                      minLength={8}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder={t("passwordPlaceholder")}
+                      type="password"
+                      value={confirmPassword}
+                    />
+                  </div>
+
+                  {errorBanner}
+
+                  <div className="mt-2 flex items-center justify-end">
+                    <button
+                      className="ui-button ui-button-primary w-full sm:w-auto"
+                      disabled={isSubmitting}
+                      type="submit"
+                    >
+                      <LoadingButtonContent
+                        isLoading={isSubmitting}
+                        label={inviteToken ? t("createAccount") : t("continue")}
+                        loadingLabel={t("creatingAccount")}
+                      />
+                    </button>
+                  </div>
+                </form>
               </>
             )}
 
-            <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-1 flex-col gap-1.5">
-                  <label
-                    className="font-semibold text-sm text-text-label leading-5"
-                    htmlFor="register-first-name"
+            {step === "company-choice" && (
+              <>
+                <h1 className="auth-title">{t("companyStepTitle")}</h1>
+                <p className="mb-6 text-sm text-text-secondary leading-[1.5]">
+                  {t("companyStepDescription")}
+                </p>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    className="ui-button ui-button-primary w-full"
+                    onClick={() => {
+                      setShowJoinHint(false);
+                      setErrorMessage(null);
+                      setStep("company-form");
+                    }}
+                    type="button"
                   >
-                    {t("firstName")}
-                  </label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
-                    id="register-first-name"
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder={t("firstNamePlaceholder")}
-                    type="text"
-                    value={firstName}
-                  />
-                </div>
+                    {t("createCompany")}
+                  </button>
 
-                <div className="flex flex-1 flex-col gap-1.5">
-                  <label
-                    className="font-semibold text-sm text-text-label leading-5"
-                    htmlFor="register-last-name"
+                  <button
+                    className="ui-button ui-button-secondary w-full"
+                    onClick={() => setShowJoinHint(true)}
+                    type="button"
                   >
-                    {t("lastName")}
-                  </label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
-                    id="register-last-name"
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={t("lastNamePlaceholder")}
-                    type="text"
-                    value={lastName}
-                  />
+                    {t("joinCompany")}
+                  </button>
                 </div>
-              </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label
-                  className="font-semibold text-sm text-text-label leading-5"
-                  htmlFor="register-email"
-                >
-                  {t("corporateEmail")}
-                </label>
-                <input
-                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
-                  id="register-email"
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t("emailPlaceholder")}
-                  type="email"
-                  value={email}
-                />
-              </div>
+                <FeedbackPresence show={showJoinHint}>
+                  <p className="mt-4 rounded-lg border border-border-input bg-bg-input px-3 py-2 text-sm text-text-secondary leading-[1.4]">
+                    {t("joinCompanyHint")}
+                  </p>
+                </FeedbackPresence>
 
-              <div className="flex flex-col gap-1.5">
-                <label
-                  className="font-semibold text-sm text-text-label leading-5"
-                  htmlFor="register-password"
-                >
-                  {t("password")}
-                </label>
-                <input
-                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
-                  id="register-password"
-                  minLength={8}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t("passwordPlaceholder")}
-                  type="password"
-                  value={password}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label
-                  className="font-semibold text-sm text-text-label leading-5"
-                  htmlFor="register-confirm-password"
-                >
-                  {t("confirmPassword")}
-                </label>
-                <input
-                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
-                  id="register-confirm-password"
-                  minLength={8}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t("passwordPlaceholder")}
-                  type="password"
-                  value={confirmPassword}
-                />
-              </div>
-
-              <FeedbackPresence show={Boolean(errorMessage)}>
-                <div className="rounded-lg border border-danger-red/20 bg-danger-red-bg px-3 py-2 text-danger-red text-sm">
-                  {errorMessage}
-                </div>
-              </FeedbackPresence>
-
-              <div className="mt-2 flex items-center justify-end">
                 <button
-                  className="ui-button ui-button-primary w-full sm:w-auto"
-                  disabled={isSubmitting}
-                  type="submit"
+                  className="mt-6 text-sm text-text-muted transition-colors hover:text-text-heading"
+                  onClick={() => setStep("account")}
+                  type="button"
                 >
-                  <LoadingButtonContent
-                    isLoading={isSubmitting}
-                    label={t("createAccount")}
-                    loadingLabel={t("creatingAccount")}
-                  />
+                  {t("back")}
                 </button>
-              </div>
-            </form>
+              </>
+            )}
+
+            {step === "company-form" && (
+              <>
+                <h1 className="auth-title">{t("createCompany")}</h1>
+                <p className="mb-6 text-sm text-text-secondary leading-[1.5]">
+                  {t("createCompanyDescription")}
+                </p>
+
+                <form
+                  className="flex flex-col gap-5"
+                  onSubmit={handleCompanySubmit}
+                >
+                  <Input
+                    label={companyText("name")}
+                    onChange={(event) =>
+                      setCompanyField("name", event.target.value)
+                    }
+                    placeholder={companyText("namePlaceholder")}
+                    value={company.name}
+                  />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label={companyText("city")}
+                      onChange={(event) =>
+                        setCompanyField("city", event.target.value)
+                      }
+                      placeholder={companyText("cityPlaceholder")}
+                      value={company.city}
+                    />
+                    <Input
+                      label={companyText("country")}
+                      onChange={(event) =>
+                        setCompanyField("country", event.target.value)
+                      }
+                      placeholder={companyText("countryPlaceholder")}
+                      value={company.country}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label={companyText("website")}
+                      onChange={(event) =>
+                        setCompanyField("website", event.target.value)
+                      }
+                      placeholder={companyText("websitePlaceholder")}
+                      type="url"
+                      value={company.website}
+                    />
+                    <Input
+                      label={companyText("phone")}
+                      onChange={(event) =>
+                        setCompanyField("phone", event.target.value)
+                      }
+                      placeholder={companyText("phonePlaceholder")}
+                      type="tel"
+                      value={company.phone}
+                    />
+                  </div>
+
+                  <Textarea
+                    label={companyText("description")}
+                    onChange={(event) =>
+                      setCompanyField("description", event.target.value)
+                    }
+                    placeholder={companyText("descriptionPlaceholder")}
+                    value={company.description}
+                  />
+
+                  {errorBanner}
+
+                  <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      className="text-sm text-text-muted transition-colors hover:text-text-heading"
+                      disabled={isSubmitting}
+                      onClick={() => setStep("company-choice")}
+                      type="button"
+                    >
+                      {t("back")}
+                    </button>
+
+                    <button
+                      className="ui-button ui-button-primary w-full sm:w-auto"
+                      disabled={isSubmitting}
+                      type="submit"
+                    >
+                      <LoadingButtonContent
+                        isLoading={isSubmitting}
+                        label={t("createAccount")}
+                        loadingLabel={t("creatingAccount")}
+                      />
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

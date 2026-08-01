@@ -303,7 +303,14 @@
       "back": "Kirishga qaytish",
       "success": "Parol muvaffaqiyatli yangilandi. Endi tizimga kirishingiz mumkin."
     },
-    "invitedToCompany": "Sizni «{company}» kompaniyasiga taklif qilishdi"
+    "invitedToCompany": "Sizni «{company}» kompaniyasiga taklif qilishdi",
+    "continue": "Davom etish",
+    "companyStepTitle": "Kompaniya",
+    "companyStepDescription": "Yangi kompaniya yarating yoki hamkasblaringiz tizimda ishlayotgan bo'lsa, mavjud kompaniyaga qo'shiling.",
+    "createCompany": "Yangi kompaniya yaratish",
+    "createCompanyDescription": "Kompaniyangiz haqida ma'lumot bering. Siz uning administratori bo'lasiz: ma'lumotlarni tahrirlash va hamkasblarni taklif qilish imkoniga ega bo'lasiz.",
+    "joinCompany": "Mavjud kompaniyaga qo'shilish",
+    "joinCompanyHint": "Kompaniyaga qo'shilish uchun uning administratoridan taklif havolasini so'rang va uni oching."
   },
   "Invite": {
     "title": "Jamoaga taklif",
@@ -378,9 +385,11 @@
     "phonePlaceholder": "+998 90 123 45 67",
     "description": "Tavsif",
     "descriptionPlaceholder": "Kompaniya haqida qisqacha yozing",
+    "adminEditHint": "Saqlangan o'zgarishlarni kompaniyaning barcha xodimlari ko'radi.",
     "saved": "Kompaniya ma'lumotlari yangilandi",
     "logoUpdated": "Logotip yangilandi",
     "team": "Jamoa",
+    "loadingTeam": "Jamoa yuklanmoqda...",
     "inviteDescription": "Hamkasblaringiz kompaniyangizga qo'shilishi uchun havolani ulashing. Havola 14 kun amal qiladi va istalgan vaqtda bekor qilinishi mumkin.",
     "loadingInvites": "Takliflar yuklanmoqda...",
     "invitePeople": "Odamlarni taklif qilish",
@@ -401,7 +410,9 @@
       "descriptionTooLong": "Tavsif 2000 belgidan oshmasligi kerak",
       "websiteInvalid": "To'g'ri havola kiriting, masalan https://example.com",
       "phoneTooLong": "Telefon 50 belgidan oshmasligi kerak"
-    }
+    },
+    "roleAdmin": "Administrator",
+    "roleMember": "Xodim"
   },
   "Integrations": {
     "hhAccount": "hh.uz hisobi",

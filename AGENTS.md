@@ -268,7 +268,7 @@ Tables use their plain schema names with no `persona-management_` prefix.
 ### Schema (`src/server/db/schema.ts`)
 
 **Auth tables** (managed by NextAuth + Drizzle adapter):
-- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified, passwordChangedAt, companyId (FK), `candidatesSeenAt` / `vacanciesSeenAt` (per-user "last opened" timestamps that drive the sidebar "new" badges)
+- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified, passwordChangedAt, companyId (FK), `role` (`admin` | `member`, default `member` — see `~/shared/company-roles`), `candidatesSeenAt` / `vacanciesSeenAt` (per-user "last opened" timestamps that drive the sidebar "new" badges). Partial unique index `user_company_admin_idx` on `(companyId) WHERE role = 'admin'` allows **one admin per company**.
 - `accounts` — OAuth accounts linked to users
 - `sessions` — Active sessions
 - `verificationTokens` — Email verification codes + rate-limit markers (TTL-based)
@@ -324,10 +324,15 @@ Credentials-based (email + password) via NextAuth v5 beta.
 JWT strategy — no database sessions. User ID injected via JWT + session callbacks.
 
 ### Flow
-1. **Register**: User submits name + email + password → server hashes password, creates unverified user, generates 6-digit code, sends email via Yandex SMTP
+1. **Register** (3 steps in the UI): personal details → "join an existing company" or "create a new company" → the company form. The company fields ride along as `company*` credentials, the server validates them with `updateCompanySchema`, creates the company, and makes the new account its **admin**. Then the usual path: hash password, create unverified user, generate 6-digit code, send email via Yandex SMTP. An `?invite=` token skips both company steps and joins the inviting company as a `member`; no company data at all (Google, older clients) falls back to the default company.
 2. **Verify**: User enters code → server validates HMAC hash → sets `emailVerified` timestamp
 3. **Login**: Email + password checked → bcrypt comparison → JWT issued
 4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
+
+### Company roles
+- `admin` — the person who created the company at registration. Only role that can edit the company profile/logo and manage invitation links (`requireCompanyAdmin` in `src/server/api/router-utils/company.ts`); the settings form renders read-only for everyone else.
+- `member` — everyone else, including users who joined through an invite link.
+- The app only writes the role in two places: registration (`admin`) and `acceptInvitation` (`member`) — there is no in-app UI to change it. Hand-overs and pre-role data are fixed in **Directus** (`user` collection → `role`, configured as a dropdown by `scripts/register-directus-collections.sh`). The partial unique index makes Directus reject a second admin, so demote the current one first.
 
 ### Company invitations
 - A member generates a link in **My profile → Company settings → Команда** (`company.createInvitation`). It points at `/invite/<token>` (public page, excluded from the app shell + middleware).
@@ -386,7 +391,8 @@ Validation errors, modal open state, and per-channel publish progress remain in 
 | `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram`, `getPersonHunterConfig` (enabled flag + reference dictionaries), `getPersonHunterPublication`, `publishPersonHunter` | Protected |
 | `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
 | `profile` | `changePassword` (rate-limited) | Protected |
-| `company` | `get`, `update` (name/city/country/description/website/phone), `updateLogo` (Directus file id), `listMembers`, `listInvitations`, `createInvitation`, `revokeInvitation`, `acceptInvitation` | Protected |
+| `company` | `get` (includes `role` + `canEdit`), `listMembers`, `acceptInvitation` | Protected |
+| `company` | `update`, `updateLogo`, `listInvitations`, `createInvitation`, `revokeInvitation` | Protected + **admin only** (`requireCompanyAdmin`) |
 | `company` | `getInvitation` (company name behind an invite token) | Public |
 | `sidebar` | `counts` (new candidates/vacancies since the user last looked), `markSeen` (clears a section's badge) | Protected |
 

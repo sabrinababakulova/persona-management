@@ -36,6 +36,7 @@ const SECTION_TRANSITION = {
 
 type MyProfileClientProps = {
   avatarSrc: string;
+  canEditCompany: boolean;
   companyName: string;
   initialSection: "my-profile" | "company-settings";
   userCity: string;
@@ -45,6 +46,7 @@ type MyProfileClientProps = {
 
 export function MyProfileClient({
   avatarSrc,
+  canEditCompany,
   companyName,
   initialSection,
   userCity,
@@ -372,7 +374,7 @@ export function MyProfileClient({
                       </div>
                     </div>
                   ) : (
-                    <CompanySettingsSection />
+                    <CompanySettingsSection canEditCompany={canEditCompany} />
                   )}
                 </motion.div>
               </AnimatePresence>

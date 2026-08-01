@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "role" varchar(20) DEFAULT 'member' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "user_company_admin_idx" ON "user" USING btree ("companyId") WHERE "user"."role" = 'admin';

@@ -7,6 +7,8 @@ import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { env } from "~/env";
+import type { UpdateCompanyInput } from "~/schemas/company";
+import { updateCompanySchema } from "~/schemas/company";
 import { registerSchema } from "~/schemas/register";
 import {
   createEmailVerificationFlowIdentifier,
@@ -35,6 +37,7 @@ import {
   recordAttempt,
   setMarker,
 } from "~/server/auth/rate-limit";
+import { toCompanyColumns } from "~/server/company/company-input";
 import {
   findUsableInvitation,
   markInvitationUsed,
@@ -49,6 +52,11 @@ import {
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
+import {
+  COMPANY_ROLE_ADMIN,
+  COMPANY_ROLE_MEMBER,
+  isCompanyAdmin,
+} from "~/shared/company-roles";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 
 class AuthFlowError extends CredentialsSignin {
@@ -108,6 +116,68 @@ async function ensureOAuthUserDefaults(userId: string) {
     .where(and(eq(users.id, userId), isNull(users.emailVerified)));
 }
 
+/**
+ * Company details captured by the "create new company" step of registration.
+ *
+ * Returns null when the client sent none — invite sign-ups, Google, or an older client — in
+ * which case the account keeps the previous default-company behaviour.
+ */
+function parseNewCompanyCredentials(
+  credentials: Partial<Record<string, unknown>> | undefined,
+) {
+  const name = credentials?.companyName?.toString() ?? "";
+  if (!name.trim()) {
+    return null;
+  }
+
+  const parsed = updateCompanySchema.safeParse({
+    name,
+    city: credentials?.companyCity?.toString() ?? "",
+    country: credentials?.companyCountry?.toString() ?? "",
+    description: credentials?.companyDescription?.toString() ?? "",
+    website: credentials?.companyWebsite?.toString() ?? "",
+    phone: credentials?.companyPhone?.toString() ?? "",
+  });
+
+  if (!parsed.success) {
+    throw new AuthFlowError("invalid_data");
+  }
+
+  return parsed.data;
+}
+
+async function createCompany(input: UpdateCompanyInput) {
+  const [company] = await db
+    .insert(companies)
+    .values(toCompanyColumns(input))
+    .returning({ id: companies.id });
+
+  if (!company) {
+    throw new AuthFlowError("registration_failed");
+  }
+
+  return company.id;
+}
+
+/** The company this user already created (and administers), if registration is being retried. */
+async function getOwnedCompanyId(userId: string) {
+  const [current] = await db
+    .select({ companyId: users.companyId, role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (
+    !current?.companyId ||
+    current.companyId === DEFAULT_COMPANY_ID ||
+    !isCompanyAdmin(current.role)
+  ) {
+    return null;
+  }
+
+  return current.companyId;
+}
+
 const providers: NextAuthConfig["providers"] = [
   Credentials({
     name: "Credentials",
@@ -120,6 +190,13 @@ const providers: NextAuthConfig["providers"] = [
       code: { label: "Code", type: "text" },
       flowId: { label: "Flow ID", type: "text" },
       inviteToken: { label: "Invite Token", type: "text" },
+      // "Create new company" step — see `parseNewCompanyCredentials`.
+      companyName: { label: "Company Name", type: "text" },
+      companyCity: { label: "Company City", type: "text" },
+      companyCountry: { label: "Company Country", type: "text" },
+      companyDescription: { label: "Company Description", type: "text" },
+      companyWebsite: { label: "Company Website", type: "text" },
+      companyPhone: { label: "Company Phone", type: "text" },
     },
     async authorize(credentials, request) {
       const mode = credentials?.mode?.toString().trim().toLowerCase();
@@ -190,17 +267,21 @@ const providers: NextAuthConfig["providers"] = [
           throw new AuthFlowError("registration_failed");
         }
 
-        // An invite link decides which company the account lands in; without one the account
-        // joins the shared default company, as before.
+        // Where the account lands: an invite link joins an existing company as a member, the
+        // "create new company" step creates a company owned by this user. Neither (Google
+        // sign-ups, older clients) falls back to the shared default company.
         const inviteToken = credentials?.inviteToken?.toString().trim();
         const invitation = inviteToken
           ? await findUsableInvitation(inviteToken)
           : null;
-        const targetCompanyId = invitation?.companyId ?? DEFAULT_COMPANY_ID;
+        const newCompany = invitation
+          ? null
+          : parseNewCompanyCredentials(credentials);
 
         const verificationCode = generateEmailVerificationCode();
 
         let createdUserId: string | null = null;
+        let createdCompanyId: string | null = null;
         let verificationIdentifier: string | null = null;
         let verificationFlowIdentifier: string | null = null;
 
@@ -221,10 +302,38 @@ const providers: NextAuthConfig["providers"] = [
             if (invitation) {
               await db
                 .update(users)
-                .set({ companyId: invitation.companyId })
+                .set({
+                  companyId: invitation.companyId,
+                  role: COMPANY_ROLE_MEMBER,
+                })
                 .where(eq(users.id, verificationUserId));
+            } else if (newCompany) {
+              // Registration was retried: update the company from the earlier attempt instead
+              // of leaving an orphan behind.
+              const ownedCompanyId =
+                await getOwnedCompanyId(verificationUserId);
+
+              if (ownedCompanyId) {
+                await db
+                  .update(companies)
+                  .set(toCompanyColumns(newCompany))
+                  .where(eq(companies.id, ownedCompanyId));
+              } else {
+                createdCompanyId = await createCompany(newCompany);
+                await db
+                  .update(users)
+                  .set({
+                    companyId: createdCompanyId,
+                    role: COMPANY_ROLE_ADMIN,
+                  })
+                  .where(eq(users.id, verificationUserId));
+              }
             }
           } else {
+            if (newCompany) {
+              createdCompanyId = await createCompany(newCompany);
+            }
+
             verificationUserId = (
               await db
                 .insert(users)
@@ -233,7 +342,14 @@ const providers: NextAuthConfig["providers"] = [
                   name: `${firstName} ${lastName}`.trim(),
                   password: hashedPassword,
                   hasSeenWelcomeModal: false,
-                  companyId: targetCompanyId,
+                  companyId:
+                    invitation?.companyId ??
+                    createdCompanyId ??
+                    DEFAULT_COMPANY_ID,
+                  // Only the person who creates a company is its admin.
+                  role: createdCompanyId
+                    ? COMPANY_ROLE_ADMIN
+                    : COMPANY_ROLE_MEMBER,
                 })
                 .returning({ id: users.id })
             )[0]?.id;
@@ -310,6 +426,14 @@ const providers: NextAuthConfig["providers"] = [
             await db
               .delete(users)
               .where(eq(users.id, createdUserId))
+              .catch(() => undefined);
+          }
+
+          // Drop the company created for this attempt — after the user row, which references it.
+          if (createdCompanyId) {
+            await db
+              .delete(companies)
+              .where(eq(companies.id, createdCompanyId))
               .catch(() => undefined);
           }
 

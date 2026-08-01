@@ -5,17 +5,14 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { ClosableSection } from "~/app/_components/closable-section";
-import { ImageUploader } from "~/app/_components/image-uploader";
-import { Input } from "~/app/_components/input";
-import {
-  FeedbackPresence,
-  LoadingButtonContent,
-  LoadingState,
-} from "~/app/_components/motion-system";
-import { Textarea } from "~/app/_components/textarea";
 import type { UpdateCompanyInput } from "~/schemas/company";
 import { createUpdateCompanySchema } from "~/schemas/company";
 import { api } from "~/trpc/react";
+import {
+  CompanyProfileEditor,
+  CompanyProfileSkeleton,
+  CompanyProfileView,
+} from "./company-profile-view";
 
 const EMPTY_FORM: UpdateCompanyInput = {
   name: "",
@@ -26,7 +23,13 @@ const EMPTY_FORM: UpdateCompanyInput = {
   phone: "",
 };
 
-export function CompanyProfileSection() {
+type CompanyProfileSectionProps = {
+  canEditCompany: boolean;
+};
+
+export function CompanyProfileSection({
+  canEditCompany,
+}: CompanyProfileSectionProps) {
   const t = useTranslations("Company");
   const common = useTranslations("Common");
   const router = useRouter();
@@ -58,7 +61,7 @@ export function CompanyProfileSection() {
 
   // Seed the form once the company arrives; later refetches must not discard edits.
   useEffect(() => {
-    if (company && !form) {
+    if (company?.canEdit && !form) {
       setForm({
         name: company.name,
         city: company.city,
@@ -98,7 +101,10 @@ export function CompanyProfileSection() {
   });
 
   const values = form ?? EMPTY_FORM;
-  const isDisabled = !form || updateCompany.isPending;
+  // Members get a read-only card instead of the form — only the admin who created the
+  // company can change its details.
+  const canEdit = company?.canEdit ?? false;
+  const isPreparingEditor = Boolean(company?.canEdit && !form);
 
   const setField = (field: keyof UpdateCompanyInput, value: string) => {
     setMessage(null);
@@ -123,113 +129,35 @@ export function CompanyProfileSection() {
 
   return (
     <ClosableSection title={t("companyProfile")}>
-      {isLoading ? <LoadingState compact label={t("loading")} /> : null}
+      {isLoading || isPreparingEditor ? (
+        <CompanyProfileSkeleton
+          label={t("loading")}
+          variant={canEditCompany ? "admin" : "member"}
+        />
+      ) : null}
 
       {loadError && (
         <p className="text-danger-red text-sm leading-[1.4]">
           {loadError.message}
         </p>
       )}
+      {company && !canEdit && <CompanyProfileView company={company} />}
 
-      {company && (
-        <>
-          <div className="flex items-center gap-4">
-            <ImageUploader
-              disabled={updateLogo.isPending}
-              initialImageUrl={company.logoUrl}
-              onUploaded={async (logoFileId) => {
-                await updateLogo.mutateAsync({ logoFileId });
-              }}
-              variant="avatar"
-            />
-            <div className="min-w-0">
-              <p className="font-semibold text-sm text-text-heading leading-5">
-                {t("logo")}
-              </p>
-              <p className="mt-0.5 text-text-secondary text-xs leading-[1.4]">
-                {t("logoHint")}
-              </p>
-            </div>
-          </div>
-
-          <Input
-            disabled={isDisabled}
-            label={t("name")}
-            onChange={(event) => setField("name", event.target.value)}
-            placeholder={t("namePlaceholder")}
-            value={values.name}
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              disabled={isDisabled}
-              label={t("city")}
-              onChange={(event) => setField("city", event.target.value)}
-              placeholder={t("cityPlaceholder")}
-              value={values.city}
-            />
-            <Input
-              disabled={isDisabled}
-              label={t("country")}
-              onChange={(event) => setField("country", event.target.value)}
-              placeholder={t("countryPlaceholder")}
-              value={values.country}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              disabled={isDisabled}
-              label={t("website")}
-              onChange={(event) => setField("website", event.target.value)}
-              placeholder={t("websitePlaceholder")}
-              type="url"
-              value={values.website}
-            />
-            <Input
-              disabled={isDisabled}
-              label={t("phone")}
-              onChange={(event) => setField("phone", event.target.value)}
-              placeholder={t("phonePlaceholder")}
-              type="tel"
-              value={values.phone}
-            />
-          </div>
-
-          <Textarea
-            disabled={isDisabled}
-            label={t("description")}
-            onChange={(event) => setField("description", event.target.value)}
-            placeholder={t("descriptionPlaceholder")}
-            value={values.description}
-          />
-
-          <FeedbackPresence show={Boolean(error)}>
-            <p className="text-danger-red text-xs leading-[1.4]">{error}</p>
-          </FeedbackPresence>
-
-          <FeedbackPresence show={Boolean(message)}>
-            <p className="text-success-green text-xs leading-[1.4]">
-              {message}
-            </p>
-          </FeedbackPresence>
-
-          <div className="flex justify-end">
-            <button
-              className="ui-button ui-button-primary w-full sm:w-auto"
-              disabled={isDisabled || values.name.trim().length === 0}
-              onClick={handleSave}
-              type="button"
-            >
-              <LoadingButtonContent
-                isLoading={updateCompany.isPending}
-                label={common("saveChanges")}
-                loadingLabel={common("saving")}
-              />
-            </button>
-          </div>
-        </>
-      )}
+      {company && canEdit && form ? (
+        <CompanyProfileEditor
+          company={company}
+          error={error}
+          isLogoUpdating={updateLogo.isPending}
+          isSaving={updateCompany.isPending}
+          message={message}
+          onFieldChange={setField}
+          onLogoUploaded={async (logoFileId) => {
+            await updateLogo.mutateAsync({ logoFileId });
+          }}
+          onSave={handleSave}
+          values={values}
+        />
+      ) : null}
     </ClosableSection>
   );
 }

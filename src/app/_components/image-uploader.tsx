@@ -45,6 +45,8 @@ function readFileAsBase64(file: File, errorMessage: string): Promise<string> {
 type ImageUploaderProps = {
   /** Visual style: a round avatar button, or a wide banner drop-zone. */
   variant?: "avatar" | "banner";
+  /** Keeps avatar uploads round by default, but allows logo-style rounded squares. */
+  avatarShape?: "circle" | "rounded";
   /** Existing image URL shown before a new file is picked. */
   initialImageUrl?: string | null;
   /**
@@ -65,6 +67,7 @@ type ImageUploaderProps = {
  */
 export function ImageUploader({
   variant = "banner",
+  avatarShape = "circle",
   initialImageUrl,
   onUploaded,
   disabled = false,
@@ -154,7 +157,9 @@ export function ImageUploader({
     return (
       <div className="flex flex-col gap-1">
         <label
-          className="group relative block h-[72px] w-[72px] cursor-pointer overflow-hidden rounded-full bg-bg-active-menu focus-within:ring-2 focus-within:ring-primary-blue focus-within:ring-offset-2"
+          className={`group relative block h-[72px] w-[72px] cursor-pointer overflow-hidden bg-bg-active-menu focus-within:ring-2 focus-within:ring-primary-blue focus-within:ring-offset-2 ${
+            avatarShape === "rounded" ? "rounded-2xl" : "rounded-full"
+          }`}
           htmlFor={inputId}
           title={t("changeAvatar")}
         >

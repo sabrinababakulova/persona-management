@@ -691,6 +691,31 @@ patch_collection "vacancy_telegram_post" '{
 
 configure_hash_field "user" "password" "user.password as hash field"
 
+# Company role. The app only ever writes it during registration (`admin` for whoever creates
+# the company) and when an invite is accepted (`member`), so Directus is the place to hand the
+# role over or repair pre-role data. A partial unique index on user(companyId) WHERE
+# role = 'admin' makes Directus reject a second admin, so the current one must be demoted first.
+if database_column_exists "user" "role"; then
+  patch_field "user" "role" '{
+      "type": "string",
+      "meta": {
+        "interface": "select-dropdown",
+        "options": {
+          "choices": [
+            { "text": "Администратор компании", "value": "admin" },
+            { "text": "Сотрудник", "value": "member" }
+          ],
+          "allowOther": false,
+          "allowNone": false
+        },
+        "width": "half",
+        "note": "Роль в компании. Администратор может изменять данные компании и приглашать коллег. Администратор в компании только один: чтобы передать роль, сначала переведите текущего администратора в «Сотрудник»."
+      }
+    }' "user.role"
+else
+  echo "Skipping 'user.role' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+fi
+
 patch_field "company_hh_account" "userId" '{
     "type": "string",
     "meta": {

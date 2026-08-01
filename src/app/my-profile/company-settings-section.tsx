@@ -10,7 +10,13 @@ import { TelegramChannelsSection } from "../_components/telegram-channels-sectio
 import { CompanyInviteSection } from "./company-invite-section";
 import { CompanyProfileSection } from "./company-profile-section";
 
-export function CompanySettingsSection() {
+type CompanySettingsSectionProps = {
+  canEditCompany: boolean;
+};
+
+export function CompanySettingsSection({
+  canEditCompany,
+}: CompanySettingsSectionProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const utils = api.useUtils();
@@ -45,8 +51,8 @@ export function CompanySettingsSection() {
   return (
     <div className="space-y-10">
       <DataMigrationLoadingScreen isLoading={isMigrating} />
-      <CompanyProfileSection />
-      <CompanyInviteSection />
+      <CompanyProfileSection canEditCompany={canEditCompany} />
+      <CompanyInviteSection canEditCompany={canEditCompany} />
       <TelegramChannelsSection />
       <HhAccountSection />
     </div>

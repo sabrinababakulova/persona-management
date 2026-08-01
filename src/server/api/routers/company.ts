@@ -3,12 +3,16 @@ import { and, count, desc, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { updateCompanySchema } from "~/schemas/company";
-import { getRequiredCompanyId } from "~/server/api/router-utils/company";
+import {
+  getCompanyMembership,
+  requireCompanyAdmin,
+} from "~/server/api/router-utils/company";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { toCompanyColumns } from "~/server/company/company-input";
 import {
   findUsableInvitation,
   generateInvitationToken,
@@ -23,18 +27,17 @@ import {
   getDirectusAssetUrl,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
+import { COMPANY_ROLE_MEMBER, isCompanyAdmin } from "~/shared/company-roles";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { isInvitationTokenValid } from "~/shared/invitation-token";
-
-/** Empty strings coming from the form are stored as NULL. */
-function toNullable(value: string) {
-  return value.length > 0 ? value : null;
-}
 
 export const companyRouter = createTRPCRouter({
   /** The current user's company, as shown in the "company settings" form. */
   get: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    const { companyId, role, isAdmin } = await getCompanyMembership(
+      ctx.db,
+      ctx.session.user.id,
+    );
 
     const [company] = await ctx.db
       .select()
@@ -64,24 +67,23 @@ export const companyRouter = createTRPCRouter({
       phone: company.phone ?? "",
       logoUrl: getDirectusAssetUrl(company.logoFileId) ?? company.logoUrl,
       memberCount: members?.value ?? 0,
+      role,
+      /** Members see the same data, but the form is read-only for them. */
+      canEdit: isAdmin,
     };
   }),
 
   update: protectedProcedure
     .input(updateCompanySchema)
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
 
       await ctx.db
         .update(companies)
-        .set({
-          name: input.name,
-          city: toNullable(input.city),
-          country: toNullable(input.country),
-          description: toNullable(input.description),
-          website: toNullable(input.website),
-          phone: toNullable(input.phone),
-        })
+        .set(toCompanyColumns(input))
         .where(eq(companies.id, companyId));
 
       return { success: true };
@@ -91,7 +93,10 @@ export const companyRouter = createTRPCRouter({
   updateLogo: protectedProcedure
     .input(z.object({ logoFileId: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
 
       const [company] = await ctx.db
         .select({ logoFileId: companies.logoFileId })
@@ -146,7 +151,10 @@ export const companyRouter = createTRPCRouter({
 
   /** Everyone who currently belongs to the company — shown next to the invite link. */
   listMembers: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    const { companyId } = await getCompanyMembership(
+      ctx.db,
+      ctx.session.user.id,
+    );
 
     const members = await ctx.db
       .select({
@@ -155,6 +163,7 @@ export const companyRouter = createTRPCRouter({
         email: users.email,
         avatarFileId: users.avatarFileId,
         image: users.image,
+        role: users.role,
       })
       .from(users)
       .where(eq(users.companyId, companyId))
@@ -166,12 +175,17 @@ export const companyRouter = createTRPCRouter({
       name: member.name,
       email: member.email,
       avatarUrl: getDirectusAssetUrl(member.avatarFileId) ?? member.image,
+      role: member.role,
+      isAdmin: isCompanyAdmin(member.role),
       isCurrentUser: member.id === ctx.session.user.id,
     }));
   }),
 
   listInvitations: protectedProcedure.query(async ({ ctx }) => {
-    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    const { companyId } = await requireCompanyAdmin(
+      ctx.db,
+      ctx.session.user.id,
+    );
 
     return ctx.db
       .select({
@@ -193,7 +207,10 @@ export const companyRouter = createTRPCRouter({
   }),
 
   createInvitation: protectedProcedure.mutation(async ({ ctx }) => {
-    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    const { companyId } = await requireCompanyAdmin(
+      ctx.db,
+      ctx.session.user.id,
+    );
 
     const [active] = await ctx.db
       .select({ value: count() })
@@ -243,7 +260,10 @@ export const companyRouter = createTRPCRouter({
   revokeInvitation: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
 
       await ctx.db
         .update(companyInvitations)
@@ -318,7 +338,7 @@ export const companyRouter = createTRPCRouter({
 
       await ctx.db
         .update(users)
-        .set({ companyId: invitation.companyId })
+        .set({ companyId: invitation.companyId, role: COMPANY_ROLE_MEMBER })
         .where(eq(users.id, ctx.session.user.id));
 
       await markInvitationUsed(invitation.id);

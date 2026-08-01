@@ -5,6 +5,7 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { companies, users } from "~/server/db/schema";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
+import { isCompanyAdmin } from "~/shared/company-roles";
 import { MyProfileClient } from "./my-profile-client";
 
 type MyProfilePageProps = {
@@ -30,6 +31,7 @@ export default async function MyProfilePage({
       avatarFileId: users.avatarFileId,
       companyId: users.companyId,
       image: users.image,
+      role: users.role,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
@@ -55,6 +57,7 @@ export default async function MyProfilePage({
   return (
     <MyProfileClient
       avatarSrc={getDirectusAssetUrl(user?.avatarFileId) ?? user?.image ?? ""}
+      canEditCompany={isCompanyAdmin(user?.role)}
       companyName={companyName}
       initialSection={initialSection}
       userCity={t("tashkent")}

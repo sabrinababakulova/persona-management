@@ -9,6 +9,7 @@ import type { AdapterAccount } from "next-auth/adapters";
 
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
+import { COMPANY_ROLE_MEMBER } from "~/shared/company-roles";
 
 export const createTable = pgTableCreator((name) => name);
 
@@ -73,35 +74,51 @@ export const companyInvitations = createTable(
   ],
 );
 
-export const users = createTable("user", (d) => ({
-  id: d
-    .varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: d.varchar({ length: 255 }),
-  email: d.varchar({ length: 255 }).notNull().unique(),
-  password: d.varchar({ length: 255 }),
-  passwordChangedAt: d.timestamp({ mode: "date", withTimezone: true }),
-  hasSeenWelcomeModal: d.boolean().notNull().default(true),
-  emailVerified: d.timestamp({
-    mode: "date",
-    withTimezone: true,
+export const users = createTable(
+  "user",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.varchar({ length: 255 }),
+    email: d.varchar({ length: 255 }).notNull().unique(),
+    password: d.varchar({ length: 255 }),
+    passwordChangedAt: d.timestamp({ mode: "date", withTimezone: true }),
+    hasSeenWelcomeModal: d.boolean().notNull().default(true),
+    emailVerified: d.timestamp({
+      mode: "date",
+      withTimezone: true,
+    }),
+    image: d.varchar({ length: 255 }),
+    avatarFileId: d.varchar({ length: 255 }),
+    companyId: d.varchar({ length: 255 }).references(() => companies.id),
+    /**
+     * Role inside `companyId` — `admin` for the person who created the company, `member` for
+     * everyone else. See `~/shared/company-roles`.
+     */
+    role: d.varchar({ length: 20 }).notNull().default(COMPANY_ROLE_MEMBER),
+    /** Last time the user opened the Candidates page — drives the sidebar badge. */
+    candidatesSeenAt: d
+      .timestamp("candidates_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    /** Last time the user opened the Vacancies page — drives the sidebar badge. */
+    vacanciesSeenAt: d
+      .timestamp("vacancies_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   }),
-  image: d.varchar({ length: 255 }),
-  avatarFileId: d.varchar({ length: 255 }),
-  companyId: d.varchar({ length: 255 }).references(() => companies.id),
-  /** Last time the user opened the Candidates page — drives the sidebar badge. */
-  candidatesSeenAt: d
-    .timestamp("candidates_seen_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  /** Last time the user opened the Vacancies page — drives the sidebar badge. */
-  vacanciesSeenAt: d
-    .timestamp("vacancies_seen_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-}));
+  (t) => [
+    // At most one admin per company — the company creator keeps the role for good.
+    // The literal must stay in sync with COMPANY_ROLE_ADMIN; index predicates cannot be
+    // parameterized, so it cannot be interpolated.
+    uniqueIndex("user_company_admin_idx")
+      .on(t.companyId)
+      .where(sql`${t.role} = 'admin'`),
+  ],
+);
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),

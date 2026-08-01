@@ -303,7 +303,14 @@
       "back": "Back to sign in",
       "success": "Password updated successfully. You can now sign in."
     },
-    "invitedToCompany": "You have been invited to join {company}"
+    "invitedToCompany": "You have been invited to join {company}",
+    "continue": "Continue",
+    "companyStepTitle": "Company",
+    "companyStepDescription": "Create a new company, or join an existing one if your colleagues already use the system.",
+    "createCompany": "Create a new company",
+    "createCompanyDescription": "Tell us about your company. You become its admin and can edit these details and invite colleagues.",
+    "joinCompany": "Join an existing company",
+    "joinCompanyHint": "To join a company, ask its admin to send you an invitation link and open it."
   },
   "Invite": {
     "title": "Team invitation",
@@ -378,9 +385,11 @@
     "phonePlaceholder": "+998 90 123 45 67",
     "description": "Description",
     "descriptionPlaceholder": "Briefly describe your company",
+    "adminEditHint": "Saved changes are visible to everyone in your company.",
     "saved": "Company details updated",
     "logoUpdated": "Logo updated",
     "team": "Team",
+    "loadingTeam": "Loading team...",
     "inviteDescription": "Share a link so colleagues can join your company. The link is valid for 14 days and can be revoked at any time.",
     "loadingInvites": "Loading invitations...",
     "invitePeople": "Invite people",
@@ -401,7 +410,9 @@
       "descriptionTooLong": "The description must not exceed 2000 characters",
       "websiteInvalid": "Enter a valid link, for example https://example.com",
       "phoneTooLong": "The phone must not exceed 50 characters"
-    }
+    },
+    "roleAdmin": "Admin",
+    "roleMember": "Member"
   },
   "Integrations": {
     "hhAccount": "hh.uz account",
