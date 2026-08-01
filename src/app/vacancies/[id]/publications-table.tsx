@@ -18,6 +18,7 @@ import {
 } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import { LoadingButtonContent } from "~/app/_components/motion-system";
+import { useErrorToast } from "~/app/_components/use-error-toast";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
@@ -134,6 +135,7 @@ export function PublicationsTable() {
   const router = useRouter();
   const { id: parentVacancyId } = useParams() as { id: string };
   const utils = api.useUtils();
+  const showError = useErrorToast();
   const channelOptions: ActionDropdownItem[] = [
     {
       value: "linkedin",
@@ -187,6 +189,7 @@ export function PublicationsTable() {
     },
     onError: (error) => {
       console.error("Failed to duplicate vacancy publication", error);
+      showError(error, { dedupeKey: "duplicate-publication" });
     },
   });
   const deletePublication = api.vacancies.deletePublication.useMutation({
@@ -199,6 +202,7 @@ export function PublicationsTable() {
     },
     onError: (error) => {
       console.error("Failed to delete vacancy publication", error);
+      showError(error, { dedupeKey: "delete-publication" });
     },
   });
   const updatePublicationStatus = api.vacancies.update.useMutation({
@@ -213,6 +217,7 @@ export function PublicationsTable() {
         return;
       }
       console.error("Failed to update vacancy publication status", error);
+      showError(error, { dedupeKey: "update-publication-status" });
     },
   });
 

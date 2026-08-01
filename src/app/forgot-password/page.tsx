@@ -15,6 +15,7 @@ import {
   createForgotPasswordResetSchema,
 } from "~/schemas/forgot-password";
 import { api } from "~/trpc/react";
+import { resolveTrpcError } from "~/utils/trpc-error";
 
 const FLOW_ID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -104,8 +105,13 @@ function ForgotPasswordPageContent() {
     [email, resetFlow?.email],
   );
 
-  const requestPasswordReset = api.profile.requestPasswordReset.useMutation();
-  const resetPassword = api.profile.resetPassword.useMutation();
+  // Both render their failure inline above the form; the global toast would repeat it.
+  const requestPasswordReset = api.profile.requestPasswordReset.useMutation({
+    meta: { errorHandled: true },
+  });
+  const resetPassword = api.profile.resetPassword.useMutation({
+    meta: { errorHandled: true },
+  });
 
   const handleRequestSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -127,9 +133,7 @@ function ForgotPasswordPageContent() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : t("unknownError"),
-      );
+      setErrorMessage(resolveTrpcError(error).message ?? t("unknownError"));
     }
   };
 
@@ -161,9 +165,7 @@ function ForgotPasswordPageContent() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : t("unknownError"),
-      );
+      setErrorMessage(resolveTrpcError(error).message ?? t("unknownError"));
     }
   };
 

@@ -4,7 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronDownIcon, SearchIcon } from "./icons";
-import { AnimatePresence, LoadingState, motion } from "./motion-system";
+import { AnimatePresence, motion } from "./motion-system";
+import { SKELETON_KEYS, SkeletonBlock } from "./page-skeleton";
 
 type CandidateSelectorProps = {
   className?: string;
@@ -159,10 +160,14 @@ export function CandidateSelector({
 
                 <div className="max-h-[280px] overflow-y-auto p-2">
                   {isLoading || isFetching ? (
-                    <LoadingState
-                      className="min-h-[180px] text-text-placeholder"
-                      label={t("loadingCandidates")}
-                    />
+                    <div aria-busy="true" className="space-y-2 p-1">
+                      {SKELETON_KEYS.slice(0, 4).map((key) => (
+                        <SkeletonBlock
+                          className="h-14 w-full"
+                          key={`candidate-option-${key}`}
+                        />
+                      ))}
+                    </div>
                   ) : options.length > 0 ? (
                     options.map((candidate) => {
                       const optionMeta = [

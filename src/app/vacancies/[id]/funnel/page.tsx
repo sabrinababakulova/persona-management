@@ -34,14 +34,15 @@ import {
   SearchIcon,
   SortIcon,
 } from "~/app/_components/icons";
-import {
-  FeedbackPresence,
-  LoadingState,
-} from "~/app/_components/motion-system";
+import { FeedbackPresence } from "~/app/_components/motion-system";
 import { useDebouncedValue } from "~/app/_components/use-debounced-value";
 import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 import { PublicationsTable } from "../publications-table";
+import {
+  VacancyDescriptionPanelSkeleton,
+  VacancyFunnelPageSkeleton,
+} from "./vacancy-funnel-page-skeleton";
 
 function compactValues(values: string[]) {
   return values.map((value) => value.trim()).filter(Boolean);
@@ -249,11 +250,7 @@ function VacancyDescriptionPanel({ vacancyId }: { vacancyId: string }) {
   );
 
   if (isLoading) {
-    return (
-      <div className="surface-card flex min-h-48 items-center justify-center p-6">
-        <LoadingState compact label={t("loadingDescription")} />
-      </div>
-    );
+    return <VacancyDescriptionPanelSkeleton />;
   }
 
   if (!vacancy) {
@@ -877,11 +874,7 @@ export default function VacancyFunnelPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label={t("loading")} />
-      </div>
-    );
+    return <VacancyFunnelPageSkeleton />;
   }
 
   if (!data) {

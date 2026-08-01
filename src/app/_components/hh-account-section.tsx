@@ -3,10 +3,8 @@
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
-import {
-  LoadingButtonContent,
-  LoadingState,
-} from "../_components/motion-system";
+import { LoadingButtonContent } from "../_components/motion-system";
+import { SkeletonBlock } from "../_components/page-skeleton";
 
 export function HhAccountSection() {
   const t = useTranslations("Integrations");
@@ -25,7 +23,10 @@ export function HhAccountSection() {
   return (
     <ClosableSection title={t("hhAccount")}>
       {isLoading ? (
-        <LoadingState compact label={t("checkingConnection")} />
+        <div aria-busy="true" className="space-y-3">
+          <SkeletonBlock className="h-20 w-full" />
+          <SkeletonBlock className="h-10 w-40" />
+        </div>
       ) : null}
 
       {!isLoading && isConnected && (

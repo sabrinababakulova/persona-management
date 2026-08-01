@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { CompanySetupSteps } from "~/app/_components/company-setup-steps";
-import { LoadingState } from "~/app/_components/motion-system";
+import { SkeletonBlock } from "~/app/_components/page-skeleton";
 import { api } from "~/trpc/react";
 
 type CompanyOnboardingClientProps = {
@@ -48,7 +48,13 @@ export function CompanyOnboardingClient({
   });
 
   if (hasCompany) {
-    return <LoadingState label={t("redirecting")} />;
+    return (
+      <div aria-busy="true" className="space-y-5">
+        <SkeletonBlock className="h-10 w-3/4" />
+        <SkeletonBlock className="h-4 w-full rounded-md" />
+        <SkeletonBlock className="h-12 w-full" />
+      </div>
+    );
   }
 
   return (

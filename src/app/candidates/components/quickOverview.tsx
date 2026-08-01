@@ -10,7 +10,7 @@ import {
   MailIcon,
 } from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
-import { LoadingState } from "~/app/_components/motion-system";
+import { SkeletonBlock } from "~/app/_components/page-skeleton";
 import { api } from "~/trpc/react";
 import type {
   QuickOverviewProps,
@@ -103,10 +103,12 @@ export function QuickOverview({
     >
       {isLoading || !candidate ? (
         isLoading ? (
-          <LoadingState
-            className="min-h-[180px] text-text-placeholder"
-            label={t("quickLoading")}
-          />
+          <div aria-busy="true" className="min-h-[180px] space-y-4">
+            <SkeletonBlock className="h-8 w-3/4" />
+            <SkeletonBlock className="h-4 w-full rounded-md" />
+            <SkeletonBlock className="h-4 w-5/6 rounded-md" />
+            <SkeletonBlock className="h-24 w-full" />
+          </div>
         ) : (
           <p
             className="text-sm text-text-placeholder leading-[1.3]"

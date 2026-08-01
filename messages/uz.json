@@ -428,7 +428,9 @@
     "removeMemberTitle": "Ishtirokchi o'chirilsinmi?",
     "removeMemberWarning": "{name} kompaniyaga kirish huquqini yo'qotadi va tizimga kira olmaydi. Ma'lumotlari saqlanadi, kirishni keyinroq tiklash mumkin.",
     "restoreMember": "Kirishni tiklash",
-    "manageMembersOnlyMaster": "Ishtirokchilarning rollari va kirish huquqini faqat kompaniya egasi boshqara oladi."
+    "manageMembersOnlyMaster": "Ishtirokchilarning rollari va kirish huquqini faqat kompaniya egasi boshqara oladi.",
+    "saveError": "Kompaniya o‘zgarishlarini saqlab bo‘lmadi.",
+    "loadError": "Kompaniya ma’lumotlarini yuklab bo‘lmadi."
   },
   "Integrations": {
     "hhAccount": "hh.uz hisobi",
@@ -450,7 +452,8 @@
     "optionalName": "Nomi (ixtiyoriy)",
     "channelNamePlaceholder": "Masalan: IT vakansiyalari",
     "addChannel": "Kanal qo‘shish",
-    "adding": "Qo‘shilmoqda..."
+    "adding": "Qo‘shilmoqda...",
+    "migrationFailed": "hh.uz’dan ma’lumotlarni yuklab bo‘lmadi. Hisobni qayta ulab ko‘ring."
   },
   "Candidates": {
     "title": "Nomzodlar",
@@ -828,7 +831,9 @@
       "channelsLocked": "E’lon qilingandan keyin kanallarni o‘zgartirib bo‘lmaydi.",
       "selectChannel": "Kamida bitta kanalni tanlang",
       "saveDescription": "O‘zgarishlar Telegram’da e’lon qilinmasdan ma’lumotlar bazasida saqlanadi.",
-      "publishDescription": "E’lon saqlanadi va Telegram’ga yuboriladi."
+      "publishDescription": "E’lon saqlanadi va Telegram’ga yuboriladi.",
+      "publishedPartial": "{total} ta kanaldan {sent} tasiga joylandi",
+      "publishFailedChannels": "Yuborib bo‘lmadi: {details}"
     },
     "personHunter": {
       "pageTitle": "PersonHunters’da e’lon qilish",
@@ -885,6 +890,21 @@
     "notFoundTitle": "Sahifa topilmadi",
     "notFoundDescription": "Manzil o‘zgargan yoki sahifa o‘chirilgan bo‘lishi mumkin.",
     "backHome": "Bosh sahifaga qaytish",
-    "pageLoading": "Sahifa tayyorlanmoqda..."
+    "pageLoading": "Sahifa tayyorlanmoqda...",
+    "unauthorized": "Sessiya muddati tugadi. Tizimga qaytadan kiring.",
+    "forbidden": "Bu amalni bajarish uchun huquqingiz yetarli emas.",
+    "notFound": "Yozuv topilmadi. U o‘chirilgan bo‘lishi mumkin.",
+    "badRequest": "Ma’lumotlar noto‘g‘ri. To‘ldirilgan maydonlarni tekshiring.",
+    "conflict": "Ma’lumotlar o‘zgardi. Sahifani yangilab, qayta urinib ko‘ring.",
+    "preconditionFailed": "Amal mavjud emas: zarur shartlar bajarilmagan.",
+    "tooManyRequests": "So‘rovlar juda ko‘p. Biroz kutib, qayta urinib ko‘ring.",
+    "payloadTooLarge": "Fayl hajmi juda katta.",
+    "unsupportedMediaType": "Qo‘llab-quvvatlanmaydigan fayl turi.",
+    "timeout": "Javob kutish vaqti tugadi. Qayta urinib ko‘ring.",
+    "clientClosed": "So‘rov bekor qilindi.",
+    "serverError": "Amalni bajarib bo‘lmadi. Keyinroq urinib ko‘ring.",
+    "network": "Server bilan aloqa yo‘q. Internet ulanishini tekshiring.",
+    "dismiss": "Bildirishnomani yopish",
+    "hhUnavailable": "hh.uz vaqtincha ishlamayapti — faqat lokal ma’lumotlar ko‘rsatilmoqda."
   }
 }

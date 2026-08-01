@@ -10,7 +10,6 @@ import { Input } from "~/app/_components/input";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
@@ -19,7 +18,9 @@ import {
   useVacancyPublicationStore,
 } from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
+import { PublicationEditPageSkeleton } from "./[pubid]/publication-edit-page-skeleton";
 import { PublicationConfirmationModal } from "./publication-confirmation-modal";
+import { PublicationPageSkeleton } from "./publication-page-skeleton";
 
 /** Per-field error messages plus an optional `_form` entry for form-level errors. */
 type HhErrors = Partial<Record<keyof HhPublicationFields | "_form", string>>;
@@ -565,11 +566,10 @@ export function HhPublicationForm({
   };
 
   if (vacancyQuery.isLoading) {
-    return (
-      <LoadingState
-        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label={t("vacancyLoading")}
-      />
+    return pubId ? (
+      <PublicationEditPageSkeleton />
+    ) : (
+      <PublicationPageSkeleton />
     );
   }
 

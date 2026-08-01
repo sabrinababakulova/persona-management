@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { writeRecentActivityLog } from "~/server/activity/recent-activity";
 import {
@@ -51,7 +51,6 @@ import {
 import { fetchDirectusAsset } from "~/server/storage/directus-storage";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
-
 import {
   type PersonHunterPublicationMeta,
   vacancyCreateInputSchema,
@@ -64,6 +63,10 @@ import {
   isUserVisibleVacancy,
   type SalaryCurrency,
 } from "./shared";
+import {
+  summarizeTelegramDeletion,
+  type TelegramDeletionOutcome,
+} from "./telegram-deletion";
 
 /**
  * Per the hh.uz `vacancy-prolongation` schema, a 403 response can carry one of these
@@ -450,7 +453,10 @@ export const updateVacancyProcedure = protectedProcedure
             : [];
 
       const targets = messageUrls
-        .map((url) => parseTelegramMessageUrl(url))
+        .map((url) => {
+          const parsed = parseTelegramMessageUrl(url);
+          return parsed ? { ...parsed, url } : null;
+        })
         .filter(
           (target): target is NonNullable<typeof target> => target !== null,
         );
@@ -472,22 +478,50 @@ export const updateVacancyProcedure = protectedProcedure
           });
         }
 
-        const deleteErrors: string[] = [];
+        const outcomes: TelegramDeletionOutcome[] = [];
         for (const target of targets) {
           try {
             await deleteTelegramMessage(target.chatId, target.messageId);
+            outcomes.push({ url: target.url, error: null });
           } catch (error) {
-            deleteErrors.push(
-              `${target.chatId}: ${error instanceof Error ? error.message : "ошибка"}`,
-            );
+            outcomes.push({
+              url: target.url,
+              error: `${target.chatId}: ${error instanceof Error ? error.message : "ошибка"}`,
+            });
           }
         }
-        if (deleteErrors.length === targets.length) {
+
+        const {
+          deletedUrls,
+          errors: deleteErrors,
+          isComplete,
+        } = summarizeTelegramDeletion(outcomes);
+
+        if (!isComplete) {
+          // Deletion is not atomic: messages already removed from Telegram are
+          // gone for good. Drop just those rows so the publication stays active
+          // and a retry only re-attempts the channels that are still live —
+          // re-deleting an already-deleted message would fail forever otherwise.
+          if (deletedUrls.length > 0) {
+            await ctx.db
+              .delete(vacancyTelegramPosts)
+              .where(
+                and(
+                  eq(vacancyTelegramPosts.publicationId, existing.id),
+                  inArray(vacancyTelegramPosts.messageUrl, deletedUrls),
+                ),
+              );
+          }
+
+          // Previously a partial failure fell through and reported success,
+          // leaving live messages in Telegram while the app showed the
+          // publication as deactivated.
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: `Не удалось удалить сообщения в Telegram:\n${deleteErrors.join("\n")}`,
           });
         }
+
         clearTelegramPosts = true;
       }
     }

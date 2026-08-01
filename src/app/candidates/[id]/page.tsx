@@ -10,7 +10,6 @@ import { Modal } from "~/app/_components/modal";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "~/app/_components/motion-system";
 import { Textarea } from "~/app/_components/textarea";
 import { CandidateBackgroundCard } from "~/app/candidates/components/candidate-background-card";
@@ -19,6 +18,7 @@ import { CandidateSummaryCard } from "~/app/candidates/components/candidate-summ
 import { ResumeDownloadButton } from "~/app/candidates/components/resume-download-button";
 import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
+import { CandidateDetailPageSkeleton } from "./candidate-detail-page-skeleton";
 
 export default function CandidateDetailPage() {
   const t = useTranslations("CandidateDetail");
@@ -81,11 +81,7 @@ export default function CandidateDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label={t("loading")} />
-      </div>
-    );
+    return <CandidateDetailPageSkeleton />;
   }
 
   if (!candidate) {

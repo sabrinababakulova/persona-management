@@ -13,7 +13,8 @@ type VacancyTableItem = Vacancy | DashboardVacancy;
 
 import { Checkbox } from "./checkbox";
 import { ChevronDownIcon, MoreIcon, SortIcon } from "./icons";
-import { LoadingState, motion } from "./motion-system";
+import { motion } from "./motion-system";
+import { TableRowsSkeleton } from "./page-skeleton";
 
 type VacancyStatus = Vacancy["status"];
 
@@ -136,7 +137,6 @@ export function VacancyTable({
   title,
   headerAction,
   isLoading = false,
-  loadingLabel,
   emptyState,
   pagination,
   vacancyStatusOptions,
@@ -156,8 +156,6 @@ export function VacancyTable({
   const common = useTranslations("Common");
   const format = useFormatter();
   const showTitleBar = Boolean(title) || Boolean(headerAction);
-  const resolvedLoadingLabel = loadingLabel ?? t("loading");
-
   return (
     <div
       className={cn(
@@ -210,10 +208,7 @@ export function VacancyTable({
       </div>
 
       {isLoading ? (
-        <LoadingState
-          className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
-          label={resolvedLoadingLabel}
-        />
+        <TableRowsSkeleton count={5} />
       ) : (
         <>
           <div className={cn("min-h-0 flex-1 overflow-auto", bodyClassName)}>

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import { api } from "~/trpc/react";
 import { bytesToBase64 } from "~/utils/bytes-to-base64";
+import { resolveTrpcError } from "~/utils/trpc-error";
 import { FileUploadIcon } from "./icons";
 import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
@@ -42,7 +43,10 @@ export function ResumeFileUploader({
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const uploadResume = api.candidates.uploadResume.useMutation();
+  // Failures are caught below and rendered inline under the upload button.
+  const uploadResume = api.candidates.uploadResume.useMutation({
+    meta: { errorHandled: true },
+  });
 
   useEffect(() => {
     onUploadingChange?.(uploadResume.isPending);
@@ -89,9 +93,7 @@ export function ResumeFileUploader({
       }
       onUploaded?.(uploadedResume);
     } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : t("resumeUploadError"),
-      );
+      setUploadError(resolveTrpcError(error).message ?? t("resumeUploadError"));
     } finally {
       event.target.value = "";
     }

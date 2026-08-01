@@ -11,7 +11,6 @@ import { Input } from "~/app/_components/input";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { api } from "~/trpc/react";
@@ -19,7 +18,9 @@ import {
   formatNumberWithSpaces,
   parseFormattedNumber,
 } from "~/utils/format-salaries";
+import { PublicationEditPageSkeleton } from "./[pubid]/publication-edit-page-skeleton";
 import { PublicationConfirmationModal } from "./publication-confirmation-modal";
+import { PublicationPageSkeleton } from "./publication-page-skeleton";
 
 type PersonHunterErrors = Partial<
   Record<
@@ -413,11 +414,10 @@ export function PersonHunterPublicationForm({
   );
 
   if (vacancyQuery.isLoading || configQuery.isLoading) {
-    return (
-      <LoadingState
-        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label={t("publicationLoading")}
-      />
+    return pubId ? (
+      <PublicationEditPageSkeleton />
+    ) : (
+      <PublicationPageSkeleton />
     );
   }
 

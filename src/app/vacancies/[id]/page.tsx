@@ -4,10 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { ChevronDownIcon } from "~/app/_components/icons";
-import {
-  FeedbackPresence,
-  LoadingState,
-} from "~/app/_components/motion-system";
+import { FeedbackPresence } from "~/app/_components/motion-system";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { SIDE_MENU_ITEMS } from "~/shared/vacancy-side-menu";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -17,6 +14,7 @@ import {
 } from "../create/create-vacancy-form";
 import { PreviewStep } from "./preview-step";
 import { PublicationsTable } from "./publications-table";
+import { VacancyDetailPageSkeleton } from "./vacancy-detail-page-skeleton";
 
 type VacancyDetail = NonNullable<RouterOutputs["vacancies"]["get"]>;
 
@@ -105,11 +103,7 @@ export default function VacancyDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label={t("loading")} />
-      </div>
-    );
+    return <VacancyDetailPageSkeleton />;
   }
 
   if (!vacancy) {

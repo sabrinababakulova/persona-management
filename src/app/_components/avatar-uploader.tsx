@@ -22,6 +22,9 @@ export function AvatarUploader({ avatarSrc }: AvatarUploaderProps) {
     onSuccess: () => {
       router.refresh();
     },
+    // Awaited inside ImageUploader's own try/catch, which renders the failure
+    // inline; the global toast would repeat it.
+    meta: { errorHandled: true },
   });
 
   return (

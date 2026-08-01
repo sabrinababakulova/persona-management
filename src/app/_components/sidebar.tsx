@@ -37,6 +37,10 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
     onSuccess: () => {
       void utils.sidebar.counts.invalidate();
     },
+    // Deliberately silent: this fires on every navigation just to clear a badge.
+    // A failure leaves the badge up, which is not worth a toast on each route
+    // change.
+    meta: { errorHandled: true },
   });
   const markSeenMutate = markSeen.mutate;
 

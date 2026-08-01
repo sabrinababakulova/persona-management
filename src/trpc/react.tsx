@@ -1,19 +1,19 @@
 "use client";
 
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchStreamLink, loggerLink, TRPCClientError } from "@trpc/client";
+import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 import SuperJSON from "superjson";
-
 import type { AppRouter } from "~/types/trpc/app-router";
 import type { RouterInputs } from "~/types/trpc/router-inputs";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
+import { isUnauthorizedError } from "~/utils/trpc-error";
 import { createQueryClient } from "./query-client";
 
 function handleUnauthorizedError(error: unknown) {
-  if (error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED") {
+  if (isUnauthorizedError(error)) {
     void signOut({ redirectTo: "/login" });
   }
 }

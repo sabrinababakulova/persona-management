@@ -9,7 +9,6 @@ import { AIGenerationIcon } from "~/app/_components/icons";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "~/app/_components/motion-system";
 import {
   ResumeFileUploader,
@@ -30,6 +29,7 @@ import { calculateCandidateFormProgress } from "~/utils/candidate-form-progress"
 import { BackgroundDetailsSection } from "../components/BackgroundDetailsSection";
 import { BasicInfoSection } from "../components/BasicInfoSection";
 import { ConditionsSection } from "../components/ConditionsSection";
+import { CreateCandidateFormSkeleton } from "./create-candidate-page-skeleton";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 
@@ -472,9 +472,7 @@ export function CreateCandidateForm() {
   };
 
   if (isLookupsLoading) {
-    return (
-      <LoadingState className="min-h-[50vh]" label={t("loadingLookups")} />
-    );
+    return <CreateCandidateFormSkeleton />;
   }
 
   if (isLookupsError || !candidateLookups) {

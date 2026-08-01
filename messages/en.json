@@ -428,7 +428,9 @@
     "removeMemberTitle": "Remove this member?",
     "removeMemberWarning": "{name} will lose access to the company and will not be able to sign in. Their data is kept and access can be restored later.",
     "restoreMember": "Restore access",
-    "manageMembersOnlyMaster": "Only the company owner can manage members' roles and access."
+    "manageMembersOnlyMaster": "Only the company owner can manage members' roles and access.",
+    "saveError": "Could not save the company changes.",
+    "loadError": "Could not load the company details."
   },
   "Integrations": {
     "hhAccount": "hh.uz account",
@@ -450,7 +452,8 @@
     "optionalName": "Name (optional)",
     "channelNamePlaceholder": "For example: IT vacancies",
     "addChannel": "Add channel",
-    "adding": "Adding..."
+    "adding": "Adding...",
+    "migrationFailed": "Could not import data from hh.uz. Try reconnecting the account."
   },
   "Candidates": {
     "title": "Candidates",
@@ -828,7 +831,9 @@
       "channelsLocked": "Channels cannot be changed after publication.",
       "selectChannel": "Select at least one channel",
       "saveDescription": "Changes will be saved in the database without publishing to Telegram.",
-      "publishDescription": "The publication will be saved and sent to Telegram."
+      "publishDescription": "The publication will be saved and sent to Telegram.",
+      "publishedPartial": "Published to {sent} of {total} channels",
+      "publishFailedChannels": "Failed to send: {details}"
     },
     "personHunter": {
       "pageTitle": "Publish on PersonHunters",
@@ -885,6 +890,21 @@
     "notFoundTitle": "Page not found",
     "notFoundDescription": "The address may have changed or the page may have been removed.",
     "backHome": "Back to home",
-    "pageLoading": "Preparing the page..."
+    "pageLoading": "Preparing the page...",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "Record not found. It may have been deleted.",
+    "badRequest": "Invalid data. Please check the fields you filled in.",
+    "conflict": "The data has changed. Refresh the page and try again.",
+    "preconditionFailed": "Action unavailable: required conditions are not met.",
+    "tooManyRequests": "Too many requests. Please wait a moment and retry.",
+    "payloadTooLarge": "The file is too large.",
+    "unsupportedMediaType": "Unsupported file type.",
+    "timeout": "The request timed out. Please try again.",
+    "clientClosed": "The request was cancelled.",
+    "serverError": "The action could not be completed. Please try again later.",
+    "network": "No connection to the server. Check your internet connection.",
+    "dismiss": "Dismiss notification",
+    "hhUnavailable": "hh.uz is temporarily unavailable — showing local data only."
   }
 }

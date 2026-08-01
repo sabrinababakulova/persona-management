@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { AIGenerationIcon } from "~/app/_components/icons/AIGenerationIcon";
 import { api } from "~/trpc/react";
+import { resolveTrpcError } from "~/utils/trpc-error";
 import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 /** The AI paraphrase button only appears once the editor has at least this many characters. */
@@ -151,7 +152,10 @@ function AiParaphraseFooter({
 }) {
   const t = useTranslations("Components");
   const [error, setError] = useState<string | null>(null);
-  const paraphrase = api.ai.paraphrase.useMutation();
+  // Failures are caught below and rendered inline beneath the editor.
+  const paraphrase = api.ai.paraphrase.useMutation({
+    meta: { errorHandled: true },
+  });
 
   const handleParaphrase = async () => {
     if (disabled || paraphrase.isPending || editor.isEmpty) return;
@@ -170,11 +174,7 @@ function AiParaphraseFooter({
       }
       onChange(editor.isEmpty ? "" : editor.getHTML());
     } catch (mutationError) {
-      setError(
-        mutationError instanceof Error
-          ? mutationError.message
-          : t("paraphraseError"),
-      );
+      setError(resolveTrpcError(mutationError).message ?? t("paraphraseError"));
     } finally {
       editor.setEditable(!disabled);
     }

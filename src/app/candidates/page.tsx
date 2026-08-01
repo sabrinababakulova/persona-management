@@ -29,7 +29,6 @@ import {
 } from "../_components/icons";
 import {
   FeedbackPresence,
-  LoadingState,
   MotionToast,
   motion,
 } from "../_components/motion-system";
@@ -40,6 +39,7 @@ import {
 import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
+import { CandidatesTableSkeleton } from "./candidates-page-skeleton";
 import { CandidateStatusSelect } from "./components/candidate-status-select";
 import { QuickOverview } from "./components/quickOverview";
 
@@ -469,10 +469,7 @@ export default function CandidatesPage() {
                 </div>
 
                 {isTableLoading ? (
-                  <LoadingState
-                    className="min-h-0 flex-1 px-4 py-10 text-text-placeholder"
-                    label={t("loading")}
-                  />
+                  <CandidatesTableSkeleton />
                 ) : (
                   <>
                     <div className="min-h-0 flex-1 overflow-auto">

@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ClosableSection } from "~/app/_components/closable-section";
-import { LoadingState } from "~/app/_components/motion-system";
+import { SkeletonBlock } from "~/app/_components/page-skeleton";
 import { api } from "~/trpc/react";
 
 export function PreviewStep() {
@@ -21,7 +21,14 @@ export function PreviewStep() {
   );
 
   if (isLoading) {
-    return <LoadingState compact label={t("previewLoading")} />;
+    return (
+      <div aria-busy="true" className="surface-card space-y-4 p-6">
+        <SkeletonBlock className="h-6 w-48" />
+        <SkeletonBlock className="h-4 w-full rounded-md" />
+        <SkeletonBlock className="h-4 w-5/6 rounded-md" />
+        <SkeletonBlock className="h-32 w-full" />
+      </div>
+    );
   }
 
   const activePublications =

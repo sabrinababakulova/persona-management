@@ -5,13 +5,13 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { ChevronRightIcon } from "../_components/icons";
-import { LoadingState } from "../_components/motion-system";
 import { StatsCard } from "../_components/stats-card";
 import { VacancyTable } from "../_components/vacancy-table";
 import { WelcomeModal } from "../_components/welcome-modal";
 import { ChannelStatistics } from "./components/channelStatistics";
 import { RecentActions } from "./components/recentActions";
 import { StatusStatistics } from "./components/statusStatistics";
+import { DashboardPageSkeleton } from "./dashboard-page-skeleton";
 
 export default function DashboardClient({ userName }: { userName: string }) {
   const t = useTranslations("Dashboard");
@@ -28,6 +28,10 @@ export default function DashboardClient({ userName }: { userName: string }) {
     onSuccess: async () => {
       await utils.dashboard.getWelcomeModalState.invalidate();
     },
+    // Deliberately silent: this only records that a cosmetic modal was
+    // dismissed. The worst case is seeing the welcome modal again, which does
+    // not warrant interrupting the user with an error.
+    meta: { errorHandled: true },
   });
 
   const markSeenRef = useRef(markWelcomeModalSeen);
@@ -60,11 +64,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
   ] as const;
 
   if (isLoading) {
-    return (
-      <div className="flex h-full min-h-0 items-center justify-center bg-bg-canvas">
-        <LoadingState label={t("loading")} />
-      </div>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -303,7 +304,14 @@ export const getPersonHunterPublicationProcedure = protectedProcedure
         personHunterVacancyId,
         error,
       });
-      return null;
+      // Returning null here used to render the edit form with empty fields,
+      // which then overwrote the live PersonHunters vacancy with blanks on save.
+      // A failed load must stop the user, not hand them a blank form.
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "Не удалось загрузить вакансию с PersonHunters. Попробуйте позже.",
+      });
     }
   });
 
@@ -423,7 +431,13 @@ export const getHhVacancyDetailProcedure = protectedProcedure
         companyId: userCompanyId,
         error,
       });
-      return null;
+      // `null` is reserved for "this vacancy has no hh.uz counterpart" (handled
+      // above). A reachable-but-failing hh.uz is a real error, and collapsing it
+      // into null made the page look like the vacancy did not exist.
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Не удалось загрузить вакансию с hh.uz. Попробуйте позже.",
+      });
     }
   });
 

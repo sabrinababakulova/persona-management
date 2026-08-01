@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { TRPCReactProvider } from "~/trpc/react";
 import { MotionProvider } from "./motion-system";
 import { SessionCookieCleanup } from "./session-cookie-cleanup";
+import { Toaster } from "./toaster";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <SessionCookieCleanup />
       <TRPCReactProvider>
         <MotionProvider>{children}</MotionProvider>
+        <Toaster />
       </TRPCReactProvider>
     </SessionProvider>
   );

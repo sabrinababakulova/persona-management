@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { SideMenu } from "~/app/_components/sideMenu";
 import { SIDE_MENU_ITEMS } from "~/shared/vacancy-side-menu";
 import { CreateVacancyForm } from "./create-vacancy-form";
+import { CreateVacancyPageSkeleton } from "./create-vacancy-page-skeleton";
 
 function CreateVacancyPageContent() {
   const router = useRouter();
@@ -42,7 +43,7 @@ function CreateVacancyPageContent() {
 
 export default function CreateVacancyPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<CreateVacancyPageSkeleton />}>
       <CreateVacancyPageContent />
     </Suspense>
   );

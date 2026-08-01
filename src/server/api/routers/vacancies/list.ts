@@ -169,9 +169,13 @@ export const listVacanciesProcedure = protectedProcedure
       );
     }
 
+    // `hhUnavailable` distinguishes "hh.uz returned nothing" from "hh.uz could
+    // not be reached". Without it a failed integration is indistinguishable from
+    // an empty result set, and the list silently under-reports.
     const localOnlyResult = {
       items: paginate(localVacancies),
       total: localVacancies.length,
+      hhUnavailable: false,
     };
 
     // --- hh.uz vacancies ------------------------------------------------------------
@@ -258,6 +262,7 @@ export const listVacanciesProcedure = protectedProcedure
             ...hhItems,
           ],
           total: localVacancies.length + hhPage.total - linkedHhCount,
+          hhUnavailable: false,
         };
       }
 
@@ -300,13 +305,19 @@ export const listVacanciesProcedure = protectedProcedure
         ...withHhResponseCounts(localVacancies, hhResponsesById),
         ...hhItems,
       ];
-      return { items: paginate(items), total: items.length };
+      return {
+        items: paginate(items),
+        total: items.length,
+        hhUnavailable: false,
+      };
     } catch (error) {
       console.error("Failed to fetch hh.uz vacancies for company", {
         companyId: userCompanyId,
         employerId: hhAccount.employerId,
         error,
       });
-      return localOnlyResult;
+      // Degraded, not empty: local rows are still returned so the page works,
+      // but the caller is told the hh.uz half of the list is missing.
+      return { ...localOnlyResult, hhUnavailable: true };
     }
   });

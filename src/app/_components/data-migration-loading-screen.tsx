@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { AnimatePresence, LoadingState, motion } from "./motion-system";
+import { AnimatePresence, motion } from "./motion-system";
+import { SkeletonBlock } from "./page-skeleton";
 
 type DataMigrationLoadingScreenProps = {
   isLoading: boolean;
@@ -30,7 +31,10 @@ export function DataMigrationLoadingScreen({
             exit={{ opacity: 0, scale: 0.98, y: 8 }}
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
           >
-            <LoadingState label={t("synchronization")} />
+            <div aria-hidden="true" className="w-full space-y-3">
+              <SkeletonBlock className="mx-auto h-16 w-16 rounded-2xl" />
+              <SkeletonBlock className="mx-auto h-3 w-32 rounded-md" />
+            </div>
 
             <div className="space-y-2 text-center">
               <h2 className="font-semibold text-text-heading text-xl leading-tight">

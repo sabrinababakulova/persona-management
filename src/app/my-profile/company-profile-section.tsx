@@ -3,11 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-
 import { ClosableSection } from "~/app/_components/closable-section";
 import type { UpdateCompanyInput } from "~/schemas/company";
 import { createUpdateCompanySchema } from "~/schemas/company";
 import { api } from "~/trpc/react";
+import { resolveTrpcError } from "~/utils/trpc-error";
 import {
   CompanyProfileEditor,
   CompanyProfileSkeleton,
@@ -43,7 +43,8 @@ export function CompanyProfileSection({
     data: company,
     isLoading,
     error: loadError,
-  } = api.company.get.useQuery();
+    // Rendered inline inside the section below instead of as a toast.
+  } = api.company.get.useQuery(undefined, { meta: { errorHandled: true } });
 
   const schema = useMemo(
     () =>
@@ -83,7 +84,7 @@ export function CompanyProfileSection({
     },
     onError: (mutationError) => {
       setMessage(null);
-      setError(mutationError.message);
+      setError(resolveTrpcError(mutationError).message ?? t("saveError"));
     },
   });
 
@@ -96,7 +97,7 @@ export function CompanyProfileSection({
     },
     onError: (mutationError) => {
       setMessage(null);
-      setError(mutationError.message);
+      setError(resolveTrpcError(mutationError).message ?? t("saveError"));
     },
   });
 
@@ -138,7 +139,7 @@ export function CompanyProfileSection({
 
       {loadError && (
         <p className="text-danger-red text-sm leading-[1.4]">
-          {loadError.message}
+          {resolveTrpcError(loadError).message ?? t("loadError")}
         </p>
       )}
       {company && !canEdit && <CompanyProfileView company={company} />}

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
+import { publishToast } from "~/utils/toast-bus";
 import {
   countActiveFilters,
   EMPTY_FILTER_MODAL_FILTERS,
@@ -97,6 +98,21 @@ export default function VacanciesPage() {
   );
   const totalItems = vacanciesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  // hh.uz failing is not an error for this page — local vacancies still render —
+  // but the list is incomplete, and saying nothing would pass it off as the
+  // full set.
+  const hhUnavailable = vacanciesData?.hhUnavailable ?? false;
+  useEffect(() => {
+    if (!hhUnavailable) {
+      return;
+    }
+    publishToast({
+      variant: "warning",
+      messageKey: "hhUnavailable",
+      dedupeKey: "hh-unavailable",
+    });
+  }, [hhUnavailable]);
 
   useEffect(() => {
     if (!toastMessage) {

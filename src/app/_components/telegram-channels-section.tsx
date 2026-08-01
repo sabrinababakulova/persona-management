@@ -8,8 +8,8 @@ import { ClosableSection } from "../_components/closable-section";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "../_components/motion-system";
+import { SkeletonBlock } from "../_components/page-skeleton";
 
 export function TelegramChannelsSection() {
   const t = useTranslations("Integrations");
@@ -51,7 +51,12 @@ export function TelegramChannelsSection() {
 
   return (
     <ClosableSection title={t("telegramChannels")}>
-      {isLoading ? <LoadingState compact label={t("loadingChannels")} /> : null}
+      {isLoading ? (
+        <div aria-busy="true" className="space-y-2">
+          <SkeletonBlock className="h-14 w-full" />
+          <SkeletonBlock className="h-14 w-full" />
+        </div>
+      ) : null}
 
       {channels && channels.length > 0 && (
         <div className="space-y-2">

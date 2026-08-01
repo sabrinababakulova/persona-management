@@ -8,6 +8,7 @@ import {
   PencilIcon,
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
+import { resolveTrpcError } from "~/utils/trpc-error";
 import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 
 const ALLOWED_IMAGE_TYPES = [
@@ -81,7 +82,10 @@ export function ImageUploader({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadImage = api.storage.uploadImage.useMutation();
+  // Failures are caught below and rendered inline next to the picker.
+  const uploadImage = api.storage.uploadImage.useMutation({
+    meta: { errorHandled: true },
+  });
 
   useEffect(() => {
     return () => {
@@ -132,11 +136,9 @@ export function ImageUploader({
       showLocalPreview(file);
       await onUploaded(fileId);
     } catch (uploadError) {
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : t("imageUploadError"),
-      );
+      // `resolveTrpcError` keeps server-authored messages and masks raw
+      // exception text, so a driver or SDK error never reaches the user.
+      setError(resolveTrpcError(uploadError).message ?? t("imageUploadError"));
     } finally {
       setIsUploading(false);
     }

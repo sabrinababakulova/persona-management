@@ -11,12 +11,15 @@ import { Input } from "~/app/_components/input";
 import {
   FeedbackPresence,
   LoadingButtonContent,
-  LoadingState,
 } from "~/app/_components/motion-system";
+import { SkeletonBlock } from "~/app/_components/page-skeleton";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { useVacancyPublicationStore } from "~/stores/vacancy-publication-store";
 import { api } from "~/trpc/react";
+import { publishToast } from "~/utils/toast-bus";
+import { PublicationEditPageSkeleton } from "./[pubid]/publication-edit-page-skeleton";
 import { PublicationConfirmationModal } from "./publication-confirmation-modal";
+import { PublicationPageSkeleton } from "./publication-page-skeleton";
 
 type TelegramErrors = Partial<
   Record<"title" | "description" | "channels" | "_form", string>
@@ -83,9 +86,28 @@ export function TgPublicationForm({
   }, [pubId, telegramPostsQuery.data]);
 
   const publishTelegram = api.vacancies.publishTelegram.useMutation({
-    onSuccess: async (_result, variables) => {
+    onSuccess: async (result, variables) => {
       setErrors({});
-      setSavedMessage(t("telegram.published"));
+      // The procedure only throws when *every* channel fails. A run where some
+      // channels succeeded still resolves, carrying the per-channel failures in
+      // `errors` — reporting a plain success here would hide them.
+      const failures = result.errors ?? [];
+      if (failures.length > 0) {
+        setSavedMessage(null);
+        publishToast({
+          variant: "warning",
+          message: t("telegram.publishedPartial", {
+            sent: result.sentTo,
+            total: result.sentTo + failures.length,
+          }),
+          description: t("telegram.publishFailedChannels", {
+            details: failures.join("; "),
+          }),
+          durationMs: null,
+        });
+      } else {
+        setSavedMessage(t("telegram.published"));
+      }
       setIsPublishConfirmOpen(false);
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -261,11 +283,10 @@ export function TgPublicationForm({
     (channelsQuery.data?.length ?? 0) === 0;
 
   if (vacancyQuery.isLoading) {
-    return (
-      <LoadingState
-        className="h-full min-h-[55vh] flex-1 text-text-placeholder"
-        label={t("vacancyLoading")}
-      />
+    return pubId ? (
+      <PublicationEditPageSkeleton />
+    ) : (
+      <PublicationPageSkeleton />
     );
   }
 
@@ -351,7 +372,10 @@ export function TgPublicationForm({
             <div className="surface-card scroll-mt-24 p-5 sm:p-6">
               <ClosableSection title={t("telegram.channels")}>
                 {channelsQuery.isLoading ? (
-                  <LoadingState compact label={t("telegram.loadingChannels")} />
+                  <div aria-busy="true" className="space-y-3">
+                    <SkeletonBlock className="h-16 w-full" />
+                    <SkeletonBlock className="h-16 w-full" />
+                  </div>
                 ) : (channelsQuery.data?.length ?? 0) === 0 ? (
                   <p className="text-danger-red text-xs leading-[1.4]">
                     {t("telegram.noChannels")}
