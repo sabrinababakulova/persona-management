@@ -17,6 +17,7 @@ const AUTH_SCREEN_ROUTES = [
   "/register",
   "/forgot-password",
   "/auth/error",
+  "/invite",
 ];
 
 export function AppShell({ children }: AppShellProps) {

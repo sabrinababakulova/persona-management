@@ -26,12 +26,52 @@ export const companies = createTable("company", (d) => ({
   website: d.varchar({ length: 500 }),
   phone: d.varchar({ length: 50 }),
   logoUrl: d.varchar({ length: 500 }),
+  /** Directus file id of an uploaded logo; `logoUrl` mirrors it for direct rendering. */
+  logoFileId: d.varchar({ length: 255 }),
   createdAt: d
     .timestamp({ withTimezone: true })
     .$defaultFn(() => new Date())
     .notNull(),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
+
+/**
+ * Shareable "join our company" links.
+ *
+ * The token is a random 256-bit value stored as-is so the link stays copyable after it was
+ * generated. It only grants membership in `companyId`, expires, and can be revoked at any time.
+ */
+export const companyInvitations = createTable(
+  "company_invitation",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    token: d.varchar({ length: 64 }).notNull(),
+    createdById: d
+      .varchar({ length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    revokedAt: d.timestamp({ withTimezone: true }),
+    /** How many accounts joined through this link — informational only, the link is multi-use. */
+    usesCount: d.integer().notNull().default(0),
+    lastUsedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("company_invitation_token_idx").on(t.token),
+    index("company_invitation_company_id_idx").on(t.companyId),
+  ],
+);
 
 export const users = createTable("user", (d) => ({
   id: d

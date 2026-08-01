@@ -1,5 +1,6 @@
 import { aiRouter } from "~/server/api/routers/ai";
 import { candidatesRouter } from "~/server/api/routers/candidates";
+import { companyRouter } from "~/server/api/routers/company";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { integrationsRouter } from "~/server/api/routers/integrations";
 import { lookupsRouter } from "~/server/api/routers/lookups";
@@ -19,6 +20,7 @@ export const appRouter = createTRPCRouter({
   dashboard: dashboardRouter,
   vacancies: vacanciesRouter,
   candidates: candidatesRouter,
+  company: companyRouter,
   lookups: lookupsRouter,
   profile: profileRouter,
   integrations: integrationsRouter,

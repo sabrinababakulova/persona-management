@@ -274,7 +274,8 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `verificationTokens` — Email verification codes + rate-limit markers (TTL-based)
 
 **Domain tables**:
-- `companies` — id (UUID), name. Each user belongs to a company; vacancies and candidates are scoped to a company.
+- `companies` — id (UUID), name, city, country, description, website, phone, `logoUrl` / `logoFileId` (Directus asset of an uploaded logo). Each user belongs to a company; vacancies and candidates are scoped to a company. Editable from **My profile → Company settings** via the `company` router.
+- `companyInvitations` (table `company_invitation`) — shareable "join our company" links. `token` (43-char base64url random, UNIQUE — stored as-is so the link stays copyable), `companyId`, `createdById`, `expiresAt` (14 days), `revokedAt`, `usesCount` / `lastUsedAt`. Consumed by `/invite/[token]`; see `src/server/company/invitations.ts`.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
 - `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` (external id once published), and `personHunterMeta` — a JSON blob (`$type<PersonHunterPublicationMeta>`) holding the PersonHunters-only fields (duties, requirements, conditions, selected reference ids, employment/schedule, experience range) that have no dedicated column, so the publish form can be re-populated on edit.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
@@ -328,6 +329,12 @@ JWT strategy — no database sessions. User ID injected via JWT + session callba
 3. **Login**: Email + password checked → bcrypt comparison → JWT issued
 4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
 
+### Company invitations
+- A member generates a link in **My profile → Company settings → Команда** (`company.createInvitation`). It points at `/invite/<token>` (public page, excluded from the app shell + middleware).
+- **New account**: the page links to `/register?invite=<token>`. The register form passes `inviteToken` to the credentials provider, which resolves it to a `companyId` and creates the user there instead of `DEFAULT_COMPANY_ID`. Email verification then runs unchanged (`ensureOAuthUserDefaults` only fills a *null* company).
+- **Existing account**: the page links to `/login?invite=<token>` and the login form redirects back to the invite page, where `company.acceptInvitation` moves the user into the company. Users who already belong to a non-default company are rejected — moving them would strand their existing data.
+- Links are multi-use, expire after 14 days, and can be revoked; at most 10 active links per company.
+
 ### Rate Limiting
 Uses `verificationTokens` table as a generic rate-limit store:
 - Login: 5 attempts / 15 min per email or IP
@@ -379,6 +386,8 @@ Validation errors, modal open state, and per-channel publish progress remain in 
 | `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram`, `getPersonHunterConfig` (enabled flag + reference dictionaries), `getPersonHunterPublication`, `publishPersonHunter` | Protected |
 | `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
 | `profile` | `changePassword` (rate-limited) | Protected |
+| `company` | `get`, `update` (name/city/country/description/website/phone), `updateLogo` (Directus file id), `listMembers`, `listInvitations`, `createInvitation`, `revokeInvitation`, `acceptInvitation` | Protected |
+| `company` | `getInvitation` (company name behind an invite token) | Public |
 | `sidebar` | `counts` (new candidates/vacancies since the user last looked), `markSeen` (clears a section's badge) | Protected |
 
 ### Procedures

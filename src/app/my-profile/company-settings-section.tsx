@@ -7,6 +7,8 @@ import { api } from "~/trpc/react";
 import { DataMigrationLoadingScreen } from "../_components/data-migration-loading-screen";
 import { HhAccountSection } from "../_components/hh-account-section";
 import { TelegramChannelsSection } from "../_components/telegram-channels-section";
+import { CompanyInviteSection } from "./company-invite-section";
+import { CompanyProfileSection } from "./company-profile-section";
 
 export function CompanySettingsSection() {
   const router = useRouter();
@@ -43,6 +45,8 @@ export function CompanySettingsSection() {
   return (
     <div className="space-y-10">
       <DataMigrationLoadingScreen isLoading={isMigrating} />
+      <CompanyProfileSection />
+      <CompanyInviteSection />
       <TelegramChannelsSection />
       <HhAccountSection />
     </div>

@@ -2,14 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
+import {
+  buildInvitePath,
+  isInvitationTokenValid,
+} from "~/shared/invitation-token";
 
 function getLoginErrorKey(code?: string | null) {
   switch (code) {
@@ -33,7 +37,21 @@ function getLoginErrorKey(code?: string | null) {
 export default function LoginForm() {
   const t = useTranslations("Auth");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status } = useSession();
+
+  // Someone arriving from an invite link comes back to it after signing in, so they can join
+  // the inviting company instead of landing on their old dashboard.
+  const inviteToken = useMemo(() => {
+    const token = searchParams.get("invite");
+    return token && isInvitationTokenValid(token) ? token : null;
+  }, [searchParams]);
+  const redirectTarget = inviteToken
+    ? buildInvitePath(inviteToken)
+    : "/dashboard";
+  const registerHref = inviteToken
+    ? `/register?invite=${encodeURIComponent(inviteToken)}`
+    : "/register";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,9 +62,9 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/dashboard");
+      router.replace(redirectTarget);
     }
-  }, [router, status]);
+  }, [redirectTarget, router, status]);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,7 +100,7 @@ export default function LoginForm() {
         return;
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = redirectTarget;
     } catch {
       setErrorMessage(t("loginErrors.default"));
       setIsSubmitting(false);
@@ -93,7 +111,7 @@ export default function LoginForm() {
     setIsGoogleSubmitting(true);
 
     try {
-      await signIn("google", { callbackUrl: "/dashboard" });
+      await signIn("google", { callbackUrl: redirectTarget });
     } catch {
       setErrorMessage(t("loginErrors.google"));
       setIsGoogleSubmitting(false);
@@ -199,7 +217,7 @@ export default function LoginForm() {
             <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row">
               <Link
                 className="ui-button ui-button-soft flex-1"
-                href="/register"
+                href={registerHref}
               >
                 {t("createAccount")}
               </Link>

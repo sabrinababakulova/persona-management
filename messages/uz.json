@@ -302,7 +302,19 @@
       "sending": "Yuborilmoqda...",
       "back": "Kirishga qaytish",
       "success": "Parol muvaffaqiyatli yangilandi. Endi tizimga kirishingiz mumkin."
-    }
+    },
+    "invitedToCompany": "Sizni «{company}» kompaniyasiga taklif qilishdi"
+  },
+  "Invite": {
+    "title": "Jamoaga taklif",
+    "description": "Sizni «{company}» kompaniyasiga qo'shilishga taklif qilishdi.",
+    "createAccount": "Hisob yaratish",
+    "signIn": "Menda hisob bor",
+    "join": "Kompaniyaga qo'shilish",
+    "joining": "Qo'shilmoqda...",
+    "invalidTitle": "Havola yaroqsiz",
+    "invalidDescription": "Taklif muddati tugagan yoki havola bekor qilingan. Hamkasbingizdan yangi havola so'rang.",
+    "backToSignIn": "Kirishga qaytish"
   },
   "Dashboard": {
     "loading": "Ish paneli tayyorlanmoqda...",
@@ -348,6 +360,48 @@
     "accountSecurity": "Hisob xavfsizligi",
     "passwordChanged": "Parol muvaffaqiyatli o‘zgartirildi",
     "tashkent": "Toshkent"
+  },
+  "Company": {
+    "companyProfile": "Kompaniya profili",
+    "loading": "Kompaniya ma'lumotlari yuklanmoqda...",
+    "logo": "Kompaniya logotipi",
+    "logoHint": "JPEG, PNG, WebP yoki GIF, 5 MB gacha",
+    "name": "Kompaniya nomi",
+    "namePlaceholder": "Masalan: Incorporated MChJ",
+    "city": "Shahar",
+    "cityPlaceholder": "Masalan: Toshkent",
+    "country": "Mamlakat",
+    "countryPlaceholder": "Masalan: O'zbekiston",
+    "website": "Veb-sayt",
+    "websitePlaceholder": "https://example.com",
+    "phone": "Telefon",
+    "phonePlaceholder": "+998 90 123 45 67",
+    "description": "Tavsif",
+    "descriptionPlaceholder": "Kompaniya haqida qisqacha yozing",
+    "saved": "Kompaniya ma'lumotlari yangilandi",
+    "logoUpdated": "Logotip yangilandi",
+    "team": "Jamoa",
+    "inviteDescription": "Hamkasblaringiz kompaniyangizga qo'shilishi uchun havolani ulashing. Havola 14 kun amal qiladi va istalgan vaqtda bekor qilinishi mumkin.",
+    "loadingInvites": "Takliflar yuklanmoqda...",
+    "invitePeople": "Odamlarni taklif qilish",
+    "generatingLink": "Havola yaratilmoqda...",
+    "noInvites": "Faol havolalar yo'q",
+    "inviteMeta": "{date} gacha amal qiladi · qo'shilganlar: {uses}",
+    "copyLink": "Nusxalash",
+    "copied": "Nusxalandi",
+    "copyFailed": "Havolani nusxalab bo'lmadi. Uni qo'lda nusxalang.",
+    "revoke": "Bekor qilish",
+    "members": "Ishtirokchilar ({count})",
+    "you": "Bu siz",
+    "validation": {
+      "nameRequired": "Kompaniya nomini kiriting",
+      "nameTooLong": "Nom 255 belgidan oshmasligi kerak",
+      "cityTooLong": "Shahar 255 belgidan oshmasligi kerak",
+      "countryTooLong": "Mamlakat 255 belgidan oshmasligi kerak",
+      "descriptionTooLong": "Tavsif 2000 belgidan oshmasligi kerak",
+      "websiteInvalid": "To'g'ri havola kiriting, masalan https://example.com",
+      "phoneTooLong": "Telefon 50 belgidan oshmasligi kerak"
+    }
   },
   "Integrations": {
     "hhAccount": "hh.uz hisobi",

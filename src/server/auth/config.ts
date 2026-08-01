@@ -35,6 +35,10 @@ import {
   recordAttempt,
   setMarker,
 } from "~/server/auth/rate-limit";
+import {
+  findUsableInvitation,
+  markInvitationUsed,
+} from "~/server/company/invitations";
 import { db } from "~/server/db";
 import {
   accounts,
@@ -115,6 +119,7 @@ const providers: NextAuthConfig["providers"] = [
       password: { label: "Password", type: "password" },
       code: { label: "Code", type: "text" },
       flowId: { label: "Flow ID", type: "text" },
+      inviteToken: { label: "Invite Token", type: "text" },
     },
     async authorize(credentials, request) {
       const mode = credentials?.mode?.toString().trim().toLowerCase();
@@ -185,6 +190,14 @@ const providers: NextAuthConfig["providers"] = [
           throw new AuthFlowError("registration_failed");
         }
 
+        // An invite link decides which company the account lands in; without one the account
+        // joins the shared default company, as before.
+        const inviteToken = credentials?.inviteToken?.toString().trim();
+        const invitation = inviteToken
+          ? await findUsableInvitation(inviteToken)
+          : null;
+        const targetCompanyId = invitation?.companyId ?? DEFAULT_COMPANY_ID;
+
         const verificationCode = generateEmailVerificationCode();
 
         let createdUserId: string | null = null;
@@ -204,6 +217,13 @@ const providers: NextAuthConfig["providers"] = [
             await db
               .delete(verificationTokens)
               .where(eq(verificationTokens.identifier, oldVerificationId));
+
+            if (invitation) {
+              await db
+                .update(users)
+                .set({ companyId: invitation.companyId })
+                .where(eq(users.id, verificationUserId));
+            }
           } else {
             verificationUserId = (
               await db
@@ -213,7 +233,7 @@ const providers: NextAuthConfig["providers"] = [
                   name: `${firstName} ${lastName}`.trim(),
                   password: hashedPassword,
                   hasSeenWelcomeModal: false,
-                  companyId: DEFAULT_COMPANY_ID,
+                  companyId: targetCompanyId,
                 })
                 .returning({ id: users.id })
             )[0]?.id;
@@ -264,6 +284,10 @@ const providers: NextAuthConfig["providers"] = [
             registerCooldownIdentifier,
             REGISTER_RESEND_COOLDOWN_MS,
           );
+
+          if (invitation) {
+            await markInvitationUsed(invitation.id);
+          }
 
           throw new AuthFlowError(
             `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,

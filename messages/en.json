@@ -302,7 +302,19 @@
       "sending": "Sending...",
       "back": "Back to sign in",
       "success": "Password updated successfully. You can now sign in."
-    }
+    },
+    "invitedToCompany": "You have been invited to join {company}"
+  },
+  "Invite": {
+    "title": "Team invitation",
+    "description": "You have been invited to join {company}.",
+    "createAccount": "Create an account",
+    "signIn": "I already have an account",
+    "join": "Join the company",
+    "joining": "Joining...",
+    "invalidTitle": "Invalid link",
+    "invalidDescription": "The invitation has expired or was revoked. Ask your colleague to send a new link.",
+    "backToSignIn": "Back to sign in"
   },
   "Dashboard": {
     "loading": "Preparing your dashboard...",
@@ -348,6 +360,48 @@
     "accountSecurity": "Account security",
     "passwordChanged": "Password changed successfully",
     "tashkent": "Tashkent"
+  },
+  "Company": {
+    "companyProfile": "Company profile",
+    "loading": "Loading company data...",
+    "logo": "Company logo",
+    "logoHint": "JPEG, PNG, WebP or GIF, up to 5 MB",
+    "name": "Company name",
+    "namePlaceholder": "For example: Incorporated LLC",
+    "city": "City",
+    "cityPlaceholder": "For example: Tashkent",
+    "country": "Country",
+    "countryPlaceholder": "For example: Uzbekistan",
+    "website": "Website",
+    "websitePlaceholder": "https://example.com",
+    "phone": "Phone",
+    "phonePlaceholder": "+998 90 123 45 67",
+    "description": "Description",
+    "descriptionPlaceholder": "Briefly describe your company",
+    "saved": "Company details updated",
+    "logoUpdated": "Logo updated",
+    "team": "Team",
+    "inviteDescription": "Share a link so colleagues can join your company. The link is valid for 14 days and can be revoked at any time.",
+    "loadingInvites": "Loading invitations...",
+    "invitePeople": "Invite people",
+    "generatingLink": "Generating link...",
+    "noInvites": "No active links",
+    "inviteMeta": "Valid until {date} · joined: {uses}",
+    "copyLink": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy the link. Please copy it manually.",
+    "revoke": "Revoke",
+    "members": "Members ({count})",
+    "you": "This is you",
+    "validation": {
+      "nameRequired": "Enter the company name",
+      "nameTooLong": "The name must not exceed 255 characters",
+      "cityTooLong": "The city must not exceed 255 characters",
+      "countryTooLong": "The country must not exceed 255 characters",
+      "descriptionTooLong": "The description must not exceed 2000 characters",
+      "websiteInvalid": "Enter a valid link, for example https://example.com",
+      "phoneTooLong": "The phone must not exceed 50 characters"
+    }
   },
   "Integrations": {
     "hhAccount": "hh.uz account",

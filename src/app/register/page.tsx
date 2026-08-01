@@ -10,6 +10,11 @@ import {
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 import { createRegisterFormSchema } from "~/schemas/register";
+import {
+  buildInvitePath,
+  isInvitationTokenValid,
+} from "~/shared/invitation-token";
+import { api } from "~/trpc/react";
 import MailVerificationPage from "./mail-verification";
 
 const VERIFICATION_REQUIRED_CODE_PREFIX = "verification_required:";
@@ -70,6 +75,17 @@ function RegisterPageContent() {
     [validation],
   );
 
+  // Registering from an invite link puts the new account straight into the inviting company.
+  const inviteToken = useMemo(() => {
+    const token = searchParams.get("invite");
+    return token && isInvitationTokenValid(token) ? token : null;
+  }, [searchParams]);
+
+  const { data: invitation } = api.company.getInvitation.useQuery(
+    { token: inviteToken ?? "" },
+    { enabled: Boolean(inviteToken), retry: false },
+  );
+
   const verificationFlowId = useMemo(() => {
     const step = searchParams.get("step");
     const flow = searchParams.get("flow");
@@ -120,6 +136,7 @@ function RegisterPageContent() {
         lastName: parsed.data.lastName,
         email: parsed.data.email,
         password: parsed.data.password,
+        inviteToken: inviteToken ?? "",
         redirect: false,
       });
 
@@ -146,8 +163,11 @@ function RegisterPageContent() {
       }
 
       setIsSubmitting(false);
+      const inviteParam = inviteToken
+        ? `&invite=${encodeURIComponent(inviteToken)}`
+        : "";
       router.replace(
-        `/register?step=mail-verification&flow=${encodeURIComponent(flowId)}`,
+        `/register?step=mail-verification&flow=${encodeURIComponent(flowId)}${inviteParam}`,
       );
     } catch {
       setErrorMessage(t("unknownError"));
@@ -197,7 +217,9 @@ function RegisterPageContent() {
     setIsGoogleSubmitting(true);
 
     try {
-      await signIn("google", { callbackUrl: "/dashboard" });
+      await signIn("google", {
+        callbackUrl: inviteToken ? buildInvitePath(inviteToken) : "/dashboard",
+      });
     } catch {
       setErrorMessage(t("registerErrors.google"));
       setIsGoogleSubmitting(false);
@@ -220,7 +242,11 @@ function RegisterPageContent() {
           isSubmitting={isVerifyingCode}
           onBack={() => {
             setVerificationErrorMessage(null);
-            router.replace("/register");
+            router.replace(
+              inviteToken
+                ? `/register?invite=${encodeURIComponent(inviteToken)}`
+                : "/register",
+            );
           }}
           onSubmit={handleCodeSubmit}
         />
@@ -228,6 +254,12 @@ function RegisterPageContent() {
         <div className="auth-content">
           <div className="auth-panel">
             <h1 className="auth-title">{t("createAccount")}</h1>
+
+            {invitation && (
+              <p className="mb-6 rounded-lg border border-primary-blue/20 bg-primary-blue-light px-3 py-2 text-primary-blue text-sm leading-[1.4]">
+                {t("invitedToCompany", { company: invitation.companyName })}
+              </p>
+            )}
 
             {isGoogleAvailable && (
               <>
