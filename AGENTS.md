@@ -268,7 +268,7 @@ Tables use their plain schema names with no `persona-management_` prefix.
 ### Schema (`src/server/db/schema.ts`)
 
 **Auth tables** (managed by NextAuth + Drizzle adapter):
-- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified, passwordChangedAt, companyId (FK), `role` (`admin` | `member`, default `member` — see `~/shared/company-roles`), `candidatesSeenAt` / `vacanciesSeenAt` (per-user "last opened" timestamps that drive the sidebar "new" badges). Partial unique index `user_company_admin_idx` on `(companyId) WHERE role = 'admin'` allows **one admin per company**.
+- `users` — id (UUID), email (unique), password, name, image, hasSeenWelcomeModal, emailVerified, passwordChangedAt, companyId (FK), `role` (`admin` | `member`, default `member` — see `~/shared/company-roles`), `isMasterAccount` (boolean, default false — the account that created the company), `deactivatedAt`, `candidatesSeenAt` / `vacanciesSeenAt` (per-user "last opened" timestamps that drive the sidebar "new" badges). `deactivatedAt` (null = active; set when the master removes the person from the company). Partial unique index `user_company_master_idx` on `(companyId) WHERE "isMasterAccount"` allows **one master account per company**; admins are not limited.
 - `accounts` — OAuth accounts linked to users
 - `sessions` — Active sessions
 - `verificationTokens` — Email verification codes + rate-limit markers (TTL-based)
@@ -330,12 +330,16 @@ JWT strategy — no database sessions. User ID injected via JWT + session callba
 4. **Middleware** (`src/middleware.ts`): Protects `/dashboard`, `/candidates`, `/vacancies`, `/my-profile` — redirects unauthenticated users to `/login`; redirects authenticated users away from `/login`, `/register`
 
 ### Company roles
-- `admin` — the person who created the company at registration. Only role that can edit the company profile/logo and manage invitation links (`requireCompanyAdmin` in `src/server/api/router-utils/company.ts`); the settings form renders read-only for everyone else.
-- `member` — everyone else, including users who joined through an invite link.
-- The app only writes the role in two places: registration (`admin`) and `acceptInvitation` (`member`) — there is no in-app UI to change it. Hand-overs and pre-role data are fixed in **Directus** (`user` collection → `role`, configured as a dropdown by `scripts/register-directus-collections.sh`). The partial unique index makes Directus reject a second admin, so demote the current one first.
+_Full walk-through of roles, sign-up, and the invite flow: `docs/company-roles-and-signup.md`._
+
+Hierarchy is **master → admin → member**:
+- **master account** (`users.isMasterAccount`, set once at registration, unique per company via `user_company_master_idx`) — created the company. Everything an admin can do, plus `company.updateMemberRole` and `company.setMemberActive` (`requireCompanyMaster`). Outranks `role`, and cannot be demoted or deactivated by anyone.
+- **admin** — edits the company profile/logo and manages invite links (`requireCompanyAdmin`). Any number per company; promoted/demoted by the master.
+- **member** — read-only company profile.
+- `users.deactivatedAt` — set when the master removes someone. The row is kept, but credentials login, Google sign-in, the `jwt` refresh callback and `getCompanyMembership` all reject the account, so it cannot sign in or join another company. Clearing the column restores access.
 
 ### Company invitations
-- A member generates a link in **My profile → Company settings → Команда** (`company.createInvitation`). It points at `/invite/<token>` (public page, excluded from the app shell + middleware).
+- A master or admin generates a link in **My profile → Company settings → Команда** (`company.createInvitation`). It points at `/invite/<token>` (public page, excluded from the app shell + middleware).
 - **New account**: the page links to `/register?invite=<token>`. The register form passes `inviteToken` to the credentials provider, which resolves it to a `companyId` and creates the user there instead of `DEFAULT_COMPANY_ID`. Email verification then runs unchanged (`ensureOAuthUserDefaults` only fills a *null* company).
 - **Existing account**: the page links to `/login?invite=<token>` and the login form redirects back to the invite page, where `company.acceptInvitation` moves the user into the company. Users who already belong to a non-default company are rejected — moving them would strand their existing data.
 - Links are multi-use, expire after 14 days, and can be revoked; at most 10 active links per company.
@@ -391,8 +395,9 @@ Validation errors, modal open state, and per-channel publish progress remain in 
 | `vacancies` | `getAllVacancies` (paginate), `getVacancyById`, `searchVacancies`, `createVacancy` (auto-assigns companyId), `updateVacancy`, `getFunnel` (reads synced candidates from the DB), `assignCandidate`, `publishHh`, `saveHhDraft`, `isTelegramEnabled`, `postVacancyToTelegram`, `getPersonHunterConfig` (enabled flag + reference dictionaries), `getPersonHunterPublication`, `publishPersonHunter` | Protected |
 | `lookups` | `getCandidateCreateOptions`, `getVacancyCreateOptions`, `getCompanies` | Protected |
 | `profile` | `changePassword` (rate-limited) | Protected |
-| `company` | `get` (includes `role` + `canEdit`), `listMembers`, `acceptInvitation` | Protected |
+| `company` | `get` (includes `role`, `isMaster`, `canEdit`, `canManageMembers`), `listMembers`, `acceptInvitation` | Protected |
 | `company` | `update`, `updateLogo`, `listInvitations`, `createInvitation`, `revokeInvitation` | Protected + **admin only** (`requireCompanyAdmin`) |
+| `company` | `updateMemberRole`, `setMemberActive` | Protected + **master only** (`requireCompanyMaster`) |
 | `company` | `getInvitation` (company name behind an invite token) | Public |
 | `sidebar` | `counts` (new candidates/vacancies since the user last looked), `markSeen` (clears a section's badge) | Protected |
 

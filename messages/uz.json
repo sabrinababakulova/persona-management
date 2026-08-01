@@ -264,7 +264,8 @@
       "emailNotVerified": "Kirishdan oldin elektron pochtangizni tasdiqlang.",
       "passwordUnavailable": "Bu hisob uchun parol orqali kirish mavjud emas.",
       "default": "Kirish amalga oshmadi. Kiritilgan ma’lumotlarni tekshiring.",
-      "google": "Google orqali kirish amalga oshmadi."
+      "google": "Google orqali kirish amalga oshmadi.",
+      "accountDeactivated": "Bu hisob o'chirilgan. Kompaniya egasiga murojaat qiling."
     },
     "registerErrors": {
       "rateLimited": "Urinishlar juda ko‘p. Keyinroq qayta urinib ko‘ring.",
@@ -412,7 +413,20 @@
       "phoneTooLong": "Telefon 50 belgidan oshmasligi kerak"
     },
     "roleAdmin": "Administrator",
-    "roleMember": "Xodim"
+    "roleMember": "Xodim",
+    "roleMaster": "Egasi",
+    "roleAdminHint": "Kompaniya ma'lumotlarini tahrirlashi va hamkasblarni taklif qilishi mumkin.",
+    "roleMemberHint": "Faqat kompaniya haqidagi ma'lumotni ko'rishi mumkin.",
+    "memberRole": "Kompaniyadagi rol",
+    "editMember": "Ishtirokchini tahrirlash",
+    "editMemberAria": "{name} ishtirokchisini tahrirlash",
+    "memberDeactivated": "Kirish o'chirilgan",
+    "memberDeactivatedNotice": "Bu ishtirokchining kirishi o'chirilgan: u tizimga kira olmaydi. Rolini o'zgartirish uchun avval kirishni tiklang.",
+    "removeMember": "Ishtirokchini o'chirish",
+    "removeMemberTitle": "Ishtirokchi o'chirilsinmi?",
+    "removeMemberWarning": "{name} kompaniyaga kirish huquqini yo'qotadi va tizimga kira olmaydi. Ma'lumotlari saqlanadi, kirishni keyinroq tiklash mumkin.",
+    "restoreMember": "Kirishni tiklash",
+    "manageMembersOnlyMaster": "Ishtirokchilarning rollari va kirish huquqini faqat kompaniya egasi boshqara oladi."
   },
   "Integrations": {
     "hhAccount": "hh.uz hisobi",

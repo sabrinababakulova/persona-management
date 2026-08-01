@@ -264,7 +264,8 @@
       "emailNotVerified": "Verify your email before signing in.",
       "passwordUnavailable": "Password sign-in is unavailable for this account.",
       "default": "Could not sign in. Check the information you entered.",
-      "google": "Could not sign in with Google."
+      "google": "Could not sign in with Google.",
+      "accountDeactivated": "This account has been deactivated. Contact the company owner."
     },
     "registerErrors": {
       "rateLimited": "Too many attempts. Try again later.",
@@ -412,7 +413,20 @@
       "phoneTooLong": "The phone must not exceed 50 characters"
     },
     "roleAdmin": "Admin",
-    "roleMember": "Member"
+    "roleMember": "Member",
+    "roleMaster": "Owner",
+    "roleAdminHint": "Can edit company details and invite colleagues.",
+    "roleMemberHint": "Can only view the company information.",
+    "memberRole": "Company role",
+    "editMember": "Edit member",
+    "editMemberAria": "Edit member {name}",
+    "memberDeactivated": "Access disabled",
+    "memberDeactivatedNotice": "This member's access is disabled: they cannot sign in. Restore access to change their role.",
+    "removeMember": "Remove member",
+    "removeMemberTitle": "Remove this member?",
+    "removeMemberWarning": "{name} will lose access to the company and will not be able to sign in. Their data is kept and access can be restored later.",
+    "restoreMember": "Restore access",
+    "manageMembersOnlyMaster": "Only the company owner can manage members' roles and access."
   },
   "Integrations": {
     "hhAccount": "hh.uz account",

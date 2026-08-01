@@ -691,10 +691,9 @@ patch_collection "vacancy_telegram_post" '{
 
 configure_hash_field "user" "password" "user.password as hash field"
 
-# Company role. The app only ever writes it during registration (`admin` for whoever creates
-# the company) and when an invite is accepted (`member`), so Directus is the place to hand the
-# role over or repair pre-role data. A partial unique index on user(companyId) WHERE
-# role = 'admin' makes Directus reject a second admin, so the current one must be demoted first.
+# Company role. Normally assigned in-app by the master account (Настройки компании → Команда);
+# Directus is the fallback for repairs. A company may have any number of admins — only the
+# master account (isMasterAccount) is unique, and it outranks the role regardless of its value.
 if database_column_exists "user" "role"; then
   patch_field "user" "role" '{
       "type": "string",
@@ -709,11 +708,48 @@ if database_column_exists "user" "role"; then
           "allowNone": false
         },
         "width": "half",
-        "note": "Роль в компании. Администратор может изменять данные компании и приглашать коллег. Администратор в компании только один: чтобы передать роль, сначала переведите текущего администратора в «Сотрудник»."
+        "note": "Роль в компании: администратор редактирует данные компании и приглашает коллег, сотрудник только просматривает. Обычно назначается владельцем компании в интерфейсе. Администраторов может быть несколько; владелец (isMasterAccount) всегда обладает полными правами."
       }
     }' "user.role"
 else
   echo "Skipping 'user.role' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+fi
+
+# Master account: set once by registration for whoever created the company. Read-only on
+# purpose — unlike `role` it records a fact about the past, so it must not be handed over.
+if database_column_exists "user" "isMasterAccount"; then
+  patch_field "user" "isMasterAccount" '{
+      "type": "boolean",
+      "meta": {
+        "interface": "boolean",
+        "options": {
+          "label": "Создатель компании"
+        },
+        "display": "boolean",
+        "readonly": true,
+        "width": "half",
+        "note": "Мастер-аккаунт: этот пользователь создал компанию при регистрации. Поле только для чтения — роль можно передать, признак создателя нет."
+      }
+    }' "user.isMasterAccount"
+else
+  echo "Skipping 'user.isMasterAccount' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+fi
+
+# Deactivation timestamp. The master account sets it by removing someone from the company;
+# a deactivated user keeps their row but cannot sign in anywhere. Editable here so support can
+# restore access by clearing the value.
+if database_column_exists "user" "deactivatedAt"; then
+  patch_field "user" "deactivatedAt" '{
+      "type": "timestamp",
+      "meta": {
+        "interface": "datetime",
+        "display": "datetime",
+        "width": "half",
+        "note": "Дата отключения доступа. Пусто — пользователь активен. Заполняется, когда владелец компании удаляет участника: аккаунт сохраняется, но вход в систему блокируется. Очистите поле, чтобы вернуть доступ."
+      }
+    }' "user.deactivatedAt"
+else
+  echo "Skipping 'user.deactivatedAt' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
 fi
 
 patch_field "company_hh_account" "userId" '{

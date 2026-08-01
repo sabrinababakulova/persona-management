@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "isMasterAccount" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "user_company_master_idx" ON "user" USING btree ("companyId") WHERE "user"."isMasterAccount";

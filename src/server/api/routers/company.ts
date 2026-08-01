@@ -6,6 +6,7 @@ import { updateCompanySchema } from "~/schemas/company";
 import {
   getCompanyMembership,
   requireCompanyAdmin,
+  requireCompanyMaster,
 } from "~/server/api/router-utils/company";
 import {
   createTRPCRouter,
@@ -27,14 +28,56 @@ import {
   getDirectusAssetUrl,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
-import { COMPANY_ROLE_MEMBER, isCompanyAdmin } from "~/shared/company-roles";
+import {
+  COMPANY_ROLE_ADMIN,
+  COMPANY_ROLE_MEMBER,
+  COMPANY_ROLES,
+  isCompanyAdmin,
+} from "~/shared/company-roles";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import { isInvitationTokenValid } from "~/shared/invitation-token";
+
+/**
+ * Loads a colleague the master account is allowed to act on.
+ *
+ * Rejects anyone outside the company and the master account itself — the creator cannot be
+ * demoted or locked out of their own company, not even by themselves.
+ */
+async function getManageableMember(
+  ctx: { db: typeof import("~/server/db").db },
+  companyId: string,
+  userId: string,
+) {
+  const [member] = await ctx.db
+    .select({
+      id: users.id,
+      isMasterAccount: users.isMasterAccount,
+    })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.companyId, companyId)))
+    .limit(1);
+
+  if (!member) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Участник не найден в вашей компании",
+    });
+  }
+
+  if (member.isMasterAccount) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Нельзя изменить владельца компании",
+    });
+  }
+
+  return member;
+}
 
 export const companyRouter = createTRPCRouter({
   /** The current user's company, as shown in the "company settings" form. */
   get: protectedProcedure.query(async ({ ctx }) => {
-    const { companyId, role, isAdmin } = await getCompanyMembership(
+    const { companyId, role, isAdmin, isMaster } = await getCompanyMembership(
       ctx.db,
       ctx.session.user.id,
     );
@@ -68,8 +111,11 @@ export const companyRouter = createTRPCRouter({
       logoUrl: getDirectusAssetUrl(company.logoFileId) ?? company.logoUrl,
       memberCount: members?.value ?? 0,
       role,
+      isMaster,
       /** Members see the same data, but the form is read-only for them. */
       canEdit: isAdmin,
+      /** Roles and access belong to the master account alone. */
+      canManageMembers: isMaster,
     };
   }),
 
@@ -164,6 +210,8 @@ export const companyRouter = createTRPCRouter({
         avatarFileId: users.avatarFileId,
         image: users.image,
         role: users.role,
+        isMasterAccount: users.isMasterAccount,
+        deactivatedAt: users.deactivatedAt,
       })
       .from(users)
       .where(eq(users.companyId, companyId))
@@ -175,11 +223,65 @@ export const companyRouter = createTRPCRouter({
       name: member.name,
       email: member.email,
       avatarUrl: getDirectusAssetUrl(member.avatarFileId) ?? member.image,
-      role: member.role,
-      isAdmin: isCompanyAdmin(member.role),
+      role: member.isMasterAccount ? COMPANY_ROLE_ADMIN : member.role,
+      isMaster: member.isMasterAccount,
+      isAdmin: member.isMasterAccount || isCompanyAdmin(member.role),
+      isActive: member.deactivatedAt === null,
       isCurrentUser: member.id === ctx.session.user.id,
     }));
   }),
+
+  /** Promotes a member to admin or demotes them back. Master account only. */
+  updateMemberRole: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1).max(255),
+        role: z.enum(COMPANY_ROLES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { companyId } = await requireCompanyMaster(
+        ctx.db,
+        ctx.session.user.id,
+      );
+      const member = await getManageableMember(ctx, companyId, input.userId);
+
+      await ctx.db
+        .update(users)
+        .set({ role: input.role })
+        .where(eq(users.id, member.id));
+
+      return { success: true, role: input.role };
+    }),
+
+  /**
+   * Removes someone from the company, or lets them back in.
+   *
+   * Deactivation keeps the row — the person's name, email and history stay visible — but the
+   * account can no longer sign in anywhere in the app, so it cannot join another company
+   * either. Master account only.
+   */
+  setMemberActive: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1).max(255),
+        isActive: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { companyId } = await requireCompanyMaster(
+        ctx.db,
+        ctx.session.user.id,
+      );
+      const member = await getManageableMember(ctx, companyId, input.userId);
+
+      await ctx.db
+        .update(users)
+        .set({ deactivatedAt: input.isActive ? null : new Date() })
+        .where(eq(users.id, member.id));
+
+      return { success: true, isActive: input.isActive };
+    }),
 
   listInvitations: protectedProcedure.query(async ({ ctx }) => {
     const { companyId } = await requireCompanyAdmin(
@@ -338,7 +440,12 @@ export const companyRouter = createTRPCRouter({
 
       await ctx.db
         .update(users)
-        .set({ companyId: invitation.companyId, role: COMPANY_ROLE_MEMBER })
+        .set({
+          companyId: invitation.companyId,
+          role: COMPANY_ROLE_MEMBER,
+          // Joining a company never makes you its creator.
+          isMasterAccount: false,
+        })
         .where(eq(users.id, ctx.session.user.id));
 
       await markInvitationUsed(invitation.id);

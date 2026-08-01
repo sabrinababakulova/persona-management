@@ -5,13 +5,19 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ClosableSection } from "~/app/_components/closable-section";
-import { CheckIcon, PlusIcon, UsersIcon } from "~/app/_components/icons";
+import {
+  CheckIcon,
+  PencilIcon,
+  PlusIcon,
+  UsersIcon,
+} from "~/app/_components/icons";
 import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
+import { MemberManagerModal } from "./member-manager-modal";
 
 type Member = RouterOutputs["company"]["listMembers"][number];
 
@@ -165,6 +171,7 @@ export function CompanyInviteSection({
   const [origin, setOrigin] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [managedMemberId, setManagedMemberId] = useState<string | null>(null);
 
   // `window` is only available after hydration; links render relative until then.
   useEffect(() => {
@@ -192,6 +199,8 @@ export function CompanyInviteSection({
 
   // Invitation links are company-wide state, so only the admin may list or create them.
   const isAdmin = company?.canEdit ?? false;
+  // Roles and access are the master account's business alone.
+  const canManageMembers = company?.canManageMembers ?? false;
   const {
     data: invitations,
     isLoading: areInvitationsLoading,
@@ -378,15 +387,39 @@ export function CompanyInviteSection({
                         {t("you")}
                       </span>
                     ) : null}
+                    {member.isActive ? null : (
+                      <span className="rounded-full bg-danger-red-bg px-2.5 py-1 font-medium text-danger-red text-xs">
+                        {t("memberDeactivated")}
+                      </span>
+                    )}
                     <span
                       className={
-                        member.isAdmin
-                          ? "rounded-full bg-primary-blue-light px-2.5 py-1 font-semibold text-primary-blue text-xs"
-                          : "rounded-full bg-bg-panel-hover px-2.5 py-1 font-medium text-text-secondary text-xs"
+                        member.isMaster
+                          ? "rounded-full bg-success-green-bg px-2.5 py-1 font-semibold text-success-green text-xs"
+                          : member.isAdmin
+                            ? "rounded-full bg-primary-blue-light px-2.5 py-1 font-semibold text-primary-blue text-xs"
+                            : "rounded-full bg-bg-panel-hover px-2.5 py-1 font-medium text-text-secondary text-xs"
                       }
                     >
-                      {member.isAdmin ? t("roleAdmin") : t("roleMember")}
+                      {member.isMaster
+                        ? t("roleMaster")
+                        : member.isAdmin
+                          ? t("roleAdmin")
+                          : t("roleMember")}
                     </span>
+                    {canManageMembers && !member.isMaster ? (
+                      <button
+                        aria-label={t("editMemberAria", {
+                          name: member.name?.trim() || member.email,
+                        })}
+                        className="rounded-lg p-1.5 text-icon-secondary transition-colors hover:bg-bg-hover hover:text-text-heading"
+                        onClick={() => setManagedMemberId(member.id)}
+                        title={t("editMember")}
+                        type="button"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -394,6 +427,11 @@ export function CompanyInviteSection({
           </ul>
         </div>
       ) : null}
+
+      <MemberManagerModal
+        member={members?.find((item) => item.id === managedMemberId) ?? null}
+        onClose={() => setManagedMemberId(null)}
+      />
     </ClosableSection>
   );
 }

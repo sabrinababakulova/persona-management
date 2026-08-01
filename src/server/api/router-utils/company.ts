@@ -44,10 +44,13 @@ export async function getRequiredCompanyId(
 export type CompanyMembership = {
   companyId: string;
   role: string;
+  /** Created the company — outranks `isAdmin` and keeps its rights whatever the role says. */
+  isMaster: boolean;
+  /** May edit the company and invite people. The master account always counts as one. */
   isAdmin: boolean;
 };
 
-/** The company the user belongs to plus the role they hold in it. */
+/** The company the user belongs to plus the rights they hold in it. */
 export async function getCompanyMembership(
   database: DatabaseClient,
   userId: string | undefined,
@@ -60,10 +63,22 @@ export async function getCompanyMembership(
   }
 
   const [membership] = await database
-    .select({ companyId: users.companyId, role: users.role })
+    .select({
+      companyId: users.companyId,
+      role: users.role,
+      isMasterAccount: users.isMasterAccount,
+      deactivatedAt: users.deactivatedAt,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
+
+  if (membership?.deactivatedAt) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Ваш доступ к компании отключен",
+    });
+  }
 
   if (!membership?.companyId) {
     throw new TRPCError({
@@ -75,14 +90,15 @@ export async function getCompanyMembership(
   return {
     companyId: membership.companyId,
     role: membership.role,
-    isAdmin: isCompanyAdmin(membership.role),
+    isMaster: membership.isMasterAccount,
+    isAdmin: membership.isMasterAccount || isCompanyAdmin(membership.role),
   };
 }
 
 /**
- * Same as `getCompanyMembership`, but rejects everyone except the company admin.
+ * Same as `getCompanyMembership`, but rejects everyone below admin.
  *
- * Used by every mutation that changes company-wide state — members get the read-only view.
+ * Used by mutations that change company-wide state — company profile and invitation links.
  */
 export async function requireCompanyAdmin(
   database: DatabaseClient,
@@ -94,6 +110,28 @@ export async function requireCompanyAdmin(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Только администратор компании может изменять эти данные",
+    });
+  }
+
+  return membership;
+}
+
+/**
+ * Rejects everyone except the master account.
+ *
+ * Managing people — their roles and their access — belongs to whoever created the company;
+ * admins can invite, but not touch existing members.
+ */
+export async function requireCompanyMaster(
+  database: DatabaseClient,
+  userId: string | undefined,
+): Promise<CompanyMembership> {
+  const membership = await getCompanyMembership(database, userId);
+
+  if (!membership.isMaster) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Управлять участниками может только владелец компании",
     });
   }
 

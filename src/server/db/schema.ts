@@ -95,10 +95,26 @@ export const users = createTable(
     avatarFileId: d.varchar({ length: 255 }),
     companyId: d.varchar({ length: 255 }).references(() => companies.id),
     /**
-     * Role inside `companyId` — `admin` for the person who created the company, `member` for
-     * everyone else. See `~/shared/company-roles`.
+     * Role inside `companyId` — `admin` may edit the company and invite people, `member` can
+     * only look. Assigned by the master account (and editable in Directus); a company can have
+     * any number of admins. See `~/shared/company-roles`.
      */
     role: d.varchar({ length: 20 }).notNull().default(COMPANY_ROLE_MEMBER),
+    /**
+     * Set when the master account removes this person from the company.
+     *
+     * The row is kept — deactivation is not deletion — but the account can no longer sign in
+     * anywhere in the app, so it cannot join another company either.
+     */
+    deactivatedAt: d.timestamp({ withTimezone: true }),
+    /**
+     * True only for the account that created `companyId` during registration.
+     *
+     * A permanent record of who the company belongs to: `role` can be handed over, this cannot.
+     * Written once by the registration flow and never by the app afterwards; Directus shows it
+     * read-only.
+     */
+    isMasterAccount: d.boolean().notNull().default(false),
     /** Last time the user opened the Candidates page — drives the sidebar badge. */
     candidatesSeenAt: d
       .timestamp("candidates_seen_at", { withTimezone: true })
@@ -111,12 +127,11 @@ export const users = createTable(
       .notNull(),
   }),
   (t) => [
-    // At most one admin per company — the company creator keeps the role for good.
-    // The literal must stay in sync with COMPANY_ROLE_ADMIN; index predicates cannot be
-    // parameterized, so it cannot be interpolated.
-    uniqueIndex("user_company_admin_idx")
+    // A company has exactly one creator, and only registration ever sets the flag.
+    // (Admins are not unique — the master account may promote as many as it likes.)
+    uniqueIndex("user_company_master_idx")
       .on(t.companyId)
-      .where(sql`${t.role} = 'admin'`),
+      .where(sql`${t.isMasterAccount}`),
   ],
 );
 

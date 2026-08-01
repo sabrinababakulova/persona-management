@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { PencilIcon, UsersIcon } from "~/app/_components/icons";
+import { UsersIcon } from "~/app/_components/icons";
 import { ImageUploader } from "~/app/_components/image-uploader";
 import { Input } from "~/app/_components/input";
 import { LoadingButtonContent } from "~/app/_components/motion-system";

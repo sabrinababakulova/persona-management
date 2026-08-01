@@ -116,6 +116,17 @@ async function ensureOAuthUserDefaults(userId: string) {
     .where(and(eq(users.id, userId), isNull(users.emailVerified)));
 }
 
+/** True when the master account removed this person from the company. */
+async function isAccountDeactivated(userId: string) {
+  const [user] = await db
+    .select({ deactivatedAt: users.deactivatedAt })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return Boolean(user?.deactivatedAt);
+}
+
 /**
  * Company details captured by the "create new company" step of registration.
  *
@@ -305,6 +316,7 @@ const providers: NextAuthConfig["providers"] = [
                 .set({
                   companyId: invitation.companyId,
                   role: COMPANY_ROLE_MEMBER,
+                  isMasterAccount: false,
                 })
                 .where(eq(users.id, verificationUserId));
             } else if (newCompany) {
@@ -318,6 +330,11 @@ const providers: NextAuthConfig["providers"] = [
                   .update(companies)
                   .set(toCompanyColumns(newCompany))
                   .where(eq(companies.id, ownedCompanyId));
+                // Repairs accounts that created a company before the flag existed.
+                await db
+                  .update(users)
+                  .set({ isMasterAccount: true })
+                  .where(eq(users.id, verificationUserId));
               } else {
                 createdCompanyId = await createCompany(newCompany);
                 await db
@@ -325,6 +342,7 @@ const providers: NextAuthConfig["providers"] = [
                   .set({
                     companyId: createdCompanyId,
                     role: COMPANY_ROLE_ADMIN,
+                    isMasterAccount: true,
                   })
                   .where(eq(users.id, verificationUserId));
               }
@@ -346,10 +364,12 @@ const providers: NextAuthConfig["providers"] = [
                     invitation?.companyId ??
                     createdCompanyId ??
                     DEFAULT_COMPANY_ID,
-                  // Only the person who creates a company is its admin.
+                  // Only the person who creates a company is its admin — and its permanent
+                  // master account, which no later role change can transfer.
                   role: createdCompanyId
                     ? COMPANY_ROLE_ADMIN
                     : COMPANY_ROLE_MEMBER,
+                  isMasterAccount: Boolean(createdCompanyId),
                 })
                 .returning({ id: users.id })
             )[0]?.id;
@@ -627,6 +647,7 @@ const providers: NextAuthConfig["providers"] = [
           email: users.email,
           password: users.password,
           emailVerified: users.emailVerified,
+          deactivatedAt: users.deactivatedAt,
           name: users.name,
           avatarFileId: users.avatarFileId,
           image: users.image,
@@ -664,6 +685,17 @@ const providers: NextAuthConfig["providers"] = [
           LOGIN_RATE_LIMIT_WINDOW_MS,
         );
         throw new AuthFlowError("email_not_verified");
+      }
+
+      // Removed from their company by the master account: the row survives, the access does not.
+      if (user.deactivatedAt) {
+        await bcrypt.hash(password, 12);
+        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
+        await recordAttempt(
+          loginRateByIpIdentifier,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        );
+        throw new AuthFlowError("account_deactivated");
       }
 
       const isArgon2 = user.password.startsWith("$argon2");
@@ -742,6 +774,10 @@ export const authConfig = {
         return false;
       }
 
+      if (await isAccountDeactivated(user.id)) {
+        return false;
+      }
+
       await ensureOAuthUserDefaults(user.id);
       return true;
     },
@@ -751,14 +787,22 @@ export const authConfig = {
         return token;
       }
 
-      // On token refresh, check if password was changed after token was issued
+      // On token refresh, check if the account was deactivated or the password changed
+      // after the token was issued.
       const tokenId = (token as { id?: string }).id;
       if (tokenId && typeof token.iat === "number") {
         const [dbUser] = await db
-          .select({ passwordChangedAt: users.passwordChangedAt })
+          .select({
+            passwordChangedAt: users.passwordChangedAt,
+            deactivatedAt: users.deactivatedAt,
+          })
           .from(users)
           .where(eq(users.id, tokenId))
           .limit(1);
+
+        if (dbUser?.deactivatedAt) {
+          return { ...token, id: undefined };
+        }
 
         if (dbUser?.passwordChangedAt) {
           const changedAtSec = Math.floor(

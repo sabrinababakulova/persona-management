@@ -27,6 +27,8 @@ function getLoginErrorKey(code?: string | null) {
       return "loginErrors.passwordIncorrect" as const;
     case "email_not_verified":
       return "loginErrors.emailNotVerified" as const;
+    case "account_deactivated":
+      return "loginErrors.accountDeactivated" as const;
     case "password_sign_in_unavailable":
       return "loginErrors.passwordUnavailable" as const;
     default:
