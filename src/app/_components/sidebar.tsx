@@ -84,7 +84,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
   const handleNavigationClick = () => {
     if (
       typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 1023px)").matches
+      window.matchMedia("(max-width: 1279px)").matches
     ) {
       onClose();
     }
@@ -104,7 +104,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
         <button
           aria-label={t("closeSidebar")}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-sidebar-hover hover:text-text-placeholder-hover lg:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-text-placeholder transition-colors hover:bg-sidebar-hover hover:text-text-placeholder-hover xl:hidden"
           onClick={onClose}
           type="button"
         >
@@ -164,7 +164,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
     <>
       <motion.div
         animate={{ width: desktopIsOpen ? 272 : 0 }}
-        className="relative hidden shrink-0 overflow-hidden lg:block"
+        className="relative hidden shrink-0 overflow-hidden xl:block"
         id="app-sidebar"
         initial={false}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
@@ -184,7 +184,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
           <>
             <motion.div
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-40 bg-text-heading/35 lg:hidden"
+              className="fixed inset-0 z-40 bg-text-heading/35 xl:hidden"
               exit={{ opacity: 0 }}
               initial={{ opacity: 0 }}
               onClick={onClose}
@@ -192,7 +192,7 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
 
             <motion.aside
               animate={{ x: 0 }}
-              className="fixed inset-y-0 left-0 z-50 flex h-screen w-68 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-6 shadow-toast lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex h-screen w-68 max-w-[85vw] flex-col bg-sidebar-bg px-4 py-6 shadow-toast xl:hidden"
               exit={{ x: -272 }}
               initial={{ x: -272 }}
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}

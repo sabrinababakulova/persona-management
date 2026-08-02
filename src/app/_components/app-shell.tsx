@@ -11,7 +11,7 @@ type AppShellProps = {
   children: React.ReactNode;
 };
 
-const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
+const DESKTOP_MEDIA_QUERY = "(min-width: 1280px)";
 const AUTH_SCREEN_ROUTES = [
   "/login",
   "/register",

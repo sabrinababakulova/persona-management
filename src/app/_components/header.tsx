@@ -32,7 +32,7 @@ export function Header({
           <button
             aria-expanded={isSidebarOpen}
             aria-label={isSidebarOpen ? t("collapseSidebar") : t("openSidebar")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover lg:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover xl:hidden"
             onClick={onSidebarToggle}
             type="button"
           >
