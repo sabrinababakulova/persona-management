@@ -48,12 +48,15 @@ const VARIANT_STYLES: Record<
 export function Toaster() {
   const t = useTranslations("Errors");
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((toast) => toast.id !== id));
   }, []);
 
   useEffect(() => {
+    setPortalTarget(document.body);
+
     return subscribeToToasts((toast) => {
       setToasts((current) => {
         // A dedupe key replaces the earlier toast in place, so a burst of
@@ -83,7 +86,7 @@ export function Toaster() {
     };
   }, [toasts, dismiss]);
 
-  if (typeof document === "undefined") {
+  if (!portalTarget) {
     return null;
   }
 
@@ -136,6 +139,6 @@ export function Toaster() {
         })}
       </AnimatePresence>
     </div>,
-    document.body,
+    portalTarget,
   );
 }

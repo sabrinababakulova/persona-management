@@ -1,5 +1,5 @@
 export type StatusStat = {
-  label: string;
+  status: string;
   value: number;
   max: number;
 };

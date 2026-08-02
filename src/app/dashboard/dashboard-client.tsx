@@ -132,7 +132,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,0.96fr)]">
               <ChannelStatistics channelStats={dashboardData?.channelStats} />
 
               <RecentActions

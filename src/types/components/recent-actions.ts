@@ -3,10 +3,11 @@ export type RecentActivity = {
   name: string;
   action: string;
   candidateName: string;
-  candidateInitials: string;
+  actorInitials: string;
   newStatus: string;
   time: string;
   isRecent?: boolean;
+  isCurrentUser?: boolean;
 };
 
 export type RecentActionsProps = {

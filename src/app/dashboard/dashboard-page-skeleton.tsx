@@ -28,9 +28,12 @@ export function DashboardPageSkeleton() {
         <TableRowsSkeleton count={3} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,0.96fr)]">
         {SKELETON_KEYS.slice(0, 3).map((key) => (
-          <SkeletonCard className="min-h-64" key={`panel-${key}`}>
+          <SkeletonCard
+            className="min-h-[380px] xl:min-h-[420px]"
+            key={`panel-${key}`}
+          >
             <SkeletonBlock className="h-5 w-36" />
             <SkeletonBlock className="mt-6 h-40 w-full rounded-2xl" />
           </SkeletonCard>

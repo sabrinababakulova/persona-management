@@ -28,20 +28,33 @@ export function ChannelStatisticsChartIcon({
       {...props}
     >
       <title>Channel Statistics Chart</title>
-      {segments.map((item) => (
-        <circle
-          className={item.strokeClassName}
-          cx="70"
-          cy="69"
-          fill="none"
-          key={item.name}
-          r={radius}
-          strokeDasharray={`${item.segment} ${circumference - item.segment}`}
-          strokeDashoffset={-item.dashOffset}
-          strokeLinecap="butt"
-          strokeWidth="24"
-        />
-      ))}
+      <circle
+        className="stroke-bg-input"
+        cx="70"
+        cy="69"
+        fill="none"
+        r={radius}
+        strokeWidth="18"
+      />
+      {segments.map((item) => {
+        const segmentGap = Math.min(3, item.segment * 0.35);
+        const visibleSegment = Math.max(0, item.segment - segmentGap);
+
+        return visibleSegment > 0 ? (
+          <circle
+            className={item.strokeClassName}
+            cx="70"
+            cy="69"
+            fill="none"
+            key={item.name}
+            r={radius}
+            strokeDasharray={`${visibleSegment} ${circumference - visibleSegment}`}
+            strokeDashoffset={-item.dashOffset}
+            strokeLinecap="butt"
+            strokeWidth="18"
+          />
+        ) : null;
+      })}
     </svg>
   );
 }

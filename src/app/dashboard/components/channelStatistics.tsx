@@ -12,20 +12,20 @@ const CHANNEL_COLORS: Record<
   { strokeClassName: string; fillClassName: string }
 > = {
   "hh.uz": {
-    strokeClassName: "stroke-chart-pink",
-    fillClassName: "bg-chart-pink",
+    strokeClassName: "stroke-primary-blue",
+    fillClassName: "bg-primary-blue",
   },
   telegram: {
-    strokeClassName: "stroke-chart-purple",
-    fillClassName: "bg-chart-purple",
+    strokeClassName: "stroke-chart-pink",
+    fillClassName: "bg-chart-pink",
   },
   "rabota.uz": {
     strokeClassName: "stroke-chart-orange",
     fillClassName: "bg-chart-orange",
   },
   other: {
-    strokeClassName: "stroke-chart-blue",
-    fillClassName: "bg-chart-blue",
+    strokeClassName: "stroke-gray-300",
+    fillClassName: "bg-gray-300",
   },
 };
 
@@ -52,14 +52,24 @@ function buildNormalizedStats(channelStats: ChannelStat[]) {
 
   for (const channel of channelStats) {
     const key = normalizeChannelName(channel.name);
-    totals.set(key, (totals.get(key) ?? 0) + channel.percentage);
+    totals.set(key, (totals.get(key) ?? 0) + channel.count);
   }
 
-  return CHANNEL_ORDER.map((name) => ({
-    name,
-    percentage: Math.max(0, Math.round(totals.get(name) ?? 0)),
-    colorClasses: CHANNEL_COLORS[name],
-  }));
+  const total = Array.from(totals.values()).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+
+  return CHANNEL_ORDER.map((name) => {
+    const count = totals.get(name) ?? 0;
+
+    return {
+      name,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      colorClasses: CHANNEL_COLORS[name],
+    };
+  });
 }
 
 export function ChannelStatistics({
@@ -67,13 +77,13 @@ export function ChannelStatistics({
 }: ChannelStatisticsProps) {
   const t = useTranslations("Dashboard");
   const normalizedStats = buildNormalizedStats(channelStats);
-  const total = normalizedStats.reduce((sum, item) => sum + item.percentage, 0);
+  const total = normalizedStats.reduce((sum, item) => sum + item.count, 0);
   const safeTotal = total > 0 ? total : 1;
-  const radius = 38;
+  const radius = 45;
   const circumference = 2 * Math.PI * radius;
   let dashOffset = 0;
   const chartSegments = normalizedStats.map((item) => {
-    const segment = (item.percentage / safeTotal) * circumference;
+    const segment = (item.count / safeTotal) * circumference;
     const chartSegment = {
       dashOffset,
       name: item.name,
@@ -83,44 +93,77 @@ export function ChannelStatistics({
     dashOffset += segment;
     return chartSegment;
   });
+  const bestChannel = normalizedStats.reduce<
+    (typeof normalizedStats)[number] | null
+  >((best, item) => (item.count > (best?.count ?? 0) ? item : best), null);
+  const getChannelLabel = (name: (typeof CHANNEL_ORDER)[number]) =>
+    name === "other" ? t("other") : name;
 
   return (
-    <div className="surface-card flex min-h-56 flex-col gap-4 overflow-hidden p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm text-text-secondary leading-5">
-          {t("channelStatistics")}
-        </h3>
-      </div>
+    <section className="surface-card flex min-h-[380px] flex-col overflow-hidden p-5 sm:p-6 xl:min-h-[420px]">
+      <h3 className="font-bold text-lg text-text-heading leading-6">
+        {t("channelStatistics")}
+      </h3>
 
-      <div className="flex flex-1 items-center gap-5">
-        <div className="size-28 shrink-0">
+      <div className="flex justify-center py-4">
+        <div
+          aria-label={`${t("totalCandidates")}: ${total}`}
+          className="relative size-36"
+          role="img"
+        >
           <ChannelStatisticsChartIcon
             circumference={circumference}
             className="h-full w-full -rotate-90"
             radius={radius}
             segments={chartSegments}
           />
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
-          {normalizedStats.map((item) => (
-            <div className="flex items-center justify-between" key={item.name}>
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={`size-4 shrink-0 rounded ${item.colorClasses.fillClassName}`}
-                />
-                <p className="font-semibold text-sm text-text-heading leading-none">
-                  {item.name === "other" ? t("other") : item.name}
-                </p>
-              </div>
-
-              <p className="font-medium text-sm text-text-heading leading-none">
-                {item.percentage}%
-              </p>
-            </div>
-          ))}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pt-0.5">
+            <strong className="font-bold text-3xl text-text-heading tabular-nums leading-none">
+              {total}
+            </strong>
+            <span className="mt-1 text-text-muted text-xs">{t("total")}</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      <div className="divide-y divide-border-light">
+        {normalizedStats.map((item) => (
+          <div
+            className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2"
+            key={item.name}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className={`size-3 shrink-0 rounded-[4px] ${item.colorClasses.fillClassName}`}
+              />
+              <p className="truncate font-semibold text-sm text-text-heading">
+                {getChannelLabel(item.name)}
+              </p>
+            </div>
+            <p className="min-w-7 text-right font-bold text-sm text-text-heading tabular-nums">
+              {item.count}
+            </p>
+            <p className="w-9 text-right text-text-muted text-xs tabular-nums">
+              {item.percentage}%
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-auto border-border-light border-t pt-4 text-text-muted text-xs leading-5">
+        {bestChannel && bestChannel.count > 0 ? (
+          <>
+            {t("bestChannel")} —{" "}
+            <strong className="font-semibold text-text-heading">
+              {getChannelLabel(bestChannel.name)}
+            </strong>{" "}
+            · {bestChannel.percentage}% {t("ofAllCandidates")}
+          </>
+        ) : (
+          t("noCandidateStatistics")
+        )}
+      </p>
+    </section>
   );
 }

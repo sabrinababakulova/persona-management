@@ -1,14 +1,4 @@
-import {
-  and,
-  count,
-  desc,
-  eq,
-  gte,
-  inArray,
-  ne,
-  notExists,
-  or,
-} from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, notExists, or } from "drizzle-orm";
 import {
   isUserVisibleVacancy,
   toVacancyStatus,
@@ -23,7 +13,16 @@ import {
 } from "~/server/db/schema";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 
-const RECENT_ACTIVITIES_LIMIT = 5;
+const RECENT_ACTIVITIES_LIMIT = 4;
+
+const CANDIDATE_FUNNEL_STATUSES = [
+  "new",
+  "screening",
+  "interview",
+  "offer",
+  "hired",
+  "rejected",
+] as const;
 
 function pluralize(value: number, forms: [string, string, string]) {
   const abs = Math.abs(value) % 100;
@@ -131,7 +130,6 @@ export const dashboardRouter = createTRPCRouter({
   }),
 
   getDashboardData: protectedProcedure.query(async ({ ctx }) => {
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const userCompanyId = await getUserCompanyId(ctx.db, ctx.session.user.id);
 
     if (!userCompanyId) {
@@ -144,7 +142,7 @@ export const dashboardRouter = createTRPCRouter({
       hiredCount,
       activeVacancies,
       newCandidates,
-      weeklyCandidates,
+      candidateStatusCounts,
       sourceCounts,
       recentVacancyRows,
       recentActivityRows,
@@ -181,19 +179,15 @@ export const dashboardRouter = createTRPCRouter({
             eq(candidates.status, "new"),
           ),
         ),
-      // Latest candidates for the past week (used for status statistics)
+      // Current candidate funnel, grouped once in the database.
       ctx.db
         .select({
           status: candidates.status,
+          count: count(),
         })
         .from(candidates)
-        .where(
-          and(
-            eq(candidates.companyId, userCompanyId),
-            gte(candidates.createdAt, oneWeekAgo),
-          ),
-        )
-        .orderBy(desc(candidates.createdAt)),
+        .where(eq(candidates.companyId, userCompanyId))
+        .groupBy(candidates.status),
       // Count by source
       ctx.db
         .select({
@@ -230,6 +224,7 @@ export const dashboardRouter = createTRPCRouter({
       ctx.db
         .select({
           id: recentActivityLogs.id,
+          actorUserId: recentActivityLogs.actorUserId,
           actorName: recentActivityLogs.actorName,
           action: recentActivityLogs.action,
           targetName: recentActivityLogs.targetName,
@@ -335,10 +330,11 @@ export const dashboardRouter = createTRPCRouter({
       name: string;
       action: string;
       candidateName: string;
-      candidateInitials: string;
+      actorInitials: string;
       newStatus: string;
       time: string;
       isRecent?: boolean;
+      isCurrentUser?: boolean;
     }[] = [];
 
     for (const activity of recentActivityRows) {
@@ -352,57 +348,30 @@ export const dashboardRouter = createTRPCRouter({
         name: activity.actorName,
         action: activity.action,
         candidateName: activity.targetName,
-        candidateInitials: getInitials(activity.targetName),
+        actorInitials: getInitials(activity.actorName),
         newStatus: activity.targetStatus,
         time: timeAgo,
         isRecent: timeAgo === "Только что",
+        isCurrentUser: activity.actorUserId === ctx.session.user.id,
       });
     }
 
     // Compute channel stats from source counts
-    const sourceTotal = sourceCounts.reduce((s, r) => s + r.count, 0) || 1;
-    const colorMap: Record<string, string> = {
-      "hh.uz": "bg-chart-pink",
-      telegram: "bg-chart-purple",
-      linkedin: "bg-chart-orange",
-      referral: "bg-chart-blue",
-      other: "bg-chart-blue",
-    };
-    const channelStats = sourceCounts
-      .filter((r): r is typeof r & { source: string } => Boolean(r.source))
-      .map((r) => ({
-        name: r.source,
-        percentage: Math.round((r.count / sourceTotal) * 100),
-        color: colorMap[r.source] ?? "bg-chart-blue",
-      }));
+    const sourceTotal = sourceCounts.reduce((sum, row) => sum + row.count, 0);
+    const channelStats = sourceCounts.map((row) => ({
+      name: row.source ?? "other",
+      count: row.count,
+      percentage:
+        sourceTotal > 0 ? Math.round((row.count / sourceTotal) * 100) : 0,
+    }));
 
-    // Compute status stats from real candidates created in the last 7 days
-    const statusLabelMap: Record<string, string> = {
-      new: "Новый",
-      screening: "Отобран",
-      interview: "Интервью",
-      offer: "Оффер",
-      hired: "Нанят",
-      rejected: "Отказ",
-    };
-    const statusCountMap = new Map<string, number>();
-
-    for (const candidate of weeklyCandidates) {
-      const statusKey = candidate.status ?? "unknown";
-      statusCountMap.set(statusKey, (statusCountMap.get(statusKey) ?? 0) + 1);
-    }
-
-    const sortedStatusStats = Array.from(statusCountMap.entries())
-      .map(([status, value]) => ({
-        label: statusLabelMap[status] ?? status,
-        value,
-      }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
-
-    const maxStatusValue = sortedStatusStats[0]?.value ?? 1;
-    const statusStats = sortedStatusStats.map((stat) => ({
-      label: stat.label,
-      value: stat.value,
+    const statusCountMap = new Map(
+      candidateStatusCounts.map((row) => [row.status ?? "new", row.count]),
+    );
+    const maxStatusValue = Math.max(1, ...statusCountMap.values());
+    const statusStats = CANDIDATE_FUNNEL_STATUSES.map((status) => ({
+      status,
+      value: statusCountMap.get(status) ?? 0,
       max: maxStatusValue,
     }));
 
