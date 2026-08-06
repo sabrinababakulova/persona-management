@@ -10,6 +10,7 @@ import {
   telegramDeliveryModes,
   userHhAccounts,
   userTelegramChannels,
+  vacancies,
 } from "~/server/db/schema";
 import {
   isTelegramConfigured,
@@ -87,7 +88,8 @@ export const integrationsRouter = createTRPCRouter({
   /**
    * The placeholder vacancy that accumulates resumes ingested from the
    * Telegram group. Returns null unless ingestion is configured and the
-   * caller belongs to the company the warehouse vacancy is scoped to.
+   * configured vacancy actually exists in the caller's company — the funnel
+   * page is company-scoped, so a link to anything else would dead-end.
    */
   getTelegramResumeVacancy: protectedProcedure.query(async ({ ctx }) => {
     const config = getTelegramResumeConfig();
@@ -96,11 +98,20 @@ export const integrationsRouter = createTRPCRouter({
     }
 
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
-    if (companyId !== config.companyId) {
-      return null;
-    }
 
-    return { vacancyId: config.vacancyId };
+    const rows = await ctx.db
+      .select({ id: vacancies.id })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, config.vacancyId),
+          eq(vacancies.companyId, companyId),
+        ),
+      )
+      .limit(1);
+
+    const vacancy = rows[0];
+    return vacancy ? { vacancyId: vacancy.id } : null;
   }),
 
   // ── Telegram channels ──────────────────────────────────────────────
