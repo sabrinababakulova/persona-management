@@ -54,7 +54,14 @@ bun install --frozen-lockfile
 
 # Refuse schema changes unless a validated PostgreSQL snapshot succeeds first.
 run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
-bun run db:push
+# Migrations only — `db:push` is deliberately not used here. Push applies
+# schema.ts directly, which silently skips the data backfills that live in the
+# .sql files and leaves `drizzle.__drizzle_migrations` empty.
+#
+# If this database was previously deployed with push, its ledger is behind the
+# schema and this step will fail on "already exists". Run `bun run
+# db:migrate-custom` once to reconcile it, then this returns to working.
+bun run db:migrate
 bun run build
 
 # Restart or start the app with pm2

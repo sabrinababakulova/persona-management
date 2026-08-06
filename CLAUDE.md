@@ -47,6 +47,12 @@ Path alias: `~/` → `./src/`. ESM project (`"type": "module"`).
 - Env vars are validated in `src/env.js` (`@t3-oss/env-nextjs`). **No `NEXT_PUBLIC_*` vars exist — all env is server-only.**
 - Linting/formatting is **Biome** (`biome.jsonc`), not ESLint/Prettier.
 
-## Deploy gotcha
+## Schema changes
 
-Production deploy (`scripts/deploy.sh`) uses **`bun run db:push`** — it applies `schema.ts` directly and does **not** run migration `.sql` files. So any data backfill in a migration must also be handled in code, and new `NOT NULL` columns need a DB-level default (`.defaultNow()` / `.default(...)`) so push can add them to populated tables. Push also leaves the migration ledger empty, so `bun run db:migrate` later replays old migrations and fails — use `bun run db:migrate-custom`, which skips changes the database already has.
+Production deploy (`scripts/deploy.sh`) runs **`bun run db:migrate`**. `db:push` is deliberately not used anywhere in the deploy path: it applies `schema.ts` directly, skipping the `.sql` files, so any data backfill written in a migration would never run.
+
+So every schema change is a generated migration: edit `schema.ts`, run `bun run db:generate`, and if the change needs existing rows rewritten (a new `NOT NULL` column, a column being replaced), hand-edit the generated `.sql` to add the backfill between the `ADD COLUMN` and the `SET NOT NULL`. Never let the deploy be the first place a backfill is attempted.
+
+`db:generate` prompts interactively whenever a table both loses and gains a column — it cannot tell a rename from a drop-plus-add. Answer **create column** unless you genuinely want the old values carried over verbatim; a wrong "rename" silently keeps data in a column that now means something else.
+
+If a database was ever deployed with push, its ledger is behind its schema and `db:migrate` fails on "already exists". `bun run db:migrate-custom` reconciles it once by skipping changes already present.

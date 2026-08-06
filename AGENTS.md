@@ -14,7 +14,7 @@
 | Build | `bun run build` |
 | Typecheck | `bun run typecheck` (`tsc --noEmit`) |
 | Lint / format | `bun run check` (Biome) — fix with `bun run check:write` |
-| DB push | `bun run db:push` (`drizzle-kit push`) |
+| DB migrate | `bun run db:migrate` (`drizzle-kit migrate`) |
 | DB generate migration | `bun run db:generate` |
 | DB migrate | `bun run db:migrate` |
 | DB seed | `bun run db:seed` (lookups + default company) |
@@ -310,11 +310,13 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - Inserts demo candidates, vacancies, and recent activity rows
 
 ### Migrations
-Located in `/drizzle/`. Generated with `bun run db:generate`, applied with `bun run db:migrate` or `bun run db:push`.
+Located in `/drizzle/`. Generated with `bun run db:generate`, applied with `bun run db:migrate`. `db:push` is not part of any deploy path — see below.
 
 **Ledger drift:** `db:push` changes the schema without writing to `drizzle.__drizzle_migrations`, so a push-maintained database looks unmigrated and `drizzle-kit migrate` (`bun run db:migrate`) replays old migrations and fails with "column already exists". Use **`bun run db:migrate-custom`** (`src/server/db/migrate.ts`) there: it runs each statement in its own savepoint and skips the ones whose object already exists (or, for `DROP`s, no longer exists), then records the migration. Any other error still aborts.
 
-**Production deploy (`scripts/deploy.sh`) uses `bun run db:push`** — it applies `schema.ts` directly and does **not** run the migration `.sql` files. So any backfill/data step in a migration must also be handled in code, and new `NOT NULL` columns need a DB-level default (`.defaultNow()` / `.default(...)`) so push can add them to populated tables.
+**Production deploy (`scripts/deploy.sh`) uses `bun run db:migrate`.** `db:push` applies `schema.ts` directly and skips the `.sql` files, so a backfill written in a migration would never run — it is therefore kept out of the deploy path entirely. A change that rewrites existing rows (new `NOT NULL` column, replaced column) belongs in the generated `.sql`, hand-edited between the `ADD COLUMN` and the `SET NOT NULL`.
+
+`db:generate` prompts interactively when a table both loses and gains a column, since it cannot distinguish a rename from a drop-plus-add. Answer **create column** unless the old values really should carry over.
 
 ---
 
@@ -673,7 +675,7 @@ All TypeScript types live in `src/types/`, organized by domain:
 ### Add a new DB table
 1. Define table in `src/server/db/schema.ts` using Drizzle's `pgTable`
 2. Define the table with its plain name (no `persona-management_` prefix)
-3. Run `bun run db:generate` then `bun run db:push` (or `db:migrate`)
+3. Run `bun run db:generate`, hand-edit the `.sql` if a backfill is needed, then `bun run db:migrate`
 
 ### Add a new icon
 1. Create `PascalNameIcon.tsx` in `src/app/_components/icons/`

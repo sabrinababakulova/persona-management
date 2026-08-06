@@ -1,0 +1,1 @@
+ALTER TABLE "company_telegram_channel" DROP COLUMN "userId";

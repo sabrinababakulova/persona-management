@@ -4,6 +4,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "~/server/db";
+import {
+  handlePostedCallback,
+  handleTelegramStart,
+  isPostedCallback,
+} from "~/server/services/telegram-channel-admins";
 import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
 import { enqueueTelegramResumeUpdate } from "~/server/services/telegram-resume/ingestion";
 
@@ -17,6 +22,11 @@ const telegramDocumentSchema = z.object({
   file_size: z.number().int().positive().optional(),
 });
 
+const telegramUserSchema = z.object({
+  id: z.number().int(),
+  username: z.string().max(255).optional(),
+});
+
 const telegramMessageSchema = z.object({
   message_id: z.number().int().positive(),
   date: z.number().int().nonnegative(),
@@ -25,13 +35,23 @@ const telegramMessageSchema = z.object({
     type: z.enum(["private", "group", "supergroup", "channel"]),
     title: z.string().optional(),
   }),
+  from: telegramUserSchema.optional(),
+  text: z.string().max(4096).optional(),
   document: telegramDocumentSchema.optional(),
+});
+
+/** Button presses from channel admins confirming they published a vacancy. */
+const telegramCallbackQuerySchema = z.object({
+  id: z.string().min(1).max(255),
+  from: telegramUserSchema,
+  data: z.string().max(64).optional(),
 });
 
 const telegramUpdateSchema = z.object({
   update_id: z.number().int().nonnegative(),
   message: telegramMessageSchema.optional(),
   channel_post: telegramMessageSchema.optional(),
+  callback_query: telegramCallbackQuerySchema.optional(),
 });
 
 function secretsMatch(received: string | null, expected: string) {
@@ -77,11 +97,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_update" }, { status: 400 });
   }
 
+  const update = parsed.data;
+
+  // Channel-admin traffic shares this webhook because Telegram allows only one
+  // per bot. Both branches return 200 on success so Telegram stops retrying.
+  try {
+    const callback = update.callback_query;
+    if (callback?.data && isPostedCallback(callback.data)) {
+      const result = await handlePostedCallback({
+        db,
+        callbackQueryId: callback.id,
+        fromId: callback.from.id,
+        data: callback.data,
+      });
+      return NextResponse.json({ ok: true, outcome: result.outcome });
+    }
+
+    // `/start` is the only moment an admin's numeric id becomes known.
+    const message = update.message;
+    if (
+      message?.chat.type === "private" &&
+      message.from &&
+      message.text?.startsWith("/start")
+    ) {
+      const result = await handleTelegramStart({
+        db,
+        fromId: message.from.id,
+        username: message.from.username,
+      });
+      return NextResponse.json({ ok: true, outcome: result.outcome });
+    }
+  } catch (error) {
+    console.error("Failed to handle Telegram channel-admin update", error);
+    return NextResponse.json({ error: "admin_update_failed" }, { status: 500 });
+  }
+
   try {
     const result = await enqueueTelegramResumeUpdate({
       db,
       config,
-      update: parsed.data,
+      update,
     });
     return NextResponse.json({ ok: true, outcome: result.outcome });
   } catch (error) {

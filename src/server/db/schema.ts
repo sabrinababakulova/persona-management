@@ -769,7 +769,17 @@ export const vacancyWorkTypes = createTable(
   }),
 );
 
-// User Telegram channels (for vacancy posting)
+/**
+ * How a vacancy reaches a channel.
+ *
+ * `direct` posts as the bot and needs `can_post_messages` in the channel.
+ * `admins` sends the ready-made post to the channel's admins in DM; they
+ * publish it themselves and confirm with the "Запощено" button.
+ */
+export const telegramDeliveryModes = ["direct", "admins"] as const;
+export type TelegramDeliveryMode = (typeof telegramDeliveryModes)[number];
+
+// Company Telegram channels (for vacancy posting)
 export const userTelegramChannels = createTable(
   "company_telegram_channel",
   (d) => ({
@@ -778,18 +788,79 @@ export const userTelegramChannels = createTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    userId: d
-      .varchar({ length: 255 })
+    /**
+     * Owning company. Channels are shared across the company like vacancies and
+     * candidates, so a colleague can publish to a channel someone else added.
+     */
+    companyId: d
+      .varchar("company_id", { length: 255 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => companies.id, { onDelete: "cascade" }),
+    /** Kept for attribution only; deleting the user must not drop the channel. */
+    createdByUserId: d
+      .varchar("created_by_user_id", { length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
     channelId: d.varchar({ length: 255 }).notNull(),
     label: d.varchar({ length: 255 }),
+    /** Channel title resolved from `getChat` at save time, for display. */
+    title: d.varchar({ length: 255 }),
+    deliveryMode: d
+      .varchar("delivery_mode", { length: 32 })
+      .notNull()
+      .default("direct")
+      .$type<TelegramDeliveryMode>(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => new Date())
       .notNull(),
   }),
-  (t) => [index("user_tg_channel_user_id_idx").on(t.userId)],
+  (t) => [index("company_tg_channel_company_id_idx").on(t.companyId)],
+);
+
+/**
+ * A person who publishes on behalf of a channel.
+ *
+ * A bot cannot open a conversation with a user, so an admin is only reachable
+ * after they press Start. The recruiter records the admin's `@username`, and
+ * the `/start` handler matches on it to fill in `telegramUserId` — the numeric
+ * id is what messages are actually sent to, since usernames can be changed at
+ * any time. Until that happens, publishing through this admin fails with a
+ * clear error saying they have not activated the bot.
+ */
+export const telegramChannelAdmins = createTable(
+  "telegram_channel_admin",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    channelId: d
+      .varchar("channel_id", { length: 255 })
+      .notNull()
+      .references(() => userTelegramChannels.id, { onDelete: "cascade" }),
+    /** Stored lowercase without the leading `@`, so lookups on /start are exact. */
+    telegramUsername: d.varchar("telegram_username", { length: 255 }).notNull(),
+    /** Optional display name, so the list is readable before activation. */
+    name: d.varchar({ length: 255 }),
+    /** Numeric Telegram id, resolved when the admin presses Start. */
+    telegramUserId: d.varchar("telegram_user_id", { length: 64 }),
+    activatedAt: d.timestamp("activated_at", { withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    index("tg_channel_admin_channel_id_idx").on(t.channelId),
+    index("tg_channel_admin_username_idx").on(t.telegramUsername),
+    // One record per person per channel; re-adding the same @username should
+    // update the existing row rather than create a duplicate recipient.
+    uniqueIndex("tg_channel_admin_channel_username_key").on(
+      t.channelId,
+      t.telegramUsername,
+    ),
+  ],
 );
 
 // Per-channel record of a vacancy publication posted to Telegram
@@ -821,6 +892,51 @@ export const vacancyTelegramPosts = createTable(
       .notNull(),
   }),
   (t) => [index("vacancy_tg_post_publication_id_idx").on(t.publicationId)],
+);
+
+/**
+ * One "please publish this" message sent to a channel admin's DM.
+ *
+ * Separate from {@link vacancyTelegramPosts} because the two describe different
+ * things: a post is a message the bot itself put in the channel and can still
+ * delete, whereas a dispatch is a request handed to a human. We never learn the
+ * resulting message's URL — the admin publishes it under their own account —
+ * so the only signal we get is them pressing the "Запощено" button, which is
+ * what flips `confirmedAt`.
+ */
+export const vacancyTelegramDispatches = createTable(
+  "vacancy_telegram_dispatch",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    publicationId: d
+      .varchar("publication_id", { length: 255 })
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    channelId: d
+      .varchar("channel_id", { length: 255 })
+      .references(() => userTelegramChannels.id, { onDelete: "set null" }),
+    adminId: d
+      .varchar("admin_id", { length: 255 })
+      .references(() => telegramChannelAdmins.id, { onDelete: "set null" }),
+    /** DM chat the request went to; equals the admin's numeric Telegram id. */
+    adminChatId: d.varchar("admin_chat_id", { length: 64 }).notNull(),
+    /** Message in the admin's DM, so its button can be edited away once used. */
+    botMessageId: d.integer("bot_message_id").notNull(),
+    /** Set when the admin presses "Запощено"; null means still awaiting them. */
+    confirmedAt: d.timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  }),
+  (t) => [
+    index("vacancy_tg_dispatch_publication_id_idx").on(t.publicationId),
+    index("vacancy_tg_dispatch_admin_id_idx").on(t.adminId),
+  ],
 );
 
 // User hh.uz (HeadHunter) accounts

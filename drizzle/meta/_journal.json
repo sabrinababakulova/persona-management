@@ -309,6 +309,20 @@
       "when": 1785599229335,
       "tag": "0043_icy_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785753298553,
+      "tag": "0044_telegram_channel_admins",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1785753308872,
+      "tag": "0045_drop_telegram_channel_user_id",
+      "breakpoints": true
     }
   ]
 }

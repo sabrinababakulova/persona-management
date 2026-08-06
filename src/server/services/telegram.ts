@@ -5,6 +5,17 @@ import type { Message } from "grammy/types";
 import { env } from "~/env";
 
 const TELEGRAM_API_ORIGIN = "https://api.telegram.org";
+
+/** Label of the button an admin presses after publishing the post themselves. */
+export const TELEGRAM_POSTED_BUTTON_TEXT = "✅ Запощено";
+/** Shown in place of the button once the confirmation is recorded. */
+export const TELEGRAM_POSTED_DONE_TEXT = "✅ Публикация подтверждена";
+/**
+ * Prefix of `callback_data` for those confirmations, followed by the dispatch
+ * id. Telegram caps `callback_data` at 64 bytes, which a prefix plus a UUID
+ * fits inside.
+ */
+export const TELEGRAM_POSTED_CALLBACK_PREFIX = "posted:";
 const TELEGRAM_API_RETRY_ATTEMPTS = 2;
 const TELEGRAM_API_MAX_RETRY_DELAY_SECONDS = 15;
 
@@ -132,6 +143,148 @@ export async function sendTelegramPhoto(
   return parseTelegramSendResult(message);
 }
 
+/**
+ * Normalizes a Telegram @username into the form stored in the database.
+ *
+ * Accepts what a recruiter is likely to paste — `@name`, `name`, or a
+ * `t.me/name` link — and returns a bare lowercase handle. Telegram usernames
+ * are case-insensitive, so lowercasing is what makes the `/start` lookup exact.
+ * Returns null when the value cannot be a username.
+ */
+export function normalizeTelegramUsername(value: string): string | null {
+  const handle = value
+    .trim()
+    .replace(/^https?:\/\/(t|telegram)\.me\//i, "")
+    .replace(/^@/, "")
+    .trim();
+
+  // Telegram's own rule: 5-32 chars, letters/digits/underscore.
+  return /^[A-Za-z0-9_]{5,32}$/.test(handle) ? handle.toLowerCase() : null;
+}
+
+/** Channel metadata plus what the bot is actually allowed to do there. */
+export type TelegramChannelInfo = {
+  title: string | null;
+  username: string | null;
+  memberCount: number | null;
+  /** True when the bot can post on its own (i.e. `direct` delivery is possible). */
+  canPost: boolean;
+  isBotMember: boolean;
+};
+
+/**
+ * Resolves a channel for the add-channel form.
+ *
+ * `getChat` works for any public channel without the bot being a member, so the
+ * recruiter sees the real title and subscriber count before saving. The
+ * membership probe is separate and allowed to fail: a bot that is not in the
+ * channel simply cannot post, which is not an error at this stage.
+ */
+export async function resolveTelegramChannelInfo(
+  channelId: string,
+): Promise<TelegramChannelInfo> {
+  const api = getTelegramApi();
+  const chat = await api.getChat(channelId);
+
+  const memberCount = await api.getChatMemberCount(channelId).catch(() => null);
+
+  let canPost = false;
+  let isBotMember = false;
+  try {
+    const botId = await getTelegramBotId();
+    const member = await api.getChatMember(channelId, botId);
+    isBotMember =
+      member.status === "administrator" || member.status === "creator";
+    canPost =
+      member.status === "creator" ||
+      (member.status === "administrator" && member.can_post_messages === true);
+  } catch {
+    // Bot is not in the channel — leave both flags false.
+  }
+
+  return {
+    title: "title" in chat ? (chat.title ?? null) : null,
+    username: "username" in chat ? (chat.username ?? null) : null,
+    memberCount,
+    canPost,
+    isBotMember,
+  };
+}
+
+/**
+ * Sends a ready-made vacancy post to a channel admin's DM.
+ *
+ * The inline button is how the admin tells us they published it — we cannot see
+ * their channel, so this callback is the only completion signal.
+ */
+export async function sendVacancyToChannelAdmin(input: {
+  chatId: string;
+  text: string;
+  buttonText: string;
+  callbackData: string;
+  photo?: { data: ArrayBuffer; filename: string; contentType: string };
+}): Promise<{ messageId: number }> {
+  const replyMarkup = {
+    inline_keyboard: [
+      [{ text: input.buttonText, callback_data: input.callbackData }],
+    ],
+  };
+
+  const message = input.photo
+    ? await getTelegramApi().sendPhoto(
+        input.chatId,
+        new InputFile(new Uint8Array(input.photo.data), input.photo.filename),
+        {
+          caption: input.text,
+          parse_mode: "HTML",
+          reply_markup: replyMarkup,
+        },
+      )
+    : await getTelegramApi().sendMessage(input.chatId, input.text, {
+        parse_mode: "HTML",
+        reply_markup: replyMarkup,
+      });
+
+  return { messageId: message.message_id };
+}
+
+/**
+ * Replaces the button on an already-sent DM with a static confirmation line.
+ *
+ * Failures are swallowed: the confirmation is already recorded in the database,
+ * and a stale button in Telegram must not fail the request that recorded it.
+ */
+export async function markAdminMessageConfirmed(input: {
+  chatId: string;
+  messageId: number;
+  label: string;
+}): Promise<void> {
+  await getTelegramApi()
+    .editMessageReplyMarkup(input.chatId, input.messageId, {
+      reply_markup: {
+        inline_keyboard: [[{ text: input.label, callback_data: "noop" }]],
+      },
+    })
+    .catch(() => undefined);
+}
+
+/** Acknowledges a button press so Telegram stops showing the spinner. */
+export async function answerTelegramCallback(
+  callbackQueryId: string,
+  text?: string,
+): Promise<void> {
+  await getTelegramApi()
+    .answerCallbackQuery(callbackQueryId, text ? { text } : undefined)
+    .catch(() => undefined);
+}
+
+export async function sendTelegramPlainMessage(
+  chatId: string,
+  text: string,
+): Promise<void> {
+  await getTelegramApi().sendMessage(chatId, text, { parse_mode: "HTML" });
+}
+
 export async function getTelegramBotProfile() {
   return getTelegramApi().getMe();
 }
@@ -154,7 +307,9 @@ export async function setTelegramResumeWebhook(input: {
 }): Promise<void> {
   await getTelegramApi().setWebhook(input.url, {
     secret_token: input.secretToken,
-    allowed_updates: ["message", "channel_post"],
+    // `callback_query` carries the admins' "Запощено" confirmations; without it
+    // Telegram silently drops those updates and publications never go active.
+    allowed_updates: ["message", "channel_post", "callback_query"],
     drop_pending_updates: false,
     // Idempotency is already enforced in the database; keeping delivery
     // serial also avoids needlessly competing AI queue inserts.

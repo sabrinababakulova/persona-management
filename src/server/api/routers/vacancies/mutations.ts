@@ -9,8 +9,10 @@ import {
 import { protectedProcedure } from "~/server/api/trpc";
 import {
   companies,
+  telegramChannelAdmins,
   userTelegramChannels,
   vacancies,
+  vacancyTelegramDispatches,
   vacancyTelegramPosts,
 } from "~/server/db/schema";
 import {
@@ -47,6 +49,9 @@ import {
   parseTelegramMessageUrl,
   sendTelegramMessage,
   sendTelegramPhoto,
+  sendVacancyToChannelAdmin,
+  TELEGRAM_POSTED_BUTTON_TEXT,
+  TELEGRAM_POSTED_CALLBACK_PREFIX,
 } from "~/server/services/telegram";
 import { fetchDirectusAsset } from "~/server/storage/directus-storage";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
@@ -885,10 +890,17 @@ export const getTelegramConfigProcedure = protectedProcedure.query(
       return { enabled: false };
     }
 
+    // This only decides whether to show the Telegram option, so an account
+    // without a company reports "unavailable" rather than failing the page.
+    const companyId = await getOptionalCompanyId(ctx.db, ctx.session.user.id);
+    if (!companyId) {
+      return { enabled: false };
+    }
+
     const channels = await ctx.db
       .select({ id: userTelegramChannels.id })
       .from(userTelegramChannels)
-      .where(eq(userTelegramChannels.userId, ctx.session.user.id))
+      .where(eq(userTelegramChannels.companyId, companyId))
       .limit(1);
 
     return { enabled: channels.length > 0 };
@@ -940,28 +952,27 @@ export const publishTelegramProcedure = protectedProcedure
       });
     }
 
-    const userChannels = await ctx.db
+    const companyChannels = await ctx.db
       .select()
       .from(userTelegramChannels)
-      .where(eq(userTelegramChannels.userId, ctx.session.user.id));
+      .where(eq(userTelegramChannels.companyId, companyId));
 
-    if (userChannels.length === 0) {
+    if (companyChannels.length === 0) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "У пользователя не настроены Telegram-каналы",
+        message: "У компании не настроены Telegram-каналы",
       });
     }
 
     // Post only to the channels the user picked; reject ids that aren't theirs.
-    const channels = userChannels.filter((channel) =>
+    const channels = companyChannels.filter((channel) =>
       input.channelIds.includes(channel.id),
     );
 
     if (channels.length !== input.channelIds.length) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message:
-          "Один или несколько выбранных каналов не принадлежат пользователю",
+        message: "Один или несколько выбранных каналов не принадлежат компании",
       });
     }
 
@@ -1052,6 +1063,20 @@ export const publishTelegramProcedure = protectedProcedure
     const textMessage = buildMessage(4096);
     const photoCaption = photo ? buildMessage(1024) : null;
 
+    // Admins of every channel routed through a human, loaded in one query.
+    const adminDeliveryChannelIds = channels
+      .filter((channel) => channel.deliveryMode === "admins")
+      .map((channel) => channel.id);
+    const channelAdmins =
+      adminDeliveryChannelIds.length > 0
+        ? await ctx.db
+            .select()
+            .from(telegramChannelAdmins)
+            .where(
+              inArray(telegramChannelAdmins.channelId, adminDeliveryChannelIds),
+            )
+        : [];
+
     const errors: string[] = [];
     let firstMessageUrl: string | null = null;
     const postRows: {
@@ -1060,7 +1085,87 @@ export const publishTelegramProcedure = protectedProcedure
       channelId: string;
       messageUrl: string;
     }[] = [];
+    const dispatchRows: {
+      id: string;
+      publicationId: string;
+      channelId: string;
+      adminId: string;
+      adminChatId: string;
+      botMessageId: number;
+    }[] = [];
+
     for (const channel of channels) {
+      const channelLabel = channel.label ?? channel.channelId;
+
+      // `admins` channels are published by a person: we hand each admin the
+      // ready-made post with a "Запощено" button and learn nothing more until
+      // they press it. The bot never touches the channel itself.
+      if (channel.deliveryMode === "admins") {
+        const admins = channelAdmins.filter(
+          (admin) => admin.channelId === channel.id,
+        );
+        const activated = admins.filter((admin) => admin.telegramUserId);
+
+        if (admins.length === 0) {
+          errors.push(`${channelLabel}: не указаны администраторы канала`);
+          continue;
+        }
+        if (activated.length === 0) {
+          errors.push(
+            `${channelLabel}: администраторы ещё не активировали бота (${admins
+              .map((admin) => `@${admin.telegramUsername}`)
+              .join(", ")})`,
+          );
+          continue;
+        }
+
+        // Admins who never pressed Start are unreachable — report them, but do
+        // not fail the channel when someone else can still publish it.
+        for (const admin of admins.filter((item) => !item.telegramUserId)) {
+          errors.push(
+            `${channelLabel}: @${admin.telegramUsername} не активировал бота`,
+          );
+        }
+
+        for (const admin of activated) {
+          const adminChatId = admin.telegramUserId;
+          if (!adminChatId) {
+            continue;
+          }
+          const dispatchId = crypto.randomUUID();
+          try {
+            const sent = await sendVacancyToChannelAdmin({
+              chatId: adminChatId,
+              text: photo && photoCaption !== null ? photoCaption : textMessage,
+              buttonText: TELEGRAM_POSTED_BUTTON_TEXT,
+              callbackData: `${TELEGRAM_POSTED_CALLBACK_PREFIX}${dispatchId}`,
+              ...(photo && photoCaption !== null
+                ? {
+                    photo: {
+                      data: photo.data,
+                      filename: "vacancy",
+                      contentType: photo.contentType,
+                    },
+                  }
+                : {}),
+            });
+            dispatchRows.push({
+              id: dispatchId,
+              publicationId: vacancy.id,
+              channelId: channel.id,
+              adminId: admin.id,
+              adminChatId,
+              botMessageId: sent.messageId,
+            });
+          } catch (error) {
+            errors.push(
+              `${channelLabel} / @${admin.telegramUsername}: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
+            );
+          }
+        }
+        continue;
+      }
+
       try {
         const sent =
           photo && photoCaption !== null
@@ -1085,12 +1190,15 @@ export const publishTelegramProcedure = protectedProcedure
         });
       } catch (error) {
         errors.push(
-          `Канал ${channel.channelId}: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
+          `Канал ${channelLabel}: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
         );
       }
     }
 
-    if (errors.length === channels.length) {
+    // Nothing reached Telegram at all — neither a channel post nor a single
+    // admin DM. Counting errors against channel count would misreport a channel
+    // whose several admins failed individually.
+    if (postRows.length === 0 && dispatchRows.length === 0) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: `Не удалось отправить ни в один канал:\n${errors.join("\n")}`,
@@ -1099,6 +1207,10 @@ export const publishTelegramProcedure = protectedProcedure
 
     if (postRows.length > 0) {
       await ctx.db.insert(vacancyTelegramPosts).values(postRows);
+    }
+
+    if (dispatchRows.length > 0) {
+      await ctx.db.insert(vacancyTelegramDispatches).values(dispatchRows);
     }
 
     if (firstMessageUrl) {
@@ -1122,13 +1234,21 @@ export const publishTelegramProcedure = protectedProcedure
       }
     }
 
-    const sentTo = channels.length - errors.length;
+    const channelsWithPosts = new Set(postRows.map((row) => row.channelId));
+    const channelsWithDispatches = new Set(
+      dispatchRows.map((row) => row.channelId),
+    );
+    const sentTo = new Set([...channelsWithPosts, ...channelsWithDispatches])
+      .size;
 
     return {
       success: true,
       keyword,
       sentTo,
       telegramPostUrl: firstMessageUrl,
+      // Requests handed to humans; the publication only goes active once they
+      // press "Запощено".
+      awaitingAdmins: dispatchRows.length,
       errors: errors.length > 0 ? errors : undefined,
     };
   });
