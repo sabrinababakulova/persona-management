@@ -23,8 +23,15 @@ ALTER TABLE "company_telegram_channel" DROP CONSTRAINT "company_telegram_channel
 --> statement-breakpoint
 DROP INDEX "user_tg_channel_user_id_idx";--> statement-breakpoint
 ALTER TABLE "company_telegram_channel" ALTER COLUMN "userId" DROP NOT NULL;--> statement-breakpoint
-ALTER TABLE "company_telegram_channel" ADD COLUMN "company_id" varchar(255) NOT NULL;--> statement-breakpoint
+ALTER TABLE "company_telegram_channel" ADD COLUMN "company_id" varchar(255);--> statement-breakpoint
 ALTER TABLE "company_telegram_channel" ADD COLUMN "created_by_user_id" varchar(255);--> statement-breakpoint
+UPDATE "company_telegram_channel" AS "channel"
+SET
+	"company_id" = "owner"."companyId",
+	"created_by_user_id" = "channel"."userId"
+FROM "user" AS "owner"
+WHERE "owner"."id" = "channel"."userId";--> statement-breakpoint
+ALTER TABLE "company_telegram_channel" ALTER COLUMN "company_id" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "company_telegram_channel" ADD COLUMN "title" varchar(255);--> statement-breakpoint
 ALTER TABLE "company_telegram_channel" ADD COLUMN "delivery_mode" varchar(32) DEFAULT 'direct' NOT NULL;--> statement-breakpoint
 ALTER TABLE "telegram_channel_admin" ADD CONSTRAINT "telegram_channel_admin_channel_id_company_telegram_channel_id_fk" FOREIGN KEY ("channel_id") REFERENCES "public"."company_telegram_channel"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
