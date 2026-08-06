@@ -507,6 +507,7 @@
     "search": "Search candidates",
     "periodFilter": "Candidate period filter",
     "addFilters": "Add filters",
+    "showWarehouse": "Show candidate warehouse",
     "loading": "Loading candidates...",
     "empty": "No candidates found",
     "add": "Add candidate",

@@ -16,6 +16,7 @@ import {
   normalizeTelegramUsername,
   resolveTelegramChannelInfo,
 } from "~/server/services/telegram";
+import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -81,6 +82,27 @@ async function requireCompanyChannel(
 }
 
 export const integrationsRouter = createTRPCRouter({
+  // ── Telegram resume warehouse ──────────────────────────────────────
+
+  /**
+   * The placeholder vacancy that accumulates resumes ingested from the
+   * Telegram group. Returns null unless ingestion is configured and the
+   * caller belongs to the company the warehouse vacancy is scoped to.
+   */
+  getTelegramResumeVacancy: protectedProcedure.query(async ({ ctx }) => {
+    const config = getTelegramResumeConfig();
+    if (!config) {
+      return null;
+    }
+
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    if (companyId !== config.companyId) {
+      return null;
+    }
+
+    return { vacancyId: config.vacancyId };
+  }),
+
   // ── Telegram channels ──────────────────────────────────────────────
 
   getTelegramChannels: protectedProcedure.query(async ({ ctx }) => {

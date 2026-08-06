@@ -116,6 +116,8 @@ export default function CandidatesPage() {
   } = api.lookups.getCandidateCreateOptions.useQuery();
   const { data: vacancyLookups } =
     api.lookups.getVacancyCreateOptions.useQuery();
+  const { data: telegramWarehouse } =
+    api.integrations.getTelegramResumeVacancy.useQuery();
 
   const statusOptions = useMemo(
     () => localizeLookups(lookups?.statusOptions, "candidateStatuses"),
@@ -441,6 +443,14 @@ export default function CandidatesPage() {
                     {activeFilterCount > 0 ? activeFilterCount : "+"}
                   </span>
                 </button>
+                {telegramWarehouse && (
+                  <Link
+                    className="ui-button ui-button-secondary border-border-light bg-bg-light"
+                    href={`/vacancies/${telegramWarehouse.vacancyId}/funnel`}
+                  >
+                    {t("showWarehouse")}
+                  </Link>
+                )}
               </div>
 
               <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
