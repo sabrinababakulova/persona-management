@@ -1213,6 +1213,17 @@ export const publishTelegramProcedure = protectedProcedure
       await ctx.db.insert(vacancyTelegramDispatches).values(dispatchRows);
     }
 
+    // A direct bot post is live the moment it is sent, so the publication goes
+    // active here. Admin-delivered channels only produce dispatches — the
+    // publication stays inactive until an admin presses "Запощено"
+    // (handlePostedCallback flips it).
+    if (postRows.length > 0) {
+      await ctx.db
+        .update(vacancies)
+        .set({ isActive: true })
+        .where(and(eq(vacancies.id, vacancy.id), isUserVisibleVacancy()));
+    }
+
     if (firstMessageUrl) {
       // Keep `telegramPostId` set to the first URL for backward compatibility.
       await ctx.db

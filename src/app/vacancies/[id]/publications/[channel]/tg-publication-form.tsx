@@ -260,13 +260,15 @@ export function TgPublicationForm({
       return;
     }
 
+    // Created inactive: publishTelegram activates it once a direct post goes
+    // out; admin-delivered channels stay inactive until an admin confirms.
     createPublication.mutate({
       parentId: vacancyId,
       title,
       descriptionHtml: fields.description,
       destination: "telegram",
       telegramFileId: telegramFileId ?? undefined,
-      isActive: true,
+      isActive: false,
       isPublication: true,
     });
   };
