@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { candidates, candidateVacancies, vacancies } from "~/server/db/schema";
 import type { HhVacancy } from "~/server/services/hh";
+import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -107,6 +108,22 @@ export function isHhVacancyId(value: string) {
 /** Restricts recruiter-facing queries to vacancies owned by application users. */
 export function isUserVisibleVacancy() {
   return eq(vacancies.isInternal, false);
+}
+
+/**
+ * Visibility filter for detail/funnel lookups addressed by id.
+ *
+ * The telegram resume warehouse vacancy is internal so it stays out of the
+ * vacancy lists, but it must stay reachable when opened directly via the
+ * "склад кандидатов" button. Returns undefined (no extra condition) for that
+ * vacancy; drizzle's and() skips undefined members.
+ */
+export function isUserVisibleOrWarehouseVacancy(vacancyId: string) {
+  const warehouseVacancyId = getTelegramResumeConfig()?.vacancyId;
+  if (warehouseVacancyId && vacancyId === warehouseVacancyId) {
+    return undefined;
+  }
+  return isUserVisibleVacancy();
 }
 
 export async function getVacanciesRelatedCandidates(

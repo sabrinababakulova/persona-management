@@ -35,6 +35,7 @@ import {
 import {
   getVacanciesRelatedCandidates,
   isHhVacancyId,
+  isUserVisibleOrWarehouseVacancy,
   isUserVisibleVacancy,
 } from "./shared";
 
@@ -221,7 +222,7 @@ export const getVacancyProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, userCompanyId),
-          isUserVisibleVacancy(),
+          isUserVisibleOrWarehouseVacancy(input.id),
         ),
       )
       .limit(1);
@@ -647,7 +648,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, userCompanyId),
-          isUserVisibleVacancy(),
+          isUserVisibleOrWarehouseVacancy(input.id),
         ),
       )
       .limit(1);
