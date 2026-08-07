@@ -18,7 +18,7 @@ import {
   normalizeTelegramUsername,
   resolveTelegramChannelInfo,
 } from "~/server/services/telegram";
-import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
+import { getTelegramResumeConfigForCompany } from "~/server/services/telegram-resume/config";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -87,22 +87,23 @@ export const integrationsRouter = createTRPCRouter({
   // ── Telegram resume warehouse ──────────────────────────────────────
 
   /**
-   * The placeholder vacancy that accumulates resumes ingested from the
-   * Telegram group. Returns null unless ingestion is configured, the caller's
-   * company has the warehouse feature flag, and the configured vacancy
-   * actually exists in the caller's company — the funnel page is
-   * company-scoped, so a link to anything else would dead-end.
+   * The warehouse vacancy that accumulates resumes ingested from the
+   * caller's company's Telegram group. Returns null unless the company has
+   * the warehouse feature flag, its own ingestion config
+   * (company_telegram_resume_config), and the configured vacancy actually
+   * exists in the company — the funnel page is company-scoped, so a link to
+   * anything else would dead-end.
    */
   getTelegramResumeVacancy: protectedProcedure.query(async ({ ctx }) => {
-    const config = getTelegramResumeConfig();
-    if (!config) {
-      return null;
-    }
-
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
 
     const features = await getCompanyFeatures(ctx.db, companyId);
     if (!features.canUseTelegramWarehouse) {
+      return null;
+    }
+
+    const config = await getTelegramResumeConfigForCompany(ctx.db, companyId);
+    if (!config) {
       return null;
     }
 

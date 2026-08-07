@@ -1497,5 +1497,101 @@ patch_field "company_feature_flag" "is_enabled" '{
     }
   }' "company_feature_flag.is_enabled"
 
+# ── Company Telegram resume ingestion config ──────────────────────────
+# One row per company: its Telegram group and its internal warehouse vacancy.
+# The bot webhook routes incoming resumes to a company by the chat they were
+# posted in. Activation is governed by the telegram_resume_warehouse flag.
+
+patch_collection "company_telegram_resume_config" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "move_to_inbox",
+      "note": "Приём резюме из Telegram: группа компании и её внутренняя вакансия-склад. Включается флагом telegram_resume_warehouse.",
+      "display_template": "{{chat_id}}"
+    }
+  }' "company telegram resume configs"
+
+patch_field "company_telegram_resume_config" "company_id" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{name}}"
+      },
+      "sort": 1,
+      "width": "half",
+      "note": "Компания, которой принадлежит группа и склад."
+    }
+  }' "company_telegram_resume_config.company_id"
+
+upsert_relation "company_telegram_resume_config" "company_id" '{
+    "collection": "company_telegram_resume_config",
+    "field": "company_id",
+    "related_collection": "company",
+    "schema": {
+      "table": "company_telegram_resume_config",
+      "column": "company_id",
+      "foreign_key_table": "company",
+      "foreign_key_column": "id",
+      "constraint_name": "company_telegram_resume_config_company_id_company_id_fk"
+    },
+    "meta": {
+      "many_collection": "company_telegram_resume_config",
+      "many_field": "company_id",
+      "one_collection": "company",
+      "one_field": null
+    }
+  }' "company_telegram_resume_config.company_id"
+
+patch_field "company_telegram_resume_config" "chat_id" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "options": {
+        "placeholder": "-4910953100"
+      },
+      "sort": 2,
+      "width": "half",
+      "note": "ID Telegram-группы, куда присылают резюме (бот должен быть участником)."
+    }
+  }' "company_telegram_resume_config.chat_id"
+
+patch_field "company_telegram_resume_config" "warehouse_vacancy_id" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{title}}"
+      },
+      "sort": 3,
+      "width": "full",
+      "note": "Внутренняя вакансия-склад этой же компании (is_internal = true), куда попадают кандидаты из группы."
+    }
+  }' "company_telegram_resume_config.warehouse_vacancy_id"
+
+upsert_relation "company_telegram_resume_config" "warehouse_vacancy_id" '{
+    "collection": "company_telegram_resume_config",
+    "field": "warehouse_vacancy_id",
+    "related_collection": "vacancy",
+    "schema": {
+      "table": "company_telegram_resume_config",
+      "column": "warehouse_vacancy_id",
+      "foreign_key_table": "vacancy",
+      "foreign_key_column": "id",
+      "constraint_name": "company_telegram_resume_config_warehouse_vacancy_id_vacancy_id_fk"
+    },
+    "meta": {
+      "many_collection": "company_telegram_resume_config",
+      "many_field": "warehouse_vacancy_id",
+      "one_collection": "vacancy",
+      "one_field": null
+    }
+  }' "company_telegram_resume_config.warehouse_vacancy_id"
+
 echo ""
 echo "Done! All tables should now be visible at $DIRECTUS_URL/admin/content"

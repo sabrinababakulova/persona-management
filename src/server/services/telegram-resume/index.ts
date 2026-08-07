@@ -1,5 +1,8 @@
 export {
   getTelegramResumeConfig,
+  getTelegramResumeConfigForChat,
+  getTelegramResumeConfigForCompany,
+  getTelegramResumeWebhookSecret,
   requireTelegramResumeConfig,
   type TelegramResumeConfig,
 } from "./config";

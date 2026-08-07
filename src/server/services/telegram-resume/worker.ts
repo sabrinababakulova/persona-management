@@ -194,6 +194,13 @@ export async function drainTelegramResumeImports(input: {
     WHERE "id" IN (
       SELECT "id" FROM "telegram_resume_import"
       WHERE "status" = 'pending' AND "run_after" <= now()
+        -- Companies without the warehouse feature flag keep their jobs
+        -- pending: nothing is processed while the flag is off, and the
+        -- backlog resumes untouched when it is re-enabled.
+        AND "company_id" IN (
+          SELECT "company_id" FROM "company_feature_flag"
+          WHERE "feature" = 'telegram_resume_warehouse' AND "is_enabled" = true
+        )
       ORDER BY "run_after", "createdAt"
       FOR UPDATE SKIP LOCKED
       LIMIT ${batchSize}

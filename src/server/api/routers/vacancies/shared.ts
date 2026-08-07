@@ -3,7 +3,7 @@ import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { candidates, candidateVacancies, vacancies } from "~/server/db/schema";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
 import type { HhVacancy } from "~/server/services/hh";
-import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
+import { getTelegramResumeConfigForCompany } from "~/server/services/telegram-resume/config";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -114,23 +114,23 @@ export function isUserVisibleVacancy() {
 /**
  * Visibility filter for detail/funnel lookups addressed by id.
  *
- * The telegram resume warehouse vacancy is internal so it stays out of the
- * vacancy lists, but it must stay reachable when opened directly via the
- * "склад кандидатов" button — provided the caller's company has the
- * warehouse feature flag. Returns undefined (no extra condition) in that
- * case; drizzle's and() skips undefined members. Callers already scope the
- * query to the caller's companyId, so this only widens visibility within
- * the company that owns the warehouse.
+ * A company's telegram resume warehouse vacancy is internal so it stays out
+ * of the vacancy lists, but it must stay reachable when opened directly via
+ * the "склад кандидатов" button — provided the caller's company has the
+ * warehouse feature flag. Only the caller's own configured warehouse is
+ * exempted, so companies can never open each other's warehouses. Returns
+ * undefined (no extra condition) in that case; drizzle's and() skips
+ * undefined members.
  */
 export async function isUserVisibleOrWarehouseVacancy(
   db: DatabaseClient,
   vacancyId: string,
   companyId: string,
 ) {
-  const warehouseVacancyId = getTelegramResumeConfig()?.vacancyId;
-  if (warehouseVacancyId && vacancyId === warehouseVacancyId) {
-    const features = await getCompanyFeatures(db, companyId);
-    if (features.canUseTelegramWarehouse) {
+  const features = await getCompanyFeatures(db, companyId);
+  if (features.canUseTelegramWarehouse) {
+    const config = await getTelegramResumeConfigForCompany(db, companyId);
+    if (config?.vacancyId === vacancyId) {
       return undefined;
     }
   }

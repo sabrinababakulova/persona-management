@@ -679,6 +679,47 @@ export const telegramResumeImports = createTable(
   ],
 );
 
+/**
+ * Per-company Telegram resume ingestion wiring, edited in Directus.
+ *
+ * Each row maps one Telegram group (`chatId`) to one company and its internal
+ * warehouse vacancy — the shared bot webhook routes incoming documents by chat
+ * id. One config per company, one company per chat. Whether ingestion is
+ * actually active is governed separately by the `telegram_resume_warehouse`
+ * feature flag. The TELEGRAM_RESUME_* env vars remain only as a legacy
+ * single-company fallback.
+ */
+export const companyTelegramResumeConfigs = createTable(
+  "company_telegram_resume_config",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar("company_id", { length: 255 })
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    /** Telegram group id the resumes are posted to (e.g. "-4910953100"). */
+    chatId: d.varchar("chat_id", { length: 64 }).notNull(),
+    /** Internal warehouse vacancy the ingested candidates are attached to. */
+    warehouseVacancyId: d
+      .varchar("warehouse_vacancy_id", { length: 255 })
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("company_tg_resume_config_company_idx").on(t.companyId),
+    uniqueIndex("company_tg_resume_config_chat_idx").on(t.chatId),
+  ],
+);
+
 // Activity log table for dashboard "Recent actions" feed
 export const recentActivityLogs = createTable(
   "recent_activity_log",

@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { env } from "~/env";
 import { db } from "~/server/db";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
 import {
@@ -10,7 +11,10 @@ import {
   handleTelegramStart,
   isPostedCallback,
 } from "~/server/services/telegram-channel-admins";
-import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
+import {
+  getTelegramResumeConfigForChat,
+  getTelegramResumeWebhookSecret,
+} from "~/server/services/telegram-resume/config";
 import { enqueueTelegramResumeUpdate } from "~/server/services/telegram-resume/ingestion";
 
 export const runtime = "nodejs";
@@ -69,8 +73,7 @@ function secretsMatch(received: string | null, expected: string) {
 }
 
 export async function POST(request: Request) {
-  const config = getTelegramResumeConfig();
-  if (!config) {
+  if (!env.TELEGRAM_BOT_TOKEN) {
     return NextResponse.json(
       { error: "telegram_resume_ingestion_not_configured" },
       { status: 503 },
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
   if (
     !secretsMatch(
       request.headers.get("x-telegram-bot-api-secret-token"),
-      config.webhookSecret,
+      getTelegramResumeWebhookSecret(),
     )
   ) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -131,6 +134,22 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to handle Telegram channel-admin update", error);
     return NextResponse.json({ error: "admin_update_failed" }, { status: 500 });
+  }
+
+  // Resume documents are routed to a company by the chat they were posted
+  // in — each company brings its own Telegram group. Unknown chats and
+  // non-document updates are acked so Telegram stops retrying.
+  const resumeMessage = update.message ?? update.channel_post;
+  if (!resumeMessage?.document) {
+    return NextResponse.json({ ok: true, outcome: "irrelevant" });
+  }
+
+  const config = await getTelegramResumeConfigForChat(
+    db,
+    String(resumeMessage.chat.id),
+  );
+  if (!config) {
+    return NextResponse.json({ ok: true, outcome: "unknown_chat" });
   }
 
   // Gate only the resume-enqueue branch: the channel-admin branches above must
