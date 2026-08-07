@@ -4,11 +4,13 @@ import * as schema from "~/server/db/schema";
 import { runSeedScript, type SeedDb } from "./seed-utils";
 import { DEMO_CANDIDATES } from "./seeds/demo/demo-candidates";
 import { DEMO_VACANCIES } from "./seeds/demo/demo-vacancies";
+import { seedFeatureFlags } from "./seeds/demo/feature-flags";
 import { seedLookups } from "./seeds/demo/lookups";
 import { getRecentActivityRows } from "./seeds/demo/recent-activities";
 
 export async function seedDemoData(db: SeedDb) {
   await seedLookups(db);
+  await seedFeatureFlags(db);
 
   for (const candidate of DEMO_CANDIDATES) {
     const { id, ...set } = candidate;

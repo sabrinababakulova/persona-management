@@ -136,6 +136,7 @@ export function PublicationsTable() {
   const { id: parentVacancyId } = useParams() as { id: string };
   const utils = api.useUtils();
   const showError = useErrorToast();
+  const { data: companyFeatures } = api.company.getFeatures.useQuery();
   const channelOptions: ActionDropdownItem[] = [
     {
       value: "linkedin",
@@ -153,7 +154,12 @@ export function PublicationsTable() {
       label: t("table.forPersonHunters"),
       iconSrc: "/person-hunter.svg",
     },
-  ];
+    // The PersonHunters channel is feature-flagged per company.
+  ].filter(
+    (option) =>
+      option.value !== "person-hunter" ||
+      (companyFeatures?.canPublishPersonHunter ?? false),
+  );
   const activeStatusOptions = [
     { value: "active", label: t("table.active") },
     { value: "inactive", label: t("table.inactive") },

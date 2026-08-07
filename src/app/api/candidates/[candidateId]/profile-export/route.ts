@@ -2,15 +2,17 @@ import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import {
   CandidateNotFoundError,
-  PERSON_HUNTERS_OPTIONS,
   type ProfileRenderOptions,
   parseSections,
+  RESUME_DESIGN_TEMPLATES,
   type ResumeLogo,
 } from "~/server/pdf/candidate-profile-data";
 import { generateCandidateDocx } from "~/server/pdf/generate-candidate-docx";
 import { generateCandidatePdf } from "~/server/pdf/generate-candidate-pdf";
 import { fitWithin, getImageSize } from "~/server/pdf/image-size";
+import { getCompanyFeatures } from "~/server/services/feature-flags";
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
+import { RESUME_DESIGN_PERSON_HUNTERS } from "~/shared/feature-flags";
 
 // react-pdf and docx both render in Node, never the edge runtime.
 export const runtime = "nodejs";
@@ -133,7 +135,10 @@ async function produce(input: {
   }
 }
 
-/** PDF/DOCX export. Person Hunters template, or custom (section-selectable). */
+/**
+ * PDF/DOCX export. Branded design templates (flag-gated per company), or
+ * custom (section-selectable, unbranded — available to everyone).
+ */
 export async function GET(request: Request, context: RouteContext) {
   const companyId = await resolveCompany();
   if (companyId instanceof Response) {
@@ -141,13 +146,31 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const searchParams = new URL(request.url).searchParams;
-  const options: ProfileRenderOptions =
-    searchParams.get("template") === "custom"
-      ? {
-          showBranding: false,
-          sections: parseSections(searchParams.get("sections")),
-        }
-      : PERSON_HUNTERS_OPTIONS;
+  let options: ProfileRenderOptions;
+
+  if (searchParams.get("template") === "custom") {
+    options = {
+      showBranding: false,
+      sections: parseSections(searchParams.get("sections")),
+    };
+  } else {
+    // Absent param keeps meaning the Person Hunters design for older links.
+    const designKey =
+      searchParams.get("template") ?? RESUME_DESIGN_PERSON_HUNTERS;
+    const template = RESUME_DESIGN_TEMPLATES[designKey];
+    if (!template) {
+      return buildErrorResponse("Шаблон резюме не найден", 404);
+    }
+
+    const features = await getCompanyFeatures(db, companyId);
+    if (!features.resumeDesigns.includes(designKey)) {
+      return buildErrorResponse(
+        "Этот шаблон резюме недоступен для вашей компании",
+        403,
+      );
+    }
+    options = template;
+  }
 
   const { candidateId } = await context.params;
   return produce({

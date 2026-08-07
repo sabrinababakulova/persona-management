@@ -323,6 +323,13 @@
       "when": 1785753308872,
       "tag": "0045_drop_telegram_channel_user_id",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1786093479496,
+      "tag": "0046_chilly_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

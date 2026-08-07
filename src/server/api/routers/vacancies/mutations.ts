@@ -16,6 +16,10 @@ import {
   vacancyTelegramPosts,
 } from "~/server/db/schema";
 import {
+  getCompanyFeatures,
+  requireCompanyFeature,
+} from "~/server/services/feature-flags";
+import {
   archiveHhVacancy,
   fetchHhAreasUz,
   fetchHhDictionaries,
@@ -54,6 +58,7 @@ import {
   TELEGRAM_POSTED_CALLBACK_PREFIX,
 } from "~/server/services/telegram";
 import { fetchDirectusAsset } from "~/server/storage/directus-storage";
+import { FEATURE_PERSON_HUNTER_PUBLICATIONS } from "~/shared/feature-flags";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 import {
@@ -534,6 +539,8 @@ export const updateVacancyProcedure = protectedProcedure
     // Toggling a PersonHunters publication mirrors the change to PersonHunters: deactivating
     // hides the vacancy (status 0), reactivating republishes it (status 1). We do this before
     // the local write so a failed remote call leaves the local row untouched and retryable.
+    // Deliberately not feature-flag-gated: it acts on an already-existing publication,
+    // which must stay manageable even after the company's flag is turned off.
     if (
       input.isActive !== undefined &&
       input.isActive !== existing.isActive &&
@@ -835,6 +842,8 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
 
     // Fully remove the vacancy from PersonHunters first, so the local row only disappears once
     // the remote delete succeeds. A 404 means it's already gone there — treat that as success.
+    // Deliberately not feature-flag-gated: existing publications must stay deletable
+    // even after the company's flag is turned off.
     if (
       existing.destination === "person-hunter" &&
       existing.personHunterVacancyId
@@ -1594,8 +1603,14 @@ export const saveHhDraftProcedure = protectedProcedure
  */
 export const getPersonHunterConfigProcedure = protectedProcedure
   .input(z.object({ lang: z.enum(["ru", "uz", "en"]).optional() }).optional())
-  .query(async ({ input }) => {
+  .query(async ({ ctx, input }) => {
     if (!isPersonHunterConfigured()) {
+      return { enabled: false, references: null };
+    }
+
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    const features = await getCompanyFeatures(ctx.db, companyId);
+    if (!features.canPublishPersonHunter) {
       return { enabled: false, references: null };
     }
 
@@ -1664,6 +1679,11 @@ export const publishPersonHunterProcedure = protectedProcedure
     }
 
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+    await requireCompanyFeature(
+      ctx.db,
+      companyId,
+      FEATURE_PERSON_HUNTER_PUBLICATIONS,
+    );
 
     const vacancyRows = await ctx.db
       .select({ id: vacancies.id, parentId: vacancies.parentId })

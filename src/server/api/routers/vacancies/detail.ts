@@ -222,7 +222,11 @@ export const getVacancyProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, userCompanyId),
-          isUserVisibleOrWarehouseVacancy(input.id),
+          await isUserVisibleOrWarehouseVacancy(
+            ctx.db,
+            input.id,
+            userCompanyId,
+          ),
         ),
       )
       .limit(1);
@@ -648,7 +652,11 @@ export const getVacancyFunnelProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.id),
           eq(vacancies.companyId, userCompanyId),
-          isUserVisibleOrWarehouseVacancy(input.id),
+          await isUserVisibleOrWarehouseVacancy(
+            ctx.db,
+            input.id,
+            userCompanyId,
+          ),
         ),
       )
       .limit(1);

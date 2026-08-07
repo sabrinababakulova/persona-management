@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "~/server/db";
+import { getCompanyFeatures } from "~/server/services/feature-flags";
 import {
   handlePostedCallback,
   handleTelegramStart,
@@ -130,6 +131,13 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to handle Telegram channel-admin update", error);
     return NextResponse.json({ error: "admin_update_failed" }, { status: 500 });
+  }
+
+  // Gate only the resume-enqueue branch: the channel-admin branches above must
+  // keep working for every company. 200 so Telegram stops retrying.
+  const features = await getCompanyFeatures(db, config.companyId);
+  if (!features.canUseTelegramWarehouse) {
+    return NextResponse.json({ ok: true, outcome: "feature_disabled" });
   }
 
   try {

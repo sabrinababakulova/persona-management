@@ -74,6 +74,45 @@ export const companyInvitations = createTable(
   ],
 );
 
+/**
+ * Per-company feature toggles, edited in Directus.
+ *
+ * `feature` is either a boolean capability key ("telegram_resume_warehouse",
+ * "person_hunter_publications") or a namespaced resume design grant
+ * ("resume_design.person-hunters"). A feature is ON when a row exists with
+ * isEnabled = true; absence of a row means OFF. Keys live in
+ * `~/shared/feature-flags`.
+ */
+export const companyFeatureFlags = createTable(
+  "company_feature_flag",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    companyId: d
+      .varchar("company_id", { length: 255 })
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    feature: d.varchar({ length: 100 }).notNull(),
+    /** Kept as a column (vs deleting the row) so Directus admins toggle a checkbox. */
+    isEnabled: d.boolean("is_enabled").notNull().default(true),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    // Doubles as the company_id lookup index (leftmost column).
+    uniqueIndex("company_feature_flag_company_feature_idx").on(
+      t.companyId,
+      t.feature,
+    ),
+  ],
+);
+
 export const users = createTable(
   "user",
   (d) => ({

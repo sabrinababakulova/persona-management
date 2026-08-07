@@ -23,9 +23,16 @@ import {
   FeedbackPresence,
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
+import { api } from "~/trpc/react";
 
 type ExportFormat = "pdf" | "docx";
-type DownloadKey = "hh" | "person-hunters" | "custom";
+/** "hh", "custom", or a branded design key granted by a feature flag. */
+type DownloadKey = string;
+
+/** Display names for branded design keys; unknown keys fall back to the key. */
+const DESIGN_LABELS: Record<string, string> = {
+  "person-hunters": "Person Hunters",
+};
 
 /** Section keys must match the server's PROFILE_SECTIONS; order here is the default. */
 const DEFAULT_ORDER = [
@@ -189,6 +196,8 @@ export function ResumeDownloadButton({
   hasHhResume: boolean;
 }) {
   const t = useTranslations("ResumeExport");
+  const { data: companyFeatures } = api.company.getFeatures.useQuery();
+  const resumeDesigns = companyFeatures?.resumeDesigns ?? [];
   const [isOpen, setIsOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>("pdf");
   const [order, setOrder] = useState<SectionKey[]>([...DEFAULT_ORDER]);
@@ -343,44 +352,49 @@ export function ResumeDownloadButton({
             )}
           </section>
 
-          {/* Person Hunters — branded template */}
-          <section className="rounded-xl border border-border-input p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-sm text-text-heading">
-                  Person Hunters
-                </p>
-                <p className="text-text-secondary text-xs">
-                  {t("brandedTemplate")}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <FormatToggle
-                  disabled={isBusy}
-                  onChange={setFormat}
-                  value={format}
-                />
-                <button
-                  className="ui-button ui-button-primary px-3"
-                  disabled={isBusy}
-                  onClick={() =>
-                    run(
-                      "person-hunters",
-                      `/api/candidates/${candidateId}/profile-export?format=${format}`,
-                      `person-hunters-${candidateId}.${ext}`,
-                    )
-                  }
-                  type="button"
-                >
-                  <LoadingButtonContent
-                    isLoading={downloading === "person-hunters"}
-                    label={t("download")}
-                    loadingLabel={t("downloading")}
+          {/* Branded design templates — one section per flag-granted key */}
+          {resumeDesigns.map((designKey) => (
+            <section
+              className="rounded-xl border border-border-input p-4"
+              key={designKey}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-sm text-text-heading">
+                    {DESIGN_LABELS[designKey] ?? designKey}
+                  </p>
+                  <p className="text-text-secondary text-xs">
+                    {t("brandedTemplate")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FormatToggle
+                    disabled={isBusy}
+                    onChange={setFormat}
+                    value={format}
                   />
-                </button>
+                  <button
+                    className="ui-button ui-button-primary px-3"
+                    disabled={isBusy}
+                    onClick={() =>
+                      run(
+                        designKey,
+                        `/api/candidates/${candidateId}/profile-export?template=${encodeURIComponent(designKey)}&format=${format}`,
+                        `${designKey}-${candidateId}.${ext}`,
+                      )
+                    }
+                    type="button"
+                  >
+                    <LoadingButtonContent
+                      isLoading={downloading === designKey}
+                      label={t("download")}
+                      loadingLabel={t("downloading")}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          ))}
 
           {/* Custom — drag to reorder, check to include, pick format */}
           <section className="rounded-xl border border-border-input p-4">

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { updateCompanySchema } from "~/schemas/company";
 import {
   getCompanyMembership,
+  getRequiredCompanyId,
   requireCompanyAdmin,
   requireCompanyMaster,
 } from "~/server/api/router-utils/company";
@@ -22,6 +23,7 @@ import {
   markInvitationUsed,
 } from "~/server/company/invitations";
 import { companies, companyInvitations, users } from "~/server/db/schema";
+import { getCompanyFeatures } from "~/server/services/feature-flags";
 import {
   buildDirectusAssetUrl,
   deleteDirectusFileById,
@@ -117,6 +119,15 @@ export const companyRouter = createTRPCRouter({
       /** Roles and access belong to the master account alone. */
       canManageMembers: isMaster,
     };
+  }),
+
+  /**
+   * Feature flags of the current user's company (edited in Directus,
+   * `company_feature_flag` collection). Drives which gated UI sections render.
+   */
+  getFeatures: protectedProcedure.query(async ({ ctx }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+    return getCompanyFeatures(ctx.db, companyId);
   }),
 
   /**

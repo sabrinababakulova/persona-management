@@ -43,7 +43,11 @@ export const searchVacancyCandidatesProcedure = protectedProcedure
         and(
           eq(vacancies.id, input.vacancyId),
           eq(vacancies.companyId, userCompanyId),
-          isUserVisibleOrWarehouseVacancy(input.vacancyId),
+          await isUserVisibleOrWarehouseVacancy(
+            ctx.db,
+            input.vacancyId,
+            userCompanyId,
+          ),
         ),
       )
       .limit(1);
@@ -135,6 +139,12 @@ export const assignCandidateProcedure = protectedProcedure
       });
     }
 
+    const vacancyVisibilityFilter = await isUserVisibleOrWarehouseVacancy(
+      ctx.db,
+      input.vacancyId,
+      userCompanyId,
+    );
+
     const [vacancyRows, candidateRows, statusRows, existingRows] =
       await Promise.all([
         ctx.db
@@ -144,7 +154,7 @@ export const assignCandidateProcedure = protectedProcedure
             and(
               eq(vacancies.id, input.vacancyId),
               eq(vacancies.companyId, userCompanyId),
-              isUserVisibleOrWarehouseVacancy(input.vacancyId),
+              vacancyVisibilityFilter,
             ),
           )
           .limit(1),

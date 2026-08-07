@@ -1419,5 +1419,83 @@ patch_field "vacancy" "contact_phone" '{
     }
   }' "vacancy.contact_phone"
 
+# ── Company feature flags ─────────────────────────────────────────────
+# Per-company toggles read by the app on every gated request. A feature is ON
+# when a row exists with is_enabled = true; delete the row or untick the
+# checkbox to turn it off. Managed here in Directus only.
+
+patch_collection "company_feature_flag" '{
+    "meta": {
+      "hidden": false,
+      "singleton": false,
+      "icon": "flag",
+      "note": "Фичи, включённые для компании. Строка с галочкой = функция доступна. resume_design.<ключ> открывает фирменный шаблон резюме.",
+      "display_template": "{{feature}}"
+    }
+  }' "company feature flags"
+
+patch_field "company_feature_flag" "company_id" '{
+    "type": "string",
+    "meta": {
+      "special": ["m2o"],
+      "interface": "select-dropdown-m2o",
+      "display": "related-values",
+      "display_options": {
+        "template": "{{name}}"
+      },
+      "sort": 1,
+      "width": "half",
+      "note": "Компания, которой открыта функция."
+    }
+  }' "company_feature_flag.company_id"
+
+upsert_relation "company_feature_flag" "company_id" '{
+    "collection": "company_feature_flag",
+    "field": "company_id",
+    "related_collection": "company",
+    "schema": {
+      "table": "company_feature_flag",
+      "column": "company_id",
+      "foreign_key_table": "company",
+      "foreign_key_column": "id",
+      "constraint_name": "company_feature_flag_company_id_company_id_fk"
+    },
+    "meta": {
+      "many_collection": "company_feature_flag",
+      "many_field": "company_id",
+      "one_collection": "company",
+      "one_field": null
+    }
+  }' "company_feature_flag.company_id"
+
+patch_field "company_feature_flag" "feature" '{
+    "type": "string",
+    "meta": {
+      "interface": "select-dropdown",
+      "options": {
+        "choices": [
+          { "text": "Склад кандидатов из Telegram", "value": "telegram_resume_warehouse" },
+          { "text": "Публикации на PersonHunters", "value": "person_hunter_publications" },
+          { "text": "Шаблон резюме Person Hunters", "value": "resume_design.person-hunters" }
+        ],
+        "allowOther": true
+      },
+      "sort": 2,
+      "width": "half",
+      "note": "Ключ функции. Новые шаблоны резюме добавляются как resume_design.<ключ>."
+    }
+  }' "company_feature_flag.feature"
+
+patch_field "company_feature_flag" "is_enabled" '{
+    "type": "boolean",
+    "meta": {
+      "interface": "boolean",
+      "display": "boolean",
+      "sort": 3,
+      "width": "half",
+      "note": "Снимите галочку, чтобы временно выключить функцию, не удаляя строку."
+    }
+  }' "company_feature_flag.is_enabled"
+
 echo ""
 echo "Done! All tables should now be visible at $DIRECTUS_URL/admin/content"

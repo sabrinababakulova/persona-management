@@ -1,6 +1,7 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { candidates, candidateVacancies, vacancies } from "~/server/db/schema";
+import { getCompanyFeatures } from "~/server/services/feature-flags";
 import type { HhVacancy } from "~/server/services/hh";
 import { getTelegramResumeConfig } from "~/server/services/telegram-resume/config";
 
@@ -115,13 +116,23 @@ export function isUserVisibleVacancy() {
  *
  * The telegram resume warehouse vacancy is internal so it stays out of the
  * vacancy lists, but it must stay reachable when opened directly via the
- * "склад кандидатов" button. Returns undefined (no extra condition) for that
- * vacancy; drizzle's and() skips undefined members.
+ * "склад кандидатов" button — provided the caller's company has the
+ * warehouse feature flag. Returns undefined (no extra condition) in that
+ * case; drizzle's and() skips undefined members. Callers already scope the
+ * query to the caller's companyId, so this only widens visibility within
+ * the company that owns the warehouse.
  */
-export function isUserVisibleOrWarehouseVacancy(vacancyId: string) {
+export async function isUserVisibleOrWarehouseVacancy(
+  db: DatabaseClient,
+  vacancyId: string,
+  companyId: string,
+) {
   const warehouseVacancyId = getTelegramResumeConfig()?.vacancyId;
   if (warehouseVacancyId && vacancyId === warehouseVacancyId) {
-    return undefined;
+    const features = await getCompanyFeatures(db, companyId);
+    if (features.canUseTelegramWarehouse) {
+      return undefined;
+    }
   }
   return isUserVisibleVacancy();
 }

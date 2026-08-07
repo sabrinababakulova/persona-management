@@ -12,6 +12,7 @@ import {
   userTelegramChannels,
   vacancies,
 } from "~/server/db/schema";
+import { getCompanyFeatures } from "~/server/services/feature-flags";
 import {
   isTelegramConfigured,
   normalizeTelegramUsername,
@@ -87,9 +88,10 @@ export const integrationsRouter = createTRPCRouter({
 
   /**
    * The placeholder vacancy that accumulates resumes ingested from the
-   * Telegram group. Returns null unless ingestion is configured and the
-   * configured vacancy actually exists in the caller's company — the funnel
-   * page is company-scoped, so a link to anything else would dead-end.
+   * Telegram group. Returns null unless ingestion is configured, the caller's
+   * company has the warehouse feature flag, and the configured vacancy
+   * actually exists in the caller's company — the funnel page is
+   * company-scoped, so a link to anything else would dead-end.
    */
   getTelegramResumeVacancy: protectedProcedure.query(async ({ ctx }) => {
     const config = getTelegramResumeConfig();
@@ -98,6 +100,11 @@ export const integrationsRouter = createTRPCRouter({
     }
 
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+
+    const features = await getCompanyFeatures(ctx.db, companyId);
+    if (!features.canUseTelegramWarehouse) {
+      return null;
+    }
 
     const rows = await ctx.db
       .select({ id: vacancies.id })

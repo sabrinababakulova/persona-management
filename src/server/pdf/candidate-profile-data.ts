@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
+import { RESUME_DESIGN_PERSON_HUNTERS } from "~/shared/feature-flags";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 
 /**
@@ -74,6 +75,15 @@ export type ProfileRenderOptions = {
 export const PERSON_HUNTERS_OPTIONS: ProfileRenderOptions = {
   showBranding: true,
   sections: [...PROFILE_SECTIONS],
+};
+
+/**
+ * Branded resume templates by design key. Access is granted per company via
+ * `resume_design.<key>` feature-flag rows; a new design is one entry here
+ * plus a flag row — no migration.
+ */
+export const RESUME_DESIGN_TEMPLATES: Record<string, ProfileRenderOptions> = {
+  [RESUME_DESIGN_PERSON_HUNTERS]: PERSON_HUNTERS_OPTIONS,
 };
 
 function isProfileSection(value: string): value is ProfileSection {
