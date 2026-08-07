@@ -599,6 +599,7 @@
     "region": "Регион (hh.uz)",
     "employment": "Занятость",
     "links": "Связи",
+    "localConnection": "Talanty",
     "funnel": "Воронка",
     "published": "Опубликовано:",
     "statusFor": "Статус вакансии {title}"

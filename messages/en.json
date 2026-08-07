@@ -599,6 +599,7 @@
     "region": "Region (hh.uz)",
     "employment": "Employment",
     "links": "Links",
+    "localConnection": "Talanty",
     "funnel": "Funnel",
     "published": "Published:",
     "statusFor": "Status for {title}"

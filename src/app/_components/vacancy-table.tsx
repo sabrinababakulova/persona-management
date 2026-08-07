@@ -177,34 +177,34 @@ export function VacancyTable({
 
       <div
         className={cn(
-          "hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 lg:grid",
+          "hidden grid-cols-[minmax(170px,2.1fr)_140px_110px_76px_minmax(96px,1fr)_64px_124px] gap-x-3 border-border-input border-b bg-table-header-bg px-4 py-3 xl:grid",
           columnHeaderClassName,
         )}
       >
-        <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{common("name")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{common("status")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{t("region")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{t("responses")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-2 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{t("employment")}</span>
           <SortIcon className="h-4 w-4" />
         </div>
-        <div className="col-span-1 flex items-center gap-1 font-semibold text-text-muted text-xs">
+        <div className="flex min-w-0 items-center gap-1 font-semibold text-text-muted text-xs">
           <span>{t("links")}</span>
         </div>
-        <div className="col-span-1" />
+        <div />
       </div>
 
       {isLoading ? (
@@ -235,7 +235,7 @@ export function VacancyTable({
                   <motion.div
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center",
+                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 xl:grid-cols-[minmax(170px,2.1fr)_140px_110px_76px_minmax(96px,1fr)_64px_124px] xl:items-center xl:gap-x-3 xl:py-2.5",
                       stripedRows &&
                         (index % 2 === 0
                           ? "bg-bg-light"
@@ -250,7 +250,7 @@ export function VacancyTable({
                       duration: 0.24,
                     }}
                   >
-                    <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
+                    <div className="col-span-12 flex min-w-0 items-start gap-2.5 xl:col-auto">
                       {onToggleSelection && (
                         <Checkbox
                           //TODO: fix it when selection will be implemented
@@ -261,7 +261,7 @@ export function VacancyTable({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Link
-                            className="block max-w-[220px] truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue lg:max-w-[180px]"
+                            className="block max-w-[220px] truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue xl:max-w-[180px]"
                             href={getDetailPath(item)}
                             title={item.title}
                           >
@@ -281,7 +281,7 @@ export function VacancyTable({
                       </div>
                     </div>
 
-                    <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
+                    <div className="col-span-6 mt-3 min-w-0 xl:col-auto xl:mt-0">
                       {isHhVacancy || !onStatusChange ? (
                         <span
                           className={`inline-flex min-h-8 min-w-28 items-center rounded-md px-3 font-semibold text-xs uppercase leading-none ${statusTone.containerClassName} ${statusTone.textClassName}`}
@@ -319,22 +319,22 @@ export function VacancyTable({
                       )}
                     </div>
 
-                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
+                    <div className="hidden min-w-0 truncate text-sm text-text-heading leading-none xl:col-auto xl:block">
                       {item.areaId || "-"}
                     </div>
 
-                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-1 lg:block">
+                    <div className="hidden min-w-0 text-sm text-text-heading leading-none xl:col-auto xl:block">
                       {item.responses}
                     </div>
 
-                    <div className="hidden text-sm text-text-heading leading-none lg:col-span-2 lg:block">
+                    <div className="hidden min-w-0 truncate text-sm text-text-heading leading-none xl:col-auto xl:block">
                       {item.employmentId || "-"}
                     </div>
 
-                    <div className="hidden lg:col-span-1 lg:flex lg:items-center lg:gap-1.5">
+                    <div className="hidden min-w-0 xl:col-auto xl:flex xl:items-center xl:gap-1.5">
                       {connections.length === 0 ? (
-                        <span className="text-sm text-text-heading leading-none">
-                          -
+                        <span className="rounded-md bg-bg-light px-2 py-1 font-medium text-text-muted text-xs leading-none">
+                          {t("localConnection")}
                         </span>
                       ) : (
                         connections.map((connection) => {
@@ -358,7 +358,7 @@ export function VacancyTable({
                       )}
                     </div>
 
-                    <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
+                    <div className="col-span-6 mt-3 flex min-w-0 items-center justify-end gap-3 xl:col-auto xl:mt-0">
                       <Link
                         className="ui-button ui-button-primary h-6.5 min-h-6.5 min-w-20 shrink-0 whitespace-nowrap px-4"
                         href={getFunnelPath(item)}
@@ -373,7 +373,7 @@ export function VacancyTable({
                       </button>
                     </div>
 
-                    <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
+                    <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs xl:hidden">
                       <MobileMeta item={item} />
                     </div>
                   </motion.div>
