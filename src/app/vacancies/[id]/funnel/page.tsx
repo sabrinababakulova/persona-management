@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AssignCandidateToVacancyModal } from "~/app/_components/assign-candidate-to-vacancy-modal";
 import {
   countActiveFilters,
@@ -1009,17 +1010,25 @@ export default function VacancyFunnelPage() {
                   );
                 })}
               </div>
-              <DragOverlay>
-                {activeCandidate ? (
-                  <VacancyStageCandidateCard
-                    candidate={activeCandidate}
-                    isDragOverlay
-                    isHhSource={isHhVacancy}
-                    vacancyId={data.id}
-                    vacancyTitle={data.title}
-                  />
-                ) : null}
-              </DragOverlay>
+              {/* Portaled to <body>: the route-transition wrappers carry CSS
+                  transforms, which would re-anchor the overlay's fixed
+                  positioning and offset it far from the cursor. */}
+              {typeof document !== "undefined"
+                ? createPortal(
+                    <DragOverlay>
+                      {activeCandidate ? (
+                        <VacancyStageCandidateCard
+                          candidate={activeCandidate}
+                          isDragOverlay
+                          isHhSource={isHhVacancy}
+                          vacancyId={data.id}
+                          vacancyTitle={data.title}
+                        />
+                      ) : null}
+                    </DragOverlay>,
+                    document.body,
+                  )
+                : null}
             </DndContext>
           </div>
         </div>
