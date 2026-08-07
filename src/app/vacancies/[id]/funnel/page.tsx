@@ -12,7 +12,6 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
@@ -498,15 +497,15 @@ function DraggableCandidateCard({
   vacancyId: string;
   vacancyTitle: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: candidate.id,
-      disabled,
-      data: { stageValue },
-    });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: candidate.id,
+    disabled,
+    data: { stageValue },
+  });
 
+  // The moving card is rendered by DragOverlay; the source card stays in
+  // place (dimmed via isDragging) instead of following the pointer too.
   const style = {
-    transform: CSS.Translate.toString(transform),
     touchAction: disabled ? undefined : ("none" as const),
   };
 
