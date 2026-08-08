@@ -38,6 +38,7 @@ import { FeedbackPresence } from "~/app/_components/motion-system";
 import { useDebouncedValue } from "~/app/_components/use-debounced-value";
 import { useLookupLocalizer } from "~/i18n/use-localized-lookups";
 import { api } from "~/trpc/react";
+import { formatHhExperience } from "~/utils/format-hh-experience";
 import { PublicationsTable } from "../publications-table";
 import {
   VacancyDescriptionPanelSkeleton,
@@ -136,7 +137,8 @@ function VacancyFunnelHeader({
 }) {
   const t = useTranslations("Funnel");
   const vacancyDetailT = useTranslations("VacancyDetail");
-  const metadata = [experienceId, areaId].filter(
+  const common = useTranslations("Common");
+  const metadata = [formatHhExperience(experienceId, common), areaId].filter(
     (value) => value.trim().length > 0,
   );
 

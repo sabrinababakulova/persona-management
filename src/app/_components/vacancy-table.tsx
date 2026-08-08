@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
+import { formatHhExperience } from "~/utils/format-hh-experience";
 
 type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
 type DashboardVacancy =
@@ -270,7 +271,7 @@ export function VacancyTable({
                         </div>
                         {item.experienceId && (
                           <div className="mt-1 truncate text-text-placeholder text-xs leading-none">
-                            {item.experienceId}
+                            {formatHhExperience(item.experienceId, common)}
                           </div>
                         )}
                         {publishedAtLabel && (
