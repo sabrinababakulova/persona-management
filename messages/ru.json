@@ -95,6 +95,13 @@
       "between1And3": "1–3 года",
       "between3And6": "3–6 лет",
       "moreThan6": "Более 6 лет"
+    },
+    "employmentLabels": {
+      "full": "Полная занятость",
+      "part": "Частичная занятость",
+      "project": "Проектная работа",
+      "volunteer": "Волонтёрство",
+      "probation": "Стажировка"
     }
   },
   "Components": {

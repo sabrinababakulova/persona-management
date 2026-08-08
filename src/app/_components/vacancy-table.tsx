@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
-import { formatHhExperience } from "~/utils/format-hh-experience";
+import {
+  formatHhEmployment,
+  formatHhExperience,
+} from "~/utils/format-hh-experience";
 
 type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
 type DashboardVacancy =
@@ -117,6 +120,7 @@ function toVacancyFunnelPath(vacancy: VacancyTableItem) {
 
 function MobileMeta({ item }: { item: VacancyTableItem }) {
   const t = useTranslations("Vacancies");
+  const common = useTranslations("Common");
 
   return (
     <>
@@ -127,7 +131,10 @@ function MobileMeta({ item }: { item: VacancyTableItem }) {
         {t("responses")}: {item.responses}
       </span>
       <span>
-        {t("employment")}: {item.employmentId || "-"}
+        {t("employment")}:{" "}
+        {item.employmentId
+          ? formatHhEmployment(item.employmentId, common)
+          : "-"}
       </span>
     </>
   );
@@ -329,7 +336,9 @@ export function VacancyTable({
                     </div>
 
                     <div className="hidden min-w-0 truncate text-sm text-text-heading leading-none xl:col-auto xl:block">
-                      {item.employmentId || "-"}
+                      {item.employmentId
+                        ? formatHhEmployment(item.employmentId, common)
+                        : "-"}
                     </div>
 
                     <div className="hidden min-w-0 xl:col-auto xl:flex xl:items-center xl:gap-1.5">
