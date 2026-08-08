@@ -353,7 +353,7 @@ export function PublicationsTable() {
       </div>
 
       <div className="surface-card overflow-hidden">
-        <div className="hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
+        <div className="hidden grid-cols-12 gap-x-4 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
             <span>{t("table.name")}</span>
@@ -397,7 +397,7 @@ export function PublicationsTable() {
           const externalUrl = getPublicationExternalUrl(pub, locale);
           return (
             <div
-              className="grid grid-cols-12 items-center gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
+              className="grid grid-cols-12 items-center gap-x-4 gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
               key={pub.id}
             >
               <div className="col-span-1">
@@ -442,12 +442,12 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-2 lg:col-span-2">
                 <Dropdown
-                  className="w-full max-w-35"
+                  className="w-fit"
                   disabled={updatePublicationStatus.isPending}
                   fieldClassName={
                     pub.isActive
-                      ? "max-h-[30px] border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"
-                      : "max-h-[30px] border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
+                      ? "max-h-[30px] w-auto! px-2.5! pr-8! border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"
+                      : "max-h-[30px] w-auto! px-2.5! pr-8! border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
                   }
                   hideLabel
                   iconClassName={
