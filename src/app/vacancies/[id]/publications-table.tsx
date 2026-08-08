@@ -29,7 +29,6 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
   "olx.uz": { src: "/olx.svg", label: "OLX.uz" },
-  "rabota.ru": { src: "/rabota.svg", label: "rabota.ru" },
 };
 
 type PublicationState = "published" | "draft" | "local";
@@ -147,11 +146,6 @@ export function PublicationsTable() {
       iconSrc: "/telegram.svg",
     },
     { value: "olx.uz", label: t("table.forOlx"), iconSrc: "/olx.svg" },
-    {
-      value: "rabota.ru",
-      label: t("table.forRabota"),
-      iconSrc: "/rabota.svg",
-    },
     {
       value: "person-hunter",
       label: t("table.forPersonHunters"),
