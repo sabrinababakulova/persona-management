@@ -167,6 +167,7 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(vacancies.companyId, userCompanyId),
             eq(vacancies.status, "active"),
+            eq(vacancies.isPublication, false),
             isUserVisibleVacancy(),
           ),
         ),
@@ -215,6 +216,10 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(vacancies.companyId, userCompanyId),
             eq(vacancies.status, "active"),
+            // Base vacancies only — per-channel publication rows would
+            // duplicate titles and always show 0 responses (candidates are
+            // linked to the base vacancy, not its publications).
+            eq(vacancies.isPublication, false),
             isUserVisibleVacancy(),
           ),
         )
