@@ -177,7 +177,7 @@ export function VacancyTable({
 
       <div
         className={cn(
-          "hidden grid-cols-[minmax(170px,2.1fr)_140px_110px_76px_minmax(96px,1fr)_64px_124px] gap-x-3 border-border-input border-b bg-table-header-bg px-4 py-3 xl:grid",
+          "hidden grid-cols-[minmax(190px,1fr)_150px_minmax(104px,0.7fr)_88px_minmax(120px,0.9fr)_minmax(72px,0.4fr)_124px] gap-x-3 border-border-input border-b bg-table-header-bg px-4 py-3 xl:grid",
           columnHeaderClassName,
         )}
       >
@@ -235,7 +235,7 @@ export function VacancyTable({
                   <motion.div
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 xl:grid-cols-[minmax(170px,2.1fr)_140px_110px_76px_minmax(96px,1fr)_64px_124px] xl:items-center xl:gap-x-3 xl:py-2.5",
+                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 xl:grid-cols-[minmax(190px,1fr)_150px_minmax(104px,0.7fr)_88px_minmax(120px,0.9fr)_minmax(72px,0.4fr)_124px] xl:items-center xl:gap-x-3 xl:py-2.5",
                       stripedRows &&
                         (index % 2 === 0
                           ? "bg-bg-light"
