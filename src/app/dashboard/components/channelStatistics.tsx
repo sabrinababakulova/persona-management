@@ -5,7 +5,7 @@ import type {
   ChannelStatisticsProps,
 } from "~/types/components/channel-statistics";
 
-const CHANNEL_ORDER = ["hh.uz", "telegram", "rabota.uz", "other"] as const;
+const CHANNEL_ORDER = ["hh.uz", "telegram", "olx", "other"] as const;
 
 const CHANNEL_COLORS: Record<
   (typeof CHANNEL_ORDER)[number],
@@ -19,7 +19,7 @@ const CHANNEL_COLORS: Record<
     strokeClassName: "stroke-chart-pink",
     fillClassName: "bg-chart-pink",
   },
-  "rabota.uz": {
+  olx: {
     strokeClassName: "stroke-chart-orange",
     fillClassName: "bg-chart-orange",
   },
@@ -38,8 +38,8 @@ function normalizeChannelName(value: string) {
   if (name === "telegram") {
     return "telegram" as const;
   }
-  if (name === "rabota.uz") {
-    return "rabota.uz" as const;
+  if (name === "olx") {
+    return "olx" as const;
   }
 
   return "other" as const;
@@ -96,8 +96,12 @@ export function ChannelStatistics({
   const bestChannel = normalizedStats.reduce<
     (typeof normalizedStats)[number] | null
   >((best, item) => (item.count > (best?.count ?? 0) ? item : best), null);
-  const getChannelLabel = (name: (typeof CHANNEL_ORDER)[number]) =>
-    name === "other" ? t("other") : name;
+  const getChannelLabel = (name: (typeof CHANNEL_ORDER)[number]) => {
+    if (name === "other") {
+      return t("other");
+    }
+    return name === "olx" ? "OLX" : name;
+  };
 
   return (
     <section className="surface-card flex min-h-[380px] flex-col overflow-hidden p-5 sm:p-6 xl:min-h-[420px]">
