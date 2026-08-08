@@ -87,7 +87,7 @@ export const VACANCY_WORK_TYPES: LookupOption[] = [
 ];
 
 export const VACANCY_STATUS_OPTIONS: LookupOption[] = [
-  { value: "active", label: "Активна" },
+  { value: "active", label: "Активен" },
   { value: "draft", label: "Черновик" },
   { value: "paused", label: "Приостановлена" },
   { value: "closed", label: "Закрыта" },

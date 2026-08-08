@@ -36,7 +36,7 @@ export function getRecentActivityRows() {
       actorName: "Демо система",
       action: "Создал(а) вакансию",
       targetName: "Senior Frontend Developer",
-      targetStatus: "Активна",
+      targetStatus: "Активен",
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
     },
     {
