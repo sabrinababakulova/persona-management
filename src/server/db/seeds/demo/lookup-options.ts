@@ -9,11 +9,11 @@ export const CANDIDATE_CONTACT_TYPES: LookupOption[] = [
 
 export const CANDIDATE_SOURCES: LookupOption[] = [
   { value: "hh.uz", label: "hh.uz" },
-  { value: "linkedin", label: "LinkedIn" },
+  { value: "olx", label: "OLX" },
   { value: "telegram", label: "Telegram" },
+  { value: "linkedin", label: "LinkedIn" },
   { value: "referral", label: "Реферал" },
   { value: "local", label: "Локальная" },
-  { value: "other", label: "Другое" },
 ];
 
 export const CANDIDATE_POSITIONS: LookupOption[] = [

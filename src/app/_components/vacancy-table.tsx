@@ -258,10 +258,10 @@ export function VacancyTable({
                           onChange={() => onToggleSelection(item.id)}
                         />
                       )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-2">
                           <Link
-                            className="block max-w-[220px] truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue xl:max-w-[180px]"
+                            className="block min-w-0 truncate font-semibold text-sm text-text-heading leading-5 hover:text-primary-blue"
                             href={getDetailPath(item)}
                             title={item.title}
                           >

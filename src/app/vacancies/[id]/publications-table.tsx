@@ -138,11 +138,6 @@ export function PublicationsTable() {
   const showError = useErrorToast();
   const { data: companyFeatures } = api.company.getFeatures.useQuery();
   const channelOptions: ActionDropdownItem[] = [
-    {
-      value: "linkedin",
-      label: t("table.forLinkedIn"),
-      iconSrc: "/linkedin.svg",
-    },
     { value: "hh.uz", label: t("table.forHh"), iconSrc: "/hh.svg" },
     {
       value: "telegram",

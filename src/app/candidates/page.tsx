@@ -49,6 +49,7 @@ const DEFAULT_CANDIDATE_PERIOD = "year" as const;
 const CANDIDATE_SOURCE_ICONS = {
   "hh.uz": { src: "/hh.svg", label: "hh.uz" },
   linkedin: { src: "/linkedin.svg", label: "LinkedIn" },
+  olx: { src: "/olx.svg", label: "OLX" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
 };
 
