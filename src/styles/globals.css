@@ -572,4 +572,282 @@
       transition-duration: 0.01ms;
     }
   }
+
+  .meeting-calendar-nav-button {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--color-bg-light);
+    color: var(--color-text-secondary);
+  }
+
+  .meeting-calendar-nav-button:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-heading);
+  }
+
+  .meeting-calendar-view-button {
+    min-height: 32px;
+    border-radius: 9px;
+    padding-inline: 12px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .meeting-calendar-view-button[data-active="true"] {
+    background: var(--color-bg-light);
+    color: var(--color-text-heading);
+    box-shadow: 0 1px 3px rgba(24, 34, 52, 0.08);
+  }
+
+  .recruiter-calendar-toolbar {
+    display: grid;
+    min-height: 72px;
+    grid-template-columns: auto minmax(260px, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 12px 20px;
+    background: var(--color-bg-light);
+  }
+
+  .recruiter-calendar-navigation,
+  .recruiter-calendar-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .recruiter-calendar-actions {
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 1100px) {
+    .recruiter-calendar-toolbar {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px 16px;
+    }
+
+    .recruiter-calendar-navigation {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .recruiter-calendar-toolbar {
+      min-height: 0;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+      padding: 10px 12px;
+    }
+
+    .recruiter-calendar-navigation,
+    .recruiter-calendar-actions {
+      grid-column: 1;
+    }
+
+    .recruiter-calendar-navigation {
+      grid-row: 2;
+    }
+
+    .recruiter-calendar-actions {
+      grid-row: 3;
+      justify-content: space-between;
+    }
+
+    .meeting-calendar-view-button {
+      padding-inline: 10px;
+    }
+  }
+
+  .meeting-duration-button {
+    min-height: 34px;
+    flex: 1;
+    border: 1px solid var(--color-border-input);
+    border-radius: 10px;
+    background: var(--color-bg-light);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .meeting-duration-button:hover {
+    border-color: var(--color-border-control);
+    background: var(--color-bg-hover);
+  }
+
+  .meeting-duration-button[data-active="true"] {
+    border-color: transparent;
+    background: var(--color-primary-blue-light);
+    color: var(--color-primary-blue);
+  }
+}
+
+.meeting-calendar-shell {
+  --fc-classic-button: var(--color-bg-light);
+  --fc-classic-button-border: var(--color-border-input);
+  --fc-classic-button-strong: var(--color-bg-hover);
+  --fc-classic-button-strong-border: var(--color-border-control);
+  --fc-classic-button-outline: var(--color-primary-blue-light-hover);
+  --fc-classic-button-foreground: var(--color-text-heading);
+  --fc-classic-primary: var(--color-primary-blue);
+  --fc-classic-primary-foreground: var(--color-white);
+  --fc-classic-event: var(--color-primary-blue);
+  --fc-classic-event-contrast: var(--color-white);
+  --fc-classic-background-event: var(--color-success-green);
+  --fc-classic-highlight: var(--color-primary-blue-light-hover);
+  --fc-classic-today: transparent;
+  --fc-classic-now: var(--color-primary-blue);
+  --fc-classic-background: var(--color-bg-light);
+  --fc-classic-faint: rgba(24, 34, 52, 0.025);
+  --fc-classic-muted: var(--color-bg-hover);
+  --fc-classic-strong: var(--color-border-control);
+  --fc-classic-foreground: var(--color-text-heading);
+  --fc-classic-faint-foreground: var(--color-text-disabled);
+  --fc-classic-muted-foreground: var(--color-text-muted);
+  --fc-classic-border: var(--color-border-light);
+  --fc-classic-strong-border: var(--color-border-control);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+.recruiter-calendar-workspace {
+  min-width: 0;
+}
+
+.recruiter-calendar-shell {
+  overflow: hidden;
+  background: var(--color-bg-light);
+}
+
+.recruiter-calendar-day-heading {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  padding-block: 6px;
+}
+
+.recruiter-calendar-day-heading > span,
+.recruiter-calendar-month-weekday {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.recruiter-calendar-day-heading > strong {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--color-text-heading);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.recruiter-calendar-day-heading > strong[data-today="true"] {
+  background: var(--color-primary-blue);
+  color: var(--color-white);
+}
+
+.recruiter-calendar-month-weekday {
+  display: inline-block;
+  padding-block: 10px;
+}
+
+.recruiter-calendar-month-date {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recruiter-calendar-month-date[data-today="true"] {
+  background: var(--color-primary-blue);
+  color: var(--color-white);
+}
+
+.recruiter-calendar-slot-label {
+  display: inline-block;
+  padding-inline-end: 7px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.meeting-calendar-shell .meeting-calendar-event-sent {
+  border-color: var(--color-primary-blue);
+  background: var(--color-primary-blue);
+  cursor: pointer;
+}
+
+.meeting-calendar-shell .meeting-calendar-event-failed {
+  border-color: var(--color-text-muted);
+  background: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.meeting-calendar-event-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 3px;
+  overflow: hidden;
+}
+
+.meeting-calendar-event-time {
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.meeting-calendar-event-title {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recruiter-calendar-event-candidate {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recruiter-calendar-event-content[data-compact="true"] {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 4px;
+}
+
+.recruiter-calendar-event-content[data-compact="true"]
+  .meeting-calendar-event-time {
+  flex: none;
 }

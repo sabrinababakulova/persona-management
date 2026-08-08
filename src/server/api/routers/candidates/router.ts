@@ -3,6 +3,12 @@ import { createTRPCRouter } from "~/server/api/trpc";
 import { addCandidateNoteProcedure, getCandidateProcedure } from "./detail";
 import { listCandidatesProcedure, listHhCandidatesProcedure } from "./list";
 import {
+  createCandidateMeetingProcedure,
+  listCandidateMeetingsProcedure,
+  listMyMeetingsProcedure,
+  searchMeetingCandidatesProcedure,
+} from "./meetings";
+import {
   createCandidateProcedure,
   updateCandidateProcedure,
   uploadResumeProcedure,
@@ -20,6 +26,10 @@ export const candidatesRouter = createTRPCRouter({
   listHh: listHhCandidatesProcedure,
   get: getCandidateProcedure,
   addNote: addCandidateNoteProcedure,
+  listMeetings: listCandidateMeetingsProcedure,
+  listMyMeetings: listMyMeetingsProcedure,
+  searchMeetingCandidates: searchMeetingCandidatesProcedure,
+  createMeeting: createCandidateMeetingProcedure,
   create: createCandidateProcedure,
   update: updateCandidateProcedure,
   uploadResume: uploadResumeProcedure,

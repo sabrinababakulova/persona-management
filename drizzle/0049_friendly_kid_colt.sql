@@ -1,0 +1,1 @@
+CREATE INDEX "candidate_meeting_organizer_start_idx" ON "candidate_meeting" USING btree ("organizer_user_id","start_at");

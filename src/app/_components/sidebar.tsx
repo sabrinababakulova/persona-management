@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import {
+  CalendarIcon,
   CloseIcon,
   HomeIcon,
   OutlineBriefcaseIcon,
@@ -58,6 +59,11 @@ export function Sidebar({ hasHydrated, isOpen, onClose }: SidebarProps) {
       label: t("home"),
       href: "/dashboard",
       icon: <HomeIcon className="h-6 w-6" />,
+    },
+    {
+      label: t("calendar"),
+      href: "/calendar",
+      icon: <CalendarIcon className="h-6 w-6" />,
     },
     {
       label: t("vacancies"),
