@@ -35,7 +35,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
 type PublicationState = "published" | "draft" | "local";
 
 const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
-  published: "bg-status-active-bg text-status-active",
+  published: "bg-badge-soft-green-bg text-text-heading",
   draft: "bg-status-closed-bg text-status-closed",
   local: "bg-bg-input text-text-placeholder",
 };
@@ -446,12 +446,12 @@ export function PublicationsTable() {
                   disabled={updatePublicationStatus.isPending}
                   fieldClassName={
                     pub.isActive
-                      ? "max-h-[30px] border-status-active-bg bg-status-active-bg font-semibold text-status-active hover:border-status-active hover:bg-status-active-bg focus:border-status-active focus:bg-status-active-bg"
+                      ? "max-h-[30px] border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"
                       : "max-h-[30px] border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
                   }
                   hideLabel
                   iconClassName={
-                    pub.isActive ? "text-status-active" : "text-status-closed"
+                    pub.isActive ? "text-text-heading" : "text-status-closed"
                   }
                   label={t("table.publicationStatus")}
                   onChange={(value) =>
