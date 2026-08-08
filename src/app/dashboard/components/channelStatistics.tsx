@@ -60,16 +60,33 @@ function buildNormalizedStats(channelStats: ChannelStat[]) {
     0,
   );
 
-  return CHANNEL_ORDER.map((name) => {
-    const count = totals.get(name) ?? 0;
+  // Largest-remainder rounding: naive per-row Math.round can add up to 99%
+  // or 101%, so floor everything and hand the leftover points to the rows
+  // with the biggest fractional parts.
+  const exactShares = CHANNEL_ORDER.map((name) =>
+    total > 0 ? ((totals.get(name) ?? 0) / total) * 100 : 0,
+  );
+  const percentages = exactShares.map((share) => Math.floor(share));
+  let leftover =
+    total > 0 ? 100 - percentages.reduce((sum, value) => sum + value, 0) : 0;
+  const byRemainder = exactShares
+    .map((share, index) => ({ index, remainder: share - Math.floor(share) }))
+    .filter((entry) => (exactShares[entry.index] ?? 0) > 0)
+    .sort((a, b) => b.remainder - a.remainder);
+  for (const entry of byRemainder) {
+    if (leftover <= 0) {
+      break;
+    }
+    percentages[entry.index] = (percentages[entry.index] ?? 0) + 1;
+    leftover -= 1;
+  }
 
-    return {
-      name,
-      count,
-      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
-      colorClasses: CHANNEL_COLORS[name],
-    };
-  });
+  return CHANNEL_ORDER.map((name, index) => ({
+    name,
+    count: totals.get(name) ?? 0,
+    percentage: percentages[index] ?? 0,
+    colorClasses: CHANNEL_COLORS[name],
+  }));
 }
 
 export function ChannelStatistics({
