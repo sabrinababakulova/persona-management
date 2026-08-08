@@ -612,7 +612,7 @@
     "responses": "Отклики",
     "region": "Регион (hh.uz)",
     "employment": "Занятость",
-    "links": "Связи",
+    "links": "Платформы",
     "localConnection": "Talanty",
     "funnel": "Воронка",
     "published": "Опубликовано:",
@@ -924,7 +924,9 @@
       "hhActivate": "Публикация будет опубликована на hh.uz",
       "hhDeactivate": "Публикация будет архивирована в hh.uz",
       "activateQuestion": "Активировать публикацию?",
-      "deactivateQuestion": "Деактивировать публикацию?"
+      "deactivateQuestion": "Деактивировать публикацию?",
+      "forOlx": "Для OLX.uz",
+      "forRabota": "Для rabota.ru"
     },
     "hh": {
       "pageTitle": "Публикация на hh.uz",

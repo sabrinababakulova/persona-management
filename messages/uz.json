@@ -612,7 +612,7 @@
     "responses": "Arizalar",
     "region": "Hudud (hh.uz)",
     "employment": "Bandlik",
-    "links": "Aloqalar",
+    "links": "Platformalar",
     "localConnection": "Talanty",
     "funnel": "Voronka",
     "published": "E’lon qilingan:",
@@ -924,7 +924,9 @@
       "hhActivate": "E’lon hh.uz saytida chop etiladi.",
       "hhDeactivate": "E’lon hh.uz saytida arxivlanadi.",
       "activateQuestion": "E’lonni faollashtirasizmi?",
-      "deactivateQuestion": "E’lonni nofaol qilasizmi?"
+      "deactivateQuestion": "E’lonni nofaol qilasizmi?",
+      "forOlx": "OLX.uz uchun",
+      "forRabota": "rabota.ru uchun"
     },
     "hh": {
       "pageTitle": "hh.uz saytida e’lon qilish",

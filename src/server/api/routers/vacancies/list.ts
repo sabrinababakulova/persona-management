@@ -17,6 +17,7 @@ import { vacancyListInputSchema } from "./schemas";
 import {
   formatHhVacancy,
   formatVacancy,
+  getVacancyPublicationChannels,
   getVacancyResponseCounts,
   isUserVisibleVacancy,
 } from "./shared";
@@ -160,12 +161,22 @@ export const listVacanciesProcedure = protectedProcedure
         .where(and(...conditions))
         .orderBy(desc(vacancies.createdAt));
 
-      const responseCounts = await getVacancyResponseCounts(
-        ctx.db,
-        rows.map((row) => row.id),
-      );
+      const [responseCounts, publicationChannels] = await Promise.all([
+        getVacancyResponseCounts(
+          ctx.db,
+          rows.map((row) => row.id),
+        ),
+        getVacancyPublicationChannels(
+          ctx.db,
+          rows.map((row) => row.id),
+        ),
+      ]);
       localVacancies = rows.map((row) =>
-        formatVacancy(row, responseCounts.get(row.id) ?? 0),
+        formatVacancy(
+          row,
+          responseCounts.get(row.id) ?? 0,
+          publicationChannels.get(row.id) ?? [],
+        ),
       );
     }
 

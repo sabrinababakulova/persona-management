@@ -612,7 +612,7 @@
     "responses": "Applications",
     "region": "Region (hh.uz)",
     "employment": "Employment",
-    "links": "Links",
+    "links": "Platforms",
     "localConnection": "Talanty",
     "funnel": "Funnel",
     "published": "Published:",
@@ -924,7 +924,9 @@
       "hhActivate": "The publication will be published on hh.uz.",
       "hhDeactivate": "The publication will be archived on hh.uz.",
       "activateQuestion": "Activate publication?",
-      "deactivateQuestion": "Deactivate publication?"
+      "deactivateQuestion": "Deactivate publication?",
+      "forOlx": "For OLX.uz",
+      "forRabota": "For rabota.ru"
     },
     "hh": {
       "pageTitle": "Publish on hh.uz",

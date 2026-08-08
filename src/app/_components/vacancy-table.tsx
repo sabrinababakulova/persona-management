@@ -27,6 +27,21 @@ const VACANCY_CONNECTION_ICONS = {
   hh: { src: "/hh.svg", label: "hh.uz" },
   ln: { src: "/linkedin.svg", label: "LinkedIn" },
   ph: { src: "/person-hunter.svg", label: "PersonHunters" },
+  olx: { src: "/olx.svg", label: "OLX.uz" },
+  rabota: { src: "/rabota.svg", label: "rabota.ru" },
+};
+
+/** Publication `destination` values → platform chip keys. */
+const DESTINATION_CONNECTION_KEYS: Record<
+  string,
+  keyof typeof VACANCY_CONNECTION_ICONS
+> = {
+  telegram: "tg",
+  "hh.uz": "hh",
+  linkedin: "ln",
+  "person-hunter": "ph",
+  "olx.uz": "olx",
+  "rabota.ru": "rabota",
 };
 
 const vacancyStatusTone: Record<
@@ -59,20 +74,29 @@ const vacancyStatusTone: Record<
 };
 
 const getVacancyConnectionIconsMeta = (vacancy: VacancyTableItem) => {
-  const connections = [];
+  const connections = new Set<keyof typeof VACANCY_CONNECTION_ICONS>();
+
+  // Platform chips come from the vacancy's actual publications; the mirror
+  // ids remain as a fallback for hh.uz-synced rows without local children.
+  for (const channel of vacancy.publicationChannels ?? []) {
+    const key = DESTINATION_CONNECTION_KEYS[channel];
+    if (key) {
+      connections.add(key);
+    }
+  }
 
   if (vacancy.hhVacancyId) {
-    connections.push("hh");
+    connections.add("hh");
   }
 
   if (vacancy.personHunterVacancyId) {
-    connections.push("ph");
+    connections.add("ph");
   }
 
   if (vacancy.telegramPostId) {
-    connections.push("tg");
+    connections.add("tg");
   }
-  return connections;
+  return [...connections];
 };
 
 interface VacancyTableProps {

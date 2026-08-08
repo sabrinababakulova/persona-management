@@ -35,6 +35,7 @@ export function toSalaryCurrency(value: string | null): SalaryCurrency {
 export function formatVacancy(
   vacancy: typeof vacancies.$inferSelect,
   responses = vacancy.responses ?? 0,
+  publicationChannels: string[] = [],
 ) {
   return {
     id: vacancy.id,
@@ -61,10 +62,51 @@ export function formatVacancy(
     personHunterUniqueCode: vacancy.personHunterUniqueCode ?? null,
     personHunterMeta: vacancy.personHunterMeta ?? null,
     telegramPostId: vacancy.telegramPostId ?? null,
+    /** Destinations of this vacancy's publication children (platform chips). */
+    publicationChannels,
     publishedAt: undefined,
     source: "local" as const,
     externalUrl: undefined,
   };
+}
+
+/**
+ * Destinations of publication rows grouped by their base vacancy, for the
+ * "Платформы" chips. One query per page of vacancies.
+ */
+export async function getVacancyPublicationChannels(
+  db: DatabaseClient,
+  vacancyIds: string[],
+): Promise<Map<string, string[]>> {
+  if (vacancyIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      parentId: vacancies.parentId,
+      destination: vacancies.destination,
+    })
+    .from(vacancies)
+    .where(
+      and(
+        inArray(vacancies.parentId, vacancyIds),
+        eq(vacancies.isPublication, true),
+      ),
+    );
+
+  const channels = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!row.destination) {
+      continue;
+    }
+    const existing = channels.get(row.parentId) ?? [];
+    if (!existing.includes(row.destination)) {
+      existing.push(row.destination);
+      channels.set(row.parentId, existing);
+    }
+  }
+  return channels;
 }
 
 export function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
@@ -96,6 +138,7 @@ export function formatHhVacancy(vacancy: HhVacancy, companyId: string) {
     personHunterUniqueCode: null,
     personHunterMeta: null,
     telegramPostId: null,
+    publicationChannels: [] as string[],
     publishedAt: vacancy.publishedAt,
     source: "hh.uz" as const,
     externalUrl: vacancy.externalUrl,

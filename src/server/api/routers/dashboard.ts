@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, ne, notExists, or } from "drizzle-orm";
 import {
+  getVacancyPublicationChannels,
   isUserVisibleVacancy,
   toVacancyStatus,
 } from "~/server/api/routers/vacancies/shared";
@@ -290,6 +291,11 @@ export const dashboardRouter = createTRPCRouter({
       },
     ];
 
+    const recentVacancyChannels = await getVacancyPublicationChannels(
+      ctx.db,
+      recentVacancyRows.map((vacancy) => vacancy.id),
+    );
+
     const recentVacancies = recentVacancyRows.map((v) => ({
       id: v.id,
       title: v.title,
@@ -301,6 +307,7 @@ export const dashboardRouter = createTRPCRouter({
       hhVacancyId: v.hhVacancyId ?? null,
       personHunterVacancyId: v.personHunterVacancyId ?? null,
       telegramPostId: v.telegramPostId ?? null,
+      publicationChannels: recentVacancyChannels.get(v.id) ?? [],
       publishedAt: undefined as string | undefined,
       source: "local" as const,
     }));

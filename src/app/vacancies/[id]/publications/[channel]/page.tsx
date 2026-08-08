@@ -9,6 +9,8 @@ const CHANNEL_DISPLAY_NAME: Record<string, string> = {
   "hh.uz": "HH",
   telegram: "Telegram",
   "person-hunter": "PersonHunters",
+  "olx.uz": "OLX.uz",
+  "rabota.ru": "rabota.ru",
 };
 
 /**
