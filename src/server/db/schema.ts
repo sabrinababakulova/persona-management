@@ -592,6 +592,16 @@ export const candidateVacancies = createTable(
      * agent. Per-application like the score; null until first enrichment run.
      */
     matchAnalysis: d.text("match_analysis"),
+    /**
+     * Requirements of THIS vacancy the candidate's resume covers — the green
+     * badges on funnel cards. Per-application, like `matchScore`.
+     */
+    matchedSkills: d.json("matched_skills").$type<string[]>().default([]),
+    /**
+     * Requirements of THIS vacancy the candidate's resume does not cover —
+     * the red badges on funnel cards. Per-application, like `matchScore`.
+     */
+    missingSkills: d.json("missing_skills").$type<string[]>().default([]),
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.
