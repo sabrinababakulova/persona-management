@@ -450,8 +450,8 @@ function VacancyStageCandidateCard({
       {candidate.tags.length > 0 ? (
         <div className="flex flex-wrap items-start gap-1.5">
           {candidate.tags.slice(0, 3).map((tag) => (
-            <div className="rounded-lg bg-status-danger-soft p-2" key={tag}>
-              <p className="font-semibold text-accent-red text-xs uppercase leading-none line-through">
+            <div className="rounded-lg bg-status-info-bg p-2" key={tag}>
+              <p className="font-semibold text-text-heading text-xs uppercase leading-none">
                 {tag}
               </p>
             </div>
