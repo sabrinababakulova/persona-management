@@ -731,9 +731,11 @@ export const getVacancyFunnelProcedure = protectedProcedure
         matchedSkills: (candidate.matchedSkills ?? []) as string[],
         missingSkills: (candidate.missingSkills ?? []) as string[],
         source: candidate.source ?? "",
+        // Quick preview always has something to open: the uploaded resume when
+        // one exists, otherwise the profile rendered to PDF on the fly.
         resumeUrl: candidate.resumeFileId
           ? buildCandidateResumeUrl(candidate.id)
-          : "",
+          : `/api/candidates/${candidate.id}/profile-export?format=pdf&template=custom&disposition=inline`,
         relatedVacancies: [] as { id: string; title: string }[],
       };
     });
