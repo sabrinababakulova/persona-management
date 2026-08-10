@@ -29,13 +29,12 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
   "olx.uz": { src: "/olx.svg", label: "OLX.uz" },
-  "rabota.ru": { src: "/rabota.svg", label: "rabota.ru" },
 };
 
 type PublicationState = "published" | "draft" | "local";
 
 const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
-  published: "bg-status-active-bg text-status-active",
+  published: "bg-badge-soft-green-bg text-text-heading",
   draft: "bg-status-closed-bg text-status-closed",
   local: "bg-bg-input text-text-placeholder",
 };
@@ -147,11 +146,6 @@ export function PublicationsTable() {
       iconSrc: "/telegram.svg",
     },
     { value: "olx.uz", label: t("table.forOlx"), iconSrc: "/olx.svg" },
-    {
-      value: "rabota.ru",
-      label: t("table.forRabota"),
-      iconSrc: "/rabota.svg",
-    },
     {
       value: "person-hunter",
       label: t("table.forPersonHunters"),
@@ -353,7 +347,7 @@ export function PublicationsTable() {
       </div>
 
       <div className="surface-card overflow-hidden">
-        <div className="hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
+        <div className="hidden grid-cols-12 gap-x-4 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
             <span>{t("table.name")}</span>
@@ -397,7 +391,7 @@ export function PublicationsTable() {
           const externalUrl = getPublicationExternalUrl(pub, locale);
           return (
             <div
-              className="grid grid-cols-12 items-center gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
+              className="grid grid-cols-12 items-center gap-x-4 gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
               key={pub.id}
             >
               <div className="col-span-1">
@@ -442,16 +436,16 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-2 lg:col-span-2">
                 <Dropdown
-                  className="w-full max-w-35"
+                  className="w-fit"
                   disabled={updatePublicationStatus.isPending}
                   fieldClassName={
                     pub.isActive
-                      ? "max-h-[30px] border-status-active-bg bg-status-active-bg font-semibold text-status-active hover:border-status-active hover:bg-status-active-bg focus:border-status-active focus:bg-status-active-bg"
-                      : "max-h-[30px] border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
+                      ? "max-h-[30px] w-auto! px-2.5! pr-8! border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"
+                      : "max-h-[30px] w-auto! px-2.5! pr-8! border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
                   }
                   hideLabel
                   iconClassName={
-                    pub.isActive ? "text-status-active" : "text-status-closed"
+                    pub.isActive ? "text-text-heading" : "text-status-closed"
                   }
                   label={t("table.publicationStatus")}
                   onChange={(value) =>

@@ -1,0 +1,1 @@
+ALTER TABLE "vacancy_candidate" ADD COLUMN "missing_skills" json DEFAULT '[]'::json;

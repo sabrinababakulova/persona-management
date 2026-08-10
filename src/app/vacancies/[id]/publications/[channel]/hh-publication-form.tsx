@@ -49,6 +49,86 @@ function dedupeOptionsByValue<T extends { value: string }>(options: T[]): T[] {
   });
 }
 
+function normalizeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Locally created vacancies store human-readable labels ("Фергана",
+ * "Проектная работа") where hh.uz selects expect dictionary ids. This table
+ * maps our labels (normalized) to hh.uz dictionary names when they differ.
+ */
+const HH_LABEL_ALIASES: Record<string, string[]> = {
+  "без опыта": ["нет опыта"],
+  "1-3 года": ["от 1 года до 3 лет"],
+  "3-6 лет": ["от 3 до 6 лет"],
+  гибрид: ["гибкий график"],
+  "frontend-разработчик": ["программист, разработчик"],
+  "backend-разработчик": ["программист, разработчик"],
+  "fullstack-разработчик": ["программист, разработчик"],
+  "мобильный разработчик": ["программист, разработчик"],
+  "дата-инженер": ["дата-сайентист", "программист, разработчик"],
+  "инженер по тестированию": ["тестировщик"],
+  "продакт-менеджер": ["менеджер продукта"],
+  "продуктовый дизайнер": ["дизайнер, художник"],
+  "hr-специалист": ["менеджер по персоналу"],
+  маркетолог: [
+    "маркетолог-аналитик",
+    "менеджер по маркетингу, интернет-маркетолог",
+  ],
+  юрист: ["юрист", "юрисконсульт"],
+  "менеджер по продажам": [
+    "менеджер по продажам, менеджер по работе с клиентами",
+  ],
+  "контент-менеджер": [
+    "smm-менеджер, контент-менеджер",
+    "копирайтер, редактор, корректор",
+  ],
+  "smm-специалист": ["smm-менеджер"],
+  "специалист поддержки": ["специалист технической поддержки"],
+  тимлид: ["руководитель группы разработки", "программист, разработчик"],
+};
+
+/**
+ * Resolves a stored field value to an option id: by id, by (normalized)
+ * label, then through the alias table with a contains-fallback — hh role
+ * labels are rendered as "Категория — Роль", so equality alone is not enough.
+ */
+function resolveOptionValue(
+  value: string,
+  options: { value: string; label: string }[],
+): string | null {
+  if (!value || options.length === 0) {
+    return null;
+  }
+  if (options.some((option) => option.value === value)) {
+    return null;
+  }
+  const normalized = normalizeLabel(value);
+  const byLabel = options.find(
+    (option) => normalizeLabel(option.label) === normalized,
+  );
+  if (byLabel) {
+    return byLabel.value;
+  }
+  for (const candidate of HH_LABEL_ALIASES[normalized] ?? []) {
+    const match =
+      options.find((option) => normalizeLabel(option.label) === candidate) ??
+      options.find((option) =>
+        normalizeLabel(option.label).includes(candidate),
+      );
+    if (match) {
+      return match.value;
+    }
+  }
+  return null;
+}
+
 /**
  * Per-channel publication editor for hh.uz. Lives at
  * `/vacancies/<id>/publications/hh.uz`.
@@ -193,6 +273,40 @@ export function HhPublicationForm({
       ),
     [hhLookupsQuery.data?.vacancyType],
   );
+
+  // Backend rows created inside the app hold readable labels, not hh.uz
+  // dictionary ids — remap them once the dictionaries are loaded so every
+  // select shows the stored value instead of its placeholder.
+  useEffect(() => {
+    const remaps: [
+      keyof HhPublicationFields,
+      { value: string; label: string }[],
+    ][] = [
+      ["areaId", areaOptions],
+      ["employmentId", employmentOptions],
+      ["scheduleId", scheduleOptions],
+      ["experienceId", experienceOptions],
+      ["professionalRoleId", professionalRoleOptions],
+      ["vacancyTypeId", vacancyTypeOptions],
+      ["billingTypeId", billingTypeOptions],
+    ];
+    for (const [key, options] of remaps) {
+      const resolved = resolveOptionValue(fields[key], options);
+      if (resolved) {
+        setHhField(key, resolved);
+      }
+    }
+  }, [
+    fields,
+    areaOptions,
+    employmentOptions,
+    scheduleOptions,
+    experienceOptions,
+    professionalRoleOptions,
+    vacancyTypeOptions,
+    billingTypeOptions,
+    setHhField,
+  ]);
 
   const createPublication = api.vacancies.create.useMutation({
     onSuccess: async () => {

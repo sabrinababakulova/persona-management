@@ -50,8 +50,8 @@ function buildErrorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
-function buildContentDisposition(fileName: string) {
-  return `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+function buildContentDisposition(fileName: string, inline = false) {
+  return `${inline ? "inline" : "attachment"}; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 /** Auth + company guard shared by GET and POST. Returns the company id or a Response. */
@@ -105,6 +105,8 @@ async function produce(input: {
   options: ProfileRenderOptions;
   candidateId: string;
   companyId: string;
+  /** `?disposition=inline` renders in the browser tab instead of downloading. */
+  inline?: boolean;
 }): Promise<Response> {
   const exportConfig = EXPORTS[input.format];
   try {
@@ -120,6 +122,7 @@ async function produce(input: {
         "Content-Type": exportConfig.contentType,
         "Content-Disposition": buildContentDisposition(
           `profile-${input.candidateId}.${exportConfig.extension}`,
+          input.inline === true && input.format === "pdf",
         ),
         "Content-Length": String(buffer.byteLength),
         "Cache-Control": "private, no-store",
@@ -178,6 +181,7 @@ export async function GET(request: Request, context: RouteContext) {
     options,
     candidateId,
     companyId,
+    inline: searchParams.get("disposition") === "inline",
   });
 }
 

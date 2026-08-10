@@ -37,6 +37,66 @@ export const candidateNoteInputSchema = z.object({
     .max(2000, "Заметка не должна превышать 2000 символов"),
 });
 
+function isSupportedTimeZone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Meeting data selected in the candidate calendar before an RSVP email is sent. */
+export const candidateMeetingInputSchema = z
+  .object({
+    candidateId: z.string().min(1).max(255),
+    title: z
+      .string()
+      .trim()
+      .min(1, "Введите название встречи")
+      .max(255, "Название не должно превышать 255 символов"),
+    description: z.string().trim().max(5000).optional(),
+    location: z.string().trim().max(500).optional(),
+    startAt: z.date(),
+    endAt: z.date(),
+    timeZone: z
+      .string()
+      .min(1)
+      .max(100)
+      .refine(isSupportedTimeZone, "Неизвестный часовой пояс"),
+  })
+  .superRefine((input, context) => {
+    if (input.startAt.getTime() < Date.now() - 60_000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Встречу нельзя назначить в прошлом",
+        path: ["startAt"],
+      });
+    }
+
+    const durationMs = input.endAt.getTime() - input.startAt.getTime();
+    if (durationMs <= 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Время окончания должно быть позже времени начала",
+        path: ["endAt"],
+      });
+    } else if (durationMs > 8 * 60 * 60 * 1000) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Встреча не может длиться дольше 8 часов",
+        path: ["endAt"],
+      });
+    }
+  });
+
+/** Candidate picker search used by the recruiter-level meeting modal. */
+export const meetingCandidateSearchInputSchema = z
+  .object({
+    query: z.string().trim().max(255).optional().default(""),
+  })
+  .optional();
+
 /** Full candidate profile payload used when creating a stored candidate. */
 export const candidateCreateInputSchema = z.object({
   id: z.string().uuid().optional(),

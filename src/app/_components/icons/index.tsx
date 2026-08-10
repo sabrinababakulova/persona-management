@@ -3,6 +3,7 @@ export { ArrowLeftIcon } from "./ArrowLeftIcon";
 export { BellIcon } from "./BellIcon";
 export { BrandLogoIcon } from "./BrandLogoIcon";
 export { BriefcaseIcon } from "./BriefcaseIcon";
+export { CalendarIcon } from "./CalendarIcon";
 export { ChannelStatisticsChartIcon } from "./ChannelStatisticsChartIcon";
 export { CheckIcon } from "./CheckIcon";
 export { ChevronDownIcon } from "./ChevronDownIcon";

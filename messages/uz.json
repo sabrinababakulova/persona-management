@@ -925,8 +925,7 @@
       "hhDeactivate": "E’lon hh.uz saytida arxivlanadi.",
       "activateQuestion": "E’lonni faollashtirasizmi?",
       "deactivateQuestion": "E’lonni nofaol qilasizmi?",
-      "forOlx": "OLX.uz uchun",
-      "forRabota": "rabota.ru uchun"
+      "forOlx": "OLX.uz uchun"
     },
     "hh": {
       "pageTitle": "hh.uz saytida e’lon qilish",

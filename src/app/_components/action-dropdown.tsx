@@ -96,7 +96,7 @@ export function ActionDropdown({
         {open ? (
           <motion.ul
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`absolute top-full right-0 z-20 mt-2 flex w-[260px] origin-top-right flex-col overflow-hidden rounded-xl border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
+            className={`absolute top-full right-0 z-20 mt-2 flex w-[210px] origin-top-right flex-col overflow-hidden rounded-xl border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
             exit={{ opacity: 0, scale: 0.98, y: -5 }}
             initial={{ opacity: 0, scale: 0.97, y: -8 }}
           >
@@ -109,7 +109,7 @@ export function ActionDropdown({
                 transition={{ delay: index * 0.035, duration: 0.18 }}
               >
                 <button
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left font-medium text-base text-text-heading leading-none transition-colors hover:bg-bg-input ${
+                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left font-medium text-sm text-text-heading leading-none transition-colors hover:bg-bg-input ${
                     index < items.length - 1
                       ? "border-border-input border-b"
                       : ""
@@ -123,11 +123,11 @@ export function ActionDropdown({
                 >
                   <Image
                     alt=""
-                    className="h-6 w-6 flex-shrink-0"
-                    height={24}
+                    className="h-5 w-5 flex-shrink-0"
+                    height={20}
                     src={item.iconSrc}
                     unoptimized
-                    width={24}
+                    width={20}
                   />
                   <span>{item.label}</span>
                 </button>

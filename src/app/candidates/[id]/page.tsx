@@ -1,11 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Breadcrumbs } from "~/app/_components/Breadcrumbs";
-import { PencilIcon, PlusIcon, TrashIcon } from "~/app/_components/icons";
+import {
+  CalendarIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+} from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import {
   FeedbackPresence,
@@ -161,6 +167,14 @@ export default function CandidateDetailPage() {
                 candidateId={candidateId}
                 hasHhResume={Boolean(candidate.resumeFile?.url)}
               />
+
+              <Link
+                className="ui-button ui-button-primary"
+                href={`/candidates/${candidateId}/calendar`}
+              >
+                <CalendarIcon className="h-4 w-4" />
+                {t("scheduleMeeting")}
+              </Link>
             </div>
           </div>
 

@@ -236,7 +236,7 @@
       "part-time": "Частичная занятость"
     },
     "vacancyStatuses": {
-      "active": "Активна",
+      "active": "Активен",
       "draft": "Черновик",
       "paused": "Приостановлена",
       "closed": "Закрыта",
@@ -646,7 +646,7 @@
     "archivedDescription": "Переведите её в активный статус, чтобы продолжить редактирование на hh.uz.",
     "status": "Статус вакансии",
     "archived": "В архиве",
-    "active": "Активна",
+    "active": "Активен",
     "preview": "Предпросмотр",
     "descriptionMenu": "Описание вакансии",
     "publicationsMenu": "Публикации",
@@ -925,8 +925,7 @@
       "hhDeactivate": "Публикация будет архивирована в hh.uz",
       "activateQuestion": "Активировать публикацию?",
       "deactivateQuestion": "Деактивировать публикацию?",
-      "forOlx": "Для OLX.uz",
-      "forRabota": "Для rabota.ru"
+      "forOlx": "Для OLX.uz"
     },
     "hh": {
       "pageTitle": "Публикация на hh.uz",

@@ -28,7 +28,6 @@ const VACANCY_CONNECTION_ICONS = {
   ln: { src: "/linkedin.svg", label: "LinkedIn" },
   ph: { src: "/person-hunter.svg", label: "PersonHunters" },
   olx: { src: "/olx.svg", label: "OLX.uz" },
-  rabota: { src: "/rabota.svg", label: "rabota.ru" },
 };
 
 /** Publication `destination` values → platform chip keys. */
@@ -41,7 +40,6 @@ const DESTINATION_CONNECTION_KEYS: Record<
   linkedin: "ln",
   "person-hunter": "ph",
   "olx.uz": "olx",
-  "rabota.ru": "rabota",
 };
 
 const vacancyStatusTone: Record<

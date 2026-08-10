@@ -204,6 +204,8 @@ export async function getVacanciesRelatedCandidates(
       matchScore: candidateVacancies.matchScore,
       candidateMatchScore: candidates.matchScore,
       matchAnalysis: candidateVacancies.matchAnalysis,
+      matchedSkills: candidateVacancies.matchedSkills,
+      missingSkills: candidateVacancies.missingSkills,
       aiAnalysis: candidates.aiAnalysis,
       currentPosition: candidates.currentPosition,
       contacts: candidates.contacts,

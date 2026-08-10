@@ -100,6 +100,10 @@ type FunnelCandidate = {
   salaryExpectation: number;
   salaryCurrency: string;
   tags: string[];
+  /** Requirements of this vacancy the resume covers (green badges). */
+  matchedSkills: string[];
+  /** Requirements of this vacancy the resume does not cover (red badges). */
+  missingSkills: string[];
   source: string;
   resumeUrl: string;
   relatedVacancies: { id: string; title: string }[];
@@ -342,16 +346,7 @@ function VacancyStageCandidateCard({
     candidate.matchAnalysis || candidate.aiAnalysis,
     t("aiUnavailable"),
   );
-  const positionTokens = compactValues([
-    candidate.currentCompany,
-    candidate.currentPosition,
-    ...candidate.languages
-      .slice(0, 1)
-      .map((language) =>
-        language.level ? `${language.name} ${language.level}` : language.name,
-      ),
-    ...candidate.skills.slice(0, 1),
-  ]);
+  const strengthTokens = compactValues(candidate.matchedSkills);
   const candidateDetailId = isHhSource ? `hh_${candidate.id}` : candidate.id;
   const candidateDetailParams = new URLSearchParams({
     fromVacancyId: vacancyId,
@@ -433,9 +428,9 @@ function VacancyStageCandidateCard({
         </div>
       </div>
 
-      {positionTokens.length > 0 ? (
+      {strengthTokens.length > 0 ? (
         <div className="flex flex-wrap items-start gap-1.5">
-          {positionTokens.slice(0, 4).map((token) => (
+          {strengthTokens.slice(0, 4).map((token) => (
             <span
               className="rounded-lg bg-badge-soft-green-bg px-2 py-1.5 font-semibold text-text-heading text-xs uppercase leading-none"
               data-testid="funnel-skill-badge"
@@ -447,12 +442,12 @@ function VacancyStageCandidateCard({
         </div>
       ) : null}
 
-      {candidate.tags.length > 0 ? (
+      {candidate.missingSkills.length > 0 ? (
         <div className="flex flex-wrap items-start gap-1.5">
-          {candidate.tags.slice(0, 3).map((tag) => (
-            <div className="rounded-lg bg-status-danger-soft p-2" key={tag}>
+          {candidate.missingSkills.slice(0, 3).map((skill) => (
+            <div className="rounded-lg bg-status-danger-soft p-2" key={skill}>
               <p className="font-semibold text-accent-red text-xs uppercase leading-none line-through">
-                {tag}
+                {skill}
               </p>
             </div>
           ))}

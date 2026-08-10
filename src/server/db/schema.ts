@@ -408,6 +408,68 @@ export const aiUsageLogs = createTable(
   ],
 );
 
+/**
+ * Recruiter-scheduled meetings with candidates.
+ *
+ * `invitationStatus` describes SMTP delivery of the iCalendar request, not the
+ * candidate's RSVP. Replies go to the organizer mailbox from the invitation.
+ */
+export const candidateMeetings = createTable(
+  "candidate_meeting",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    candidateId: d
+      .varchar("candidate_id", { length: 255 })
+      .notNull()
+      .references(() => candidates.id, { onDelete: "cascade" }),
+    companyId: d
+      .varchar("company_id", { length: 255 })
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    organizerUserId: d
+      .varchar("organizer_user_id", { length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
+    organizerName: d.varchar("organizer_name", { length: 255 }).notNull(),
+    organizerEmail: d.varchar("organizer_email", { length: 255 }).notNull(),
+    candidateEmail: d.varchar("candidate_email", { length: 255 }).notNull(),
+    title: d.varchar({ length: 255 }).notNull(),
+    description: d.text(),
+    location: d.varchar({ length: 500 }),
+    startAt: d.timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: d.timestamp("end_at", { withTimezone: true }).notNull(),
+    timeZone: d
+      .varchar("time_zone", { length: 100 })
+      .notNull()
+      .default("Asia/Tashkent"),
+    /** Stable iCalendar UID used by mail clients to identify this event. */
+    invitationUid: d.varchar("invitation_uid", { length: 255 }).notNull(),
+    /** `pending` | `sent` | `failed`; this is delivery state, not RSVP state. */
+    invitationStatus: d
+      .varchar("invitation_status", { length: 20 })
+      .notNull()
+      .default("pending"),
+    invitationSentAt: d.timestamp("invitation_sent_at", {
+      withTimezone: true,
+    }),
+    invitationError: d.text("invitation_error"),
+    createdAt: d.timestamp({ withTimezone: true }).defaultNow().notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("candidate_meeting_invitation_uid_idx").on(t.invitationUid),
+    index("candidate_meeting_candidate_start_idx").on(t.candidateId, t.startAt),
+    index("candidate_meeting_company_start_idx").on(t.companyId, t.startAt),
+    index("candidate_meeting_organizer_start_idx").on(
+      t.organizerUserId,
+      t.startAt,
+    ),
+  ],
+);
+
 // Vacancies table — schema mirrors the hh.uz publish payload so a vacancy can be created
 // in the form, persisted here, and published to hh.uz without an extra translation layer.
 export const vacancies = createTable(
@@ -530,6 +592,16 @@ export const candidateVacancies = createTable(
      * agent. Per-application like the score; null until first enrichment run.
      */
     matchAnalysis: d.text("match_analysis"),
+    /**
+     * Requirements of THIS vacancy the candidate's resume covers — the green
+     * badges on funnel cards. Per-application, like `matchScore`.
+     */
+    matchedSkills: d.json("matched_skills").$type<string[]>().default([]),
+    /**
+     * Requirements of THIS vacancy the candidate's resume does not cover —
+     * the red badges on funnel cards. Per-application, like `matchScore`.
+     */
+    missingSkills: d.json("missing_skills").$type<string[]>().default([]),
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.
