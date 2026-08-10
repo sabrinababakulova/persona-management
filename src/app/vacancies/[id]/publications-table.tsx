@@ -43,8 +43,13 @@ function getPublicationState(publication: {
   hhVacancyId?: string | null;
   hhDraftId?: string | null;
   personHunterVacancyId?: string | null;
+  olxAdvertUrl?: string | null;
 }): PublicationState {
-  if (publication.hhVacancyId || publication.personHunterVacancyId) {
+  if (
+    publication.hhVacancyId ||
+    publication.personHunterVacancyId ||
+    publication.olxAdvertUrl
+  ) {
     return "published";
   }
   if (publication.hhDraftId) {
@@ -63,6 +68,7 @@ function getPublicationExternalUrl(
     hhVacancyId?: string | null;
     personHunterUniqueCode?: string | null;
     telegramPostId?: string | null;
+    olxAdvertUrl?: string | null;
   },
   locale: string,
 ): string | null {
@@ -79,6 +85,9 @@ function getPublicationExternalUrl(
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
+  }
+  if (publication.destination === "olx.uz" && publication.olxAdvertUrl) {
+    return publication.olxAdvertUrl;
   }
   return null;
 }
@@ -265,6 +274,7 @@ export function PublicationsTable() {
       isActive: false,
       isPublication: true,
       destination: publication.destination ?? undefined,
+      olxBrowserMeta: publication.olxBrowserMeta ?? undefined,
     });
   };
   const onDelete = (id: string) => {
@@ -437,7 +447,10 @@ export function PublicationsTable() {
               <div className="col-span-2 lg:col-span-2">
                 <Dropdown
                   className="w-fit"
-                  disabled={updatePublicationStatus.isPending}
+                  disabled={
+                    updatePublicationStatus.isPending ||
+                    (pub.destination === "olx.uz" && Boolean(pub.olxAdvertUrl))
+                  }
                   fieldClassName={
                     pub.isActive
                       ? "max-h-[30px] w-auto! px-2.5! pr-8! border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"

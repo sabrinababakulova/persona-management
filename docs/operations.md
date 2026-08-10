@@ -90,3 +90,19 @@ Cron output is written under `/var/log/persona-management/`. The installed
 logrotate policy rotates daily or at 10 MB, keeps 14 rotations, and compresses
 old logs. The three legacy `/var/log/hh-*.log` files are retained for four
 weekly rotations after migration.
+
+## OLX.uz browser runtime
+
+OLX.uz publishing uses `playwright-core` with a system-installed Chrome or
+Chromium. It does not download or keep a browser pool. Configure
+`OLX_BROWSER_EXECUTABLE_PATH` when Chrome is outside the common installation
+paths.
+
+Run the application process as an unprivileged service account so Chrome's
+sandbox remains enabled. The current root-owned PM2 deployment must be moved to
+an unprivileged service account before enabling OLX in production. The explicit
+`OLX_BROWSER_NO_SANDBOX=true` fallback is only suitable for a separately
+hardened container/host; it is not enabled automatically.
+
+See `docs/olx-browser-publishing.md` for the session security model, rate
+limits, safe live-test procedure, and troubleshooting.

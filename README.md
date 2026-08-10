@@ -67,3 +67,13 @@ To apply locally:
 ./scripts/start-database.sh
 bun run db:migrate
 ```
+
+## OLX.uz vacancy publishing
+
+OLX.uz publishing is browser-assisted because OLX.uz does not provide this
+project a supported third-party publishing API. Persona launches one short-lived
+system Chrome process only after an explicit user action, encrypts the reusable
+login session, never stores the OLX password, and stops on CAPTCHA/OTP.
+
+Setup, security boundaries, deployment requirements, and live-test steps are in
+[`docs/olx-browser-publishing.md`](docs/olx-browser-publishing.md).

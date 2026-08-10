@@ -250,6 +250,8 @@ Defined and validated in `src/env.js`:
 | `TELEGRAM_BOT_TOKEN` | No | Telegram bot token for vacancy posting |
 | `TELEGRAM_CHANNEL_ID` | No | Target Telegram channel (e.g., `@channelname` or numeric chat ID) |
 | `PERSON_HUNTER_API_KEY` | No | PersonHunters Vacancies API key — single shared key (not per-user OAuth); when unset, the PersonHunters channel is disabled |
+| `OLX_BROWSER_EXECUTABLE_PATH` | No | System Chrome/Chromium executable for explicit OLX.uz browser-assisted publishing; common macOS/Linux paths are auto-detected |
+| `OLX_BROWSER_NO_SANDBOX` | No | Explicit `"true"` fallback for a separately hardened root/container deployment. Prefer an unprivileged app user and Chrome sandbox. |
 
 No `NEXT_PUBLIC_*` variables exist — all env vars are server-only.
 
@@ -278,13 +280,14 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `companies` — id (UUID), name, city, country, description, website, phone, `logoUrl` / `logoFileId` (Directus asset of an uploaded logo). Each user belongs to a company; vacancies and candidates are scoped to a company. Editable from **My profile → Company settings** via the `company` router.
 - `companyInvitations` (table `company_invitation`) — shareable "join our company" links. `token` (43-char base64url random, UNIQUE — stored as-is so the link stays copyable), `companyId`, `createdById`, `expiresAt` (14 days), `revokedAt`, `usesCount` / `lastUsedAt`. Consumed by `/invite/[token]`; see `src/server/company/invitations.ts`.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` (external id once published), and `personHunterMeta` — a JSON blob (`$type<PersonHunterPublicationMeta>`) holding the PersonHunters-only fields (duties, requirements, conditions, selected reference ids, employment/schedule, experience range) that have no dedicated column, so the publish form can be re-populated on edit.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` + `personHunterMeta`, and OLX browser fields `olxAdvertUrl` / `olxAdvertId` / `olxBrowserMeta` / `olxLastPublishedAt` / `olxLastError`.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy). `actorUserId` is `ON DELETE SET NULL` so a deleted user does not block deletion or erase the log; `actorName` keeps it readable.
 
 **Integration tables**:
 - `company_hh_account` (Drizzle export: `userHhAccounts`) — hh.uz OAuth tokens and employer metadata, **per user**. Despite the legacy table name, the FK is `userId` (references `user.id`) with a UNIQUE constraint on `userId`. Two users in the same company connect to hh.uz independently — and the sync covers **all** of a company's connected employers (`resolveCompanyHhAccounts`). See `src/server/services/hh-company-account.ts` (`getUserHhAccount`, `resolveUserHhAuth`, `resolveCompanyHhAccounts`, `listHhConnectedCompanyIds`) and `src/app/api/integrations/hh/callback/route.ts`.
 - `company_telegram_channel` (Drizzle export: `userTelegramChannels`) — Telegram channels configured per user (same per-user pattern; legacy table name retained).
+- `user_olx_session` (Drizzle export: `userOlxSessions`) — one encrypted Playwright storage state per user. OLX passwords are never persisted. Status and last-operation metadata support reconnection without exposing cookies to the client.
 
 **hh.uz candidate sync tables**:
 - `hh_vacancy_sync_state` (`hhVacancySyncState`) — per-vacancy sync cursors. `lastNegotiationAt` is the discovery watermark (negotiation `created_at`); `lastStatusNegotiationAt` is the status-sync watermark (negotiation `updated_at`); plus run timestamps + last error.
@@ -455,6 +458,27 @@ Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single share
 ### Notes
 - The API pre-resolves related entities (`{ id, name }`) and localizes on the fly via `?lang=` (GET) / `"lang"` in the body (write) — languages `ru` / `uz` / `en`.
 - Design doc: `PERSON_HUNTER_DOC.md`. Schema helpers: `src/server/api/routers/vacancies/schemas.ts` (`PersonHunterPublicationMeta`).
+
+---
+
+## OLX.uz Browser-Assisted Publishing
+
+OLX.uz does not provide this project a supported third-party publishing API, so
+the integration fills the normal web form with `playwright-core` and a
+system-installed Chrome/Chromium. The user enters OLX credentials once over the
+authenticated Persona connection; the password is used only in memory and only
+encrypted browser storage state is persisted.
+
+Browser work is explicit and short-lived: one operation per process/host, no queue,
+no cron/polling/retries, a 90-second timeout, per-user database rate limits, and
+browser teardown in `finally`. A safe preview fills the form without submitting;
+final publishing has a separate confirmation. CAPTCHA/OTP/security challenges
+stop the flow and are never bypassed. No stealth or fingerprint-evasion code is
+used.
+
+Published-ad editing/deactivation/deletion are intentionally not automated in
+the first version. Full design, production setup, limitations, and test
+checklist: `docs/olx-browser-publishing.md`.
 
 ---
 

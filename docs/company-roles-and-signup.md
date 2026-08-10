@@ -133,7 +133,7 @@ Unknown, expired, and revoked tokens are indistinguishable to the caller — all
 - **`isMasterAccount` is read-only in Directus** by design — it records who created the company. Accounts that predate the flag stay `false` and can only be corrected with SQL.
 - **Restore a removed account:** the master can do it in the app, or clear `user.deactivatedAt` in Directus.
 - Field metadata for all three columns is applied by `scripts/register-directus-collections.sh` (run by `scripts/setup.sh`).
-- **Deleting a user in Directus** is possible: `account`, `session`, `company_hh_account`, `company_telegram_channel` and `user_olx_account` rows cascade away, while `recent_activity_log.actorUserId`, `ai_usage_log.user_id` and `company_invitation.createdById` are set to NULL so the history survives (the log keeps `actorName`). Prefer deactivation — deletion loses the person's identity in past activity.
+- **Deleting a user in Directus** is possible: `account`, `session`, `company_hh_account`, `company_telegram_channel` and `user_olx_session` rows cascade away, while `recent_activity_log.actorUserId`, `ai_usage_log.user_id` and `company_invitation.createdById` are set to NULL so the history survives (the log keeps `actorName`). Prefer deactivation — deletion loses the person's identity in past activity.
 - Existing installs: everyone starts as `member` with no master account, so no one can edit a pre-existing company until a role is set in Directus.
 
 ## Key files

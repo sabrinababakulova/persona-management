@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { HhPublicationForm } from "./hh-publication-form";
+import { OlxPublicationForm } from "./olx-publication-form";
 import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
 import { TgPublicationForm } from "./tg-publication-form";
 
@@ -37,6 +38,10 @@ export default async function VacancyPublicationChannelPage({
 
   if (channel === "person-hunter") {
     return <PersonHunterPublicationForm vacancyId={id} />;
+  }
+
+  if (channel === "olx.uz") {
+    return <OlxPublicationForm vacancyId={id} />;
   }
 
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;
