@@ -6,6 +6,9 @@
     "useIgnoreFile": true,
     "clientKind": "git"
   },
+  "files": {
+    "includes": ["**", "!!drizzle/meta/*_snapshot.json"]
+  },
   "assist": {
     "enabled": true,
     "actions": {

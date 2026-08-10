@@ -26,6 +26,10 @@ import {
   saveHhDraftProcedure,
   updateVacancyProcedure,
 } from "./mutations";
+import {
+  getOlxBrowserConfigProcedure,
+  publishOlxBrowserProcedure,
+} from "./olx";
 
 export const vacanciesRouter = createTRPCRouter({
   list: listVacanciesProcedure,
@@ -48,4 +52,6 @@ export const vacanciesRouter = createTRPCRouter({
   getPersonHunterConfig: getPersonHunterConfigProcedure,
   getPersonHunterPublication: getPersonHunterPublicationProcedure,
   publishPersonHunter: publishPersonHunterProcedure,
+  getOlxBrowserConfig: getOlxBrowserConfigProcedure,
+  publishOlxBrowser: publishOlxBrowserProcedure,
 });

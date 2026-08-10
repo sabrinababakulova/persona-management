@@ -62,6 +62,7 @@ import { FEATURE_PERSON_HUNTER_PUBLICATIONS } from "~/shared/feature-flags";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 import {
+  type OlxBrowserPublicationMeta,
   type PersonHunterPublicationMeta,
   vacancyCreateInputSchema,
   vacancyIdInputSchema,
@@ -142,6 +143,7 @@ export const createVacancyProcedure = protectedProcedure
         contactPhone: input.contactPhone ?? null,
         telegramFileId: input.telegramFileId ?? null,
         personHunterMeta: input.personHunterMeta ?? null,
+        olxBrowserMeta: input.olxBrowserMeta ?? null,
         companyId,
       })
       .returning();
@@ -304,6 +306,22 @@ export const updateVacancyProcedure = protectedProcedure
       throw new TRPCError({
         code: "NOT_FOUND",
         message: "Vacancy not found",
+      });
+    }
+
+    // The browser integration currently creates OLX adverts but does not
+    // automate their lifecycle. Never show a local inactive state while the
+    // external advert is still live; the recruiter must manage it on OLX.uz.
+    if (
+      input.isActive !== undefined &&
+      input.isActive !== existing.isActive &&
+      existing.destination === "olx.uz" &&
+      existing.olxAdvertUrl
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Измените статус объявления непосредственно на OLX.uz. Автоматическое удаление и деактивация не выполняются.",
       });
     }
 
@@ -668,6 +686,7 @@ export const updateVacancyProcedure = protectedProcedure
       isActive: boolean;
       isPublication: boolean;
       personHunterMeta: PersonHunterPublicationMeta | null;
+      olxBrowserMeta: OlxBrowserPublicationMeta | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
@@ -754,6 +773,9 @@ export const updateVacancyProcedure = protectedProcedure
     }
     if (input.personHunterMeta !== undefined) {
       valuesToUpdate.personHunterMeta = input.personHunterMeta;
+    }
+    if (input.olxBrowserMeta !== undefined) {
+      valuesToUpdate.olxBrowserMeta = input.olxBrowserMeta;
     }
     if (clearTelegramPosts) {
       valuesToUpdate.telegramPostId = null;

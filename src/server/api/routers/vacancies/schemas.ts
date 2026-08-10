@@ -74,6 +74,33 @@ export type PersonHunterPublicationMeta = z.infer<
   typeof personHunterMetaSchema
 >;
 
+/**
+ * Values that are specific to the OLX.uz web advert form.
+ *
+ * OLX.uz does not expose its Jobs dictionaries to third-party applications, so
+ * labels are deliberately stored as user-entered text. The browser worker
+ * selects the matching visible option instead of depending on undocumented ids.
+ */
+export const olxBrowserMetaSchema = z.object({
+  categoryPath: z
+    .array(z.string().trim().min(1).max(120))
+    .min(1)
+    .max(6)
+    .default(["Работа", "Вакансии"]),
+  location: z.string().trim().min(1).max(255),
+  district: z.string().trim().max(255).optional(),
+  employmentType: z.string().trim().max(255).optional(),
+  schedule: z.string().trim().max(255).optional(),
+  experience: z.string().trim().max(255).optional(),
+  contactName: z.string().trim().max(255).optional(),
+  contactPhone: z.string().trim().max(50).optional(),
+  salaryNegotiable: z.boolean().default(false),
+  remoteWork: z.boolean().default(false),
+  onlineRecruitment: z.boolean().default(false),
+});
+
+export type OlxBrowserPublicationMeta = z.infer<typeof olxBrowserMetaSchema>;
+
 export const vacancyCreateInputSchema = z.object({
   id: z.string().min(1).max(255).optional(),
   parentId: z.string().min(1).max(255).optional(),
@@ -99,6 +126,7 @@ export const vacancyCreateInputSchema = z.object({
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
   personHunterMeta: personHunterMetaSchema.optional(),
+  olxBrowserMeta: olxBrowserMetaSchema.optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -122,6 +150,7 @@ export const vacancyUpdateInputSchema = z.object({
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   personHunterMeta: personHunterMetaSchema.nullable().optional(),
+  olxBrowserMeta: olxBrowserMetaSchema.nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({

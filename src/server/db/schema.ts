@@ -8,7 +8,10 @@ import {
 import type { AdapterAccount } from "next-auth/adapters";
 
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
-import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
+import type {
+  OlxBrowserPublicationMeta,
+  PersonHunterPublicationMeta,
+} from "~/server/api/routers/vacancies/schemas";
 import { COMPANY_ROLE_MEMBER } from "~/shared/company-roles";
 
 export const createTable = pgTableCreator((name) => name);
@@ -518,6 +521,18 @@ export const vacancies = createTable(
     personHunterMeta: d
       .json("person_hunter_meta")
       .$type<PersonHunterPublicationMeta>(),
+    /** Public advert URL captured after the OLX browser submits the form. */
+    olxAdvertUrl: d.varchar("olx_advert_url", { length: 1000 }),
+    /** Advert id parsed from the public OLX URL when one is present. */
+    olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
+    /** OLX web-form labels entered by the recruiter. */
+    olxBrowserMeta: d
+      .json("olx_browser_meta")
+      .$type<OlxBrowserPublicationMeta>(),
+    olxLastPublishedAt: d.timestamp("olx_last_published_at", {
+      withTimezone: true,
+    }),
+    olxLastError: d.text("olx_last_error"),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),
@@ -550,6 +565,7 @@ export const vacancies = createTable(
     index("vacancy_company_id_idx").on(t.companyId),
     index("vacancy_parent_id_idx").on(t.parentId),
     index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
+    index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
   ],
 );
 
@@ -1109,6 +1125,35 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
   refreshToken: d.text(),
   employerId: d.varchar({ length: 255 }),
   email: d.varchar({ length: 255 }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+/**
+ * Per-user OLX.uz browser login. Only an encrypted Playwright storage state is
+ * persisted; OLX passwords and challenge responses are never stored.
+ */
+export const userOlxSessions = createTable("user_olx_session", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: d
+    .varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  encryptedStorageState: d.text("encrypted_storage_state").notNull(),
+  /** Masked hint only, such as `sa***@example.com`; never the full login. */
+  loginHint: d.varchar("login_hint", { length: 255 }),
+  status: d.varchar({ length: 30 }).notNull().default("connected"),
+  lastVerifiedAt: d.timestamp("last_verified_at", { withTimezone: true }),
+  lastOperationAt: d.timestamp("last_operation_at", { withTimezone: true }),
+  lastError: d.text("last_error"),
   createdAt: d
     .timestamp({ withTimezone: true })
     .$defaultFn(() => new Date())

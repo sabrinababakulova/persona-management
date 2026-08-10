@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 import { DataMigrationLoadingScreen } from "../_components/data-migration-loading-screen";
 import { HhAccountSection } from "../_components/hh-account-section";
+import { OlxAccountSection } from "../_components/olx-account-section";
 import { TelegramChannelsSection } from "../_components/telegram-channels-section";
 import { useErrorToast } from "../_components/use-error-toast";
 import { CompanyInviteSection } from "./company-invite-section";
@@ -64,6 +65,7 @@ export function CompanySettingsSection({
       <CompanyInviteSection canEditCompany={canEditCompany} />
       <TelegramChannelsSection />
       <HhAccountSection />
+      <OlxAccountSection />
     </div>
   );
 }

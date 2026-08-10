@@ -1,4 +1,5 @@
 import { HhPublicationForm } from "../hh-publication-form";
+import { OlxPublicationForm } from "../olx-publication-form";
 import { PersonHunterPublicationForm } from "../person-hunter-publication-form";
 import { TgPublicationForm } from "../tg-publication-form";
 
@@ -19,6 +20,10 @@ export default async function VacancyPublicationIdPage({
 
   if (channel === "person-hunter") {
     return <PersonHunterPublicationForm pubId={pubid} vacancyId={id} />;
+  }
+
+  if (channel === "olx.uz") {
+    return <OlxPublicationForm pubId={pubid} vacancyId={id} />;
   }
 
   return (

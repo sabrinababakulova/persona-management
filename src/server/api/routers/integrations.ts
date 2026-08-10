@@ -6,13 +6,31 @@ import { env } from "~/env";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
+  clearIdentifier,
+  hasActiveRecord,
+  isRateLimited,
+  recordAttempt,
+  setMarker,
+} from "~/server/auth/rate-limit";
+import {
   telegramChannelAdmins,
   telegramDeliveryModes,
   userHhAccounts,
+  userOlxSessions,
   userTelegramChannels,
   vacancies,
 } from "~/server/db/schema";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
+import {
+  connectOlxBrowserSession,
+  decryptOlxStorageState,
+  encryptOlxStorageState,
+  OlxBrowserFlowError,
+  OlxBrowserRuntimeError,
+  type OlxStorageState,
+  resolveOlxBrowserExecutable,
+  verifyOlxBrowserSession,
+} from "~/server/services/olx-browser";
 import {
   isTelegramConfigured,
   normalizeTelegramUsername,
@@ -32,6 +50,57 @@ const channelInputSchema = z.object({
   deliveryMode: z.enum(telegramDeliveryModes),
   admins: z.array(channelAdminInputSchema).max(20),
 });
+
+const OLX_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const OLX_LOGIN_COOLDOWN_MS = 60 * 1000;
+const OLX_ACTION_WINDOW_MS = 60 * 60 * 1000;
+const OLX_ACTION_COOLDOWN_MS = 30 * 1000;
+
+function olxConnectionError(error: unknown): TRPCError {
+  if (error instanceof OlxBrowserRuntimeError) {
+    if (error.code === "busy") {
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "Сейчас выполняется другая операция OLX.uz. Дождитесь её завершения.",
+      });
+    }
+    if (error.code === "unavailable") {
+      return new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "Chrome/Chromium для OLX.uz не найден на сервере. Настройте OLX_BROWSER_EXECUTABLE_PATH.",
+      });
+    }
+    return new TRPCError({
+      code: "TIMEOUT",
+      message: "OLX.uz не ответил вовремя. Попробуйте позже.",
+    });
+  }
+
+  if (error instanceof OlxBrowserFlowError) {
+    const messages: Record<typeof error.code, string> = {
+      invalid_credentials:
+        "OLX.uz отклонил логин или пароль. Проверьте данные и повторите попытку.",
+      challenge_required:
+        "OLX.uz запросил CAPTCHA или код подтверждения. Автоматизация остановлена; завершите проверку в OLX.uz и попробуйте подключение снова.",
+      reauth_required: "Сессия OLX.uz истекла. Подключите аккаунт заново.",
+      form_changed:
+        "Форма OLX.uz изменилась. Публикация остановлена до обновления интеграции.",
+      publish_failed: "Не удалось завершить вход в OLX.uz. Попробуйте позже.",
+    };
+    return new TRPCError({
+      code: "BAD_REQUEST",
+      message: messages[error.code],
+    });
+  }
+
+  console.error("Unexpected OLX browser connection error", error);
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "Не удалось подключить OLX.uz.",
+  });
+}
 
 /**
  * Normalizes and de-duplicates the admin list from the modal.
@@ -84,6 +153,190 @@ async function requireCompanyChannel(
 }
 
 export const integrationsRouter = createTRPCRouter({
+  // ── OLX.uz browser session ────────────────────────────────────────
+
+  getOlxSession: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: userOlxSessions.id,
+        loginHint: userOlxSessions.loginHint,
+        status: userOlxSessions.status,
+        lastVerifiedAt: userOlxSessions.lastVerifiedAt,
+        lastOperationAt: userOlxSessions.lastOperationAt,
+        createdAt: userOlxSessions.createdAt,
+        updatedAt: userOlxSessions.updatedAt,
+      })
+      .from(userOlxSessions)
+      .where(eq(userOlxSessions.userId, ctx.session.user.id))
+      .limit(1);
+
+    return {
+      browserAvailable: Boolean(resolveOlxBrowserExecutable()),
+      session: rows[0] ?? null,
+    };
+  }),
+
+  connectOlxSession: protectedProcedure
+    .input(
+      z.object({
+        login: z.string().trim().min(1).max(255),
+        password: z.string().min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const attemptsKey = `olx-login-attempts:${userId}`;
+      const cooldownKey = `olx-login-cooldown:${userId}`;
+
+      if (
+        (await isRateLimited(attemptsKey, 3)) ||
+        (await hasActiveRecord(cooldownKey))
+      ) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "Слишком много попыток подключения OLX.uz. Подождите минуту и попробуйте снова.",
+        });
+      }
+
+      await Promise.all([
+        recordAttempt(attemptsKey, OLX_LOGIN_WINDOW_MS),
+        setMarker(cooldownKey, OLX_LOGIN_COOLDOWN_MS),
+      ]);
+
+      try {
+        const connected = await connectOlxBrowserSession(input);
+        const encryptedStorageState = encryptOlxStorageState(
+          connected.storageState,
+          env.AUTH_SECRET,
+        );
+        const now = new Date();
+        const existing = await ctx.db
+          .select({ id: userOlxSessions.id })
+          .from(userOlxSessions)
+          .where(eq(userOlxSessions.userId, userId))
+          .limit(1);
+
+        if (existing[0]) {
+          await ctx.db
+            .update(userOlxSessions)
+            .set({
+              encryptedStorageState,
+              loginHint: connected.loginHint,
+              status: "connected",
+              lastVerifiedAt: now,
+              lastOperationAt: now,
+              lastError: null,
+            })
+            .where(eq(userOlxSessions.id, existing[0].id));
+        } else {
+          await ctx.db.insert(userOlxSessions).values({
+            userId,
+            encryptedStorageState,
+            loginHint: connected.loginHint,
+            status: "connected",
+            lastVerifiedAt: now,
+            lastOperationAt: now,
+          });
+        }
+
+        await clearIdentifier(attemptsKey);
+        return { success: true };
+      } catch (error) {
+        throw olxConnectionError(error);
+      }
+    }),
+
+  verifyOlxSession: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const hourlyKey = `olx-browser-actions:${userId}`;
+    const cooldownKey = `olx-verify-cooldown:${userId}`;
+    if (
+      (await hasActiveRecord(cooldownKey)) ||
+      (await isRateLimited(hourlyKey, 10))
+    ) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "Проверять OLX.uz можно не чаще одного раза в 30 секунд. Подождите и повторите.",
+      });
+    }
+
+    const rows = await ctx.db
+      .select()
+      .from(userOlxSessions)
+      .where(eq(userOlxSessions.userId, ctx.session.user.id))
+      .limit(1);
+    const session = rows[0];
+    if (!session) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "OLX.uz аккаунт не подключён.",
+      });
+    }
+
+    await Promise.all([
+      recordAttempt(hourlyKey, OLX_ACTION_WINDOW_MS),
+      setMarker(cooldownKey, OLX_ACTION_COOLDOWN_MS),
+    ]);
+
+    let storageState: OlxStorageState;
+    try {
+      storageState = decryptOlxStorageState<OlxStorageState>(
+        session.encryptedStorageState,
+        env.AUTH_SECRET,
+      );
+    } catch {
+      await ctx.db
+        .update(userOlxSessions)
+        .set({
+          status: "reauth_required",
+          lastOperationAt: new Date(),
+          lastError: "session_decryption_failed",
+        })
+        .where(eq(userOlxSessions.id, session.id));
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "Сохранённая сессия OLX.uz больше недействительна. Подключите аккаунт заново.",
+      });
+    }
+
+    try {
+      const connected = await verifyOlxBrowserSession({ storageState });
+      const now = new Date();
+      await ctx.db
+        .update(userOlxSessions)
+        .set({
+          status: connected ? "connected" : "reauth_required",
+          lastVerifiedAt: connected ? now : session.lastVerifiedAt,
+          lastOperationAt: now,
+          lastError: connected ? null : "OLX browser session expired",
+        })
+        .where(eq(userOlxSessions.id, session.id));
+      return { connected };
+    } catch (error) {
+      if (error instanceof OlxBrowserFlowError) {
+        await ctx.db
+          .update(userOlxSessions)
+          .set({
+            status: "reauth_required",
+            lastOperationAt: new Date(),
+            lastError: error.message,
+          })
+          .where(eq(userOlxSessions.id, session.id));
+      }
+      throw olxConnectionError(error);
+    }
+  }),
+
+  removeOlxSession: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .delete(userOlxSessions)
+      .where(eq(userOlxSessions.userId, ctx.session.user.id));
+    return { success: true };
+  }),
+
   // ── Telegram resume warehouse ──────────────────────────────────────
 
   /**
