@@ -780,7 +780,7 @@
 
 .recruiter-calendar-event-content[data-compact="true"] {
   flex-direction: row;
-  align-items: center;
+  align-items: start;
   gap: 5px;
   padding: 1px 4px;
 }

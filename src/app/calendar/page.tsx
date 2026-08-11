@@ -264,17 +264,14 @@ export default function RecruiterCalendarPage() {
                       className="meeting-calendar-event-content recruiter-calendar-event-content"
                       data-compact={isMonth}
                     >
-                      <span className="meeting-calendar-event-time">
-                        {eventInfo.timeText}
-                      </span>
                       <span className="meeting-calendar-event-title">
                         {eventInfo.event.title}
                       </span>
-                      {isMonth ? null : (
+                      {/* {isMonth ? null : (
                         <span className="recruiter-calendar-event-candidate">
                           {String(eventInfo.event.extendedProps.candidateName)}
                         </span>
-                      )}
+                      )} */}
                     </div>
                   );
                 }}
