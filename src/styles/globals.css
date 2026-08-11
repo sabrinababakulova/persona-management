@@ -358,7 +358,7 @@
     width: 100%;
     border: 1px solid var(--color-border-light);
     border-radius: 12px;
-    background: var(--color-bg-light);
+    background: var(--color-bg-input);
     padding: 0 16px 0 44px;
     color: var(--color-text-heading);
     font-size: 14px;

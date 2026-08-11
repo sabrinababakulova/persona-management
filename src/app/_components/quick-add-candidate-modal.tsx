@@ -223,7 +223,7 @@ export function QuickAddCandidateModal({
             {t("fullName")}
           </label>
           <input
-            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
             id="quick-add-fullname"
             onChange={(event) => setFullName(event.target.value)}
             placeholder={t("fullNamePlaceholder")}
@@ -241,7 +241,7 @@ export function QuickAddCandidateModal({
           </label>
           <input
             autoComplete="email"
-            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
             id="quick-add-email"
             onChange={(event) => setEmail(event.target.value)}
             placeholder={t("emailPlaceholder")}
@@ -264,7 +264,7 @@ export function QuickAddCandidateModal({
           </div>
           <div className="flex items-end gap-4">
             <input
-              className="h-11 w-full max-w-72 rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+              className="h-11 w-full max-w-72 rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
               onChange={(event) => setContactValue(event.target.value)}
               placeholder={t("contactPlaceholder")}
               type="text"
@@ -272,7 +272,7 @@ export function QuickAddCandidateModal({
             />
             <Dropdown
               className="min-w-[150px]"
-              fieldClassName="h-12 bg-bg-input"
+              fieldClassName="h-12"
               hideLabel
               iconClassName="h-5 w-5 right-2 text-text-placeholder"
               id="quick-add-contact-type"
@@ -285,7 +285,6 @@ export function QuickAddCandidateModal({
         </div>
 
         <Dropdown
-          fieldClassName="bg-bg-input"
           id="quick-add-source"
           label={t("source")}
           onChange={setSource}

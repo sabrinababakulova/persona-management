@@ -254,25 +254,6 @@ export function CompanyInviteSection({
 
       {!isTeamLoading && !teamLoadError && isAdmin ? (
         <div className="overflow-hidden rounded-2xl border border-border-light bg-bg-input">
-          <div className="flex flex-col gap-4 bg-bg-input px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <p className="max-w-lg text-sm text-text-secondary leading-5">
-              {t("inviteDescription")}
-            </p>
-            <button
-              className="ui-button ui-button-soft w-full shrink-0 sm:w-auto"
-              disabled={createInvitation.isPending}
-              onClick={() => createInvitation.mutate()}
-              type="button"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <LoadingButtonContent
-                isLoading={createInvitation.isPending}
-                label={t("invitePeople")}
-                loadingLabel={t("generatingLink")}
-              />
-            </button>
-          </div>
-
           {areInvitationsLoading ? (
             <InvitationListSkeleton label={t("loadingInvites")} />
           ) : null}
@@ -290,8 +271,8 @@ export function CompanyInviteSection({
                   <p className="break-all font-semibold text-sm text-text-heading leading-5">
                     {buildInviteUrl(invitation.token)}
                   </p>
-                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-text-secondary text-xs leading-5">
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-text-secondary leading-5">
                       {t("inviteMeta", {
                         date: format.dateTime(new Date(invitation.expiresAt), {
                           day: "numeric",
@@ -303,7 +284,7 @@ export function CompanyInviteSection({
                     </p>
                     <div className="flex shrink-0 items-center gap-2">
                       <button
-                        className="ui-button ui-button-soft min-h-8 px-2.5 text-xs"
+                        className="ui-button ui-button-soft px-2.5"
                         onClick={() =>
                           void handleCopy(invitation.id, invitation.token)
                         }
@@ -319,7 +300,7 @@ export function CompanyInviteSection({
                         )}
                       </button>
                       <button
-                        className="ui-button min-h-8 bg-danger-red-bg px-2.5 text-danger-red text-xs hover:bg-danger-pink-bg disabled:opacity-50"
+                        className="ui-button bg-danger-red-bg px-2.5 text-danger-red hover:bg-danger-pink-bg disabled:opacity-50"
                         disabled={revokeInvitation.isPending}
                         onClick={() =>
                           revokeInvitation.mutate({ id: invitation.id })
@@ -333,13 +314,26 @@ export function CompanyInviteSection({
                 </li>
               ))}
             </ul>
-          ) : null}
-
-          {invitations && invitations.length === 0 ? (
-            <p className="border-border-light border-t px-4 py-5 text-sm text-text-secondary sm:px-5">
-              {t("noInvites")}
-            </p>
-          ) : null}
+          ) : (
+            <div className="flex flex-col gap-4 bg-bg-input px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <p className="max-w-lg text-sm text-text-secondary leading-5">
+                {t("inviteDescription")}
+              </p>
+              <button
+                className="ui-button ui-button-soft w-full shrink-0 sm:w-auto"
+                disabled={createInvitation.isPending}
+                onClick={() => createInvitation.mutate()}
+                type="button"
+              >
+                <PlusIcon className="h-4 w-4" />
+                <LoadingButtonContent
+                  isLoading={createInvitation.isPending}
+                  label={t("invitePeople")}
+                  loadingLabel={t("generatingLink")}
+                />
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -351,7 +345,7 @@ export function CompanyInviteSection({
         <div className="overflow-hidden rounded-2xl border border-border-light bg-bg-input">
           <div className="flex items-center justify-between gap-4 border-border-light border-b bg-bg-input px-4 py-4 sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-active-menu text-primary-blue">
+              <span className="flex h-6 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-active-menu text-primary-blue">
                 <UsersIcon aria-hidden="true" className="h-5 w-5" />
               </span>
               <p className="font-bold text-sm text-text-heading leading-5">

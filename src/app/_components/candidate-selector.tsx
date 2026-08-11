@@ -120,7 +120,7 @@ export function CandidateSelector({
           <button
             aria-controls={`${selectId}-panel`}
             aria-expanded={isOpen}
-            className={`flex h-12 w-full items-center justify-between rounded-lg border border-border-input bg-bg-input px-3 text-left text-base leading-[1.4] transition-[border-color,background-color,box-shadow,transform,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+            className={`flex h-12 w-full items-center justify-between rounded-lg border border-border-input bg-bg-input px-3 text-left text-base leading-[1.4] transition-[border-color,box-shadow,transform,color] duration-200 ease-out hover:border-border-control focus:border-primary-blue focus:outline-none ${selectedCandidateId ? "text-text-heading" : "text-text-placeholder"} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled || !vacancyId}
             id={selectId}
             onClick={() => setIsOpen((current) => !current)}

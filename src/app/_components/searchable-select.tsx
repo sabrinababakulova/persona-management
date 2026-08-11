@@ -177,7 +177,7 @@ export function SearchableSelect({
           <button
             aria-controls={panelId}
             aria-expanded={isOpen}
-            className={`flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border-input bg-bg-input px-3.5 text-left text-sm leading-5 transition-[border-color,background-color,box-shadow,color] duration-200 ease-out hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${
+            className={`flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border-input bg-bg-input px-3.5 text-left text-sm leading-5 transition-[border-color,box-shadow,color] duration-200 ease-out hover:border-border-control focus:border-primary-blue focus:outline-none ${
               value ? "text-text-heading" : "text-text-placeholder"
             } ${fieldClassName ?? ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled}
@@ -222,7 +222,7 @@ export function SearchableSelect({
                       <div className="relative">
                         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
                         <input
-                          className="h-10 w-full rounded-lg border border-border-input bg-bg-input py-2 pr-3 pl-10 text-sm text-text-heading outline-none transition-[border-color,background-color] placeholder:text-text-placeholder hover:bg-white focus:border-primary-blue focus:bg-white"
+                          className="h-10 w-full rounded-lg border border-border-input bg-bg-input py-2 pr-3 pl-10 text-sm text-text-heading outline-none transition-colors placeholder:text-text-placeholder focus:border-primary-blue"
                           onChange={(event) =>
                             setSearchQuery(event.target.value)
                           }

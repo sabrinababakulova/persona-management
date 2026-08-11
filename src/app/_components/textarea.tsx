@@ -37,7 +37,7 @@ export function Textarea({
           {label}
         </label>
         <textarea
-          className={`min-h-24 w-full resize-none overflow-hidden rounded-xl border border-border-input bg-bg-input px-3.5 py-3 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none ${className ?? ""} ${textareaClassName ?? ""}`}
+          className={`min-h-24 w-full resize-none overflow-hidden rounded-xl border border-border-input bg-bg-input px-3.5 py-3 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none ${className ?? ""} ${textareaClassName ?? ""}`}
           id={textareaId}
           ref={textareaRef}
           {...props}

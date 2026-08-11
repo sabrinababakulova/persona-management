@@ -220,7 +220,7 @@ export function CreateMeetingModal({
               <div className="relative">
                 <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
                 <input
-                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input pr-3.5 pl-10 text-sm text-text-heading outline-none transition-[border-color,background-color,box-shadow] placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:shadow-[0_0_0_3px_rgba(253,55,44,0.14)]"
+                  className="h-11 w-full rounded-xl border border-border-input bg-bg-input pr-3.5 pl-10 text-sm text-text-heading outline-none transition-[border-color,box-shadow] placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:shadow-[0_0_0_3px_rgba(253,55,44,0.14)]"
                   id="meeting-candidate-search"
                   onChange={(event) => setCandidateSearch(event.target.value)}
                   placeholder={t("candidatePlaceholder")}

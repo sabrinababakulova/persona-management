@@ -94,7 +94,7 @@ function EditorInputField({
         {label}
       </p>
       <Input
-        className="mt-2 bg-bg-light/70"
+        className="mt-2"
         disabled={disabled}
         hideLabel
         id={`company-${field}`}
@@ -151,7 +151,7 @@ function CompanyProfileAdminSkeleton() {
             <SkeletonBlock className="h-3 w-24" />
             <SkeletonBlock className="h-6 w-24 rounded-full" />
           </div>
-          <span className="mt-2.5 block h-11 rounded-xl border border-border-light bg-bg-light/70" />
+          <span className="mt-2.5 block h-11 rounded-xl border border-border-light bg-bg-input" />
           <SkeletonBlock className="mt-2.5 h-3 w-3/5 max-w-64" />
         </div>
       </div>
@@ -163,14 +163,14 @@ function CompanyProfileAdminSkeleton() {
             key={detail.id}
           >
             <SkeletonBlock className="h-3 w-16" />
-            <span className="mt-2 block h-11 rounded-xl border border-border-light bg-bg-light/70" />
+            <span className="mt-2 block h-11 rounded-xl border border-border-light bg-bg-input" />
           </div>
         ))}
       </div>
 
       <div className="border-border-light border-t px-4 py-5 sm:px-5">
         <SkeletonBlock className="h-3 w-24" />
-        <span className="mt-2 block h-24 rounded-xl border border-border-light bg-bg-light/70" />
+        <span className="mt-2 block h-24 rounded-xl border border-border-light bg-bg-input" />
       </div>
 
       <div className="flex flex-col gap-3 border-border-light border-t bg-bg-hover/45 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -241,7 +241,7 @@ export function CompanyProfileEditor({
             </p>
           </div>
           <Input
-            className="mt-2 bg-bg-light/70"
+            className="mt-2"
             disabled={isSaving}
             hideLabel
             id="company-name"
@@ -304,7 +304,7 @@ export function CompanyProfileEditor({
           {t("description")}
         </p>
         <Textarea
-          className="mt-2 bg-bg-light/70"
+          className="mt-2"
           disabled={isSaving}
           hideLabel
           id="company-description"

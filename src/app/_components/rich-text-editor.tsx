@@ -281,7 +281,7 @@ export function RichTextEditor({
         {label}
       </label>
       <div
-        className={`overflow-hidden rounded-lg border border-border-input bg-bg-light focus-within:border-primary-blue ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+        className={`overflow-hidden rounded-lg border border-border-input bg-bg-input focus-within:border-primary-blue ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
       >
         {editor && (
           <div

@@ -176,7 +176,7 @@ export default function LoginForm() {
                 {t("email")}
               </label>
               <input
-                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
                 id="login-email"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("emailPlaceholder")}
@@ -194,7 +194,7 @@ export default function LoginForm() {
                 {t("password")}
               </label>
               <input
-                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+                className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
                 id="login-password"
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("passwordPlaceholder")}

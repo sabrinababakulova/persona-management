@@ -29,7 +29,7 @@ export function PeriodFilter({
     <div className="relative self-start sm:self-auto">
       <select
         aria-label={ariaLabel}
-        className="h-10 appearance-none rounded-lg border border-border-light bg-bg-light py-2 pr-9 pl-3.5 font-medium text-sm text-text-secondary outline-none transition-colors hover:border-border-control hover:bg-bg-input focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
+        className="h-10 appearance-none rounded-lg border border-border-light bg-bg-input py-2 pr-9 pl-3.5 font-medium text-sm text-text-secondary outline-none transition-colors hover:border-border-control focus:border-primary-blue focus:ring-2 focus:ring-primary-blue/20"
         onChange={(event) => onChange(event.target.value as PeriodFilterValue)}
         value={value}
       >

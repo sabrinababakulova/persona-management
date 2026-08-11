@@ -105,7 +105,7 @@ export function TablePagination({
         <span>{t("rowsPerPage")}</span>
         <div className="relative">
           <select
-            className="h-9 min-w-20 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-light px-3 pr-8 text-sm text-text-secondary"
+            className="h-9 min-w-20 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-input px-3 pr-8 text-sm text-text-secondary"
             onChange={(event) =>
               onItemsPerPageChange(Number(event.target.value))
             }

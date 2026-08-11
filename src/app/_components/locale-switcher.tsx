@@ -38,8 +38,8 @@ export function LocaleSwitcher({ variant = "header" }: LocaleSwitcherProps) {
     <label
       className={`relative inline-flex h-10 items-center gap-2 rounded-lg border transition-colors ${
         variant === "auth"
-          ? "border-border-input bg-bg-light px-3 text-text-secondary shadow-sm hover:border-border-control"
-          : "border-border-light bg-bg-light px-3 text-text-heading shadow-sm hover:border-border-control hover:bg-bg-panel-hover"
+          ? "border-border-input bg-bg-input px-3 text-text-secondary shadow-sm hover:border-border-control"
+          : "border-border-light bg-bg-input px-3 text-text-heading shadow-sm hover:border-border-control"
       } ${isPending ? "opacity-60" : ""}`}
     >
       <GlobeIcon className="pointer-events-none h-4 w-4 shrink-0" />

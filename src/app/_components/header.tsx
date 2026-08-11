@@ -42,7 +42,7 @@ export function Header({
           <div className="relative w-full max-w-lg">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-secondary" />
             <input
-              className="h-10 w-full rounded-lg border border-border-light bg-bg-light py-2 pr-4 pl-9 text-sm text-text-heading shadow-sm placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
+              className="h-10 w-full rounded-lg border border-border-light bg-bg-input py-2 pr-4 pl-9 text-sm text-text-heading shadow-sm placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder ?? t("search")}
               type="text"
