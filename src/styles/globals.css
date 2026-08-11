@@ -17,14 +17,9 @@
   --color-primary-blue-hover: #e82e25;
   --color-primary-blue-light: rgba(253, 55, 44, 0.12);
   --color-primary-blue-light-hover: rgba(253, 55, 44, 0.2);
-  --color-primary-blue-accent: #fd372c;
   --color-primary-blue-soft: #ff7169;
-  --color-telegram-blue: #0088cc;
-  --color-telegram-blue-hover: #006da3;
   --color-ai-violet: #9747ff;
-  --color-ai-violet-soft: rgba(151, 71, 255, 0.07);
   --color-accent-pink: #ff558e;
-  --color-accent-orange: #ffc466;
 
   /* Text */
   --color-text-heading: #1c1c1e;
@@ -35,8 +30,6 @@
   --color-text-disabled: #c1c8d4;
   --color-text-muted: #6b7280;
   --color-text-menu: #3a465d;
-  --color-text-icon: #697077;
-  --color-text-icon-subtle: #65748a;
 
   /* Scrollbars */
   --color-scrollbar-thumb: #d7cbb8;
@@ -45,9 +38,7 @@
   /* Borders */
   --color-border-input: #e7dfcf;
   --color-border-light: #e7dfcf;
-  --color-header-border: #e7dfcf;
   --color-border-control: #d7cbb8;
-  --color-border-menu: #e0d6c5;
 
   /* Backgrounds */
   --color-bg-canvas: #f8f3e9;
@@ -57,17 +48,11 @@
   --color-bg-active-menu: #fde4e0;
   --color-table-header-bg: #ffffff;
   --color-table-stripe-bg: #f8f3e9;
-  --color-bg-avatar: #f2c1bc;
   --color-bg-panel-hover: #fbf7ef;
   --color-bg-frosted: rgba(248, 243, 233, 0.92);
   --color-action-soft-bg: #fee8e6;
   --color-action-soft-bg-hover: #fdd9d5;
-  --color-badge-soft-green-bg: #e4f1e6;
   --color-ai-analysis-bg: #fbe9f5;
-  --color-bg-overlay-soft: rgba(0, 0, 0, 0.2);
-  --color-bg-overlay-medium: rgba(0, 0, 0, 0.35);
-  --color-bg-overlay-strong: rgba(0, 0, 0, 0.4);
-  --color-bg-overlay-none: rgba(0, 0, 0, 0);
   --color-bg-overlay-modal: rgba(18, 32, 55, 0.34);
 
   /* Sidebar */
@@ -78,10 +63,7 @@
   /* Accents */
   --color-accent-red: #fd372c;
   --color-badge-red: #fd372c;
-  --color-icon-blue: #fd372c;
   --color-checkbox-blue: #fd372c;
-  --color-accent-red-soft: rgba(253, 55, 44, 0.1);
-  --color-warning-orange-bg: #fff4e3;
   --color-danger-pink-bg: #fff1f3;
 
   /* Status */
@@ -91,43 +73,21 @@
   --color-warning-yellow-bg: #fef3c7;
   --color-danger-red: #ef4444;
   --color-danger-red-bg: #fee2e2;
-  --color-status-active: #22c55e;
-  --color-status-active-bg: #dcfce7;
-  --color-status-draft: #6b7280;
-  --color-status-draft-bg: #f3f4f6;
-  --color-status-paused: #f59e0b;
-  --color-status-paused-bg: #fef3c7;
-  --color-status-closed: #ef4444;
-  --color-status-closed-bg: #fee2e2;
-  --color-status-archive: #374151;
-  --color-status-archive-bg: #f3f4f6;
+  --color-status-active-bg: #e4f1e6;
+  --color-status-draft-bg: #ede9ef;
+  --color-status-paused-bg: #f6ebd6;
+  --color-status-archive-bg: #efebe1;
   --color-status-outline-border: #8f9eb2;
-  --color-status-neutral: #dd8d0c;
   --color-status-neutral-bg: #fff3df;
   --color-status-info-bg: #e8f1ff;
-  --color-status-offer: #4f46e5;
   --color-status-offer-bg: #eef2ff;
-  --color-status-active-strong: #1b9109;
-  --color-status-active-soft: rgba(33, 193, 27, 0.1);
   --color-status-danger-soft: #fce8ef;
-  --color-status-draft-soft: #e9edf3;
 
   /* Utility Scale */
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
   --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-900: #111827;
-  --color-red-50: #fef2f2;
   --color-red-200: #fecaca;
-  --color-red-500: #ef4444;
   --color-red-600: #dc2626;
   --color-red-700: #b91c1c;
-  --color-green-50: #f0fdf4;
-  --color-green-200: #bbf7d0;
   --color-green-700: #15803d;
 
   /* Shadows */
@@ -142,28 +102,6 @@
   --color-chart-pink: #f472b6;
   --color-chart-purple: #a78bfa;
   --color-chart-orange: #fb923c;
-  --color-chart-blue: #60a5fa;
-  --color-progress-orange: #fb923c;
-
-  /* Illustration */
-  --color-illustration-surface: #eaeef9;
-  --color-illustration-muted: #9aa2b2;
-  --color-illustration-accent-blue: #fd372c;
-  --color-illustration-metal: #b0bacc;
-  --color-illustration-metal-strong: #969eae;
-  --color-illustration-highlight: #e2e5ec;
-  --color-illustration-gradient-start: #b0bacc;
-  --color-illustration-gradient-end: #969eae;
-  --color-illustration-gradient-soft-end: #e2e5ec;
-  --color-illustration-paper-start: #fdfeff;
-  --color-illustration-paper-end: #ecf0f5;
-  --color-shadow-illustration: #657a92;
-  --color-accent-ai: #9747ff;
-
-  /* T3 Template (landing page) */
-  --color-t3-gradient-start: #2e026d;
-  --color-t3-gradient-end: #15162c;
-  --color-t3-accent: hsl(280, 100%, 70%);
 }
 
 :root {

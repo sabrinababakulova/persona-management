@@ -78,7 +78,7 @@ function WorkExperienceEntry({
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex w-full items-start gap-3.5">
-        <div className="flex shrink-0 items-center rounded-lg bg-status-neutral-bg p-2 text-status-neutral">
+        <div className="flex shrink-0 items-center rounded-lg bg-status-neutral-bg p-2 text-warning-yellow">
           <PackageIcon className="h-6 w-6" />
         </div>
 

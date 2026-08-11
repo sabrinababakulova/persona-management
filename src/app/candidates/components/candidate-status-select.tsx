@@ -15,35 +15,28 @@ type StatusOption = {
 
 type StatusTone = {
   containerClassName: string;
-  textClassName: string;
 };
 
 const defaultStatusTone: StatusTone = {
   containerClassName: "border border-status-outline-border bg-bg-light",
-  textClassName: "text-text-placeholder",
 };
 
 const statusToneConfig: Record<string, StatusTone> = {
   new: defaultStatusTone,
   screening: {
     containerClassName: "bg-status-neutral-bg",
-    textClassName: "text-status-neutral",
   },
   interview: {
     containerClassName: "bg-status-info-bg",
-    textClassName: "text-primary-blue",
   },
   offer: {
     containerClassName: "bg-status-offer-bg",
-    textClassName: "text-status-offer",
   },
   hired: {
-    containerClassName: "bg-status-active-soft",
-    textClassName: "text-status-active-strong",
+    containerClassName: "bg-status-active-bg",
   },
   rejected: {
     containerClassName: "bg-status-danger-soft",
-    textClassName: "text-accent-red",
   },
 };
 
@@ -157,11 +150,11 @@ export function CandidateStatusSelect({
 
   return (
     <div
-      className={`${statusTone.containerClassName} relative inline-flex min-w-[124px] items-center overflow-hidden rounded-lg px-1`}
+      className={`${statusTone.containerClassName} relative inline-flex w-fit items-center overflow-hidden rounded-md`}
     >
       <select
         aria-label={t("statusFor", { name: candidateName })}
-        className={`h-[32px] w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
+        className="h-6 w-auto appearance-none bg-transparent px-2.5 pr-7 font-semibold text-black text-xs lowercase leading-none [field-sizing:content] disabled:cursor-not-allowed disabled:opacity-70"
         disabled={updateCandidateStatus.isPending || statusOptions.length === 0}
         onChange={(event) => handleStatusChange(event.target.value)}
         value={status}
@@ -172,9 +165,7 @@ export function CandidateStatusSelect({
           </option>
         ))}
       </select>
-      <ChevronDownIcon
-        className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-      />
+      <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-black" />
     </div>
   );
 }

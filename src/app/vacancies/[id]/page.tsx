@@ -159,10 +159,10 @@ export default function VacancyDetailPage() {
       </div>
       <label className="flex shrink-0 items-center gap-2 text-text-secondary text-xs uppercase">
         <span className="sr-only">{t("status")}</span>
-        <div className="relative inline-flex min-w-[140px] items-center overflow-hidden rounded-lg border border-status-outline-border bg-bg-light">
+        <div className="relative inline-flex w-fit items-center overflow-hidden rounded-md border border-border-input bg-status-archive-bg">
           <select
             aria-label={t("status")}
-            className="h-[36px] w-full appearance-none bg-transparent px-3 pr-8 font-semibold text-text-heading text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70"
+            className="h-6 w-auto appearance-none bg-transparent px-2.5 pr-7 font-semibold text-black text-xs lowercase leading-none [field-sizing:content] disabled:cursor-not-allowed disabled:opacity-70"
             disabled={restoreFromArchive.isPending}
             onChange={(event) => handleStatusChange(event.target.value)}
             value={vacancy.status ?? "archive"}
@@ -170,7 +170,7 @@ export default function VacancyDetailPage() {
             <option value="archive">{t("archived")}</option>
             <option value="active">{t("active")}</option>
           </select>
-          <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-text-heading" />
+          <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-black" />
         </div>
       </label>
     </section>

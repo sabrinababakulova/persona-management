@@ -31,7 +31,9 @@ export function QuickAddCandidateModal({
 }: QuickAddCandidateModalProps) {
   const t = useTranslations("CandidateForm");
   const common = useTranslations("Common");
+  const validation = useTranslations("Validation");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [contactValue, setContactValue] = useState("");
   const [contactType, setContactType] = useState(
     contactTypeOptions[0]?.value ?? "",
@@ -65,6 +67,7 @@ export function QuickAddCandidateModal({
   useEffect(() => {
     if (!isOpen) {
       setFullName("");
+      setEmail("");
       setContactValue("");
       setContactType(contactTypeOptions[0]?.value ?? "");
       setCandidateDraftId(crypto.randomUUID());
@@ -113,7 +116,16 @@ export function QuickAddCandidateModal({
       setLocalError(null);
     }
 
-    const firstContact = prefillData.contacts[0];
+    const emailContact = prefillData.contacts.find(
+      (contact) => normalizeOptionToken(contact.type) === "email",
+    );
+    if (emailContact?.value) {
+      setEmail(emailContact.value);
+    }
+
+    const firstContact = prefillData.contacts.find(
+      (contact) => normalizeOptionToken(contact.type) !== "email",
+    );
     if (firstContact?.value) {
       setContactValue(firstContact.value);
     }
@@ -147,6 +159,10 @@ export function QuickAddCandidateModal({
       setLocalError(t("enterFullName"));
       return;
     }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setLocalError(validation("invalidEmail"));
+      return;
+    }
     if (contactValue.trim() && !contactType) {
       setLocalError(t("selectContactType"));
       return;
@@ -160,6 +176,7 @@ export function QuickAddCandidateModal({
     onSaveCandidate?.({
       candidateId: candidateDraftId,
       fullName: fullName.trim(),
+      email: email.trim(),
       contactType,
       contactValue: contactValue.trim(),
       status: status || undefined,
@@ -212,6 +229,24 @@ export function QuickAddCandidateModal({
             placeholder={t("fullNamePlaceholder")}
             type="text"
             value={fullName}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label
+            className="font-medium text-base text-text-label leading-[1.4]"
+            htmlFor="quick-add-email"
+          >
+            {t("email")}
+          </label>
+          <input
+            autoComplete="email"
+            className="h-11 w-full rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control hover:bg-white focus:border-primary-blue focus:bg-white focus:outline-none"
+            id="quick-add-email"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder={t("emailPlaceholder")}
+            type="email"
+            value={email}
           />
         </div>
 
@@ -269,7 +304,7 @@ export function QuickAddCandidateModal({
             onUploaded={handleResumeUploaded}
             onUploadingChange={setIsResumeUploading}
           />
-          <p className="flex gap-1 font-medium text-t3-accent text-xs leading-[1.4]">
+          <p className="flex gap-1 font-medium text-ai-violet text-xs leading-[1.4]">
             <span className="flex font-bold">
               <AIGenerationIcon />
               AI

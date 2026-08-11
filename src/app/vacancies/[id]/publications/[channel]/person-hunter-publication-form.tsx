@@ -449,7 +449,7 @@ export function PersonHunterPublicationForm({
         </div>
 
         <FeedbackPresence show={!isConfigured}>
-          <div className="mb-5 w-full rounded-lg border border-danger-red bg-status-closed-bg px-4 py-3 text-danger-red text-sm leading-5">
+          <div className="mb-5 w-full rounded-lg border border-danger-red bg-danger-red-bg px-4 py-3 text-danger-red text-sm leading-5">
             {t("personHunter.notConfigured")}
           </div>
         </FeedbackPresence>

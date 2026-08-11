@@ -183,7 +183,7 @@ function AiParaphraseFooter({
   return (
     <div className="flex flex-wrap items-center gap-2 border-border-input border-t bg-bg-input px-2 py-2">
       <button
-        className="inline-flex items-center gap-1.5 rounded border border-border-input bg-bg-light px-2 py-1 font-medium text-accent-ai text-xs leading-none transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-border-input bg-bg-light px-2 py-1 font-medium text-ai-violet text-xs leading-none transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled || paraphrase.isPending}
         onClick={handleParaphrase}
         type="button"

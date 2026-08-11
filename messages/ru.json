@@ -544,6 +544,8 @@
     "fullName": "Ф.И.О",
     "fullNamePlaceholder": "Введите полное имя",
     "enterFullName": "Введите Ф.И.О",
+    "email": "Электронная почта",
+    "emailPlaceholder": "Введите адрес электронной почты",
     "city": "Город",
     "cityPlaceholder": "Введите город",
     "position": "Должность",

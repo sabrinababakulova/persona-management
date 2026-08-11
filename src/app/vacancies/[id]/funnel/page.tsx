@@ -432,7 +432,7 @@ function VacancyStageCandidateCard({
         <div className="flex flex-wrap items-start gap-1.5">
           {strengthTokens.slice(0, 4).map((token) => (
             <span
-              className="rounded-lg bg-badge-soft-green-bg px-2 py-1.5 font-semibold text-text-heading text-xs uppercase leading-none"
+              className="rounded-lg bg-status-active-bg px-2 py-1.5 font-semibold text-text-heading text-xs uppercase leading-none"
               data-testid="funnel-skill-badge"
               key={token}
             >

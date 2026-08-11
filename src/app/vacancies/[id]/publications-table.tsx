@@ -34,9 +34,9 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
 type PublicationState = "published" | "draft" | "local";
 
 const PUBLICATION_STATE_CLASS: Record<PublicationState, string> = {
-  published: "bg-badge-soft-green-bg text-text-heading",
-  draft: "bg-status-closed-bg text-status-closed",
-  local: "bg-bg-input text-text-placeholder",
+  published: "bg-status-active-bg",
+  draft: "bg-status-draft-bg",
+  local: "bg-bg-input",
 };
 
 function getPublicationState(publication: {
@@ -429,7 +429,7 @@ export function PublicationsTable() {
               </div>
               <div className="col-span-3 lg:col-span-2">
                 <span
-                  className={`inline-flex items-center rounded-md px-2 py-1 font-semibold text-xs leading-none ${PUBLICATION_STATE_CLASS[state]}`}
+                  className={`inline-flex h-6 w-fit items-center whitespace-nowrap rounded-md px-2.5 font-semibold text-black text-xs lowercase leading-none ${PUBLICATION_STATE_CLASS[state]}`}
                 >
                   {publicationStateLabels[state]}
                 </span>
@@ -440,13 +440,11 @@ export function PublicationsTable() {
                   disabled={updatePublicationStatus.isPending}
                   fieldClassName={
                     pub.isActive
-                      ? "max-h-[30px] w-auto! px-2.5! pr-8! border-badge-soft-green-bg! bg-badge-soft-green-bg! font-semibold text-text-heading hover:border-border-control! hover:bg-badge-soft-green-bg! focus:border-border-control! focus:bg-badge-soft-green-bg!"
-                      : "max-h-[30px] w-auto! px-2.5! pr-8! border-status-closed-bg bg-status-closed-bg font-semibold text-status-closed hover:border-status-closed hover:bg-status-closed-bg focus:border-status-closed focus:bg-status-closed-bg"
+                      ? "h-6! w-auto! [field-sizing:content] rounded-md! px-2.5! pr-7! border-status-active-bg! bg-status-active-bg! font-semibold text-black text-xs lowercase hover:border-border-control! hover:bg-status-active-bg! focus:border-border-control! focus:bg-status-active-bg!"
+                      : "h-6! w-auto! [field-sizing:content] rounded-md! px-2.5! pr-7! border-status-paused-bg bg-status-paused-bg font-semibold text-black text-xs lowercase hover:border-border-control focus:border-border-control hover:bg-status-paused-bg focus:bg-status-paused-bg"
                   }
                   hideLabel
-                  iconClassName={
-                    pub.isActive ? "text-text-heading" : "text-status-closed"
-                  }
+                  iconClassName="right-2 h-3.5 w-3.5 text-black"
                   label={t("table.publicationStatus")}
                   onChange={(value) =>
                     onStatusChange(

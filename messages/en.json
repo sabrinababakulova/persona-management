@@ -544,6 +544,8 @@
     "fullName": "Full name",
     "fullNamePlaceholder": "Enter the full name",
     "enterFullName": "Enter the full name",
+    "email": "Email",
+    "emailPlaceholder": "Enter an email address",
     "city": "City",
     "cityPlaceholder": "Enter a city",
     "position": "Position",

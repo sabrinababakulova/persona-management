@@ -4,6 +4,7 @@ import type { LookupOption } from "~/types/shared/candidate-lookups";
 export type QuickAddCandidatePayload = {
   candidateId: string;
   fullName: string;
+  email: string;
   contactType: string;
   contactValue: string;
   status?: string;

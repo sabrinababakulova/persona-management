@@ -294,18 +294,30 @@ export default function CandidatesPage() {
 
   const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
     const prefill = payload.resumePrefillData;
-    const primaryContact =
-      payload.contactValue.trim().length > 0
-        ? [{ type: payload.contactType, value: payload.contactValue.trim() }]
-        : [];
-    const parsedContacts = prefill?.contacts ?? [];
-    const mergedContacts = [...primaryContact];
+    const directContacts: { type: string; value: string }[] = [];
 
-    for (const parsedContact of parsedContacts) {
+    if (payload.email.trim()) {
+      directContacts.push({ type: "email", value: payload.email.trim() });
+    }
+    if (payload.contactValue.trim()) {
+      directContacts.push({
+        type: payload.contactType,
+        value: payload.contactValue.trim(),
+      });
+    }
+
+    const parsedContacts = (prefill?.contacts ?? []).filter(
+      (contact) => contact.type.trim().toLowerCase() !== "email",
+    );
+    const mergedContacts: { type: string; value: string }[] = [];
+
+    for (const parsedContact of [...directContacts, ...parsedContacts]) {
       const isDuplicate = mergedContacts.some(
         (contact) =>
-          contact.type === parsedContact.type &&
-          contact.value === parsedContact.value,
+          contact.type.trim().toLowerCase() ===
+            parsedContact.type.trim().toLowerCase() &&
+          contact.value.trim().toLowerCase() ===
+            parsedContact.value.trim().toLowerCase(),
       );
       if (!isDuplicate) {
         mergedContacts.push(parsedContact);

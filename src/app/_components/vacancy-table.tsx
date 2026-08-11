@@ -46,28 +46,22 @@ const vacancyStatusTone: Record<
   VacancyStatus,
   {
     containerClassName: string;
-    textClassName: string;
   }
 > = {
   active: {
-    containerClassName: "bg-status-active-soft",
-    textClassName: "text-status-active-strong",
+    containerClassName: "bg-status-active-bg",
   },
   draft: {
-    containerClassName: "bg-status-draft-soft",
-    textClassName: "text-text-placeholder",
+    containerClassName: "bg-status-draft-bg",
   },
   paused: {
-    containerClassName: "bg-status-neutral-bg",
-    textClassName: "text-status-neutral",
+    containerClassName: "bg-status-paused-bg",
   },
   closed: {
     containerClassName: "bg-status-danger-soft",
-    textClassName: "text-accent-red",
   },
   archive: {
-    containerClassName: "border border-status-outline-border bg-bg-light",
-    textClassName: "text-text-placeholder",
+    containerClassName: "bg-status-archive-bg",
   },
 };
 
@@ -314,7 +308,7 @@ export function VacancyTable({
                     <div className="col-span-6 mt-3 min-w-0 xl:col-auto xl:mt-0">
                       {isHhVacancy || !onStatusChange ? (
                         <span
-                          className={`inline-flex min-h-8 min-w-28 items-center rounded-md px-3 font-semibold text-xs uppercase leading-none ${statusTone.containerClassName} ${statusTone.textClassName}`}
+                          className={`inline-flex h-6 w-fit items-center whitespace-nowrap rounded-md px-2.5 font-semibold text-black text-xs lowercase leading-none ${statusTone.containerClassName}`}
                         >
                           {getVacancyStatusLabel(
                             item.status,
@@ -323,13 +317,13 @@ export function VacancyTable({
                         </span>
                       ) : (
                         <div
-                          className={`${statusTone.containerClassName} relative inline-flex min-w-28 items-center overflow-hidden rounded-md px-1`}
+                          className={`${statusTone.containerClassName} relative inline-flex w-fit items-center overflow-hidden rounded-md`}
                         >
                           <select
                             aria-label={t("statusFor", {
                               title: item.title,
                             })}
-                            className={`h-8 w-full ${statusTone.textClassName} appearance-none bg-transparent px-2 pr-6 font-semibold text-xs uppercase leading-none disabled:cursor-not-allowed disabled:opacity-70`}
+                            className="h-6 w-auto appearance-none bg-transparent px-2.5 pr-7 font-semibold text-black text-xs lowercase leading-none [field-sizing:content] disabled:cursor-not-allowed disabled:opacity-70"
                             disabled={statusPending}
                             onChange={(event) => {
                               onStatusChange(item.id, event.target.value);
@@ -342,9 +336,7 @@ export function VacancyTable({
                               </option>
                             ))}
                           </select>
-                          <ChevronDownIcon
-                            className={`pointer-events-none absolute right-2 h-3.5 w-3.5 ${statusTone.textClassName}`}
-                          />
+                          <ChevronDownIcon className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-black" />
                         </div>
                       )}
                     </div>

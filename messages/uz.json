@@ -544,6 +544,8 @@
     "fullName": "F.I.Sh.",
     "fullNamePlaceholder": "To‘liq ismni kiriting",
     "enterFullName": "F.I.Sh.ni kiriting",
+    "email": "Elektron pochta",
+    "emailPlaceholder": "Elektron pochta manzilini kiriting",
     "city": "Shahar",
     "cityPlaceholder": "Shaharni kiriting",
     "position": "Lavozim",
