@@ -543,7 +543,50 @@
       "verifyError": "OLX.uz sessiyasini tekshirib bo‘lmadi.",
       "disconnected": "OLX.uz sessiyasi o‘chirildi.",
       "disconnectError": "OLX.uz sessiyasini o‘chirib bo‘lmadi.",
-      "challenge": "OLX.uz CAPTCHA yoki bir martalik kod so‘rasa, operatsiya to‘xtaydi. Persona xavfsizlik tekshiruvlarini chetlab o‘tmaydi."
+      "connectionInProgressTitle": "Kuting — Persona OLX.uz hisobiga kirmoqda",
+      "connectionInProgressDescription": "Bu odatda bir necha soniya davom etadi, lekin 90 soniyagacha cho‘zilishi mumkin. Sahifani yangilamang, bu oynani yopmang va ulash tugmasini qayta bosmang.",
+      "connectionSteps": {
+        "title": "Hisobni qanday ulash kerak",
+        "description": "Odatda buni bir marta bajarasiz. Keyingi e’lonlar uchun Persona saqlangan himoyalangan sessiyadan foydalanadi.",
+        "enter": {
+          "title": "O‘zingizning OLX.uz hisob ma’lumotlaringizni kiriting",
+          "description": "OLX.uz rasmiy saytiga odatda kiradigan email yoki telefon va paroldan foydalaning. Klaviatura tilini va ortiqcha bo‘sh joylar yo‘qligini tekshiring."
+        },
+        "wait": {
+          "title": "“OLX.uz’ni ulash” tugmasini faqat bir marta bosing",
+          "description": "Bu sahifani ochiq qoldirib, natijani kuting. Persona himoyalangan brauzerni ishga tushiradi, hisobga kiradi va darhol uni yopadi."
+        },
+        "confirm": {
+          "title": "Holat “Ulangan” bo‘lganini tekshiring",
+          "description": "Muvaffaqiyatli kirgandan keyin parol maydoni tozalanadi va loginning faqat yashirilgan qismi ko‘rsatiladi. Keyin “Sessiyani tekshirish” tugmasini bosishingiz mumkin."
+        }
+      },
+      "challengeSteps": {
+        "title": "OLX.uz CAPTCHA, SMS-kod yoki kirishni tasdiqlashni so‘rasa",
+        "description": "Bu Persona xatosi emas, OLX.uz’ning odatiy xavfsizlik tekshiruvi. Persona ataylab to‘xtaydi va tekshiruvni hech qachon chetlab o‘tmaydi.",
+        "stop": {
+          "title": "“Ulash” tugmasini darhol qayta bosmang",
+          "description": "Takroriy bosish tekshiruvni yakunlamaydi va urinishlarni vaqtincha bloklashi mumkin. 15 daqiqada ko‘pi bilan 3 marta va bir daqiqada bir martadan ko‘p urinmaslik kerak."
+        },
+        "openOlx": {
+          "title": "OLX.uz rasmiy saytini yangi oynada oching",
+          "description": "Quyidagi tugmani bosib, o‘sha hisobga qo‘lda kiring. Persona sahifasini yopmang — tekshiruvdan keyin unga qayting."
+        },
+        "complete": {
+          "title": "Tekshiruvni OLX.uz saytida to‘liq yakunlang",
+          "description": "CAPTCHA’dan o‘ting, SMS-kodni kiriting yoki yangi qurilmani faqat OLX.uz rasmiy saytida tasdiqlang. SMS kelmasa, OLX.uz hisobini tiklash yoki yordam xizmatidan foydalaning — Persona kodni qabul qila yoki yarata olmaydi."
+        },
+        "check": {
+          "title": "OLX.uz hisobingizni haqiqatan ochganini tekshiring",
+          "description": "Profilingizni yoki e’lon yaratish sahifasini oching. Sayt yana kod yoki CAPTCHA so‘rasa, avval o‘sha yerda tekshiruvni yakunlang."
+        },
+        "return": {
+          "title": "Persona’ga qayting va hisobni yana ulang",
+          "description": "Oldingi urinishdan keyin kamida 60 soniya kuting, login va parolni qayta kiriting va tugmani bir marta bosing. Muvaffaqiyatdan keyin “Sessiyani tekshirish”ni bosing."
+        },
+        "openOlxButton": "OLX.uz rasmiy saytini ochish",
+        "privateDataWarning": "Parol, SMS-kod, CAPTCHA, cookie yoki sessiya faylini hech kimga yubormang — Persona yordam chatiga ham, dasturchilarga ham. Muammoni aniqlash uchun xato matni va maxfiy ma’lumotsiz ekran rasmi yetarli."
+      }
     }
   },
   "Candidates": {
