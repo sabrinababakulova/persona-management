@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  setDefaultTimeout,
+  test,
+} from "bun:test";
 import { type Browser, chromium } from "playwright-core";
 import {
   connectOlxBrowserSession,
@@ -11,6 +18,11 @@ import {
 import { resolveOlxBrowserExecutable } from "./runtime";
 
 const executablePath = resolveOlxBrowserExecutable();
+
+// Cold Chromium startup can exceed Bun's 5-second default on CI or a busy
+// development machine. Keep browser-flow tests deterministic without changing
+// the production navigation/action timeouts.
+setDefaultTimeout(20_000);
 
 const advert: OlxAdvertInput = {
   title: "Менеджер по продажам",

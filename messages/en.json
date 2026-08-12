@@ -544,7 +544,50 @@
       "verifyError": "Could not verify the OLX.uz session.",
       "disconnected": "The OLX.uz session was removed.",
       "disconnectError": "Could not remove the OLX.uz session.",
-      "challenge": "If OLX.uz requests a CAPTCHA or one-time code, the operation stops. Persona does not bypass security checks."
+      "connectionInProgressTitle": "Please wait — Persona is signing in to OLX.uz",
+      "connectionInProgressDescription": "This normally takes a few seconds but can take up to 90 seconds. Do not refresh the page, close this tab, or press the connect button again.",
+      "connectionSteps": {
+        "title": "How to connect your account",
+        "description": "You normally do this once. Persona will use the saved protected session for future publications.",
+        "enter": {
+          "title": "Enter your own OLX.uz account details",
+          "description": "Use the same email or phone number and password you normally use on the official OLX.uz website. Check the keyboard language and remove accidental spaces."
+        },
+        "wait": {
+          "title": "Press “Connect OLX.uz” only once",
+          "description": "Keep this page open and wait for the result. Persona starts a protected browser, signs in, and closes it immediately afterward."
+        },
+        "confirm": {
+          "title": "Make sure the status changes to “Connected”",
+          "description": "After a successful sign-in, the password field is cleared and only a masked part of the login is shown. You can then press “Verify session”."
+        }
+      },
+      "challengeSteps": {
+        "title": "If OLX.uz asks for a CAPTCHA, SMS code, or sign-in confirmation",
+        "description": "This is a normal OLX.uz security check, not a Persona failure. Persona intentionally stops and never attempts to bypass the check.",
+        "stop": {
+          "title": "Do not press “Connect” again immediately",
+          "description": "Repeated clicks cannot complete the check and may temporarily block attempts. You have at most 3 attempts in 15 minutes and must wait one minute between attempts."
+        },
+        "openOlx": {
+          "title": "Open the official OLX.uz website in a new tab",
+          "description": "Use the button below and sign in manually to the same account. Keep this Persona page open and return to it after completing the check."
+        },
+        "complete": {
+          "title": "Complete the entire check on OLX.uz",
+          "description": "Solve the CAPTCHA, enter the SMS code, or approve the new device only on the official OLX.uz website. If the SMS does not arrive, use OLX.uz account recovery or support—Persona cannot receive or generate the code."
+        },
+        "check": {
+          "title": "Confirm that OLX.uz has actually opened your account",
+          "description": "Open your profile or the advert creation page. If the site asks for another code or CAPTCHA, finish that check there first."
+        },
+        "return": {
+          "title": "Return to Persona and connect the account again",
+          "description": "Wait at least 60 seconds after the previous attempt, enter the login and password again, and press the button once. After success, press “Verify session”."
+        },
+        "openOlxButton": "Open the official OLX.uz website",
+        "privateDataWarning": "Never send anyone your password, SMS code, CAPTCHA, cookies, or session file—not in Persona support chat and not to developers. An error message and a screenshot without private data are enough for troubleshooting."
+      }
     }
   },
   "Candidates": {

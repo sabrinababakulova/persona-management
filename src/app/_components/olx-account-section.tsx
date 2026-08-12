@@ -8,6 +8,35 @@ import { Input } from "./input";
 import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
 import { SkeletonBlock } from "./page-skeleton";
 
+function InstructionList({
+  items,
+}: {
+  items: ReadonlyArray<{ title: string; description: string }>;
+}) {
+  return (
+    <ol className="space-y-3">
+      {items.map((item, index) => (
+        <li className="flex gap-3" key={item.title}>
+          <span
+            aria-hidden="true"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border-input bg-bg-light font-semibold text-text-secondary text-xs"
+          >
+            {index + 1}
+          </span>
+          <div className="min-w-0 pt-0.5">
+            <p className="font-medium text-sm text-text-heading leading-5">
+              {item.title}
+            </p>
+            <p className="mt-0.5 text-text-secondary text-xs leading-5">
+              {item.description}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function OlxAccountSection() {
   const t = useTranslations("Integrations.olx");
   const format = useFormatter();
@@ -78,6 +107,42 @@ export function OlxAccountSection() {
   const isConnected = session?.status === "connected";
   const isPending =
     connect.isPending || verify.isPending || disconnect.isPending;
+  const connectionSteps = [
+    {
+      title: t("connectionSteps.enter.title"),
+      description: t("connectionSteps.enter.description"),
+    },
+    {
+      title: t("connectionSteps.wait.title"),
+      description: t("connectionSteps.wait.description"),
+    },
+    {
+      title: t("connectionSteps.confirm.title"),
+      description: t("connectionSteps.confirm.description"),
+    },
+  ];
+  const challengeSteps = [
+    {
+      title: t("challengeSteps.stop.title"),
+      description: t("challengeSteps.stop.description"),
+    },
+    {
+      title: t("challengeSteps.openOlx.title"),
+      description: t("challengeSteps.openOlx.description"),
+    },
+    {
+      title: t("challengeSteps.complete.title"),
+      description: t("challengeSteps.complete.description"),
+    },
+    {
+      title: t("challengeSteps.check.title"),
+      description: t("challengeSteps.check.description"),
+    },
+    {
+      title: t("challengeSteps.return.title"),
+      description: t("challengeSteps.return.description"),
+    },
+  ];
 
   return (
     <ClosableSection title={t("title")}>
@@ -90,6 +155,7 @@ export function OlxAccountSection() {
 
       <FeedbackPresence show={Boolean(feedback)}>
         <div
+          aria-live="polite"
           className={`rounded-lg border border-border-input bg-bg-input px-3 py-3 text-sm ${
             feedback?.type === "error"
               ? "text-danger-red"
@@ -145,6 +211,16 @@ export function OlxAccountSection() {
         <p className="mt-1 text-text-secondary text-xs leading-5">
           {t("securityDescription")}
         </p>
+      </div>
+
+      <div className="rounded-xl border border-border-input bg-bg-light p-4 sm:p-5">
+        <h3 className="font-semibold text-base text-text-heading">
+          {t("connectionSteps.title")}
+        </h3>
+        <p className="mt-1 mb-4 text-sm text-text-secondary leading-5">
+          {t("connectionSteps.description")}
+        </p>
+        <InstructionList items={connectionSteps} />
       </div>
 
       <form
@@ -223,9 +299,42 @@ export function OlxAccountSection() {
         </div>
       </form>
 
-      <p className="text-text-placeholder text-xs leading-5">
-        {t("challenge")}
-      </p>
+      {connect.isPending ? (
+        <div
+          aria-live="polite"
+          className="rounded-lg border border-border-input bg-bg-input px-3 py-3"
+        >
+          <p className="font-medium text-sm text-text-heading">
+            {t("connectionInProgressTitle")}
+          </p>
+          <p className="mt-1 text-text-secondary text-xs leading-5">
+            {t("connectionInProgressDescription")}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="rounded-xl border border-border-input bg-bg-input p-4 sm:p-5">
+        <h3 className="font-semibold text-base text-text-heading">
+          {t("challengeSteps.title")}
+        </h3>
+        <p className="mt-1 mb-4 text-sm text-text-secondary leading-5">
+          {t("challengeSteps.description")}
+        </p>
+        <InstructionList items={challengeSteps} />
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-border-input border-t pt-4">
+          <a
+            className="ui-button ui-button-secondary"
+            href="https://www.olx.uz/"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {t("challengeSteps.openOlxButton")}
+          </a>
+          <p className="max-w-xl text-text-placeholder text-xs leading-5">
+            {t("challengeSteps.privateDataWarning")}
+          </p>
+        </div>
+      </div>
     </ClosableSection>
   );
 }
