@@ -2,6 +2,7 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
+import { getOlxConnectionControlsState } from "~/shared/olx-connection-controls";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "./closable-section";
 import { Input } from "./input";
@@ -107,6 +108,11 @@ export function OlxAccountSection() {
   const isConnected = session?.status === "connected";
   const isPending =
     connect.isPending || verify.isPending || disconnect.isPending;
+  const controlsState = getOlxConnectionControlsState({
+    isPending,
+    browserAvailable: data?.browserAvailable ?? false,
+    hasCredentials: Boolean(login.trim() && password),
+  });
   const connectionSteps = [
     {
       title: t("connectionSteps.enter.title"),
@@ -233,7 +239,7 @@ export function OlxAccountSection() {
       >
         <Input
           autoComplete="username"
-          disabled={isPending || !data?.browserAvailable}
+          disabled={controlsState.inputsDisabled}
           label={t("login")}
           onChange={(event) => setLogin(event.target.value)}
           placeholder={t("loginPlaceholder")}
@@ -242,7 +248,7 @@ export function OlxAccountSection() {
         />
         <Input
           autoComplete="current-password"
-          disabled={isPending || !data?.browserAvailable}
+          disabled={controlsState.inputsDisabled}
           label={t("password")}
           onChange={(event) => setPassword(event.target.value)}
           required
@@ -252,9 +258,7 @@ export function OlxAccountSection() {
         <div className="flex flex-wrap gap-3 md:col-span-2">
           <button
             className="ui-button ui-button-soft"
-            disabled={
-              isPending || !data?.browserAvailable || !login.trim() || !password
-            }
+            disabled={controlsState.submitDisabled}
             type="submit"
           >
             <LoadingButtonContent
