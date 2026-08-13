@@ -12,6 +12,7 @@ import {
   fillOlxAdvertForm,
   htmlToOlxPlainText,
   maskOlxLogin,
+  normalizeOlxLoginForForm,
   type OlxAdvertInput,
   publishOlxAdvertWithBrowser,
 } from "./browser-flow";
@@ -47,11 +48,18 @@ const advert: OlxAdvertInput = {
 
 function loginHtml() {
   return `<!doctype html><html lang="ru"><body>
+    <header><button type="button" tabindex="-1">Войти</button></header>
     <form action="/session" method="post">
       <label>Электронная почта или телефон<input name="login" type="email"></label>
       <label>Пароль<input name="password" type="password"></label>
       <button type="submit">Войти</button>
     </form>
+  </body></html>`;
+}
+
+function accountEntryHtml() {
+  return `<!doctype html><html lang="ru"><body>
+    <a href="/account">Ваш профиль</a>
   </body></html>`;
 }
 
@@ -95,6 +103,14 @@ describe("OLX browser flow", () => {
                 headers: { "content-type": "text/html; charset=utf-8" },
               })
             : Response.redirect(`${url.origin}/login`, 302);
+        }
+        if (url.pathname === "/adding-account-entry") {
+          return new Response(accountEntryHtml(), {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          });
+        }
+        if (url.pathname === "/account") {
+          return Response.redirect(`${url.origin}/login`, 302);
         }
         if (url.pathname === "/login") {
           return new Response(loginHtml(), {
@@ -147,6 +163,15 @@ describe("OLX browser flow", () => {
   test("masks login identifiers", () => {
     expect(maskOlxLogin("sabrina@example.com")).toBe("sa***@example.com");
     expect(maskOlxLogin("+998 90 123 45 67")).toBe("***4567");
+  });
+
+  test("normalizes Uzbek phone numbers for OLX's local login field", () => {
+    expect(normalizeOlxLoginForForm("+998 90 123 45 67")).toBe("901234567");
+    expect(normalizeOlxLoginForForm("998901234567")).toBe("901234567");
+    expect(normalizeOlxLoginForForm("90 123 45 67")).toBe("901234567");
+    expect(normalizeOlxLoginForForm("test@example.com")).toBe(
+      "test@example.com",
+    );
   });
 
   test("converts editor HTML to OLX-safe plain text", () => {
@@ -221,5 +246,21 @@ describe("OLX browser flow", () => {
       advertUrl: `${origin}/d/obyavlenie/test-vacancy-IDabc123.html`,
       advertId: "abc123",
     });
+  });
+
+  test("follows OLX's account entry page to the login form", async () => {
+    if (!executablePath) return;
+    const connected = await connectOlxBrowserSession({
+      login: "test@example.com",
+      password: "correct-password",
+      addingUrl: `${origin}/adding-account-entry`,
+    });
+
+    expect(connected.loginHint).toBe("te***@example.com");
+    expect(
+      connected.storageState.cookies.some(
+        (cookie) => cookie.name === "olx_session",
+      ),
+    ).toBe(true);
   });
 });

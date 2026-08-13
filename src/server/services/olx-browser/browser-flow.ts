@@ -110,6 +110,75 @@ async function isLoginPage(page: Page): Promise<boolean> {
   );
 }
 
+function isAllowedOlxAuthUrl(candidate: URL, addingUrl: string): boolean {
+  const adding = new URL(addingUrl);
+  const isRealOlxHost = /(?:^|\.)olx\.uz$/iu.test(adding.hostname);
+
+  if (isRealOlxHost) {
+    return (
+      candidate.protocol === "https:" &&
+      /(?:^|\.)olx\.uz$/iu.test(candidate.hostname)
+    );
+  }
+
+  // Browser-flow tests use a local fixture. Keep navigation confined to the
+  // fixture origin so an injected link cannot send the browser elsewhere.
+  return candidate.origin === adding.origin;
+}
+
+async function waitForLoginPage(
+  page: Page,
+  timeoutMs: number,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  do {
+    if (await isLoginPage(page)) return true;
+    if (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  } while (Date.now() < deadline);
+  return false;
+}
+
+/**
+ * OLX currently renders an account entry page before redirecting to its
+ * dedicated OAuth host. Older versions redirected /adding immediately, so we
+ * support both flows and only follow an account link within the OLX domain.
+ */
+async function openOlxLoginPage(page: Page, addingUrl: string): Promise<void> {
+  await page.goto(addingUrl, { waitUntil: "domcontentloaded" });
+  if (await waitForLoginPage(page, 1_500)) return;
+
+  const accountLink = await firstVisible(
+    [
+      page.getByRole("link", {
+        name: /ваш профиль|мой профиль|войти|sign in|log in|kirish/iu,
+      }),
+      page.locator('a[href*="/account" i]'),
+      page.locator('a[href*="login.olx.uz" i]'),
+    ],
+    2_000,
+  );
+  const href = await accountLink?.getAttribute("href");
+  if (href) {
+    const target = new URL(href, page.url());
+    if (!isAllowedOlxAuthUrl(target, addingUrl)) {
+      throw new OlxBrowserFlowError(
+        "publish_failed",
+        "OLX returned an unexpected login destination",
+      );
+    }
+    await page.goto(target.toString(), { waitUntil: "domcontentloaded" });
+  }
+
+  if (!(await waitForLoginPage(page, 5_000))) {
+    throw new OlxBrowserFlowError(
+      "publish_failed",
+      "OLX did not show the expected login form",
+    );
+  }
+}
+
 export function maskOlxLogin(login: string): string {
   const value = login.trim();
   const at = value.indexOf("@");
@@ -123,6 +192,22 @@ export function maskOlxLogin(login: string): string {
   return value.length > 2 ? `${value.slice(0, 2)}***` : "***";
 }
 
+/**
+ * The OLX.uz login UI displays +998 next to its phone field and accepts only
+ * the remaining nine digits. Email addresses are passed through unchanged.
+ */
+export function normalizeOlxLoginForForm(login: string): string {
+  const value = login.trim();
+  if (value.includes("@")) return value;
+
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("998")) {
+    return digits.slice(3);
+  }
+  if (digits.length === 9) return digits;
+  return value;
+}
+
 /** Completes OLX's normal login form and returns reusable browser state. */
 export async function connectOlxBrowserSession(input: {
   login: string;
@@ -131,16 +216,7 @@ export async function connectOlxBrowserSession(input: {
 }): Promise<{ storageState: OlxStorageState; loginHint: string }> {
   return withOlxBrowser({}, async (context) => {
     const page = await context.newPage();
-    await page.goto(input.addingUrl ?? OLX_ADDING_URL, {
-      waitUntil: "domcontentloaded",
-    });
-
-    if (!(await isLoginPage(page))) {
-      throw new OlxBrowserFlowError(
-        "publish_failed",
-        "OLX did not show the expected login form",
-      );
-    }
+    await openOlxLoginPage(page, input.addingUrl ?? OLX_ADDING_URL);
 
     const fields = loginLocators(page);
     const loginField = await firstVisible(fields.login, 5_000);
@@ -152,15 +228,18 @@ export async function connectOlxBrowserSession(input: {
       );
     }
 
-    await loginField.fill(input.login.trim());
+    await loginField.fill(normalizeOlxLoginForForm(input.login));
     await passwordField.fill(input.password);
 
     const submit = await firstVisible(
       [
+        // OLX also renders a visible account-mode tab named "Войти". Prefer
+        // the actual form submit control so the fixed header cannot intercept
+        // a click on that tab.
+        page.locator('button[type="submit"]'),
         page.getByRole("button", {
           name: /^(войти|sign in|log in|kirish)$/iu,
         }),
-        page.locator('button[type="submit"]'),
       ],
       5_000,
     );
@@ -170,9 +249,20 @@ export async function connectOlxBrowserSession(input: {
         "The OLX login button was not found",
       );
     }
+    if (!(await submit.isEnabled().catch(() => false))) {
+      throw new OlxBrowserFlowError(
+        "invalid_credentials",
+        "OLX did not accept the login format",
+      );
+    }
 
     const loginUrl = page.url();
-    await submit.click();
+    await submit.click({ timeout: 10_000 }).catch(() => {
+      throw new OlxBrowserFlowError(
+        "form_changed",
+        "The OLX login button could not be activated",
+      );
+    });
     await Promise.any([
       page.waitForURL(
         (url) =>

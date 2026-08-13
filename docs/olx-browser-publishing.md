@@ -1,6 +1,6 @@
 # OLX.uz browser-assisted vacancy publishing
 
-Last reviewed: 2026-08-10
+Last reviewed: 2026-08-13
 
 ## Why this integration uses a browser
 
@@ -32,7 +32,10 @@ that a still-live external advert is inactive.
 2. They enter their OLX.uz email/phone and password over the application's
    authenticated HTTPS connection.
 3. A short-lived headless Chrome process opens `https://www.olx.uz/adding` and
-   submits the normal OLX login form.
+   follows OLX's account/OAuth redirect to `login.olx.uz`, then submits the
+   normal OLX login form. OLX displays `+998` separately in its phone-login
+   control, so Persona converts a valid `+998XXXXXXXXX` login to the nine
+   national digits expected by that control. Email logins are unchanged.
 4. The password exists only in the request and browser process memory. It is
    never inserted into the database, written to a file, or deliberately logged.
 5. After a successful redirect, Playwright storage state (cookies and origin
@@ -172,7 +175,8 @@ Automated tests use a local HTTP fixture and a system Chrome. They cover:
 
 - encryption round-trip, wrong-key rejection, and tamper rejection;
 - masked login hints and HTML-to-plain-text conversion;
-- normal login and storage-state capture;
+- normal login, the current account-entry redirect, `+998` phone-login
+  normalization, and storage-state capture;
 - authenticated session reuse;
 - semantic form filling;
 - preview stopping before submit;
