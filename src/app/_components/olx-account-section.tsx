@@ -5,8 +5,14 @@ import { useState } from "react";
 import { getOlxConnectionControlsState } from "~/shared/olx-connection-controls";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "./closable-section";
+import { ChevronDownIcon } from "./icons";
 import { Input } from "./input";
-import { FeedbackPresence, LoadingButtonContent } from "./motion-system";
+import {
+  AnimatePresence,
+  FeedbackPresence,
+  LoadingButtonContent,
+  motion,
+} from "./motion-system";
 import { SkeletonBlock } from "./page-skeleton";
 
 function InstructionList({
@@ -44,6 +50,7 @@ export function OlxAccountSection() {
   const utils = api.useUtils();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -129,20 +136,12 @@ export function OlxAccountSection() {
   ];
   const challengeSteps = [
     {
-      title: t("challengeSteps.stop.title"),
-      description: t("challengeSteps.stop.description"),
-    },
-    {
       title: t("challengeSteps.openOlx.title"),
       description: t("challengeSteps.openOlx.description"),
     },
     {
       title: t("challengeSteps.complete.title"),
       description: t("challengeSteps.complete.description"),
-    },
-    {
-      title: t("challengeSteps.check.title"),
-      description: t("challengeSteps.check.description"),
     },
     {
       title: t("challengeSteps.return.title"),
@@ -210,23 +209,68 @@ export function OlxAccountSection() {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-border-input bg-bg-input px-3 py-3">
-        <p className="text-sm text-text-heading">
-          {session ? t("reconnectDescription") : t("connectDescription")}
-        </p>
-        <p className="mt-1 text-text-secondary text-xs leading-5">
-          {t("securityDescription")}
-        </p>
-      </div>
+      <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
+        <button
+          aria-controls="olx-connection-help"
+          aria-expanded={isHelpOpen}
+          className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-primary-blue focus-visible:outline-offset-[-2px]"
+          onClick={() => setIsHelpOpen((current) => !current)}
+          type="button"
+        >
+          <span className="font-semibold text-sm text-text-heading">
+            {t("connectionSteps.title")}
+          </span>
+          <ChevronDownIcon
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200 ${
+              isHelpOpen ? "rotate-180" : "rotate-0"
+            }`}
+          />
+        </button>
 
-      <div className="rounded-xl border border-border-input bg-bg-light p-4 sm:p-5">
-        <h3 className="font-semibold text-base text-text-heading">
-          {t("connectionSteps.title")}
-        </h3>
-        <p className="mt-1 mb-4 text-sm text-text-secondary leading-5">
-          {t("connectionSteps.description")}
-        </p>
-        <InstructionList items={connectionSteps} />
+        <AnimatePresence initial={false}>
+          {isHelpOpen ? (
+            <motion.div
+              animate={{ height: "auto", opacity: 1 }}
+              className="overflow-hidden"
+              exit={{ height: 0, opacity: 0 }}
+              id="olx-connection-help"
+              initial={{ height: 0, opacity: 0 }}
+            >
+              <div className="space-y-5 border-border-input border-t px-4 py-4">
+                <div>
+                  <p className="mb-3 text-text-secondary text-xs leading-5">
+                    {t("connectionSteps.description")}
+                  </p>
+                  <InstructionList items={connectionSteps} />
+                </div>
+
+                <div className="border-border-input border-t pt-4">
+                  <h4 className="font-semibold text-sm text-text-heading">
+                    {t("challengeSteps.title")}
+                  </h4>
+                  <p className="mt-1 mb-3 text-text-secondary text-xs leading-5">
+                    {t("challengeSteps.description")}
+                  </p>
+                  <InstructionList items={challengeSteps} />
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <a
+                      className="ui-button ui-button-secondary"
+                      href="https://www.olx.uz/"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      {t("challengeSteps.openOlxButton")}
+                    </a>
+                    <p className="max-w-xl text-text-placeholder text-xs leading-5">
+                      {t("challengeSteps.privateDataWarning")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       <form
@@ -316,29 +360,6 @@ export function OlxAccountSection() {
           </p>
         </div>
       ) : null}
-
-      <div className="rounded-xl border border-border-input bg-bg-input p-4 sm:p-5">
-        <h3 className="font-semibold text-base text-text-heading">
-          {t("challengeSteps.title")}
-        </h3>
-        <p className="mt-1 mb-4 text-sm text-text-secondary leading-5">
-          {t("challengeSteps.description")}
-        </p>
-        <InstructionList items={challengeSteps} />
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-border-input border-t pt-4">
-          <a
-            className="ui-button ui-button-secondary"
-            href="https://www.olx.uz/"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            {t("challengeSteps.openOlxButton")}
-          </a>
-          <p className="max-w-xl text-text-placeholder text-xs leading-5">
-            {t("challengeSteps.privateDataWarning")}
-          </p>
-        </div>
-      </div>
     </ClosableSection>
   );
 }
