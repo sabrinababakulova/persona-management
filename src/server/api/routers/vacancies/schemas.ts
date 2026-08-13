@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { periodSchema } from "~/server/api/router-utils/period";
+import {
+  normalizeOlxUzPhone,
+  OLX_UZ_PHONE_INPUT_REGEX,
+} from "~/shared/olx-phone";
 
 export const vacancyListInputSchema = z
   .object({
@@ -74,6 +78,26 @@ export type PersonHunterPublicationMeta = z.infer<
   typeof personHunterMetaSchema
 >;
 
+export const olxContactPhoneSchema = z
+  .string()
+  .trim()
+  .max(30)
+  .regex(
+    OLX_UZ_PHONE_INPUT_REGEX,
+    "Введите номер Узбекистана в формате +998 90 123 45 67.",
+  )
+  .transform((value, ctx) => {
+    const normalized = normalizeOlxUzPhone(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Не удалось привести номер к формату +998XXXXXXXXX.",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
 /**
  * Values that are specific to the OLX.uz web advert form.
  *
@@ -93,7 +117,7 @@ export const olxBrowserMetaSchema = z.object({
   schedule: z.string().trim().max(255).optional(),
   experience: z.string().trim().max(255).optional(),
   contactName: z.string().trim().max(255).optional(),
-  contactPhone: z.string().trim().max(50).optional(),
+  contactPhone: olxContactPhoneSchema.optional(),
   salaryNegotiable: z.boolean().default(false),
   remoteWork: z.boolean().default(false),
   onlineRecruitment: z.boolean().default(false),

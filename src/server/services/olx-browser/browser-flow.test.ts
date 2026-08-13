@@ -181,6 +181,9 @@ describe("OLX browser flow", () => {
       await page.locator('textarea[name="description"]').inputValue(),
     ).toContain("Работа с клиентами");
     expect(await page.locator('input[name="remote"]').isChecked()).toBe(true);
+    expect(await page.locator('input[name="phone"]').inputValue()).toBe(
+      "+998901234567",
+    );
     expect(page.url()).toBe(`${origin}/adding`);
     await context.close();
   });

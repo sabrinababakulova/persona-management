@@ -1151,6 +1151,8 @@
       "currency": "Currency",
       "contactName": "Contact person",
       "contactPhone": "Phone",
+      "contactPhoneHint": "Enter an Uzbekistan number. You can use 90 123 45 67 or +998 (90) 123-45-67; Persona sends it to OLX.uz as +998901234567.",
+      "contactPhoneInvalid": "Enter an Uzbekistan number with +998 and 9 digits, for example +998 90 123 45 67.",
       "salaryNegotiable": "Salary negotiable",
       "remoteWork": "Remote work",
       "onlineRecruitment": "Online recruitment",

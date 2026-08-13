@@ -79,6 +79,12 @@ publication form stores user-entered visible labels for category path, location,
 employment, schedule, and experience. The values must match the current OLX.uz
 dropdown labels exactly. The safe form check is the authoritative validation.
 
+Contact phone numbers are validated as Uzbekistan numbers (`+998` followed by
+exactly nine national digits). The UI accepts common spacing, hyphen, and
+parenthesis variants, then Zod normalizes the value to `+998XXXXXXXXX` before it
+is persisted or entered into the OLX.uz form. Invalid and foreign numbers stop
+before Chrome starts.
+
 ## Resource and request controls
 
 - no background job, cron, crawling, polling loop, or browser pool;

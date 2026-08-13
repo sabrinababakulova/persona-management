@@ -1151,6 +1151,8 @@
       "currency": "Valyuta",
       "contactName": "Aloqa uchun shaxs",
       "contactPhone": "Telefon",
+      "contactPhoneHint": "O‘zbekiston raqamini kiriting. 90 123 45 67 yoki +998 (90) 123-45-67 shaklidan foydalanishingiz mumkin; Persona uni OLX.uz’ga +998901234567 ko‘rinishida yuboradi.",
+      "contactPhoneInvalid": "+998 va undan keyin 9 ta raqamdan iborat O‘zbekiston raqamini kiriting, masalan +998 90 123 45 67.",
       "salaryNegotiable": "Maosh kelishiladi",
       "remoteWork": "Masofaviy ish",
       "onlineRecruitment": "Onlayn rekruting",

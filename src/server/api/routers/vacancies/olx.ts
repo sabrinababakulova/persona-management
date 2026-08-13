@@ -20,6 +20,7 @@ import {
   publishOlxAdvertWithBrowser,
   resolveOlxBrowserExecutable,
 } from "~/server/services/olx-browser";
+import { olxBrowserMetaSchema } from "./schemas";
 import { isUserVisibleVacancy } from "./shared";
 
 const OLX_ACTION_COOLDOWN_MS = 30 * 1000;
@@ -145,10 +146,12 @@ export const publishOlxBrowserProcedure = protectedProcedure
         message: "Публикация OLX.uz не найдена.",
       });
     }
-    if (!vacancy.olxBrowserMeta) {
+    const parsedMeta = olxBrowserMetaSchema.safeParse(vacancy.olxBrowserMeta);
+    if (!parsedMeta.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Заполните параметры публикации OLX.uz.",
+        message:
+          "Проверьте параметры публикации OLX.uz, включая номер телефона.",
       });
     }
     if (!htmlToOlxPlainText(vacancy.descriptionHtml ?? "")) {
@@ -210,7 +213,7 @@ export const publishOlxBrowserProcedure = protectedProcedure
           salaryFrom: vacancy.salaryFrom,
           salaryTo: vacancy.salaryTo,
           salaryCurrency: vacancy.salaryCurrency === "USD" ? "USD" : "UZS",
-          meta: vacancy.olxBrowserMeta,
+          meta: parsedMeta.data,
         },
       });
       const now = new Date();

@@ -14,6 +14,11 @@ import {
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
+import {
+  formatOlxUzPhone,
+  normalizeOlxUzPhone,
+  OLX_UZ_PHONE_EXAMPLE,
+} from "~/shared/olx-phone";
 import { api } from "~/trpc/react";
 import {
   formatNumberWithSpaces,
@@ -24,7 +29,15 @@ import { PublicationConfirmationModal } from "./publication-confirmation-modal";
 import { PublicationPageSkeleton } from "./publication-page-skeleton";
 
 type OlxErrors = Partial<
-  Record<"title" | "description" | "category" | "location" | "_form", string>
+  Record<
+    | "title"
+    | "description"
+    | "category"
+    | "location"
+    | "contactPhone"
+    | "_form",
+    string
+  >
 >;
 
 function hasVisibleText(html: string): boolean {
@@ -123,6 +136,9 @@ export function OlxPublicationForm({
     updatePublication.isPending ||
     runBrowser.isPending;
   const existingAdvertUrl = vacancyQuery.data?.olxAdvertUrl ?? null;
+  const normalizedContactPhone = contactPhone.trim()
+    ? normalizeOlxUzPhone(contactPhone)
+    : null;
 
   const buildMeta = () => ({
     categoryPath: categoryPath
@@ -135,7 +151,7 @@ export function OlxPublicationForm({
     ...(schedule.trim() ? { schedule: schedule.trim() } : {}),
     ...(experience.trim() ? { experience: experience.trim() } : {}),
     ...(contactName.trim() ? { contactName: contactName.trim() } : {}),
-    ...(contactPhone.trim() ? { contactPhone: contactPhone.trim() } : {}),
+    ...(normalizedContactPhone ? { contactPhone: normalizedContactPhone } : {}),
     salaryNegotiable,
     remoteWork,
     onlineRecruitment,
@@ -151,6 +167,9 @@ export function OlxPublicationForm({
       next.category = t("categoryRequired");
     }
     if (!location.trim()) next.location = t("locationRequired");
+    if (contactPhone.trim() && !normalizedContactPhone) {
+      next.contactPhone = t("contactPhoneInvalid");
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -162,7 +181,7 @@ export function OlxPublicationForm({
       salaryFrom: salaryFrom ? parseFormattedNumber(salaryFrom) : null,
       salaryTo: salaryTo ? parseFormattedNumber(salaryTo) : null,
       salaryCurrency,
-      contactPhone: contactPhone.trim() || null,
+      contactPhone: normalizedContactPhone,
       isPublication: true as const,
       olxBrowserMeta: buildMeta(),
     };
@@ -425,13 +444,42 @@ export function OlxPublicationForm({
                   }
                   value={contactName}
                 />
-                <Input
-                  label={t("contactPhone")}
-                  onChange={(event) =>
-                    setContactPhone(event.currentTarget.value)
-                  }
-                  value={contactPhone}
-                />
+                <div className="flex flex-col gap-1">
+                  <Input
+                    aria-describedby="olx-contact-phone-hint olx-contact-phone-error"
+                    aria-invalid={Boolean(errors.contactPhone)}
+                    autoComplete="tel"
+                    id="olx-contact-phone"
+                    inputMode="tel"
+                    label={t("contactPhone")}
+                    maxLength={30}
+                    onBlur={() => {
+                      const formatted = formatOlxUzPhone(contactPhone);
+                      if (formatted) setContactPhone(formatted);
+                    }}
+                    onChange={(event) => {
+                      setContactPhone(event.currentTarget.value);
+                      if (errors.contactPhone) {
+                        setErrors((current) => ({
+                          ...current,
+                          contactPhone: undefined,
+                        }));
+                      }
+                    }}
+                    placeholder={OLX_UZ_PHONE_EXAMPLE}
+                    type="tel"
+                    value={contactPhone}
+                  />
+                  <p
+                    className="text-text-placeholder text-xs leading-5"
+                    id="olx-contact-phone-hint"
+                  >
+                    {t("contactPhoneHint")}
+                  </p>
+                  <div id="olx-contact-phone-error">
+                    {errorText("contactPhone")}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
