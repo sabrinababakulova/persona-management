@@ -63,6 +63,13 @@ function accountEntryHtml() {
   </body></html>`;
 }
 
+function accountEntryRedirectRaceHtml() {
+  return `<!doctype html><html lang="ru"><body>
+    <a href="/account-aborted">Ваш профиль</a>
+    <script>setTimeout(() => location.assign("/login"), 1800)</script>
+  </body></html>`;
+}
+
 function advertHtml() {
   return `<!doctype html><html lang="ru"><body>
     <form action="/publish" method="post">
@@ -109,8 +116,19 @@ describe("OLX browser flow", () => {
             headers: { "content-type": "text/html; charset=utf-8" },
           });
         }
+        if (url.pathname === "/adding-account-redirect-race") {
+          return new Response(accountEntryRedirectRaceHtml(), {
+            headers: { "content-type": "text/html; charset=utf-8" },
+          });
+        }
         if (url.pathname === "/account") {
           return Response.redirect(`${url.origin}/login`, 302);
+        }
+        if (url.pathname === "/account-aborted") {
+          // Chromium keeps the current document for a 204 navigation and
+          // Playwright reports page.goto as net::ERR_ABORTED. The timer in the
+          // entry page then completes the same redirect race OLX exhibits.
+          return new Response(null, { status: 204 });
         }
         if (url.pathname === "/login") {
           return new Response(loginHtml(), {
@@ -254,6 +272,22 @@ describe("OLX browser flow", () => {
       login: "test@example.com",
       password: "correct-password",
       addingUrl: `${origin}/adding-account-entry`,
+    });
+
+    expect(connected.loginHint).toBe("te***@example.com");
+    expect(
+      connected.storageState.cookies.some(
+        (cookie) => cookie.name === "olx_session",
+      ),
+    ).toBe(true);
+  });
+
+  test("continues when OLX aborts the account navigation during its login redirect", async () => {
+    if (!executablePath) return;
+    const connected = await connectOlxBrowserSession({
+      login: "test@example.com",
+      password: "correct-password",
+      addingUrl: `${origin}/adding-account-redirect-race`,
     });
 
     expect(connected.loginHint).toBe("te***@example.com");

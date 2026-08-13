@@ -140,6 +140,13 @@ async function waitForLoginPage(
   return false;
 }
 
+function isAbortedNavigation(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /(?:^|\s)net::ERR_ABORTED(?:\s|$)/u.test(error.message)
+  );
+}
+
 /**
  * OLX currently renders an account entry page before redirecting to its
  * dedicated OAuth host. Older versions redirected /adding immediately, so we
@@ -168,7 +175,16 @@ async function openOlxLoginPage(page: Page, addingUrl: string): Promise<void> {
         "OLX returned an unexpected login destination",
       );
     }
-    await page.goto(target.toString(), { waitUntil: "domcontentloaded" });
+    try {
+      await page.goto(target.toString(), { waitUntil: "domcontentloaded" });
+    } catch (error) {
+      // OLX's /account redirector can replace this navigation while Playwright
+      // is still waiting for it, which Chromium reports as net::ERR_ABORTED.
+      // Treat only that cancellation as recoverable; the login-page check below
+      // remains the postcondition, so an aborted navigation cannot be mistaken
+      // for a successful login redirect.
+      if (!isAbortedNavigation(error)) throw error;
+    }
   }
 
   if (!(await waitForLoginPage(page, 5_000))) {
