@@ -42,13 +42,13 @@ function describeOlxPublishError(error: unknown): TRPCError {
       return new TRPCError({
         code: "PRECONDITION_FAILED",
         message:
-          "Доступ OLX.uz истёк. Переподключите аккаунт в настройках компании.",
+          "Доступ olx.uz истёк. Переподключите аккаунт в настройках компании.",
       });
     }
     if (error.code === "rate_limited") {
       return new TRPCError({
         code: "TOO_MANY_REQUESTS",
-        message: "OLX.uz временно ограничил запросы. Повторите позже.",
+        message: "olx.uz временно ограничил запросы. Повторите позже.",
       });
     }
     if (error.code === "validation_failed") {
@@ -57,28 +57,28 @@ function describeOlxPublishError(error: unknown): TRPCError {
         : "";
       return new TRPCError({
         code: "BAD_REQUEST",
-        message: `OLX.uz отклонил данные объявления.${details}`,
+        message: `olx.uz отклонил данные объявления.${details}`,
       });
     }
     return new TRPCError({
       code: "BAD_GATEWAY",
-      message: "OLX.uz сейчас не отвечает. Попробуйте позже.",
+      message: "olx.uz сейчас не отвечает. Попробуйте позже.",
     });
   }
 
   const localMessage = error instanceof Error ? error.message : "";
   const messageByCode: Record<string, string> = {
     OLX_TITLE_LENGTH:
-      "Название для OLX.uz должно содержать от 16 до 70 знаков.",
+      "Название для olx.uz должно содержать от 16 до 70 знаков.",
     OLX_DESCRIPTION_LENGTH:
-      "Описание для OLX.uz должно содержать от 80 до 9000 знаков.",
-    OLX_CATEGORY_REQUIRED: "Выберите специальность из списка OLX.uz.",
+      "Описание для olx.uz должно содержать от 80 до 9000 знаков.",
+    OLX_CATEGORY_REQUIRED: "Выберите специальность из списка olx.uz.",
     OLX_CONTACT_REQUIRED: "Укажите имя контактного лица (не менее 2 знаков).",
-    OLX_LOCATION_NOT_FOUND: "Выберите местоположение из подсказок OLX.uz.",
+    OLX_LOCATION_NOT_FOUND: "Выберите местоположение из подсказок olx.uz.",
     OLX_LOCATION_DISTRICT_REQUIRED:
-      "Для этого города выберите конкретный район из подсказок OLX.uz.",
+      "Для этого города выберите конкретный район из подсказок olx.uz.",
     OLX_PUBLISH_RESPONSE_INVALID:
-      "OLX.uz не подтвердил создание объявления. Повторно не отправляйте его; проверьте объявления в OLX.uz.",
+      "olx.uz не подтвердил создание объявления. Повторно не отправляйте его; проверьте объявления в olx.uz.",
   };
   if (messageByCode[localMessage]) {
     return new TRPCError({
@@ -90,7 +90,7 @@ function describeOlxPublishError(error: unknown): TRPCError {
   console.error("Unexpected OLX API publication error", error);
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
-    message: "Не удалось обработать публикацию OLX.uz.",
+    message: "Не удалось обработать публикацию olx.uz.",
   });
 }
 
@@ -127,7 +127,7 @@ export const searchOlxLocationsProcedure = protectedProcedure
       console.error("Failed to search OLX locations", error);
       throw new TRPCError({
         code: "BAD_GATEWAY",
-        message: "Не удалось загрузить местоположения OLX.uz.",
+        message: "Не удалось загрузить местоположения olx.uz.",
       });
     }
   });
@@ -148,7 +148,7 @@ export const publishOlxProcedure = protectedProcedure
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message:
-          "OLX.uz отправляется только по вашему нажатию и не чаще одного раза в 30 секунд. Подождите и повторите.",
+          "olx.uz отправляется только по вашему нажатию и не чаще одного раза в 30 секунд. Подождите и повторите.",
       });
     }
 
@@ -177,7 +177,7 @@ export const publishOlxProcedure = protectedProcedure
     if (!vacancy) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "Публикация OLX.uz не найдена.",
+        message: "Публикация olx.uz не найдена.",
       });
     }
     const parsedMeta = olxPublicationMetaSchema.safeParse(
@@ -186,14 +186,14 @@ export const publishOlxProcedure = protectedProcedure
     if (!parsedMeta.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Проверьте обязательные параметры публикации OLX.uz.",
+        message: "Проверьте обязательные параметры публикации olx.uz.",
       });
     }
     if (!input.dryRun && (vacancy.olxAdvertId || vacancy.olxAdvertUrl)) {
       throw new TRPCError({
         code: "CONFLICT",
         message:
-          "Эта версия уже отправлена в OLX.uz. Откройте существующее объявление, чтобы не создать дубликат.",
+          "Эта версия уже отправлена в olx.uz. Откройте существующее объявление, чтобы не создать дубликат.",
       });
     }
 
@@ -201,7 +201,7 @@ export const publishOlxProcedure = protectedProcedure
     if (!session || session.status !== "connected") {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "Подключите аккаунт OLX.uz в настройках компании.",
+        message: "Подключите аккаунт olx.uz в настройках компании.",
       });
     }
 
@@ -223,7 +223,7 @@ export const publishOlxProcedure = protectedProcedure
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message:
-          "Сохранённый доступ OLX.uz недействителен. Подключите аккаунт заново.",
+          "Сохранённый доступ olx.uz недействителен. Подключите аккаунт заново.",
       });
     }
 

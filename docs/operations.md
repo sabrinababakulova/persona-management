@@ -109,9 +109,9 @@ The bare site origin is not a valid NextAuth redirect URI. After changing the
 Google client, restart Persona and confirm `/api/auth/providers` reports the
 expected `callbackUrl` before attempting an account sign-in.
 
-## OLX.uz integration
+## olx.uz integration
 
-OLX.uz publishing requires a current Google Chrome or Chromium binary but no
+olx.uz publishing requires a current Google Chrome or Chromium binary but no
 display server. Each authenticated operation creates one short-lived headless
 network context and closes it after the response; there is no idle browser
 process. Public category and location lookups try normal server-side HTTP first;

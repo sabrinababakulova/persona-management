@@ -98,7 +98,7 @@ export const olxContactPhoneSchema = z
     return normalized;
   });
 
-/** Values used by OLX.uz's own Jobs posting requests. */
+/** Values used by olx.uz's own Jobs posting requests. */
 export const olxPublicationMetaSchema = z.object({
   categoryId: z.number().int().positive().optional(),
   categoryPath: z

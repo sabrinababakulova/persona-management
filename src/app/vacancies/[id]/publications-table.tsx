@@ -32,7 +32,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
-  "olx.uz": { src: "/olx.svg", label: "OLX.uz" },
+  "olx.uz": { src: "/olx.svg", label: "olx.uz" },
 };
 
 type PublicationState = "published" | "draft" | "local";

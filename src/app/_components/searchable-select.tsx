@@ -20,8 +20,12 @@ type SearchableSelectProps = {
   label: string;
   options: SelectOption[];
   placeholder?: string;
+  displayValue?: string;
   value: string;
   onChange: (value: string) => void;
+  onSearchChange?: (value: string) => void;
+  sanitizeSearchInput?: (value: string) => string;
+  filterOptions?: boolean;
   id?: string;
   hideLabel?: boolean;
   className?: string;
@@ -40,8 +44,12 @@ export function SearchableSelect({
   label,
   options,
   placeholder,
+  displayValue,
   value,
   onChange,
+  onSearchChange,
+  sanitizeSearchInput,
+  filterOptions = true,
   id,
   hideLabel = false,
   className,
@@ -77,14 +85,14 @@ export function SearchableSelect({
   const filteredOptions = useMemo(() => {
     const normalizedQuery = normalizeSearchValue(searchQuery);
 
-    if (!normalizedQuery) {
+    if (!filterOptions || !normalizedQuery) {
       return options;
     }
 
     return options.filter((option) =>
       normalizeSearchValue(option.label).includes(normalizedQuery),
     );
-  }, [options, searchQuery]);
+  }, [filterOptions, options, searchQuery]);
 
   const updatePanelPosition = useCallback(() => {
     const buttonRect = buttonRef.current?.getBoundingClientRect();
@@ -154,7 +162,9 @@ export function SearchableSelect({
     return () => window.cancelAnimationFrame(frameId);
   }, [isOpen, updatePanelPosition]);
 
-  const selectedLabel = selectedOption?.label ?? resolvedPlaceholder;
+  const selectedLabel =
+    selectedOption?.label ?? displayValue ?? resolvedPlaceholder;
+  const hasDisplayedValue = Boolean(selectedOption || displayValue);
 
   return (
     <div
@@ -178,7 +188,7 @@ export function SearchableSelect({
             aria-controls={panelId}
             aria-expanded={isOpen}
             className={`flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border-input bg-bg-input px-3.5 text-left text-sm leading-5 transition-[border-color,box-shadow,color] duration-200 ease-out hover:border-border-control focus:border-primary-blue focus:outline-none ${
-              value ? "text-text-heading" : "text-text-placeholder"
+              hasDisplayedValue ? "text-text-heading" : "text-text-placeholder"
             } ${fieldClassName ?? ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             disabled={disabled}
             id={selectId}
@@ -223,9 +233,13 @@ export function SearchableSelect({
                         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-placeholder" />
                         <input
                           className="h-10 w-full rounded-lg border border-border-input bg-bg-input py-2 pr-3 pl-10 text-sm text-text-heading outline-none transition-colors placeholder:text-text-placeholder focus:border-primary-blue"
-                          onChange={(event) =>
-                            setSearchQuery(event.target.value)
-                          }
+                          onChange={(event) => {
+                            const nextValue = sanitizeSearchInput
+                              ? sanitizeSearchInput(event.target.value)
+                              : event.target.value;
+                            setSearchQuery(nextValue);
+                            onSearchChange?.(nextValue);
+                          }}
                           placeholder={resolvedSearchPlaceholder}
                           ref={searchInputRef}
                           type="text"

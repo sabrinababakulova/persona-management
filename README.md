@@ -68,15 +68,15 @@ To apply locally:
 bun run db:migrate
 ```
 
-## OLX.uz vacancy publishing
+## olx.uz vacancy publishing
 
-OLX.uz has no supported third-party publishing API for Uzbekistan. The
+olx.uz has no supported third-party publishing API for Uzbekistan. The
 integration therefore uses a one-time Chrome connector to transfer the user's
 OLX web authorization to Persona, encrypts the tokens at rest, and performs
 later preview/publication requests through a short-lived headless
 Chrome/Chromium network context on the server. The context closes after each
 request and does not automate OLX pages. Passwords, CAPTCHAs, and SMS codes stay
-on the official OLX.uz website. Public category and location lookups try normal
+on the official olx.uz website. Public category and location lookups try normal
 server-side HTTP first, use a short-lived Chromium fallback when OLX returns
 HTTP 403, and are cached to avoid repeated browser launches.
 

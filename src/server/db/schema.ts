@@ -1131,9 +1131,9 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
 }));
 
 /**
- * Per-user OLX.uz connection. The legacy column name is retained for migration
+ * Per-user olx.uz connection. The legacy column name is retained for migration
  * compatibility, but it now stores an encrypted API token set captured only
- * after the user signs in on OLX.uz. Passwords and challenge responses are
+ * after the user signs in on olx.uz. Passwords and challenge responses are
  * never sent to Persona.
  */
 export const userOlxSessions = createTable("user_olx_session", (d) => ({

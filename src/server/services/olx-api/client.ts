@@ -94,13 +94,13 @@ function stringValue(value: unknown, maxLength = 255): string | undefined {
 
 function maskEmail(value: string): string {
   const [local, domain] = value.split("@");
-  if (!local || !domain) return "OLX.uz";
+  if (!local || !domain) return "olx.uz";
   return `${local.slice(0, 2)}***@${domain}`;
 }
 
 function maskPhone(value: string): string {
   const digits = value.replace(/\D/g, "");
-  if (digits.length < 6) return "OLX.uz";
+  if (digits.length < 6) return "olx.uz";
   return `+${digits.slice(0, 3)} ** *** ${digits.slice(-4)}`;
 }
 

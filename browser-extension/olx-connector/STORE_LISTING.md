@@ -1,13 +1,13 @@
-# Chrome Web Store submission — Talanty OLX.uz Connector
+# Chrome Web Store submission — Talanty olx.uz Connector
 
 Use this file as the source of truth when completing the Chrome Web Store
 developer dashboard. Do not add test credentials to the repository or listing.
 
 ## Store listing
 
-- **Name:** Talanty — OLX.uz Connector
-- **Summary:** Connects an OLX.uz account to Talanty after the user signs in on
-  the official OLX.uz website.
+- **Name:** Talanty — olx.uz Connector
+- **Summary:** Connects an olx.uz account to Talanty after the user signs in on
+  the official olx.uz website.
 - **Category:** Productivity
 - **Language:** Russian
 - **Visibility:** Unlisted
@@ -22,9 +22,9 @@ developer dashboard. Do not add test credentials to the repository or listing.
 
 ### Detailed description
 
-Talanty — OLX.uz Connector lets a signed-in Talanty user connect their own
-OLX.uz account from their normal Chrome browser. The user starts the connection
-in Talanty, signs in and completes any verification only on the official OLX.uz
+Talanty — olx.uz Connector lets a signed-in Talanty user connect their own
+olx.uz account from their normal Chrome browser. The user starts the connection
+in Talanty, signs in and completes any verification only on the official olx.uz
 website, and explicitly confirms the connection there. Talanty can then perform
 the OLX vacancy publication actions started by that user.
 
@@ -35,23 +35,23 @@ Talanty origin that created the short-lived, single-use connection ticket.
 
 ## Single purpose
 
-Connect a user's OLX.uz account to Talanty so Talanty can perform the OLX
+Connect a user's olx.uz account to Talanty so Talanty can perform the OLX
 vacancy publication actions that user starts.
 
 ## Permission justifications
 
-- **scripting:** Reads the signed-in OLX token records from OLX.uz first-party
+- **scripting:** Reads the signed-in OLX token records from olx.uz first-party
   local storage only after the user explicitly confirms the connection.
 - **storage:** Keeps the pending one-time connection request and captured OLX
   request context in Chrome session storage. It does not persist OLX credentials
   in extension local storage.
-- **tabs:** Opens the official OLX.uz connection page, returns focus to the
+- **tabs:** Opens the official olx.uz connection page, returns focus to the
   originating Talanty tab, and sends connection completion status to that tab.
 - **webRequest:** Observes request headers only for `www.olx.uz/api/v1/*` to
   obtain the OLX device ID, request fingerprint, user agent, first-party cookie
   header, and a one-way digest used to match the active OLX token record. It
   does not read request bodies or response bodies.
-- **`https://*.olx.uz/*`:** Runs the explicit confirmation UI on OLX.uz and
+- **`https://*.olx.uz/*`:** Runs the explicit confirmation UI on olx.uz and
   reads the OLX-owned authenticated session values needed for the connection.
 - **`https://*.talanty.uz/*`:** Receives a short-lived connection ticket from
   Talanty and sends the captured connection values only to the same Talanty
@@ -64,7 +64,7 @@ Select the dashboard categories that cover all of the following data:
 - Authentication information: OLX access, refresh, and identity tokens, plus
   the first-party OLX cookie header.
 - Website content / browser storage: the OLX-owned Auth0 token records read from
-  OLX.uz local storage.
+  olx.uz local storage.
 - Web history or user activity, if the dashboard classifies the observed OLX
   API request URL and headers in either category.
 - Device information: OLX device ID, request fingerprint, and user agent.
@@ -80,16 +80,16 @@ Certify only statements that match this implementation:
 ## Reviewer instructions
 
 The reviewer needs a Talanty test account that can access Company settings and
-a dedicated OLX.uz test account. Provide those credentials only in the private
+a dedicated olx.uz test account. Provide those credentials only in the private
 Chrome Web Store reviewer-instructions fields.
 
 1. Install the extension and sign in to the supplied Talanty test account.
-2. Open **Company settings → OLX.uz account**.
+2. Open **Company settings → olx.uz account**.
 3. Read the disclosure, select the consent checkbox, and press **Connect
-   OLX.uz**.
-4. Sign in to the supplied test OLX.uz account on the official site and complete
+   olx.uz**.
+4. Sign in to the supplied test olx.uz account on the official site and complete
    any verification there.
-5. Press **I am signed in — connect account** in the connector panel on OLX.uz.
+5. Press **I am signed in — connect account** in the connector panel on olx.uz.
 6. Return to Talanty and verify that the OLX status is **Connected**.
 
 Before submission, replace this paragraph in the private dashboard notes with

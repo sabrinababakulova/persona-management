@@ -13,9 +13,9 @@ import {
   LoadingButtonContent,
 } from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
+import { SearchableSelect } from "~/app/_components/searchable-select";
 import {
   OLX_DEFAULT_LOCATION,
-  OLX_LOCATION_INPUT_REGEX,
   sanitizeOlxLocationInput,
 } from "~/shared/olx-location";
 import {
@@ -360,6 +360,13 @@ export function OlxPublicationForm({
       label: category.label,
     })) ?? [];
   const locationOptions = locationsQuery.data ?? [];
+  const locationSelectOptions = locationOptions.map((option) => ({
+    value: `${option.cityId}:${option.districtId ?? 0}`,
+    label: option.label,
+  }));
+  const selectedLocationValue = selectedLocation
+    ? `${selectedLocation.cityId}:${selectedLocation.districtId ?? 0}`
+    : "";
   const alreadyPublished = Boolean(
     vacancyQuery.data?.olxAdvertId || existingAdvertUrl,
   );
@@ -429,9 +436,6 @@ export function OlxPublicationForm({
                   placeholder={t("descriptionPlaceholder")}
                   value={descriptionHtml}
                 />
-                <p className="text-text-placeholder text-xs leading-5">
-                  {t("plainTextHint")}
-                </p>
                 {errorText("description")}
               </div>
             </ClosableSection>
@@ -451,33 +455,35 @@ export function OlxPublicationForm({
                   {errorText("category")}
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Input
-                    autoComplete="off"
+                  <SearchableSelect
+                    displayValue={location}
+                    filterOptions={false}
                     label={t("location")}
-                    list="olx-location-options"
-                    onChange={(event) => {
-                      const value = sanitizeOlxLocationInput(
-                        event.currentTarget.value,
+                    onChange={(value) => {
+                      const nextLocation = locationOptions.find(
+                        (option) =>
+                          `${option.cityId}:${option.districtId ?? 0}` ===
+                          value,
                       );
-                      setLocation(value);
-                      setSelectedLocation(
-                        locationOptions.find(
-                          (option) => option.label === value,
-                        ) ?? null,
-                      );
+                      if (!nextLocation) return;
+
+                      setLocation(nextLocation.label);
+                      setSelectedLocation(nextLocation);
+                      setErrors((current) => ({
+                        ...current,
+                        location: undefined,
+                      }));
                     }}
-                    pattern={OLX_LOCATION_INPUT_REGEX.source}
+                    onSearchChange={(value) => {
+                      setLocation(value);
+                      setSelectedLocation(null);
+                    }}
+                    options={locationSelectOptions}
                     placeholder={t("locationPlaceholder")}
-                    value={location}
+                    sanitizeSearchInput={sanitizeOlxLocationInput}
+                    searchPlaceholder={t("locationPlaceholder")}
+                    value={selectedLocationValue}
                   />
-                  <datalist id="olx-location-options">
-                    {locationOptions.map((option) => (
-                      <option
-                        key={`${option.cityId}:${option.districtId ?? 0}`}
-                        value={option.label}
-                      />
-                    ))}
-                  </datalist>
                   {locationsQuery.isFetching ? (
                     <p className="text-text-placeholder text-xs leading-5">
                       {t("locationSearching")}
@@ -579,7 +585,7 @@ export function OlxPublicationForm({
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-4 flex flex-col items-start gap-3">
                 {[
                   [
                     salaryNegotiable,

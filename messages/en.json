@@ -4,9 +4,9 @@
     "description": "Candidate and vacancy management system"
   },
   "OlxConnectorPrivacy": {
-    "eyebrow": "OLX.uz connector",
+    "eyebrow": "olx.uz connector",
     "title": "Privacy notice",
-    "intro": "This notice explains what the Talanty — OLX.uz Connector handles when you choose to connect an OLX.uz account.",
+    "intro": "This notice explains what the Talanty — olx.uz Connector handles when you choose to connect an olx.uz account.",
     "updated": "Last updated: August 14, 2026",
     "collected": {
       "title": "Data the connector transfers",
@@ -14,7 +14,7 @@
     },
     "notCollected": {
       "title": "Data the connector does not collect",
-      "body": "The connector does not read or send your OLX password, CAPTCHA answer, SMS or OTP code, page form contents, or API response bodies. Enter verification details only on the official OLX.uz website."
+      "body": "The connector does not read or send your OLX password, CAPTCHA answer, SMS or OTP code, page form contents, or API response bodies. Enter verification details only on the official olx.uz website."
     },
     "use": {
       "title": "Why the data is used",
@@ -26,7 +26,7 @@
     },
     "control": {
       "title": "Your control",
-      "body": "You can disconnect OLX.uz in Talanty at any time. Disconnecting deletes the saved OLX connection from your Talanty account. You can also remove the browser extension in Chrome."
+      "body": "You can disconnect olx.uz in Talanty at any time. Disconnecting deletes the saved OLX connection from your Talanty account. You can also remove the browser extension in Chrome."
     },
     "contact": {
       "title": "Questions",
@@ -545,27 +545,27 @@
     "channelRequired": "Specify a channel",
     "adminsRequired": "Add at least one administrator",
     "olx": {
-      "title": "OLX.uz account",
+      "title": "olx.uz account",
       "status": "Status",
       "connected": "Connected",
       "reauthRequired": "Sign-in required",
       "account": "Account",
       "lastVerified": "Last verified",
-      "reconnect": "Reconnect OLX.uz",
-      "connect": "Connect OLX.uz",
-      "starting": "Opening OLX.uz...",
-      "continueOnOlx": "The official OLX.uz website opened. Sign in, complete any verification, then press “I am signed in — connect account”.",
+      "reconnect": "Reconnect olx.uz",
+      "connect": "Connect olx.uz",
+      "starting": "Opening olx.uz...",
+      "continueOnOlx": "The official olx.uz website opened. Sign in, complete any verification, then press “I am signed in — connect account”.",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting...",
-      "connectError": "Could not connect OLX.uz.",
-      "disconnected": "The OLX.uz connection was removed.",
-      "disconnectError": "Could not remove the OLX.uz connection.",
-      "extensionMissing": "Talanty — OLX.uz Connector was not detected",
+      "connectError": "Could not connect olx.uz.",
+      "disconnected": "The olx.uz connection was removed.",
+      "disconnectError": "Could not remove the olx.uz connection.",
+      "extensionMissing": "Talanty — olx.uz Connector was not detected",
       "extensionMissingHint": "Install the connector and refresh this page. If there is no installation button, ask your Talanty administrator for the link.",
       "installExtension": "Install the Chrome extension",
-      "dataDisclosure": "Talanty saves the OLX.uz session tokens and browser details needed to publish. Your password, CAPTCHA, and SMS codes are not sent.",
+      "dataDisclosure": "Talanty saves the olx.uz session tokens and browser details needed to publish. Your password, CAPTCHA, and SMS codes are not sent.",
       "privacyLink": "How your data is protected",
-      "consent": "I agree to connect this OLX.uz account.",
+      "consent": "I agree to connect this olx.uz account.",
       "connectionSteps": {
         "title": "How to connect your account",
         "install": {
@@ -574,11 +574,11 @@
         },
         "connect": {
           "title": "Start the connection",
-          "description": "Press “Connect OLX.uz” and sign in on the official OLX.uz website. Enter any CAPTCHA or SMS code only there."
+          "description": "Press “Connect olx.uz” and sign in on the official olx.uz website. Enter any CAPTCHA or SMS code only there."
         },
         "finish": {
           "title": "Confirm the connection",
-          "description": "On OLX.uz, press “I am signed in — connect account”, then return to Talanty."
+          "description": "On olx.uz, press “I am signed in — connect account”, then return to Talanty."
         }
       }
     }
@@ -994,7 +994,7 @@
       "hhDeactivate": "The publication will be archived on hh.uz.",
       "activateQuestion": "Activate publication?",
       "deactivateQuestion": "Deactivate publication?",
-      "forOlx": "For OLX.uz"
+      "forOlx": "For olx.uz"
     },
     "hh": {
       "pageTitle": "Publish on hh.uz",
@@ -1106,13 +1106,13 @@
       "publishDescription": "The publication will be saved and sent to PersonHunters."
     },
     "olx": {
-      "pageTitle": "Publish on OLX.uz",
+      "pageTitle": "Publish on olx.uz",
       "notFound": "Vacancy not found",
       "vacancy": "Vacancy",
-      "serviceUnavailable": "OLX.uz dictionaries are unavailable right now. Refresh this page later.",
-      "alreadyPublished": "This version is already published on OLX.uz.",
-      "alreadyPublishedHint": "Automatic editing and deletion are not performed yet. Edit the advert directly on OLX.uz or create a new version to avoid a duplicate.",
-      "openAdvert": "Open advert on OLX.uz",
+      "serviceUnavailable": "olx.uz dictionaries are unavailable right now. Refresh this page later.",
+      "alreadyPublished": "This version is already published on olx.uz.",
+      "alreadyPublishedHint": "Automatic editing and deletion are not performed yet. Edit the advert directly on olx.uz or create a new version to avoid a duplicate.",
+      "openAdvert": "Open advert on olx.uz",
       "content": "Publication content",
       "title": "Vacancy title",
       "titlePlaceholder": "For example, Sales manager",
@@ -1122,17 +1122,16 @@
       "descriptionPlaceholder": "Describe responsibilities, requirements, and conditions",
       "descriptionRequired": "Enter a vacancy description",
       "descriptionLength": "The description must contain 80 to 9,000 characters.",
-      "plainTextHint": "Formatting is converted to plain text supported by the OLX.uz form before submission.",
       "placement": "Placement details",
-      "category": "OLX.uz job role",
+      "category": "olx.uz job role",
       "categoryPlaceholder": "Select a job role",
-      "categoryRequired": "Select a job role from the OLX.uz list.",
+      "categoryRequired": "Select a job role from the olx.uz list.",
       "location": "City or location",
       "locationPlaceholder": "For example, Tashkent",
-      "locationRequired": "Select a city or district from the OLX.uz suggestions.",
-      "locationSearching": "Searching OLX.uz locations...",
+      "locationRequired": "Select a city or district from the olx.uz suggestions.",
+      "locationSearching": "Searching olx.uz locations...",
       "district": "District (optional)",
-      "optionalExactLabel": "Exact label from OLX.uz",
+      "optionalExactLabel": "Exact label from olx.uz",
       "employmentType": "Job type",
       "employmentPermanent": "Permanent job",
       "employmentTemporary": "Temporary job",
@@ -1155,12 +1154,12 @@
       "remoteWork": "Remote work",
       "onlineRecruitment": "Online recruitment",
       "preview": "Check form",
-      "previewing": "Checking OLX.uz...",
-      "publish": "Publish on OLX.uz",
-      "confirmDescription": "Persona will send the advert from the server to your connected OLX.uz account. Do not press twice; a repeated request can create a duplicate.",
-      "confirmTitle": "Publish this advert on OLX.uz?",
-      "previewSuccess": "OLX.uz accepted the preview data. No advert was published.",
-      "actionError": "Could not process the OLX.uz publication."
+      "previewing": "Checking olx.uz...",
+      "publish": "Publish on olx.uz",
+      "confirmDescription": "Persona will send the advert from the server to your connected olx.uz account. Do not press twice; a repeated request can create a duplicate.",
+      "confirmTitle": "Publish this advert on olx.uz?",
+      "previewSuccess": "olx.uz accepted the preview data. No advert was published.",
+      "actionError": "Could not process the olx.uz publication."
     }
   },
   "Errors": {

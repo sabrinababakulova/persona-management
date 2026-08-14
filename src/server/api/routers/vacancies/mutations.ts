@@ -311,7 +311,7 @@ export const updateVacancyProcedure = protectedProcedure
 
     // The browser integration currently creates OLX adverts but does not
     // automate their lifecycle. Never show a local inactive state while the
-    // external advert is still live; the recruiter must manage it on OLX.uz.
+    // external advert is still live; the recruiter must manage it on olx.uz.
     if (
       input.isActive !== undefined &&
       input.isActive !== existing.isActive &&
@@ -321,7 +321,7 @@ export const updateVacancyProcedure = protectedProcedure
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
-          "Измените статус объявления непосредственно на OLX.uz. Автоматическое удаление и деактивация не выполняются.",
+          "Измените статус объявления непосредственно на olx.uz. Автоматическое удаление и деактивация не выполняются.",
       });
     }
 

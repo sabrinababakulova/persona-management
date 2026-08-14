@@ -1,9 +1,9 @@
-# OLX.uz integration
+# olx.uz integration
 
 ## What is implemented
 
-OLX's supported Partner API does not include OLX.uz. Persona therefore uses the
-same private JSON services as the OLX.uz web application, without pretending
+OLX's supported Partner API does not include olx.uz. Persona therefore uses the
+same private JSON services as the olx.uz web application, without pretending
 that they are a supported public API.
 
 The flow is split into two parts:
@@ -22,15 +22,15 @@ The flow is split into two parts:
 
 Passwords, CAPTCHA answers, and SMS/OTP codes are never requested by Persona,
 never read by the extension, and never stored. Security checks must be completed
-on OLX.uz itself.
+on olx.uz itself.
 
 ## Why the connector is necessary
 
-OLX.uz's tokens live in the user's browser origin and cannot be read by a normal
+olx.uz's tokens live in the user's browser origin and cannot be read by a normal
 Talanty web page because of browser same-origin protections. The connector has a
 narrow host allow-list for `*.olx.uz`, `*.talanty.uz`, localhost, and
 127.0.0.1. It runs only after the user presses Connect and then presses the
-confirmation button shown on OLX.uz.
+confirmation button shown on olx.uz.
 
 The extension does not automate login, click OLX controls, solve challenges,
 hide automation, poll the website, or retain connection data in persistent
@@ -61,9 +61,9 @@ are ignored.
 
 ## Publication behavior
 
-- Categories are parsed from OLX.uz's live category state and cached in memory
+- Categories are parsed from olx.uz's live category state and cached in memory
   for six hours. Only selectable leaf categories of type `job` are shown.
-- Location suggestions use OLX.uz's posting geo-encoder. The user must select an
+- Location suggestions use olx.uz's posting geo-encoder. The user must select an
   exact suggestion, including a district where OLX requires one. Results are
   cached for 15 minutes. New forms start with Tashkent in the field. Cyrillic and
   Latin input are accepted; common English spellings such as `Tashkent`,
@@ -86,7 +86,7 @@ are ignored.
   polling.
 
 Editing, pausing, and deleting OLX adverts are intentionally manual in this
-version. Open the advert in OLX.uz to perform those actions.
+version. Open the advert in olx.uz to perform those actions.
 
 ## Linux deployment
 
@@ -118,12 +118,12 @@ hardened root/container deployment.
 1. Run Persona locally and sign in.
 2. Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**,
    and select `browser-extension/olx-connector`.
-3. Refresh Persona, open **My profile → Company settings → OLX.uz**, and
+3. Refresh Persona, open **My profile → Company settings → olx.uz**, and
    confirm the connector is detected.
-4. Press **Connect OLX.uz**. A new official OLX.uz tab opens.
-5. Sign in normally. Complete any OLX CAPTCHA/SMS/OTP on OLX.uz. Persona cannot
+4. Press **Connect olx.uz**. A new official olx.uz tab opens.
+5. Sign in normally. Complete any OLX CAPTCHA/SMS/OTP on olx.uz. Persona cannot
    and must not complete it for you.
-6. On the OLX.uz page, press **I am signed in — connect account** in the connector
+6. On the olx.uz page, press **I am signed in — connect account** in the connector
    panel. The extension returns to Persona.
 7. Confirm Company settings shows the account status as **Connected**.
 
@@ -138,7 +138,7 @@ Use a real draft that may safely be published, and avoid duplicate clicks:
 4. Press **Check form** once. Confirm Persona says no advert was published.
 5. Press **Publish**, read the confirmation, and confirm once.
 6. Verify the stored advert id/URL and the advert in the connected OLX account.
-7. For a disposable test advert, archive/delete it manually on OLX.uz after the
+7. For a disposable test advert, archive/delete it manually on olx.uz after the
    verification.
 
 ## Automated verification
@@ -157,7 +157,7 @@ composition, preview non-creation, and create/read-back behavior.
 
 ## Limitations and operational risk
 
-OLX.uz can change its private endpoints, payload fields, token format, or web
+olx.uz can change its private endpoints, payload fields, token format, or web
 storage without notice. This integration may then require an application and/or
 extension update. It should be monitored and kept behind an explicit user
 action. Do not increase request rates, add retries, bypass OLX challenges, or

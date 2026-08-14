@@ -48,7 +48,7 @@ function olxTicketError(error: unknown): TRPCError {
   console.error("Could not create an OLX connection ticket", error);
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
-    message: "Не удалось подключить OLX.uz.",
+    message: "Не удалось подключить olx.uz.",
   });
 }
 
@@ -103,7 +103,7 @@ async function requireCompanyChannel(
 }
 
 export const integrationsRouter = createTRPCRouter({
-  // ── OLX.uz account connection ─────────────────────────────────────
+  // ── olx.uz account connection ─────────────────────────────────────
 
   getOlxSession: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
@@ -137,7 +137,7 @@ export const integrationsRouter = createTRPCRouter({
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message:
-          "Слишком много попыток подключения OLX.uz. Подождите минуту и попробуйте снова.",
+          "Слишком много попыток подключения olx.uz. Подождите минуту и попробуйте снова.",
       });
     }
 

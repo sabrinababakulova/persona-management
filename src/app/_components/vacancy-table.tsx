@@ -27,7 +27,7 @@ const VACANCY_CONNECTION_ICONS = {
   hh: { src: "/hh.svg", label: "hh.uz" },
   ln: { src: "/linkedin.svg", label: "LinkedIn" },
   ph: { src: "/person-hunter.svg", label: "PersonHunters" },
-  olx: { src: "/olx.svg", label: "OLX.uz" },
+  olx: { src: "/olx.svg", label: "olx.uz" },
 };
 
 /** Publication `destination` values → platform chip keys. */

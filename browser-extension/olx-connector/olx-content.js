@@ -42,10 +42,10 @@ style.textContent = `
 
 const panel = document.createElement("section");
 panel.className = "panel";
-panel.setAttribute("aria-label", "Talanty OLX.uz connection");
+panel.setAttribute("aria-label", "Talanty olx.uz connection");
 panel.innerHTML = `
   <h2>Подключение к Talanty</h2>
-  <p>Войдите в OLX.uz и завершите CAPTCHA или SMS-проверку, если она появится. Затем нажмите кнопку один раз.</p>
+  <p>Войдите в olx.uz и завершите CAPTCHA или SMS-проверку, если она появится. Затем нажмите кнопку один раз.</p>
   <button type="button">Я вошёл — подключить аккаунт</button>
   <p class="status" aria-live="polite"></p>
 `;

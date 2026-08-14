@@ -460,9 +460,9 @@ Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single share
 
 ---
 
-## OLX.uz Server-Side Publishing
+## olx.uz Server-Side Publishing
 
-OLX.uz does not provide a supported third-party publishing API for Uzbekistan.
+olx.uz does not provide a supported third-party publishing API for Uzbekistan.
 The integration uses a user-installed Chrome connector once to read OLX's web
 access/refresh tokens after the user signs in on the official website. Persona
 never receives the password, CAPTCHA, or SMS code. Tokens are AES-256-GCM

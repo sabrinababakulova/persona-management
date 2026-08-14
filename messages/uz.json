@@ -4,9 +4,9 @@
     "description": "Nomzodlar va vakansiyalarni boshqarish tizimi"
   },
   "OlxConnectorPrivacy": {
-    "eyebrow": "OLX.uz konnektori",
+    "eyebrow": "olx.uz konnektori",
     "title": "Maxfiylik bildirishnomasi",
-    "intro": "Ushbu bildirishnoma OLX.uz hisobini ulashni tanlaganingizda Talanty — OLX.uz Connector qanday ma’lumotlarni qayta ishlashini tushuntiradi.",
+    "intro": "Ushbu bildirishnoma olx.uz hisobini ulashni tanlaganingizda Talanty — olx.uz Connector qanday ma’lumotlarni qayta ishlashini tushuntiradi.",
     "updated": "Oxirgi yangilanish: 2026-yil 14-avgust",
     "collected": {
       "title": "Konnektor uzatadigan ma’lumotlar",
@@ -14,7 +14,7 @@
     },
     "notCollected": {
       "title": "Konnektor yig‘maydigan ma’lumotlar",
-      "body": "Konnektor OLX paroli, CAPTCHA javobi, SMS yoki OTP kodi, sahifadagi forma mazmuni va API javoblarini o‘qimaydi yoki yubormaydi. Tasdiqlash ma’lumotlarini faqat OLX.uz rasmiy saytida kiriting."
+      "body": "Konnektor OLX paroli, CAPTCHA javobi, SMS yoki OTP kodi, sahifadagi forma mazmuni va API javoblarini o‘qimaydi yoki yubormaydi. Tasdiqlash ma’lumotlarini faqat olx.uz rasmiy saytida kiriting."
     },
     "use": {
       "title": "Ma’lumotlardan foydalanish maqsadi",
@@ -26,7 +26,7 @@
     },
     "control": {
       "title": "Sizning nazoratingiz",
-      "body": "OLX.uz ulanishini Talanty’da istalgan vaqtda uzishingiz mumkin. Uzilganda saqlangan OLX ulanish ma’lumotlari Talanty hisobingizdan o‘chiriladi. Kengaytmani Chrome brauzeridan ham olib tashlashingiz mumkin."
+      "body": "olx.uz ulanishini Talanty’da istalgan vaqtda uzishingiz mumkin. Uzilganda saqlangan OLX ulanish ma’lumotlari Talanty hisobingizdan o‘chiriladi. Kengaytmani Chrome brauzeridan ham olib tashlashingiz mumkin."
     },
     "contact": {
       "title": "Savollar",
@@ -545,27 +545,27 @@
     "channelRequired": "Kanalni ko‘rsating",
     "adminsRequired": "Kamida bitta administrator qo‘shing",
     "olx": {
-      "title": "OLX.uz hisobi",
+      "title": "olx.uz hisobi",
       "status": "Holat",
       "connected": "Ulangan",
       "reauthRequired": "Qayta kirish kerak",
       "account": "Hisob",
       "lastVerified": "Oxirgi tekshiruv",
-      "reconnect": "OLX.uz’ni qayta ulash",
-      "connect": "OLX.uz’ni ulash",
-      "starting": "OLX.uz ochilmoqda...",
-      "continueOnOlx": "OLX.uz rasmiy sayti ochildi. Hisobga kiring, zarur tekshiruvni yakunlang va “Kirdim — hisobni ulash” tugmasini bosing.",
+      "reconnect": "olx.uz’ni qayta ulash",
+      "connect": "olx.uz’ni ulash",
+      "starting": "olx.uz ochilmoqda...",
+      "continueOnOlx": "olx.uz rasmiy sayti ochildi. Hisobga kiring, zarur tekshiruvni yakunlang va “Kirdim — hisobni ulash” tugmasini bosing.",
       "disconnect": "Uzish",
       "disconnecting": "Uzilmoqda...",
-      "connectError": "OLX.uz’ni ulab bo‘lmadi.",
-      "disconnected": "OLX.uz ulanishi o‘chirildi.",
-      "disconnectError": "OLX.uz ulanishini o‘chirib bo‘lmadi.",
-      "extensionMissing": "Talanty — OLX.uz Connector kengaytmasi topilmadi",
+      "connectError": "olx.uz’ni ulab bo‘lmadi.",
+      "disconnected": "olx.uz ulanishi o‘chirildi.",
+      "disconnectError": "olx.uz ulanishini o‘chirib bo‘lmadi.",
+      "extensionMissing": "Talanty — olx.uz Connector kengaytmasi topilmadi",
       "extensionMissingHint": "Kengaytmani o‘rnating va sahifani yangilang. O‘rnatish tugmasi bo‘lmasa, havolani Talanty administratoridan so‘rang.",
       "installExtension": "Chrome kengaytmasini o‘rnatish",
-      "dataDisclosure": "Talanty e’lon joylash uchun kerakli OLX.uz sessiya tokenlari va brauzer ma’lumotlarini saqlaydi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
+      "dataDisclosure": "Talanty e’lon joylash uchun kerakli olx.uz sessiya tokenlari va brauzer ma’lumotlarini saqlaydi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
       "privacyLink": "Ma’lumotlar qanday himoyalanadi",
-      "consent": "Ushbu OLX.uz hisobini ulashga roziman.",
+      "consent": "Ushbu olx.uz hisobini ulashga roziman.",
       "connectionSteps": {
         "title": "Hisobni qanday ulash kerak",
         "install": {
@@ -574,11 +574,11 @@
         },
         "connect": {
           "title": "Ulashni boshlang",
-          "description": "“OLX.uz’ni ulash”ni bosing va OLX.uz rasmiy saytiga kiring. CAPTCHA yoki SMS-kodni faqat shu yerda kiriting."
+          "description": "“olx.uz’ni ulash”ni bosing va olx.uz rasmiy saytiga kiring. CAPTCHA yoki SMS-kodni faqat shu yerda kiriting."
         },
         "finish": {
           "title": "Ulanishni tasdiqlang",
-          "description": "OLX.uz’da “Kirdim — hisobni ulash”ni bosing, so‘ng Talanty’ga qayting."
+          "description": "olx.uz’da “Kirdim — hisobni ulash”ni bosing, so‘ng Talanty’ga qayting."
         }
       }
     }
@@ -994,7 +994,7 @@
       "hhDeactivate": "E’lon hh.uz saytida arxivlanadi.",
       "activateQuestion": "E’lonni faollashtirasizmi?",
       "deactivateQuestion": "E’lonni nofaol qilasizmi?",
-      "forOlx": "OLX.uz uchun"
+      "forOlx": "olx.uz uchun"
     },
     "hh": {
       "pageTitle": "hh.uz saytida e’lon qilish",
@@ -1106,13 +1106,13 @@
       "publishDescription": "E’lon saqlanadi va PersonHunters’ga yuboriladi."
     },
     "olx": {
-      "pageTitle": "OLX.uz’da e’lon qilish",
+      "pageTitle": "olx.uz’da e’lon qilish",
       "notFound": "Vakansiya topilmadi",
       "vacancy": "Vakansiya",
-      "serviceUnavailable": "OLX.uz ma’lumotnomalari hozir mavjud emas. Sahifani keyinroq yangilang.",
-      "alreadyPublished": "Bu versiya OLX.uz’da allaqachon e’lon qilingan.",
-      "alreadyPublishedHint": "Avtomatik tahrirlash va o‘chirish hozircha bajarilmaydi. Dublikat bo‘lmasligi uchun e’lonni OLX.uz’da tahrirlang yoki yangi versiya yarating.",
-      "openAdvert": "E’lonni OLX.uz’da ochish",
+      "serviceUnavailable": "olx.uz ma’lumotnomalari hozir mavjud emas. Sahifani keyinroq yangilang.",
+      "alreadyPublished": "Bu versiya olx.uz’da allaqachon e’lon qilingan.",
+      "alreadyPublishedHint": "Avtomatik tahrirlash va o‘chirish hozircha bajarilmaydi. Dublikat bo‘lmasligi uchun e’lonni olx.uz’da tahrirlang yoki yangi versiya yarating.",
+      "openAdvert": "E’lonni olx.uz’da ochish",
       "content": "E’lon mazmuni",
       "title": "Vakansiya nomi",
       "titlePlaceholder": "Masalan, Savdo menejeri",
@@ -1122,17 +1122,16 @@
       "descriptionPlaceholder": "Vazifalar, talablar va shartlarni yozing",
       "descriptionRequired": "Vakansiya tavsifini kiriting",
       "descriptionLength": "Tavsif 80 dan 9000 tagacha belgidan iborat bo‘lishi kerak.",
-      "plainTextHint": "Yuborishdan oldin formatlash OLX.uz shakli qo‘llaydigan oddiy matnga aylantiriladi.",
       "placement": "Joylashtirish parametrlari",
-      "category": "OLX.uz mutaxassisligi",
+      "category": "olx.uz mutaxassisligi",
       "categoryPlaceholder": "Mutaxassislikni tanlang",
-      "categoryRequired": "OLX.uz ro‘yxatidan mutaxassislikni tanlang.",
+      "categoryRequired": "olx.uz ro‘yxatidan mutaxassislikni tanlang.",
       "location": "Shahar yoki joylashuv",
       "locationPlaceholder": "Masalan, Toshkent",
-      "locationRequired": "OLX.uz takliflaridan shahar yoki tumanni tanlang.",
-      "locationSearching": "OLX.uz joylashuvlari qidirilmoqda...",
+      "locationRequired": "olx.uz takliflaridan shahar yoki tumanni tanlang.",
+      "locationSearching": "olx.uz joylashuvlari qidirilmoqda...",
       "district": "Tuman (ixtiyoriy)",
-      "optionalExactLabel": "OLX.uz’dagi aniq nom",
+      "optionalExactLabel": "olx.uz’dagi aniq nom",
       "employmentType": "Ish turi",
       "employmentPermanent": "Doimiy ish",
       "employmentTemporary": "Vaqtinchalik ish",
@@ -1155,12 +1154,12 @@
       "remoteWork": "Masofaviy ish",
       "onlineRecruitment": "Onlayn rekruting",
       "preview": "Shaklni tekshirish",
-      "previewing": "OLX.uz tekshirilmoqda...",
-      "publish": "OLX.uz’da e’lon qilish",
-      "confirmDescription": "Persona e’lonni serverdan ulangan OLX.uz hisobingizga yuboradi. Ikki marta bosmang: takroriy so‘rov dublikat yaratishi mumkin.",
-      "confirmTitle": "E’lon OLX.uz’da chop etilsinmi?",
-      "previewSuccess": "OLX.uz ko‘rib chiqish ma’lumotlarini qabul qildi. E’lon chop etilmadi.",
-      "actionError": "OLX.uz e’lonini qayta ishlab bo‘lmadi."
+      "previewing": "olx.uz tekshirilmoqda...",
+      "publish": "olx.uz’da e’lon qilish",
+      "confirmDescription": "Persona e’lonni serverdan ulangan olx.uz hisobingizga yuboradi. Ikki marta bosmang: takroriy so‘rov dublikat yaratishi mumkin.",
+      "confirmTitle": "E’lon olx.uz’da chop etilsinmi?",
+      "previewSuccess": "olx.uz ko‘rib chiqish ma’lumotlarini qabul qildi. E’lon chop etilmadi.",
+      "actionError": "olx.uz e’lonini qayta ishlab bo‘lmadi."
     }
   },
   "Errors": {

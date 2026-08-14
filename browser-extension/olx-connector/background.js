@@ -254,7 +254,7 @@ async function startConnection(message, sender) {
 
 async function completeConnection(sender) {
   if (!sender.tab?.id || !sender.tab.url || !isOlxUrl(sender.tab.url)) {
-    throw new Error("Open the official OLX.uz website to complete connection.");
+    throw new Error("Open the official olx.uz website to complete connection.");
   }
 
   const pending = await getPendingConnection();
@@ -273,7 +273,7 @@ async function completeConnection(sender) {
     requestContext.capturedAt < Date.now() - CONNECTION_TTL_MS
   ) {
     throw new Error(
-      "OLX.uz request context is not ready. Reload this OLX.uz tab once, wait for it to finish loading, and press the connection button again.",
+      "olx.uz request context is not ready. Reload this olx.uz tab once, wait for it to finish loading, and press the connection button again.",
     );
   }
 
@@ -286,7 +286,7 @@ async function completeConnection(sender) {
   const credentials = results[0]?.result;
   if (!credentials) {
     throw new Error(
-      "OLX.uz sign-in was not found. Sign in fully, then press the connection button once.",
+      "olx.uz sign-in was not found. Sign in fully, then press the connection button once.",
     );
   }
   credentials.deviceId = requestContext.deviceId;
@@ -324,10 +324,10 @@ async function completeConnection(sender) {
     }
     throw new Error(
       result.error === "reauth_required"
-        ? "OLX.uz did not accept this session. Sign out and sign in again on OLX.uz."
+        ? "olx.uz did not accept this session. Sign out and sign in again on olx.uz."
         : result.error === "ticket_invalid_or_expired"
           ? "The connection request expired. Start again in Talanty."
-          : "Talanty could not verify the OLX.uz account. Try again later.",
+          : "Talanty could not verify the olx.uz account. Try again later.",
     );
   }
 
@@ -360,7 +360,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .catch(async (error) => {
       const pending = await getPendingConnection();
       const messageText =
-        error instanceof Error ? error.message : "Could not connect OLX.uz.";
+        error instanceof Error ? error.message : "Could not connect olx.uz.";
       if (pending) {
         await notifyPersona(pending, "PERSONA_OLX_CONNECTION_ERROR", {
           message: messageText,

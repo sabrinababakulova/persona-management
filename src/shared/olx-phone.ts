@@ -8,7 +8,7 @@
 export const OLX_UZ_PHONE_INPUT_REGEX =
   /^(?:(?:\+998|998)[ -]?)?(?:[2-9]\d|\([2-9]\d\))[ -]?\d{3}[ -]?\d{2}[ -]?\d{2}$/u;
 
-/** Canonical value persisted in Persona and entered into the OLX.uz form. */
+/** Canonical value persisted in Persona and entered into the olx.uz form. */
 export const OLX_UZ_PHONE_CANONICAL_REGEX = /^\+998[2-9]\d{8}$/u;
 
 export const OLX_UZ_PHONE_PREFIX = "+998 ";
