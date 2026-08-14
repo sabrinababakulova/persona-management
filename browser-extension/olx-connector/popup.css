@@ -25,3 +25,9 @@ p {
   color: #60706f;
   font-size: 13px;
 }
+
+a {
+  color: #e84242;
+  font-size: 12px;
+  font-weight: 600;
+}

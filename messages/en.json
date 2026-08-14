@@ -3,6 +3,36 @@
     "title": "Persona Management",
     "description": "Candidate and vacancy management system"
   },
+  "OlxConnectorPrivacy": {
+    "eyebrow": "OLX.uz connector",
+    "title": "Privacy notice",
+    "intro": "This notice explains what the Talanty — OLX.uz Connector handles when you choose to connect an OLX.uz account.",
+    "updated": "Last updated: August 14, 2026",
+    "collected": {
+      "title": "Data the connector transfers",
+      "body": "After you press Connect in Talanty, the connector reads the OLX access, refresh, and identity tokens, OLX device ID and request fingerprint, browser identification, and the first-party OLX cookie header needed for authenticated OLX requests. It sends this data only to the Talanty origin that created the one-time connection request."
+    },
+    "notCollected": {
+      "title": "Data the connector does not collect",
+      "body": "The connector does not read or send your OLX password, CAPTCHA answer, SMS or OTP code, page form contents, or API response bodies. Enter verification details only on the official OLX.uz website."
+    },
+    "use": {
+      "title": "Why the data is used",
+      "body": "Talanty uses the connection data only to verify the OLX account and perform OLX vacancy publication actions that you start. It is not used for advertising, profiling, or sale to third parties."
+    },
+    "security": {
+      "title": "Storage and security",
+      "body": "Connection data is sent over HTTPS and encrypted at rest with authenticated AES-256-GCM encryption. The extension keeps pending connection details only in Chrome session storage and does not persist the OLX connection data in extension local storage."
+    },
+    "control": {
+      "title": "Your control",
+      "body": "You can disconnect OLX.uz in Talanty at any time. Disconnecting deletes the saved OLX connection from your Talanty account. You can also remove the browser extension in Chrome."
+    },
+    "contact": {
+      "title": "Questions",
+      "body": "For privacy or connection questions, contact the administrator or support contact provided for your Talanty account. Never send them your OLX password, verification codes, or browser-session data."
+    }
+  },
   "LocaleSwitcher": {
     "label": "Interface language",
     "current": "Current language: {language}",
@@ -537,13 +567,17 @@
       "disconnected": "The OLX.uz connection was removed.",
       "disconnectError": "Could not remove the OLX.uz connection.",
       "extensionMissing": "Talanty — OLX.uz Connector was not detected",
-      "extensionMissingHint": "For testing, open chrome://extensions, enable Developer mode, press Load unpacked, and choose the project's browser-extension/olx-connector directory. Then refresh this page.",
+      "extensionMissingHint": "Install the connector, then refresh this page. If no installation button is shown, ask your Talanty administrator for the extension link.",
+      "installExtension": "Install the Chrome extension",
+      "dataDisclosure": "When you connect, the extension securely sends OLX access tokens, first-party OLX cookies, device ID, request fingerprint, and browser identification to Talanty. These are used only for the connection and publication actions you start. Your password, CAPTCHA, and SMS codes are not sent.",
+      "privacyLink": "Read the privacy notice.",
+      "consent": "I understand and agree to connect this OLX.uz account.",
       "connectionSteps": {
         "title": "How to connect your account",
         "description": "Connect once in your normal Chrome browser. The server handles later publications.",
         "install": {
           "title": "Install the connector",
-          "description": "Open chrome://extensions, enable Developer mode, and load browser-extension/olx-connector. Refresh Talanty."
+          "description": "Use the installation link shown in Talanty, press “Add to Chrome”, and return to this page."
         },
         "start": {
           "title": "Press “Connect OLX.uz”",

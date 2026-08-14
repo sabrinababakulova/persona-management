@@ -21,6 +21,7 @@
     "directus:token:repair": "bun run scripts/repair-directus-static-token.ts",
     "i18n:check": "bun run scripts/check-i18n-catalogs.ts",
     "ops:install": "bash scripts/install-operations.sh",
+    "olx:extension:package": "bash scripts/package-olx-connector.sh",
     "preview": "next build && next start",
     "start": "next start",
     "storybook": "storybook dev -p 6006",

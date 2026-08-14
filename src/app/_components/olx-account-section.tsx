@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { env } from "~/env";
 import { api } from "~/trpc/react";
+import { Checkbox } from "./checkbox";
 import { ClosableSection } from "./closable-section";
 import { ChevronDownIcon } from "./icons";
 import {
@@ -52,6 +55,7 @@ export function OlxAccountSection() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [connectorAvailable, setConnectorAvailable] = useState(false);
   const [connectorChecked, setConnectorChecked] = useState(false);
+  const [hasConnectionConsent, setHasConnectionConsent] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -239,6 +243,16 @@ export function OlxAccountSection() {
           <p className="mt-1 text-text-secondary text-xs leading-5">
             {t("extensionMissingHint")}
           </p>
+          {env.NEXT_PUBLIC_OLX_CONNECTOR_URL ? (
+            <a
+              className="mt-3 inline-flex font-semibold text-primary-blue text-sm hover:underline"
+              href={env.NEXT_PUBLIC_OLX_CONNECTOR_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {t("installExtension")}
+            </a>
+          ) : null}
         </div>
       ) : null}
 
@@ -284,10 +298,39 @@ export function OlxAccountSection() {
         </AnimatePresence>
       </div>
 
+      <div className="rounded-lg border border-border-input bg-bg-input px-4 py-4">
+        <p className="text-text-secondary text-xs leading-5">
+          {t("dataDisclosure")}{" "}
+          <Link
+            className="font-semibold text-primary-blue hover:underline"
+            href="/privacy/olx-connector"
+            target="_blank"
+          >
+            {t("privacyLink")}
+          </Link>
+        </p>
+        <div className="mt-3 flex items-start gap-3">
+          <Checkbox
+            ariaLabel={t("consent")}
+            checked={hasConnectionConsent}
+            id="olx-connection-consent"
+            onChange={() =>
+              setHasConnectionConsent((currentConsent) => !currentConsent)
+            }
+          />
+          <label
+            className="min-w-0 flex-1 cursor-pointer font-medium text-sm text-text-heading leading-5"
+            htmlFor="olx-connection-consent"
+          >
+            {t("consent")}
+          </label>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-3">
         <button
           className="ui-button ui-button-soft"
-          disabled={isPending || !connectorAvailable}
+          disabled={isPending || !connectorAvailable || !hasConnectionConsent}
           onClick={() => {
             setFeedback(null);
             startConnection.mutate();

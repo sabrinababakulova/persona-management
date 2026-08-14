@@ -3,6 +3,36 @@
     "title": "Persona Management",
     "description": "Nomzodlar va vakansiyalarni boshqarish tizimi"
   },
+  "OlxConnectorPrivacy": {
+    "eyebrow": "OLX.uz konnektori",
+    "title": "Maxfiylik bildirishnomasi",
+    "intro": "Ushbu bildirishnoma OLX.uz hisobini ulashni tanlaganingizda Talanty — OLX.uz Connector qanday ma’lumotlarni qayta ishlashini tushuntiradi.",
+    "updated": "Oxirgi yangilanish: 2026-yil 14-avgust",
+    "collected": {
+      "title": "Konnektor uzatadigan ma’lumotlar",
+      "body": "Talanty’da “Ulash” tugmasini bosganingizdan so‘ng konnektor OLX kirish, yangilash va identifikatsiya tokenlarini, OLX qurilma identifikatori va so‘rov barmoq izini, brauzer ma’lumotlarini hamda tasdiqlangan OLX so‘rovlari uchun zarur bo‘lgan birinchi tomon OLX cookie sarlavhasini o‘qiydi. Bu ma’lumotlar faqat bir martalik ulanish so‘rovini yaratgan Talanty manziliga yuboriladi."
+    },
+    "notCollected": {
+      "title": "Konnektor yig‘maydigan ma’lumotlar",
+      "body": "Konnektor OLX paroli, CAPTCHA javobi, SMS yoki OTP kodi, sahifadagi forma mazmuni va API javoblarini o‘qimaydi yoki yubormaydi. Tasdiqlash ma’lumotlarini faqat OLX.uz rasmiy saytida kiriting."
+    },
+    "use": {
+      "title": "Ma’lumotlardan foydalanish maqsadi",
+      "body": "Talanty ulanish ma’lumotlaridan faqat OLX hisobini tekshirish va siz boshlagan vakansiya e’lonlarini joylash uchun foydalanadi. Ular reklama, profillash yoki uchinchi shaxslarga sotish uchun ishlatilmaydi."
+    },
+    "security": {
+      "title": "Saqlash va himoya",
+      "body": "Ulanish ma’lumotlari HTTPS orqali yuboriladi va AES-256-GCM yordamida shifrlangan holda saqlanadi. Kengaytma tugallanmagan ulanish ma’lumotlarini faqat Chrome sessiya xotirasida vaqtincha saqlaydi va OLX ulanish ma’lumotlarini kengaytmaning lokal xotirasida saqlamaydi."
+    },
+    "control": {
+      "title": "Sizning nazoratingiz",
+      "body": "OLX.uz ulanishini Talanty’da istalgan vaqtda uzishingiz mumkin. Uzilganda saqlangan OLX ulanish ma’lumotlari Talanty hisobingizdan o‘chiriladi. Kengaytmani Chrome brauzeridan ham olib tashlashingiz mumkin."
+    },
+    "contact": {
+      "title": "Savollar",
+      "body": "Maxfiylik yoki ulanish bo‘yicha savollar uchun Talanty hisobingizda ko‘rsatilgan administrator yoki yordam xizmatiga murojaat qiling. OLX paroli, tasdiqlash kodlari yoki brauzer sessiyasi ma’lumotlarini hech kimga yubormang."
+    }
+  },
   "LocaleSwitcher": {
     "label": "Interfeys tili",
     "current": "Joriy til: {language}",
@@ -537,13 +567,17 @@
       "disconnected": "OLX.uz ulanishi o‘chirildi.",
       "disconnectError": "OLX.uz ulanishini o‘chirib bo‘lmadi.",
       "extensionMissing": "Talanty — OLX.uz Connector kengaytmasi topilmadi",
-      "extensionMissingHint": "Sinash uchun chrome://extensions sahifasini oching, dasturchi rejimini yoqing, “Load unpacked”ni bosing va loyihadagi browser-extension/olx-connector papkasini tanlang. Keyin bu sahifani yangilang.",
+      "extensionMissingHint": "Kengaytmani o‘rnating va bu sahifani yangilang. O‘rnatish tugmasi ko‘rinmasa, Talanty administratoridan kengaytma havolasini so‘rang.",
+      "installExtension": "Chrome kengaytmasini o‘rnatish",
+      "dataDisclosure": "Ulash vaqtida kengaytma OLX kirish tokenlari, birinchi tomon OLX cookie fayllari, qurilma identifikatori, so‘rov barmoq izi va brauzer ma’lumotlarini Talanty’ga xavfsiz yuboradi. Ular faqat siz boshlagan ulanish va e’lon joylash amallari uchun ishlatiladi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
+      "privacyLink": "Maxfiylik bildirishnomasini o‘qing.",
+      "consent": "Ushbu OLX.uz hisobini ulashga tushunib rozilik beraman.",
       "connectionSteps": {
         "title": "Hisobni qanday ulash kerak",
         "description": "Oddiy Chrome brauzeringizda bir marta ulang. Keyingi e’lonlarni server yuboradi.",
         "install": {
           "title": "Kengaytmani o‘rnating",
-          "description": "chrome://extensions sahifasini oching, dasturchi rejimini yoqing va browser-extension/olx-connector papkasini yuklang. Talanty’ni yangilang."
+          "description": "Talanty’dagi o‘rnatish havolasini oching, “Chrome’ga qo‘shish”ni bosing va bu sahifaga qayting."
         },
         "start": {
           "title": "“OLX.uz’ni ulash”ni bosing",

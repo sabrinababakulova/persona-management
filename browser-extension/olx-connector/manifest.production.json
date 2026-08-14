@@ -11,12 +11,7 @@
     "128": "icons/icon128.png"
   },
   "permissions": ["scripting", "storage", "tabs", "webRequest"],
-  "host_permissions": [
-    "https://*.olx.uz/*",
-    "https://*.talanty.uz/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*"
-  ],
+  "host_permissions": ["https://*.olx.uz/*", "https://*.talanty.uz/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -30,11 +25,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://*.talanty.uz/*",
-        "http://localhost/*",
-        "http://127.0.0.1/*"
-      ],
+      "matches": ["https://*.talanty.uz/*"],
       "js": ["persona-content.js"],
       "run_at": "document_idle"
     },
