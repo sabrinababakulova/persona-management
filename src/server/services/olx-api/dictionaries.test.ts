@@ -45,8 +45,10 @@ describe("OLX dictionaries", () => {
   });
 
   test("normalizes and deduplicates OLX location suggestions", async () => {
-    const fetchImpl = async () =>
-      Response.json({
+    let requestedUrl = "";
+    const fetchImpl = async (input: URL | RequestInfo) => {
+      requestedUrl = String(input);
+      return Response.json({
         data: [
           {
             city: { id: 4, name: "Ташкент", lat: 41.3, lon: 69.2 },
@@ -70,8 +72,9 @@ describe("OLX dictionaries", () => {
           },
         ],
       });
+    };
 
-    expect(await searchOlxLocations("Ташкент", fetchImpl)).toEqual([
+    expect(await searchOlxLocations("Tashkent", fetchImpl)).toEqual([
       {
         cityId: 4,
         cityName: "Ташкент",
@@ -84,5 +87,6 @@ describe("OLX dictionaries", () => {
         label: "Ташкент, Яккасарайский район",
       },
     ]);
+    expect(new URL(requestedUrl).searchParams.get("query")).toBe("Toshkent");
   });
 });

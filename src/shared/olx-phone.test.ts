@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { olxContactPhoneSchema } from "~/server/api/routers/vacancies/schemas";
-import { formatOlxUzPhone, normalizeOlxUzPhone } from "~/shared/olx-phone";
+import {
+  formatOlxUzPhoneInput,
+  hasOlxUzPhoneDigits,
+  normalizeOlxUzPhone,
+  OLX_UZ_PHONE_PREFIX,
+} from "~/shared/olx-phone";
 
 describe("OLX Uzbekistan phone validation", () => {
   test("normalizes common local and international input styles", () => {
@@ -17,8 +22,18 @@ describe("OLX Uzbekistan phone validation", () => {
     }
   });
 
-  test("formats valid values for the publication form", () => {
-    expect(formatOlxUzPhone("998901234567")).toBe("+998 90 123 45 67");
+  test("adds the Uzbekistan prefix and formats partial input immediately", () => {
+    expect(formatOlxUzPhoneInput("")).toBe(OLX_UZ_PHONE_PREFIX);
+    expect(formatOlxUzPhoneInput("9")).toBe("+998 9");
+    expect(formatOlxUzPhoneInput("90123")).toBe("+998 90 123");
+    expect(formatOlxUzPhoneInput("998123456")).toBe("+998 99 812 34 56");
+    expect(formatOlxUzPhoneInput("998901234567")).toBe("+998 90 123 45 67");
+    expect(formatOlxUzPhoneInput("+998 (90) 123-45-67")).toBe(
+      "+998 90 123 45 67",
+    );
+    expect(formatOlxUzPhoneInput("+1 202 555 0123")).toBe(OLX_UZ_PHONE_PREFIX);
+    expect(hasOlxUzPhoneDigits(OLX_UZ_PHONE_PREFIX)).toBe(false);
+    expect(hasOlxUzPhoneDigits("+998 90")).toBe(true);
   });
 
   test("rejects malformed and non-Uzbekistan phone numbers", () => {

@@ -114,8 +114,9 @@ expected `callbackUrl` before attempting an account sign-in.
 OLX.uz publishing requires a current Google Chrome or Chromium binary but no
 display server. Each authenticated operation creates one short-lived headless
 network context and closes it after the response; there is no idle browser
-process. Public category and location lookups use normal server-side HTTP and do
-not start Chromium. Common Linux paths are detected automatically. Set
+process. Public category and location lookups try normal server-side HTTP first;
+OLX HTTP 403 responses use the same short-lived Chromium transport and cached
+results. Common Linux paths are detected automatically. Set
 `OLX_BROWSER_EXECUTABLE_PATH` only for a nonstandard install, and run Persona as
 an unprivileged user so the browser sandbox remains enabled. Keep `AUTH_SECRET`
 stable: it encrypts each user's saved OLX credentials. The server needs outbound

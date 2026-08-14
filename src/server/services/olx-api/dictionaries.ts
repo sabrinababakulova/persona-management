@@ -1,9 +1,13 @@
 import { z } from "zod";
+import { resolveOlxLocationSearchQuery } from "~/shared/olx-location";
+import { fetchOlxWithBrowser } from "./browser-transport";
 
 const OLX_HOME_URL = "https://www.olx.uz/";
 const OLX_LOCATION_URL =
   "https://www.olx.uz/api/v1/geo-encoder/location-autocomplete";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const LOCATION_CACHE_TTL_MS = 15 * 60 * 1000;
+const MAX_LOCATION_CACHE_ENTRIES = 100;
 const REQUEST_TIMEOUT_MS = 20_000;
 const OLX_PUBLIC_USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
@@ -72,6 +76,21 @@ export type OlxLocation = {
 let categoryCache:
   | { expiresAt: number; value: Promise<OlxJobCategory[]> }
   | undefined;
+const locationCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<OlxLocation[]> }
+>();
+
+async function fetchOlxPublic(
+  input: URL | RequestInfo,
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await fetch(input, init);
+  if (response.status !== 403) return response;
+
+  await response.body?.cancel().catch(() => undefined);
+  return fetchOlxWithBrowser(input, init);
+}
 
 function readJavaScriptString(source: string, start: number): string {
   if (source[start] !== '"') throw new Error("OLX state is not a string");
@@ -157,7 +176,7 @@ export async function getOlxJobCategories(
     return categoryCache.value;
   }
 
-  const value = loadOlxJobCategories(fetch).catch((error) => {
+  const value = loadOlxJobCategories(fetchOlxPublic).catch((error) => {
     categoryCache = undefined;
     throw error;
   });
@@ -165,13 +184,10 @@ export async function getOlxJobCategories(
   return value;
 }
 
-export async function searchOlxLocations(
-  query: string,
-  fetchImpl: FetchLike = fetch,
+async function loadOlxLocations(
+  normalizedQuery: string,
+  fetchImpl: FetchLike,
 ): Promise<OlxLocation[]> {
-  const normalizedQuery = query.trim().slice(0, 100);
-  if (normalizedQuery.length < 2) return [];
-
   const url = new URL(OLX_LOCATION_URL);
   url.searchParams.set("query", normalizedQuery);
   url.searchParams.set("scope", "posting");
@@ -212,4 +228,34 @@ export async function searchOlxLocations(
     unique.set(`${location.cityId}:${location.districtId ?? 0}`, location);
   }
   return [...unique.values()].slice(0, 30);
+}
+
+export async function searchOlxLocations(
+  query: string,
+  fetchImpl?: FetchLike,
+): Promise<OlxLocation[]> {
+  const normalizedQuery = resolveOlxLocationSearchQuery(query);
+  if (normalizedQuery.length < 2) return [];
+  if (fetchImpl) return loadOlxLocations(normalizedQuery, fetchImpl);
+
+  const cacheKey = normalizedQuery.toLocaleLowerCase("ru");
+  const cached = locationCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  locationCache.delete(cacheKey);
+
+  const value = loadOlxLocations(normalizedQuery, fetchOlxPublic).catch(
+    (error) => {
+      locationCache.delete(cacheKey);
+      throw error;
+    },
+  );
+  if (locationCache.size >= MAX_LOCATION_CACHE_ENTRIES) {
+    const oldestKey = locationCache.keys().next().value;
+    if (oldestKey) locationCache.delete(oldestKey);
+  }
+  locationCache.set(cacheKey, {
+    expiresAt: Date.now() + LOCATION_CACHE_TTL_MS,
+    value,
+  });
+  return value;
 }

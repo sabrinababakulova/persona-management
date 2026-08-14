@@ -15,9 +15,16 @@ import {
 } from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import {
-  formatOlxUzPhone,
+  OLX_DEFAULT_LOCATION,
+  OLX_LOCATION_INPUT_REGEX,
+  sanitizeOlxLocationInput,
+} from "~/shared/olx-location";
+import {
+  formatOlxUzPhoneInput,
+  hasOlxUzPhoneDigits,
   normalizeOlxUzPhone,
-  OLX_UZ_PHONE_EXAMPLE,
+  OLX_UZ_PHONE_HTML_PATTERN,
+  OLX_UZ_PHONE_PREFIX,
 } from "~/shared/olx-phone";
 import { api } from "~/trpc/react";
 import {
@@ -85,14 +92,15 @@ export function OlxPublicationForm({
   const [title, setTitle] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(OLX_DEFAULT_LOCATION);
   const [selectedLocation, setSelectedLocation] =
     useState<OlxLocationSelection | null>(null);
-  const [debouncedLocation, setDebouncedLocation] = useState("");
+  const [debouncedLocation, setDebouncedLocation] =
+    useState(OLX_DEFAULT_LOCATION);
   const [employmentType, setEmploymentType] = useState("perm");
   const [schedule, setSchedule] = useState("full");
   const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [contactPhone, setContactPhone] = useState(OLX_UZ_PHONE_PREFIX);
   const [salaryFrom, setSalaryFrom] = useState("");
   const [salaryTo, setSalaryTo] = useState("");
   const [salaryCurrency, setSalaryCurrency] = useState<"UZS" | "USD">("UZS");
@@ -113,7 +121,11 @@ export function OlxPublicationForm({
 
   const locationsQuery = api.vacancies.searchOlxLocations.useQuery(
     { query: debouncedLocation },
-    { enabled: debouncedLocation.length >= 2 },
+    {
+      enabled:
+        debouncedLocation.length >= 2 &&
+        configQuery.data?.serviceAvailable === true,
+    },
   );
 
   useEffect(() => {
@@ -136,7 +148,7 @@ export function OlxPublicationForm({
         : "",
     );
     setSalaryCurrency(vacancy.salaryCurrency === "USD" ? "USD" : "UZS");
-    setContactPhone(vacancy.contactPhone ?? "");
+    setContactPhone(formatOlxUzPhoneInput(vacancy.contactPhone ?? ""));
 
     const meta = vacancy.olxBrowserMeta;
     if (meta) {
@@ -174,7 +186,9 @@ export function OlxPublicationForm({
       setEmploymentType(meta.employmentType === "temp" ? "temp" : "perm");
       setSchedule(meta.schedule === "part" ? "part" : "full");
       setContactName(meta.contactName ?? "");
-      setContactPhone(meta.contactPhone ?? vacancy.contactPhone ?? "");
+      setContactPhone(
+        formatOlxUzPhoneInput(meta.contactPhone ?? vacancy.contactPhone ?? ""),
+      );
       setSalaryNegotiable(meta.salaryNegotiable);
       setRemoteWork(meta.remoteWork);
       setOnlineRecruitment(meta.onlineRecruitment);
@@ -190,7 +204,8 @@ export function OlxPublicationForm({
     updatePublication.isPending ||
     runOlx.isPending;
   const existingAdvertUrl = vacancyQuery.data?.olxAdvertUrl ?? null;
-  const normalizedContactPhone = contactPhone.trim()
+  const hasContactPhone = hasOlxUzPhoneDigits(contactPhone);
+  const normalizedContactPhone = hasContactPhone
     ? normalizeOlxUzPhone(contactPhone)
     : null;
 
@@ -238,7 +253,7 @@ export function OlxPublicationForm({
     if (contactName.trim().length < 2) {
       next.contactName = t("contactNameRequired");
     }
-    if (contactPhone.trim() && !normalizedContactPhone) {
+    if (hasContactPhone && !normalizedContactPhone) {
       next.contactPhone = t("contactPhoneInvalid");
     }
     setErrors(next);
@@ -448,7 +463,9 @@ export function OlxPublicationForm({
                     label={t("location")}
                     list="olx-location-options"
                     onChange={(event) => {
-                      const value = event.currentTarget.value;
+                      const value = sanitizeOlxLocationInput(
+                        event.currentTarget.value,
+                      );
                       setLocation(value);
                       setSelectedLocation(
                         locationOptions.find(
@@ -456,6 +473,7 @@ export function OlxPublicationForm({
                         ) ?? null,
                       );
                     }}
+                    pattern={OLX_LOCATION_INPUT_REGEX.source}
                     placeholder={t("locationPlaceholder")}
                     value={location}
                   />
@@ -467,11 +485,11 @@ export function OlxPublicationForm({
                       />
                     ))}
                   </datalist>
-                  <p className="text-text-placeholder text-xs leading-5">
-                    {locationsQuery.isFetching
-                      ? t("locationSearching")
-                      : t("locationHint")}
-                  </p>
+                  {locationsQuery.isFetching ? (
+                    <p className="text-text-placeholder text-xs leading-5">
+                      {t("locationSearching")}
+                    </p>
+                  ) : null}
                   {errorText("location")}
                 </div>
                 <Dropdown
@@ -540,19 +558,17 @@ export function OlxPublicationForm({
                 {errorText("contactName")}
                 <div className="flex flex-col gap-1">
                   <Input
-                    aria-describedby="olx-contact-phone-hint olx-contact-phone-error"
+                    aria-describedby="olx-contact-phone-error"
                     aria-invalid={Boolean(errors.contactPhone)}
                     autoComplete="tel"
                     id="olx-contact-phone"
                     inputMode="tel"
                     label={t("contactPhone")}
-                    maxLength={30}
-                    onBlur={() => {
-                      const formatted = formatOlxUzPhone(contactPhone);
-                      if (formatted) setContactPhone(formatted);
-                    }}
+                    maxLength={17}
                     onChange={(event) => {
-                      setContactPhone(event.currentTarget.value);
+                      setContactPhone(
+                        formatOlxUzPhoneInput(event.currentTarget.value),
+                      );
                       if (errors.contactPhone) {
                         setErrors((current) => ({
                           ...current,
@@ -560,16 +576,10 @@ export function OlxPublicationForm({
                         }));
                       }
                     }}
-                    placeholder={OLX_UZ_PHONE_EXAMPLE}
+                    pattern={OLX_UZ_PHONE_HTML_PATTERN}
                     type="tel"
                     value={contactPhone}
                   />
-                  <p
-                    className="text-text-placeholder text-xs leading-5"
-                    id="olx-contact-phone-hint"
-                  >
-                    {t("contactPhoneHint")}
-                  </p>
                   <div id="olx-contact-phone-error">
                     {errorText("contactPhone")}
                   </div>

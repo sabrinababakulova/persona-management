@@ -62,11 +62,18 @@ are ignored.
 ## Publication behavior
 
 - Categories are parsed from OLX.uz's live category state and cached in memory
-  for six hours. Only selectable leaf categories of type `job` are shown. This
-  public request uses the server's native HTTP client, not Chromium.
+  for six hours. Only selectable leaf categories of type `job` are shown.
 - Location suggestions use OLX.uz's posting geo-encoder. The user must select an
-  exact suggestion, including a district where OLX requires one. These public
-  lookups also use the native HTTP client.
+  exact suggestion, including a district where OLX requires one. Results are
+  cached for 15 minutes. New forms start with Tashkent in the field. Cyrillic and
+  Latin input are accepted; common English spellings such as `Tashkent`,
+  `Samarkand`, and `Bukhara` are mapped to spellings understood by OLX's
+  Uzbekistan search endpoint.
+- Public dictionary requests first use the native HTTP client. OLX currently
+  returns HTTP 403 to Node.js in some environments, so those requests fall back
+  to one short-lived Chromium request and then use the caches above.
+- The contact-phone field always starts with `+998`, keeps only nine national
+  digits, and formats them as `+998 XX XXX XX XX` while the user types.
 - **Check form** sends one `POST /api/v1/offers-preview` request. It validates
   through OLX but creates no advert.
 - **Publish** sends one `POST /api/v1/offers` request with a unique `posting-id`.
