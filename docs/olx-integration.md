@@ -74,16 +74,14 @@ are ignored.
   to one short-lived Chromium request and then use the caches above.
 - The contact-phone field always starts with `+998`, keeps only nine national
   digits, and formats them as `+998 XX XXX XX XX` while the user types.
-- **Check form** sends one `POST /api/v1/offers-preview` request. It validates
-  through OLX but creates no advert.
-- **Publish** sends one `POST /api/v1/offers` request with a unique `posting-id`.
-  If the response does not include the public URL, Persona performs one
-  read-back by advert id. It does not resubmit.
+- **Publish** validates the form in Persona before confirmation, then validates
+  the payload on the server and sends one `POST /api/v1/offers` request with a
+  unique `posting-id`. If the response does not include the public URL, Persona
+  performs one read-back by advert id. It does not resubmit.
 - Once an OLX advert id is stored, the same publication record cannot be sent
   again. This remains true even if the public URL is delayed by moderation.
-- A per-user 30-second cooldown and ten-operation hourly cap apply to preview
-  and publish actions. There are no background jobs, automatic retries, or
-  polling.
+- A per-user 30-second cooldown and ten-operation hourly cap apply to publication
+  actions. There are no background jobs, automatic retries, or polling.
 
 Editing, pausing, and deleting OLX adverts are intentionally manual in this
 version. Open the advert in olx.uz to perform those actions.
@@ -135,8 +133,8 @@ Use a real draft that may safely be published, and avoid duplicate clicks:
 2. Select a live OLX job role and an exact location suggestion.
 3. Use a 16–70 character title, an 80–9000 character description, a contact name,
    the work type, the employment level, and optional salary/Uzbek phone.
-4. Press **Check form** once. Confirm Persona says no advert was published.
-5. Press **Publish**, read the confirmation, and confirm once.
+4. Press **Publish** once. Correct any validation messages shown by Persona.
+5. Read the confirmation and confirm once.
 6. Verify the stored advert id/URL and the advert in the connected OLX account.
 7. For a disposable test advert, archive/delete it manually on olx.uz after the
    verification.
@@ -166,7 +164,7 @@ describe this as an officially supported OLX integration.
 If OLX rejects an otherwise valid request:
 
 - reconnect the account if Company settings shows **Sign-in required**;
-- use **Check form** once and read the returned field validation;
+- press **Publish** once and read the returned field validation;
 - confirm the category and exact location are still present in OLX's live
   dictionaries;
 - check outbound access and OLX status;

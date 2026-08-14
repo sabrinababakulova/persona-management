@@ -8,10 +8,6 @@ import { Checkbox } from "~/app/_components/checkbox";
 import { ClosableSection } from "~/app/_components/closable-section";
 import { Dropdown } from "~/app/_components/dropdown";
 import { Input } from "~/app/_components/input";
-import {
-  FeedbackPresence,
-  LoadingButtonContent,
-} from "~/app/_components/motion-system";
 import { RichTextEditor } from "~/app/_components/rich-text-editor";
 import { SearchableSelect } from "~/app/_components/searchable-select";
 import {
@@ -107,7 +103,6 @@ export function OlxPublicationForm({
   const [remoteWork, setRemoteWork] = useState(false);
   const [onlineRecruitment, setOnlineRecruitment] = useState(false);
   const [errors, setErrors] = useState<OlxErrors>({});
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
@@ -292,16 +287,15 @@ export function OlxPublicationForm({
     return created.id;
   };
 
-  const executeOlxAction = async (dryRun: boolean) => {
+  const publishOlx = async () => {
     if (!validate()) return;
-    setFeedback(null);
     setErrors({});
 
     try {
       const publicationId = await saveLocalPublication();
-      const result = await runOlx.mutateAsync({
+      await runOlx.mutateAsync({
         id: publicationId,
-        dryRun,
+        dryRun: false,
       });
       await Promise.all([
         utils.vacancies.get.invalidate({ id: vacancyId }),
@@ -311,16 +305,6 @@ export function OlxPublicationForm({
           parentVacancyId: vacancyId,
         }),
       ]);
-
-      if (result.mode === "preview") {
-        setFeedback(t("previewSuccess"));
-        if (!pubId) {
-          router.replace(
-            `/vacancies/${vacancyId}/publications/olx.uz/${publicationId}`,
-          );
-        }
-        return;
-      }
 
       router.push(`/vacancies/${vacancyId}?step=publications`);
     } catch (error) {
@@ -619,14 +603,7 @@ export function OlxPublicationForm({
 
         <div className="sticky bottom-0 z-10 mt-6 border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-h-5">
-              {errorText("_form")}
-              <FeedbackPresence show={Boolean(feedback)}>
-                <p className="text-success-green text-xs leading-5">
-                  {feedback}
-                </p>
-              </FeedbackPresence>
-            </div>
+            <div className="min-h-5">{errorText("_form")}</div>
             <div className="flex flex-wrap items-center gap-3">
               <button
                 className="ui-button ui-button-secondary"
@@ -636,18 +613,6 @@ export function OlxPublicationForm({
                 type="button"
               >
                 {commonT("back")}
-              </button>
-              <button
-                className="ui-button ui-button-secondary"
-                disabled={isSubmitting || !connected || !serviceAvailable}
-                onClick={() => void executeOlxAction(true)}
-                type="button"
-              >
-                <LoadingButtonContent
-                  isLoading={runOlx.isPending}
-                  label={t("preview")}
-                  loadingLabel={t("previewing")}
-                />
               </button>
               {!alreadyPublished ? (
                 <button
@@ -672,7 +637,7 @@ export function OlxPublicationForm({
         isOpen={isConfirmOpen}
         isPending={isSubmitting}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => void executeOlxAction(false)}
+        onConfirm={() => void publishOlx()}
         onReject={() => setIsConfirmOpen(false)}
         rejectLabel={commonT("cancel")}
         title={t("confirmTitle")}

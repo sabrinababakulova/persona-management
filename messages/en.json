@@ -1153,12 +1153,9 @@
       "salaryNegotiable": "Salary negotiable",
       "remoteWork": "Remote work",
       "onlineRecruitment": "Online recruitment",
-      "preview": "Check form",
-      "previewing": "Checking olx.uz...",
       "publish": "Publish on olx.uz",
       "confirmDescription": "Persona will send the advert from the server to your connected olx.uz account. Do not press twice; a repeated request can create a duplicate.",
       "confirmTitle": "Publish this advert on olx.uz?",
-      "previewSuccess": "olx.uz accepted the preview data. No advert was published.",
       "actionError": "Could not process the olx.uz publication."
     }
   },

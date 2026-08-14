@@ -1153,12 +1153,9 @@
       "salaryNegotiable": "Maosh kelishiladi",
       "remoteWork": "Masofaviy ish",
       "onlineRecruitment": "Onlayn rekruting",
-      "preview": "Shaklni tekshirish",
-      "previewing": "olx.uz tekshirilmoqda...",
       "publish": "olx.uz’da e’lon qilish",
       "confirmDescription": "Persona e’lonni serverdan ulangan olx.uz hisobingizga yuboradi. Ikki marta bosmang: takroriy so‘rov dublikat yaratishi mumkin.",
       "confirmTitle": "E’lon olx.uz’da chop etilsinmi?",
-      "previewSuccess": "olx.uz ko‘rib chiqish ma’lumotlarini qabul qildi. E’lon chop etilmadi.",
       "actionError": "olx.uz e’lonini qayta ishlab bo‘lmadi."
     }
   },
