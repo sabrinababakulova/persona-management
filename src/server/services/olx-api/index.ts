@@ -1,11 +1,7 @@
 export {
-  ensureFreshOlxCredentials,
-  type OlxAccount,
   OlxApiError,
   type OlxCredentials,
   olxCredentialsSchema,
-  refreshOlxCredentials,
-  requestOlxApi,
   verifyOlxCredentials,
 } from "./client";
 export {
@@ -15,15 +11,6 @@ export {
 export { decryptOlxCredentials, encryptOlxCredentials } from "./crypto";
 export {
   getOlxJobCategories,
-  type OlxJobCategory,
-  type OlxLocation,
-  parseOlxJobCategories,
   searchOlxLocations,
 } from "./dictionaries";
-export {
-  buildOlxOfferPayload,
-  htmlToOlxPlainText,
-  type OlxAdvertInput,
-  type OlxPublishResult,
-  submitOlxOffer,
-} from "./publication";
+export { submitOlxOffer } from "./publication";

@@ -83,24 +83,6 @@ export function OlxAccountSection() {
         });
       },
     });
-  const verify = api.integrations.verifyOlxSession.useMutation({
-    onSuccess: async ({ connected }) => {
-      setFeedback({
-        type: connected ? "success" : "error",
-        message: connected ? t("verified") : t("expired"),
-      });
-      await Promise.all([
-        utils.integrations.getOlxSession.invalidate(),
-        utils.vacancies.getOlxConfig.invalidate(),
-      ]);
-    },
-    onError: (error) => {
-      setFeedback({
-        type: "error",
-        message: error.message || t("verifyError"),
-      });
-    },
-  });
   const disconnect = api.integrations.removeOlxSession.useMutation({
     onSuccess: async () => {
       setFeedback({ type: "success", message: t("disconnected") });
@@ -165,20 +147,15 @@ export function OlxAccountSection() {
 
   const session = sessionQuery.data?.session;
   const isConnected = session?.status === "connected";
-  const isPending =
-    startConnection.isPending || verify.isPending || disconnect.isPending;
+  const isPending = startConnection.isPending || disconnect.isPending;
   const connectionSteps = [
     {
       title: t("connectionSteps.install.title"),
       description: t("connectionSteps.install.description"),
     },
     {
-      title: t("connectionSteps.start.title"),
-      description: t("connectionSteps.start.description"),
-    },
-    {
-      title: t("connectionSteps.signIn.title"),
-      description: t("connectionSteps.signIn.description"),
+      title: t("connectionSteps.connect.title"),
+      description: t("connectionSteps.connect.description"),
     },
     {
       title: t("connectionSteps.finish.title"),
@@ -284,14 +261,8 @@ export function OlxAccountSection() {
               id="olx-connection-help"
               initial={{ height: 0, opacity: 0 }}
             >
-              <div className="space-y-4 border-border-input border-t px-4 py-4">
-                <p className="text-text-secondary text-xs leading-5">
-                  {t("connectionSteps.description")}
-                </p>
+              <div className="border-border-input border-t px-4 py-4">
                 <InstructionList items={connectionSteps} />
-                <p className="border-border-input border-t pt-4 text-text-placeholder text-xs leading-5">
-                  {t("privateDataWarning")}
-                </p>
               </div>
             </motion.div>
           ) : null}
@@ -343,24 +314,6 @@ export function OlxAccountSection() {
             loadingLabel={t("starting")}
           />
         </button>
-
-        {session ? (
-          <button
-            className="ui-button ui-button-secondary"
-            disabled={isPending}
-            onClick={() => {
-              setFeedback(null);
-              verify.mutate();
-            }}
-            type="button"
-          >
-            <LoadingButtonContent
-              isLoading={verify.isPending}
-              label={t("verify")}
-              loadingLabel={t("verifying")}
-            />
-          </button>
-        ) : null}
 
         {session ? (
           <button

@@ -555,44 +555,33 @@
       "connect": "OLX.uz’ni ulash",
       "starting": "OLX.uz ochilmoqda...",
       "continueOnOlx": "OLX.uz rasmiy sayti ochildi. Hisobga kiring, zarur tekshiruvni yakunlang va “Kirdim — hisobni ulash” tugmasini bosing.",
-      "verify": "Ulanishni tekshirish",
-      "verifying": "Tekshirilmoqda...",
       "disconnect": "Uzish",
       "disconnecting": "Uzilmoqda...",
       "connectedSuccess": "OLX.uz ulandi. Parol, CAPTCHA va SMS-kodlar Talanty’ga yuborilmadi.",
       "connectError": "OLX.uz’ni ulab bo‘lmadi.",
-      "verified": "OLX.uz ulanishi faol.",
-      "expired": "OLX.uz kirish huquqi tugagan. Hisobni qayta ulang.",
-      "verifyError": "OLX.uz ulanishini tekshirib bo‘lmadi.",
       "disconnected": "OLX.uz ulanishi o‘chirildi.",
       "disconnectError": "OLX.uz ulanishini o‘chirib bo‘lmadi.",
       "extensionMissing": "Talanty — OLX.uz Connector kengaytmasi topilmadi",
-      "extensionMissingHint": "Kengaytmani o‘rnating va bu sahifani yangilang. O‘rnatish tugmasi ko‘rinmasa, Talanty administratoridan kengaytma havolasini so‘rang.",
+      "extensionMissingHint": "Kengaytmani o‘rnating va sahifani yangilang. O‘rnatish tugmasi bo‘lmasa, havolani Talanty administratoridan so‘rang.",
       "installExtension": "Chrome kengaytmasini o‘rnatish",
-      "dataDisclosure": "Ulash vaqtida kengaytma OLX kirish tokenlari, birinchi tomon OLX cookie fayllari, qurilma identifikatori, so‘rov barmoq izi va brauzer ma’lumotlarini Talanty’ga xavfsiz yuboradi. Ular faqat siz boshlagan ulanish va e’lon joylash amallari uchun ishlatiladi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
-      "privacyLink": "Maxfiylik bildirishnomasini o‘qing.",
-      "consent": "Ushbu OLX.uz hisobini ulashga tushunib rozilik beraman.",
+      "dataDisclosure": "Talanty e’lon joylash uchun kerakli OLX.uz sessiya tokenlari va brauzer ma’lumotlarini saqlaydi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
+      "privacyLink": "Ma’lumotlar qanday himoyalanadi",
+      "consent": "Ushbu OLX.uz hisobini ulashga roziman.",
       "connectionSteps": {
         "title": "Hisobni qanday ulash kerak",
-        "description": "Oddiy Chrome brauzeringizda bir marta ulang. Keyingi e’lonlarni server yuboradi.",
         "install": {
           "title": "Kengaytmani o‘rnating",
-          "description": "Talanty’dagi o‘rnatish havolasini oching, “Chrome’ga qo‘shish”ni bosing va bu sahifaga qayting."
+          "description": "Kengaytma havolasini oching, “Chrome’ga qo‘shish”ni bosing va bu sahifani yangilang."
         },
-        "start": {
-          "title": "“OLX.uz’ni ulash”ni bosing",
-          "description": "Talanty bir martalik so‘rov yaratadi va OLX.uz rasmiy saytini ochadi."
-        },
-        "signIn": {
-          "title": "OLX.uz hisobiga kiring",
-          "description": "Parol, CAPTCHA yoki SMS-kodni faqat OLX.uz rasmiy saytida kiriting. Talanty ularni ko‘rmaydi."
+        "connect": {
+          "title": "Ulashni boshlang",
+          "description": "“OLX.uz’ni ulash”ni bosing va OLX.uz rasmiy saytiga kiring. CAPTCHA yoki SMS-kodni faqat shu yerda kiriting."
         },
         "finish": {
           "title": "Ulanishni tasdiqlang",
-          "description": "Kirish yakunlangach, OLX.uz’da “Kirdim — hisobni ulash” tugmasini bosing. Talanty’ga qaytib holatni tekshiring."
+          "description": "OLX.uz’da “Kirdim — hisobni ulash”ni bosing, so‘ng Talanty’ga qayting."
         }
-      },
-      "privateDataWarning": "Parol, CAPTCHA, SMS-kod yoki brauzer sessiyasi ma’lumotlarini yordam xizmatiga yubormang. Tashxis uchun xato matni yetarli."
+      }
     }
   },
   "Candidates": {

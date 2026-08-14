@@ -174,8 +174,11 @@ export async function submitOlxOffer(input: {
   dryRun: boolean;
   fetchImpl?: FetchLike;
 }): Promise<{ credentials: OlxCredentials; result: OlxPublishResult }> {
-  const fetchImpl = input.fetchImpl ?? fetchOlxWithBrowser;
-  const body = await buildOlxOfferPayload(input.advert, fetchImpl);
+  const apiFetch = input.fetchImpl ?? fetchOlxWithBrowser;
+  const body = await buildOlxOfferPayload(
+    input.advert,
+    input.fetchImpl ?? fetch,
+  );
   const postingId = randomUUID();
   const submitted = await requestOlxApi(
     input.credentials,
@@ -185,7 +188,7 @@ export async function submitOlxOffer(input: {
       headers: { "posting-id": postingId },
       body: JSON.stringify(body),
     },
-    fetchImpl,
+    apiFetch,
   );
 
   if (input.dryRun) {
@@ -204,7 +207,7 @@ export async function submitOlxOffer(input: {
         credentials,
         `offers/${encodeURIComponent(advertId)}`,
         {},
-        fetchImpl,
+        apiFetch,
       );
       credentials = fetched.credentials;
       advertUrl = valueAsString(responseData(fetched.payload).url);

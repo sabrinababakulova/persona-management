@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { fetchOlxWithBrowser } from "./browser-transport";
 
 const OLX_HOME_URL = "https://www.olx.uz/";
 const OLX_LOCATION_URL =
@@ -158,7 +157,7 @@ export async function getOlxJobCategories(
     return categoryCache.value;
   }
 
-  const value = loadOlxJobCategories(fetchOlxWithBrowser).catch((error) => {
+  const value = loadOlxJobCategories(fetch).catch((error) => {
     categoryCache = undefined;
     throw error;
   });
@@ -168,7 +167,7 @@ export async function getOlxJobCategories(
 
 export async function searchOlxLocations(
   query: string,
-  fetchImpl: FetchLike = fetchOlxWithBrowser,
+  fetchImpl: FetchLike = fetch,
 ): Promise<OlxLocation[]> {
   const normalizedQuery = query.trim().slice(0, 100);
   if (normalizedQuery.length < 2) return [];

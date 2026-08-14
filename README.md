@@ -76,7 +76,8 @@ OLX web authorization to Persona, encrypts the tokens at rest, and performs
 later preview/publication requests through a short-lived headless
 Chrome/Chromium network context on the server. The context closes after each
 request and does not automate OLX pages. Passwords, CAPTCHAs, and SMS codes stay
-on the official OLX.uz website.
+on the official OLX.uz website. Public category and location lookups use normal
+server-side HTTP requests and do not start Chromium.
 
 Setup, security boundaries, deployment requirements, and live-test steps are in
 [`docs/olx-integration.md`](docs/olx-integration.md).

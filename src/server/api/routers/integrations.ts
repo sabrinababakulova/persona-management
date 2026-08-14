@@ -6,7 +6,6 @@ import { env } from "~/env";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
-  clearIdentifier,
   hasActiveRecord,
   isRateLimited,
   recordAttempt,
@@ -21,14 +20,7 @@ import {
   vacancies,
 } from "~/server/db/schema";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
-import {
-  createOlxConnectionTicket,
-  decryptOlxCredentials,
-  encryptOlxCredentials,
-  OlxApiError,
-  type OlxCredentials,
-  verifyOlxCredentials,
-} from "~/server/services/olx-api";
+import { createOlxConnectionTicket } from "~/server/services/olx-api";
 import {
   isTelegramConfigured,
   normalizeTelegramUsername,
@@ -51,31 +43,9 @@ const channelInputSchema = z.object({
 
 const OLX_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const OLX_LOGIN_COOLDOWN_MS = 60 * 1000;
-const OLX_ACTION_WINDOW_MS = 60 * 60 * 1000;
-const OLX_ACTION_COOLDOWN_MS = 30 * 1000;
 
-function olxConnectionError(error: unknown): TRPCError {
-  if (error instanceof OlxApiError) {
-    const messages: Record<typeof error.code, string> = {
-      reauth_required: "Доступ OLX.uz истёк. Подключите аккаунт заново.",
-      rate_limited:
-        "OLX.uz временно ограничил запросы. Подождите и повторите позже.",
-      validation_failed: "OLX.uz отклонил данные запроса.",
-      unavailable: "OLX.uz временно недоступен. Попробуйте позже.",
-      unexpected_response: "OLX.uz вернул неожиданный ответ.",
-    };
-    return new TRPCError({
-      code:
-        error.code === "reauth_required"
-          ? "PRECONDITION_FAILED"
-          : error.code === "rate_limited"
-            ? "TOO_MANY_REQUESTS"
-            : "BAD_GATEWAY",
-      message: messages[error.code],
-    });
-  }
-
-  console.error("Unexpected OLX API connection error", error);
+function olxTicketError(error: unknown): TRPCError {
+  console.error("Could not create an OLX connection ticket", error);
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: "Не удалось подключить OLX.uz.",
@@ -151,7 +121,6 @@ export const integrationsRouter = createTRPCRouter({
       .limit(1);
 
     return {
-      connectorRequired: true,
       session: rows[0] ?? null,
     };
   }),
@@ -184,96 +153,7 @@ export const integrationsRouter = createTRPCRouter({
         expiresAt: connection.expiresAt,
       };
     } catch (error) {
-      throw olxConnectionError(error);
-    }
-  }),
-
-  verifyOlxSession: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const hourlyKey = `olx-api-actions:${userId}`;
-    const cooldownKey = `olx-verify-cooldown:${userId}`;
-    if (
-      (await hasActiveRecord(cooldownKey)) ||
-      (await isRateLimited(hourlyKey, 10))
-    ) {
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message:
-          "Проверять OLX.uz можно не чаще одного раза в 30 секунд. Подождите и повторите.",
-      });
-    }
-
-    const rows = await ctx.db
-      .select()
-      .from(userOlxSessions)
-      .where(eq(userOlxSessions.userId, ctx.session.user.id))
-      .limit(1);
-    const session = rows[0];
-    if (!session) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "OLX.uz аккаунт не подключён.",
-      });
-    }
-
-    await Promise.all([
-      recordAttempt(hourlyKey, OLX_ACTION_WINDOW_MS),
-      setMarker(cooldownKey, OLX_ACTION_COOLDOWN_MS),
-    ]);
-
-    let credentials: OlxCredentials;
-    try {
-      credentials = decryptOlxCredentials<OlxCredentials>(
-        session.encryptedStorageState,
-        env.AUTH_SECRET,
-      );
-    } catch {
-      await ctx.db
-        .update(userOlxSessions)
-        .set({
-          status: "reauth_required",
-          lastOperationAt: new Date(),
-          lastError: "session_decryption_failed",
-        })
-        .where(eq(userOlxSessions.id, session.id));
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "Сохранённая сессия OLX.uz больше недействительна. Подключите аккаунт заново.",
-      });
-    }
-
-    try {
-      const verified = await verifyOlxCredentials(credentials);
-      const now = new Date();
-      await ctx.db
-        .update(userOlxSessions)
-        .set({
-          encryptedStorageState: encryptOlxCredentials(
-            verified.credentials,
-            env.AUTH_SECRET,
-          ),
-          loginHint: verified.account.loginHint ?? session.loginHint,
-          status: "connected",
-          lastVerifiedAt: now,
-          lastOperationAt: now,
-          lastError: null,
-        })
-        .where(eq(userOlxSessions.id, session.id));
-      await clearIdentifier(`olx-login-attempts:${userId}`);
-      return { connected: true };
-    } catch (error) {
-      if (error instanceof OlxApiError && error.code === "reauth_required") {
-        await ctx.db
-          .update(userOlxSessions)
-          .set({
-            status: "reauth_required",
-            lastOperationAt: new Date(),
-            lastError: `api:${error.code}`,
-          })
-          .where(eq(userOlxSessions.id, session.id));
-      }
-      throw olxConnectionError(error);
+      throw olxTicketError(error);
     }
   }),
 

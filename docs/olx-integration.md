@@ -62,9 +62,11 @@ are ignored.
 ## Publication behavior
 
 - Categories are parsed from OLX.uz's live category state and cached in memory
-  for six hours. Only selectable leaf categories of type `job` are shown.
+  for six hours. Only selectable leaf categories of type `job` are shown. This
+  public request uses the server's native HTTP client, not Chromium.
 - Location suggestions use OLX.uz's posting geo-encoder. The user must select an
-  exact suggestion, including a district where OLX requires one.
+  exact suggestion, including a district where OLX requires one. These public
+  lookups also use the native HTTP client.
 - **Check form** sends one `POST /api/v1/offers-preview` request. It validates
   through OLX but creates no advert.
 - **Publish** sends one `POST /api/v1/offers` request with a unique `posting-id`.
@@ -116,7 +118,7 @@ hardened root/container deployment.
    and must not complete it for you.
 6. On the OLX.uz page, press **I am signed in — connect account** in the connector
    panel. The extension returns to Persona.
-7. Press **Verify connection** and confirm the status remains Connected.
+7. Confirm Company settings shows the account status as **Connected**.
 
 ## Safe end-to-end publication test
 
@@ -156,7 +158,7 @@ describe this as an officially supported OLX integration.
 
 If OLX rejects an otherwise valid request:
 
-- run **Verify connection**; reconnect if required;
+- reconnect the account if Company settings shows **Sign-in required**;
 - use **Check form** once and read the returned field validation;
 - confirm the category and exact location are still present in OLX's live
   dictionaries;

@@ -555,44 +555,33 @@
       "connect": "Connect OLX.uz",
       "starting": "Opening OLX.uz...",
       "continueOnOlx": "The official OLX.uz website opened. Sign in, complete any verification, then press “I am signed in — connect account”.",
-      "verify": "Verify connection",
-      "verifying": "Verifying...",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting...",
       "connectedSuccess": "OLX.uz is connected. Your password, CAPTCHA, and SMS codes were not sent to Talanty.",
       "connectError": "Could not connect OLX.uz.",
-      "verified": "The OLX.uz connection is active.",
-      "expired": "OLX.uz access expired. Connect the account again.",
-      "verifyError": "Could not verify the OLX.uz connection.",
       "disconnected": "The OLX.uz connection was removed.",
       "disconnectError": "Could not remove the OLX.uz connection.",
       "extensionMissing": "Talanty — OLX.uz Connector was not detected",
-      "extensionMissingHint": "Install the connector, then refresh this page. If no installation button is shown, ask your Talanty administrator for the extension link.",
+      "extensionMissingHint": "Install the connector and refresh this page. If there is no installation button, ask your Talanty administrator for the link.",
       "installExtension": "Install the Chrome extension",
-      "dataDisclosure": "When you connect, the extension securely sends OLX access tokens, first-party OLX cookies, device ID, request fingerprint, and browser identification to Talanty. These are used only for the connection and publication actions you start. Your password, CAPTCHA, and SMS codes are not sent.",
-      "privacyLink": "Read the privacy notice.",
-      "consent": "I understand and agree to connect this OLX.uz account.",
+      "dataDisclosure": "Talanty saves the OLX.uz session tokens and browser details needed to publish. Your password, CAPTCHA, and SMS codes are not sent.",
+      "privacyLink": "How your data is protected",
+      "consent": "I agree to connect this OLX.uz account.",
       "connectionSteps": {
         "title": "How to connect your account",
-        "description": "Connect once in your normal Chrome browser. The server handles later publications.",
         "install": {
           "title": "Install the connector",
-          "description": "Use the installation link shown in Talanty, press “Add to Chrome”, and return to this page."
+          "description": "Open the extension link, press “Add to Chrome”, then refresh this page."
         },
-        "start": {
-          "title": "Press “Connect OLX.uz”",
-          "description": "Talanty creates a one-time request and opens the official OLX.uz website."
-        },
-        "signIn": {
-          "title": "Sign in on OLX.uz",
-          "description": "Enter your password, CAPTCHA, or SMS code only on the official OLX.uz website. Talanty cannot see them."
+        "connect": {
+          "title": "Start the connection",
+          "description": "Press “Connect OLX.uz” and sign in on the official OLX.uz website. Enter any CAPTCHA or SMS code only there."
         },
         "finish": {
           "title": "Confirm the connection",
-          "description": "After sign-in completes, press “I am signed in — connect account” on OLX.uz. Return to Talanty and check the status."
+          "description": "On OLX.uz, press “I am signed in — connect account”, then return to Talanty."
         }
-      },
-      "privateDataWarning": "Never send your password, CAPTCHA, SMS code, or browser-session data to support. The error message is enough for diagnostics."
+      }
     }
   },
   "Candidates": {

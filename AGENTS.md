@@ -473,8 +473,9 @@ form through one short-lived headless Chrome/Chromium network context per
 request. The context closes after the response and does not automate OLX pages.
 Actions are explicit, limited to one every 30 seconds and ten per hour, with no
 polling, automatic retries, cron, persistent browser, or stealth behavior. Live
-job categories and location suggestions come from OLX. Duplicate submission is
-blocked after an OLX advert id is saved.
+job categories and location suggestions come from OLX through normal server-side
+HTTP requests; they do not start Chromium. Duplicate submission is blocked after
+an OLX advert id is saved.
 
 This private contract is unsupported and can change without notice. Editing and
 deletion remain manual. Full security, deployment, limitation, and test notes:
