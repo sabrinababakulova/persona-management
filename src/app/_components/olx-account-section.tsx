@@ -9,7 +9,6 @@ import { api } from "~/trpc/react";
 import { Checkbox } from "./checkbox";
 import { ClosableSection } from "./closable-section";
 import { ChevronDownIcon } from "./icons";
-import { IntegrationStatusBadge } from "./integration-status-badge";
 import {
   AnimatePresence,
   FeedbackPresence,
@@ -278,9 +277,15 @@ export function OlxAccountSection() {
         <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
           <p className="flex items-center gap-2 text-sm text-text-heading">
             <span className="font-medium">{t("status")}:</span>
-            <IntegrationStatusBadge tone={isConnected ? "success" : "danger"}>
+            <span
+              className={`rounded-lg px-2 py-1.5 font-semibold text-xs uppercase leading-none ${
+                isConnected
+                  ? "bg-status-active-bg text-text-heading"
+                  : "bg-status-danger-soft text-accent-red"
+              }`}
+            >
               {isConnected ? t("connected") : t("reauthRequired")}
-            </IntegrationStatusBadge>
+            </span>
           </p>
           {session.loginHint ? (
             <p className="text-text-secondary text-xs">
