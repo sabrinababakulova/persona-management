@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -379,17 +378,11 @@ export function OlxPublicationForm({
         />
         <h1 className="page-title mt-5 mb-5">{t("pageTitle")}</h1>
 
-        {!serviceAvailable || !connected ? (
+        {!serviceAvailable ? (
           <div className="mb-5 rounded-lg border border-border-input bg-bg-input px-4 py-3 text-sm leading-5">
             <p className="font-medium text-text-heading">
-              {!serviceAvailable ? t("serviceUnavailable") : t("notConnected")}
+              {t("serviceUnavailable")}
             </p>
-            <Link
-              className="mt-1 inline-block text-primary-blue hover:underline"
-              href="/my-profile?section=company-settings"
-            >
-              {t("openSettings")}
-            </Link>
           </div>
         ) : null}
 

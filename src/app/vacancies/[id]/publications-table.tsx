@@ -19,6 +19,10 @@ import {
 import { Modal } from "~/app/_components/modal";
 import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { useErrorToast } from "~/app/_components/use-error-toast";
+import {
+  getPublicationCreationUrl,
+  OLX_PUBLICATION_CHANNEL,
+} from "~/shared/publication-navigation";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
@@ -147,6 +151,7 @@ export function PublicationsTable() {
   const utils = api.useUtils();
   const showError = useErrorToast();
   const { data: companyFeatures } = api.company.getFeatures.useQuery();
+  const olxSessionQuery = api.integrations.getOlxSession.useQuery();
   const channelOptions: ActionDropdownItem[] = [
     { value: "hh.uz", label: t("table.forHh"), iconSrc: "/hh.svg" },
     {
@@ -234,7 +239,28 @@ export function PublicationsTable() {
   });
 
   const handleChannelSelect = (value: string) => {
-    router.push(`/vacancies/${parentVacancyId}/publications/${value}`);
+    const navigate = (sessionData: typeof olxSessionQuery.data): void => {
+      router.push(
+        getPublicationCreationUrl({
+          channel: value,
+          isOlxConnected: sessionData?.session?.status === "connected",
+          vacancyId: parentVacancyId,
+        }),
+      );
+    };
+
+    if (value === OLX_PUBLICATION_CHANNEL && !olxSessionQuery.data) {
+      void utils.integrations.getOlxSession
+        .fetch()
+        .then(navigate)
+        .catch((error) => {
+          console.error("Failed to check OLX connection status", error);
+          navigate(undefined);
+        });
+      return;
+    }
+
+    navigate(olxSessionQuery.data);
   };
 
   const toggle = (id: string) => {

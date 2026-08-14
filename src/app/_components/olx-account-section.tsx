@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { env } from "~/env";
+import { OLX_ACCOUNT_SECTION_ID } from "~/shared/publication-navigation";
 import { api } from "~/trpc/react";
 import { Checkbox } from "./checkbox";
 import { ClosableSection } from "./closable-section";
@@ -100,6 +101,89 @@ export function OlxAccountSection() {
   });
 
   useEffect(() => {
+    let animationFrame: number | null = null;
+    let observer: MutationObserver | null = null;
+    let settleTimer: number | null = null;
+
+    const stopTracking = () => {
+      observer?.disconnect();
+      observer = null;
+      if (settleTimer !== null) {
+        window.clearTimeout(settleTimer);
+        settleTimer = null;
+      }
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
+    };
+
+    const startTracking = () => {
+      stopTracking();
+      if (window.location.hash !== `#${OLX_ACCOUNT_SECTION_ID}`) {
+        return;
+      }
+
+      const section = document.getElementById(OLX_ACCOUNT_SECTION_ID);
+      if (!section) {
+        return;
+      }
+      const scrollContainer = section.closest<HTMLElement>(".app-route-frame");
+
+      const scrollToSection = () => {
+        if (animationFrame !== null) {
+          window.cancelAnimationFrame(animationFrame);
+        }
+        animationFrame = window.requestAnimationFrame(() => {
+          if (!scrollContainer) {
+            section.scrollIntoView({ block: "start" });
+            return;
+          }
+
+          const sectionRect = section.getBoundingClientRect();
+          const containerRect = scrollContainer.getBoundingClientRect();
+          scrollContainer.scrollTop = Math.max(
+            0,
+            scrollContainer.scrollTop +
+              sectionRect.top -
+              containerRect.top -
+              96,
+          );
+        });
+      };
+
+      // The settings above OLX load independently. Keep the anchor aligned while
+      // their skeletons are replaced, then disconnect the observer once settled.
+      const settingsContainer = section.parentElement;
+      observer = new MutationObserver(scrollToSection);
+      if (settingsContainer) {
+        observer.observe(settingsContainer, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
+      }
+      scrollToSection();
+
+      settleTimer = window.setTimeout(() => {
+        observer?.disconnect();
+        observer = null;
+        scrollToSection();
+      }, 1_500);
+    };
+
+    // Next.js can apply the hash just after the new client tree mounts.
+    const startTimer = window.setTimeout(startTracking, 0);
+    window.addEventListener("hashchange", startTracking);
+
+    return () => {
+      window.removeEventListener("hashchange", startTracking);
+      window.clearTimeout(startTimer);
+      stopTracking();
+    };
+  }, []);
+
+  useEffect(() => {
     const onConnectorMessage = (event: MessageEvent) => {
       if (
         event.source !== window ||
@@ -164,7 +248,11 @@ export function OlxAccountSection() {
   ];
 
   return (
-    <ClosableSection title={t("title")}>
+    <ClosableSection
+      className="scroll-mt-24"
+      id={OLX_ACCOUNT_SECTION_ID}
+      title={t("title")}
+    >
       {sessionQuery.isLoading ? (
         <div aria-busy="true" className="space-y-3">
           <SkeletonBlock className="h-24 w-full" />

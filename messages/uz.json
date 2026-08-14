@@ -1111,8 +1111,6 @@
       "notFound": "Vakansiya topilmadi",
       "vacancy": "Vakansiya",
       "serviceUnavailable": "OLX.uz ma’lumotnomalari hozir mavjud emas. Sahifani keyinroq yangilang.",
-      "notConnected": "Avval OLX.uz hisobingizni ulang.",
-      "openSettings": "Ulanish sozlamalarini ochish",
       "alreadyPublished": "Bu versiya OLX.uz’da allaqachon e’lon qilingan.",
       "alreadyPublishedHint": "Avtomatik tahrirlash va o‘chirish hozircha bajarilmaydi. Dublikat bo‘lmasligi uchun e’lonni OLX.uz’da tahrirlang yoki yangi versiya yarating.",
       "openAdvert": "E’lonni OLX.uz’da ochish",

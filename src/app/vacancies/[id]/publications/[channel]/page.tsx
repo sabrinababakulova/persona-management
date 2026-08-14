@@ -1,4 +1,8 @@
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { auth } from "~/server/auth";
+import { hasConnectedOlxSession } from "~/server/services/olx-session";
+import { OLX_ACCOUNT_SETTINGS_URL } from "~/shared/publication-navigation";
 import { HhPublicationForm } from "./hh-publication-form";
 import { OlxPublicationForm } from "./olx-publication-form";
 import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
@@ -41,6 +45,13 @@ export default async function VacancyPublicationChannelPage({
   }
 
   if (channel === "olx.uz") {
+    const session = await auth();
+    if (
+      !session?.user?.id ||
+      !(await hasConnectedOlxSession(session.user.id))
+    ) {
+      redirect(OLX_ACCOUNT_SETTINGS_URL);
+    }
     return <OlxPublicationForm vacancyId={id} />;
   }
 

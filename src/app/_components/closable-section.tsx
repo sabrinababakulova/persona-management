@@ -7,15 +7,19 @@ import { AnimatePresence, motion } from "./motion-system";
 
 export const ClosableSection = ({
   children,
+  className,
+  id,
   title,
 }: {
   children: React.ReactNode;
+  className?: string;
+  id?: string;
   title: string;
 }) => {
   const t = useTranslations("Components");
   const [isSectionOpen, setIsSectionOpen] = useState(true);
   return (
-    <section className="space-y-5">
+    <section className={`space-y-5 ${className ?? ""}`} id={id}>
       <div className="flex items-center justify-between">
         <h2 className="section-title">{title}</h2>
         <button
