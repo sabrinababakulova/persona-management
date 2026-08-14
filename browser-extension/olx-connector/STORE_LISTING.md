@@ -100,10 +100,9 @@ unavailable employee-only verification step.
 
 - Upload `icons/icon128.png` as the store icon if the dashboard asks for it
   separately.
-- Add at least one 1280×800 or 640×400 screenshot showing the consent disclosure
-  and the connect action. Use a dedicated test account and remove personal names,
-  email addresses, phone-number suffixes, invitation links, and profile photos
-  from the image.
+- Upload `store-assets/olx-connection-1280x800.png`. It shows the consent
+  disclosure and connect action at the required 1280×800 size with the account
+  phone fully masked and all unrelated personal details removed.
 - Do not upload promotional images that imply an official OLX partnership.
 - Confirm the production ZIP contains no localhost or `127.0.0.1` permissions.
 - Confirm the deployed privacy URL is reachable without a Talanty login.
