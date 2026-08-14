@@ -523,8 +523,12 @@ export const vacancies = createTable(
       .$type<PersonHunterPublicationMeta>(),
     /** Public advert URL returned after the OLX server publication request. */
     olxAdvertUrl: d.varchar("olx_advert_url", { length: 1000 }),
-    /** Advert id parsed from the public OLX URL when one is present. */
+    /** Stable advert id returned by OLX after publication. */
     olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
+    /** User whose connected OLX account created the advert. */
+    olxPublisherUserId: d
+      .varchar("olx_publisher_user_id", { length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
     /** OLX web-form labels entered by the recruiter. */
     olxBrowserMeta: d.json("olx_browser_meta").$type<OlxPublicationMeta>(),
     olxLastPublishedAt: d.timestamp("olx_last_published_at", {
@@ -564,6 +568,7 @@ export const vacancies = createTable(
     index("vacancy_parent_id_idx").on(t.parentId),
     index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
     index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
+    index("vacancy_olx_publisher_user_id_idx").on(t.olxPublisherUserId),
   ],
 );
 

@@ -322,12 +322,13 @@ export function PublicationsTable() {
       return;
     }
 
-    // hh.uz / PersonHunters changes and Telegram deactivations need a confirmation step (the
-    // latter deletes the channel post); other status changes apply directly.
+    // External lifecycle changes need confirmation before they modify a live
+    // third-party publication. Telegram only has a destructive deactivation.
 
     if (
       destination === "hh.uz" ||
       destination === "person-hunter" ||
+      destination === "olx.uz" ||
       (destination === "telegram" && !isActive)
     ) {
       setPendingStatusChange({ id, isActive, destination });
@@ -370,6 +371,13 @@ export function PublicationsTable() {
       },
     );
   };
+
+  const deleteCandidate = publications?.find(
+    (publication) => publication.id === deleteCandidateId,
+  );
+  const deletesOlxAdvert =
+    deleteCandidate?.destination === "olx.uz" &&
+    Boolean(deleteCandidate.olxAdvertId || deleteCandidate.olxAdvertUrl);
 
   return (
     <div className="flex flex-col gap-4">
@@ -473,10 +481,7 @@ export function PublicationsTable() {
               <div className="col-span-2 lg:col-span-2">
                 <Dropdown
                   className="w-fit"
-                  disabled={
-                    updatePublicationStatus.isPending ||
-                    (pub.destination === "olx.uz" && Boolean(pub.olxAdvertUrl))
-                  }
+                  disabled={updatePublicationStatus.isPending}
                   fieldClassName={
                     pub.isActive
                       ? "h-6! w-auto! [field-sizing:content] rounded-md! px-2.5! pr-7! border-status-active-bg! bg-status-active-bg! font-semibold text-black text-xs lowercase hover:border-border-control! hover:bg-status-active-bg! focus:border-border-control! focus:bg-status-active-bg!"
@@ -547,7 +552,11 @@ export function PublicationsTable() {
       >
         <div className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary leading-[1.4]">
-            {t("table.deleteDescription")}
+            {t(
+              deletesOlxAdvert
+                ? "table.olxDeleteDescription"
+                : "table.deleteDescription",
+            )}
           </p>
           <div className="flex justify-end gap-3">
             <button
@@ -625,9 +634,13 @@ export function PublicationsTable() {
               ? pendingStatusChange?.isActive
                 ? t("table.personHunterActivate")
                 : t("table.personHunterDeactivate")
-              : pendingStatusChange?.isActive
-                ? t("table.hhActivate")
-                : t("table.hhDeactivate")
+              : pendingStatusChange?.destination === "olx.uz"
+                ? pendingStatusChange?.isActive
+                  ? t("table.olxActivate")
+                  : t("table.olxDeactivate")
+                : pendingStatusChange?.isActive
+                  ? t("table.hhActivate")
+                  : t("table.hhDeactivate")
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}

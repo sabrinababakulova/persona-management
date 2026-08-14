@@ -13,4 +13,5 @@ export {
   getOlxJobCategories,
   searchOlxLocations,
 } from "./dictionaries";
+export { deleteOlxAdvert, setOlxAdvertActive } from "./lifecycle";
 export { submitOlxOffer } from "./publication";

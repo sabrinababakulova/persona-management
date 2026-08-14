@@ -36,6 +36,7 @@ import {
   getUserHhAccount,
   resolveUserHhAuth,
 } from "~/server/services/hh-company-account";
+import { deleteOlxAdvert, setOlxAdvertActive } from "~/server/services/olx-api";
 import {
   createPersonHunterVacancy,
   deletePersonHunterVacancy,
@@ -61,6 +62,12 @@ import { fetchDirectusAsset } from "~/server/storage/directus-storage";
 import { FEATURE_PERSON_HUNTER_PUBLICATIONS } from "~/shared/feature-flags";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
+import {
+  describeOlxLifecycleError,
+  enforceOlxLifecycleRateLimit,
+  runOlxOperation,
+  safeOlxLifecycleError,
+} from "./olx-lifecycle";
 import {
   type OlxPublicationMeta,
   type PersonHunterPublicationMeta,
@@ -309,20 +316,51 @@ export const updateVacancyProcedure = protectedProcedure
       });
     }
 
-    // The browser integration currently creates OLX adverts but does not
-    // automate their lifecycle. Never show a local inactive state while the
-    // external advert is still live; the recruiter must manage it on olx.uz.
+    let olxPublisherUserIdToPersist: string | null = null;
+
+    // OLX lifecycle changes are explicit user actions. Mirror the remote
+    // command first and only then update the local status, so failures never
+    // leave Persona claiming a state that OLX did not accept.
     if (
       input.isActive !== undefined &&
       input.isActive !== existing.isActive &&
       existing.destination === "olx.uz" &&
-      existing.olxAdvertUrl
+      (existing.olxAdvertId || existing.olxAdvertUrl)
     ) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "Измените статус объявления непосредственно на olx.uz. Автоматическое удаление и деактивация не выполняются.",
-      });
+      if (!existing.olxAdvertId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "У этой старой публикации нет идентификатора olx.uz. Измените её статус непосредственно на olx.uz.",
+        });
+      }
+
+      const action = input.isActive ? "activate" : "deactivate";
+      const publisherUserId =
+        existing.olxPublisherUserId ?? ctx.session.user.id;
+      await enforceOlxLifecycleRateLimit(publisherUserId);
+
+      try {
+        await runOlxOperation(ctx.db, publisherUserId, (credentials) =>
+          setOlxAdvertActive({
+            credentials,
+            advertId: existing.olxAdvertId as string,
+            isActive: input.isActive as boolean,
+          }),
+        );
+        // Legacy rows predate publisher ownership. A successful command proves
+        // which connected account owns the advert, so persist it for later
+        // actions by any teammate who can manage this company publication.
+        if (!existing.olxPublisherUserId) {
+          olxPublisherUserIdToPersist = publisherUserId;
+        }
+      } catch (error) {
+        await ctx.db
+          .update(vacancies)
+          .set({ olxLastError: safeOlxLifecycleError(error) })
+          .where(eq(vacancies.id, existing.id));
+        throw describeOlxLifecycleError(error, action);
+      }
     }
 
     // Archived hh.uz-linked rows are read-only stubs (the discovery cron stores only id,
@@ -687,6 +725,8 @@ export const updateVacancyProcedure = protectedProcedure
       isPublication: boolean;
       personHunterMeta: PersonHunterPublicationMeta | null;
       olxBrowserMeta: OlxPublicationMeta | null;
+      olxPublisherUserId: string | null;
+      olxLastError: string | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)
@@ -777,6 +817,16 @@ export const updateVacancyProcedure = protectedProcedure
     if (input.olxBrowserMeta !== undefined) {
       valuesToUpdate.olxBrowserMeta = input.olxBrowserMeta;
     }
+    if (olxPublisherUserIdToPersist) {
+      valuesToUpdate.olxPublisherUserId = olxPublisherUserIdToPersist;
+    }
+    if (
+      existing.destination === "olx.uz" &&
+      input.isActive !== undefined &&
+      input.isActive !== existing.isActive
+    ) {
+      valuesToUpdate.olxLastError = null;
+    }
     if (clearTelegramPosts) {
       valuesToUpdate.telegramPostId = null;
     }
@@ -842,6 +892,10 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
         parentId: vacancies.parentId,
         destination: vacancies.destination,
         personHunterVacancyId: vacancies.personHunterVacancyId,
+        isActive: vacancies.isActive,
+        olxAdvertId: vacancies.olxAdvertId,
+        olxAdvertUrl: vacancies.olxAdvertUrl,
+        olxPublisherUserId: vacancies.olxPublisherUserId,
       })
       .from(vacancies)
       .where(
@@ -860,6 +914,47 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
         code: "NOT_FOUND",
         message: "Публикация не найдена",
       });
+    }
+
+    // An OLX advert must be deactivated before OLX allows permanent deletion.
+    // The UI enforces this too, but the server guard prevents direct callers
+    // from deleting an active remote advert accidentally.
+    if (
+      existing.destination === "olx.uz" &&
+      (existing.olxAdvertId || existing.olxAdvertUrl)
+    ) {
+      if (existing.isActive) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Сначала деактивируйте публикацию olx.uz, затем удалите её.",
+        });
+      }
+      if (!existing.olxAdvertId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "У этой старой публикации нет идентификатора olx.uz. Удалите объявление непосредственно на olx.uz.",
+        });
+      }
+
+      const publisherUserId =
+        existing.olxPublisherUserId ?? ctx.session.user.id;
+      await enforceOlxLifecycleRateLimit(publisherUserId);
+      try {
+        await runOlxOperation(ctx.db, publisherUserId, (credentials) =>
+          deleteOlxAdvert({
+            credentials,
+            advertId: existing.olxAdvertId as string,
+            acceptAlreadyDeleted: Boolean(existing.olxPublisherUserId),
+          }),
+        );
+      } catch (error) {
+        await ctx.db
+          .update(vacancies)
+          .set({ olxLastError: safeOlxLifecycleError(error) })
+          .where(eq(vacancies.id, existing.id));
+        throw describeOlxLifecycleError(error, "delete");
+      }
     }
 
     // Fully remove the vacancy from PersonHunters first, so the local row only disappears once

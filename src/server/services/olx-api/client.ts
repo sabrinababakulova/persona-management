@@ -40,6 +40,7 @@ export type OlxAccount = {
 type OlxApiErrorCode =
   | "reauth_required"
   | "rate_limited"
+  | "not_found"
   | "validation_failed"
   | "unavailable"
   | "unexpected_response";
@@ -300,6 +301,13 @@ export async function requestOlxApi(
     throw new OlxApiError(
       "rate_limited",
       "OLX rate limited the request",
+      response.status,
+    );
+  }
+  if (response.status === 404) {
+    throw new OlxApiError(
+      "not_found",
+      "OLX advert was not found",
       response.status,
     );
   }

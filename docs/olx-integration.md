@@ -18,7 +18,9 @@ The flow is split into two parts:
    Persona verifies the account and stores the values encrypted. Later previews
    and publications run through a short-lived headless Chrome/Chromium network
    context on the Persona server. It performs the requested API call and closes;
-   it does not automate OLX pages or retain an idle browser process.
+   it does not automate OLX pages or retain an idle browser process. Status
+   changes and deletion use a normal server-side GraphQL request and launch no
+   browser process.
 
 Passwords, CAPTCHA answers, and SMS/OTP codes are never requested by Persona,
 never read by the extension, and never stored. Security checks must be completed
@@ -82,9 +84,21 @@ are ignored.
   again. This remains true even if the public URL is delayed by moderation.
 - A per-user 30-second cooldown and ten-operation hourly cap apply to publication
   actions. There are no background jobs, automatic retries, or polling.
-
-Editing, pausing, and deleting OLX adverts are intentionally manual in this
-version. Open the advert in olx.uz to perform those actions.
+- Changing the publications-table status sends the same `UpdateAd` GraphQL
+  mutation as olx.uz's current **My ads** page, with `DEACTIVATE` or `ACTIVATE`.
+  Persona changes its local status only after OLX accepts the mutation.
+- Permanent deletion is available only after deactivation. Persona sends one
+  `REMOVE` mutation first and removes the local publication only after OLX
+  succeeds. For rows with a recorded publishing account, an OLX not-found result
+  is treated as idempotent success because the remote advert is already gone;
+  legacy rows fail closed until a successful lifecycle mutation establishes
+  ownership.
+- Lifecycle actions have a ten-second shared cooldown and a twenty-operation
+  hourly cap per connected OLX account. They are never run by a background task. A rejected
+  access token can trigger one refresh-and-replay; other failures are not retried.
+- The publishing user's id is stored with new OLX adverts so later lifecycle
+  actions use the same connected OLX account. Older rows adopt the current
+  account only after OLX successfully accepts a lifecycle mutation.
 
 ## Linux deployment
 
@@ -99,8 +113,9 @@ like the rest of Persona:
 4. Install a current `google-chrome-stable` or `chromium` package. Common paths
    are detected automatically; otherwise set `OLX_BROWSER_EXECUTABLE_PATH`.
    Run Persona as an unprivileged user so the Chrome sandbox stays enabled.
-5. Ensure outbound HTTPS/DNS can reach `login.olx.uz`, `www.olx.uz`, and
-   `categories.olxcdn.com`.
+5. Ensure outbound HTTPS/DNS can reach `login.olx.uz`, `www.olx.uz`,
+   `categories.olxcdn.com`, and
+   `production-graphql.eu-sharedservices.olxcdn.com`.
 6. Run `bun run build`, restart the application, and check logs for configuration
    or database errors.
 7. Package `browser-extension/olx-connector` for the Chrome Web Store or managed
@@ -136,8 +151,12 @@ Use a real draft that may safely be published, and avoid duplicate clicks:
 4. Press **Publish** once. Correct any validation messages shown by Persona.
 5. Read the confirmation and confirm once.
 6. Verify the stored advert id/URL and the advert in the connected OLX account.
-7. For a disposable test advert, archive/delete it manually on olx.uz after the
-   verification.
+7. In Persona's publications table, change the advert to **Inactive** once and
+   verify it is hidden in the connected OLX account.
+8. Change it back to **Active** once and verify it becomes visible again.
+9. To test permanent deletion, deactivate it again, press the trash button, read
+   the irreversible-action confirmation, and confirm once. Verify it is gone
+   from both OLX and Persona.
 
 ## Automated verification
 
@@ -151,7 +170,8 @@ bun run build
 
 The OLX service tests cover token refresh/retry, authenticated request errors,
 encryption/tamper detection, category parsing, location normalization, payload
-composition, preview non-creation, and create/read-back behavior.
+composition, preview non-creation, create/read-back behavior, activation,
+deactivation, idempotent remote deletion, and permanent deletion request shape.
 
 ## Limitations and operational risk
 

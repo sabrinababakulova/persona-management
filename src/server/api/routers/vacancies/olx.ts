@@ -267,6 +267,7 @@ export const publishOlxProcedure = protectedProcedure
           .set({
             olxAdvertUrl: submitted.result.advertUrl,
             olxAdvertId: submitted.result.advertId,
+            olxPublisherUserId: userId,
             olxLastPublishedAt: now,
             olxLastError: null,
             isActive: true,
