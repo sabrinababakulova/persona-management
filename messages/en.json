@@ -557,7 +557,6 @@
       "continueOnOlx": "The official OLX.uz website opened. Sign in, complete any verification, then press “I am signed in — connect account”.",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting...",
-      "connectedSuccess": "OLX.uz is connected. Your password, CAPTCHA, and SMS codes were not sent to Talanty.",
       "connectError": "Could not connect OLX.uz.",
       "disconnected": "The OLX.uz connection was removed.",
       "disconnectError": "Could not remove the OLX.uz connection.",

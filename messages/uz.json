@@ -557,7 +557,6 @@
       "continueOnOlx": "OLX.uz rasmiy sayti ochildi. Hisobga kiring, zarur tekshiruvni yakunlang va “Kirdim — hisobni ulash” tugmasini bosing.",
       "disconnect": "Uzish",
       "disconnecting": "Uzilmoqda...",
-      "connectedSuccess": "OLX.uz ulandi. Parol, CAPTCHA va SMS-kodlar Talanty’ga yuborilmadi.",
       "connectError": "OLX.uz’ni ulab bo‘lmadi.",
       "disconnected": "OLX.uz ulanishi o‘chirildi.",
       "disconnectError": "OLX.uz ulanishini o‘chirib bo‘lmadi.",

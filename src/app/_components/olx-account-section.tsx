@@ -9,6 +9,7 @@ import { api } from "~/trpc/react";
 import { Checkbox } from "./checkbox";
 import { ClosableSection } from "./closable-section";
 import { ChevronDownIcon } from "./icons";
+import { IntegrationStatusBadge } from "./integration-status-badge";
 import {
   AnimatePresence,
   FeedbackPresence,
@@ -199,7 +200,7 @@ export function OlxAccountSection() {
         return;
       }
       if (event.data.type === "PERSONA_OLX_CONNECTION_COMPLETE") {
-        setFeedback({ type: "success", message: t("connectedSuccess") });
+        setFeedback(null);
         void Promise.all([
           utils.integrations.getOlxSession.invalidate(),
           utils.vacancies.getOlxConfig.invalidate(),
@@ -275,13 +276,11 @@ export function OlxAccountSection() {
 
       {session ? (
         <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-sm text-text-heading">
-            <span className="font-medium">{t("status")}:</span>{" "}
-            <span
-              className={isConnected ? "text-success-green" : "text-danger-red"}
-            >
+          <p className="flex items-center gap-2 text-sm text-text-heading">
+            <span className="font-medium">{t("status")}:</span>
+            <IntegrationStatusBadge tone={isConnected ? "success" : "danger"}>
               {isConnected ? t("connected") : t("reauthRequired")}
-            </span>
+            </IntegrationStatusBadge>
           </p>
           {session.loginHint ? (
             <p className="text-text-secondary text-xs">

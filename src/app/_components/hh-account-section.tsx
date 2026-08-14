@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { ClosableSection } from "../_components/closable-section";
+import { IntegrationStatusBadge } from "../_components/integration-status-badge";
 import { LoadingButtonContent } from "../_components/motion-system";
 import { SkeletonBlock } from "../_components/page-skeleton";
 
@@ -31,9 +32,9 @@ export function HhAccountSection() {
 
       {!isLoading && isConnected && (
         <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-sm text-text-heading">
-            <span className="font-medium">{t("status")}:</span>{" "}
-            <span className="text-success-green">{t("connected")}</span>
+          <p className="flex items-center gap-2 text-sm text-text-heading">
+            <span className="font-medium">{t("status")}:</span>
+            <IntegrationStatusBadge>{t("connected")}</IntegrationStatusBadge>
           </p>
           <p className="text-text-secondary text-xs">
             Employer ID: {account.employerId}

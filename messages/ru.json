@@ -557,7 +557,6 @@
       "continueOnOlx": "Открылся официальный сайт OLX.uz. Войдите в аккаунт, пройдите проверку при необходимости и нажмите «Я вошёл — подключить аккаунт».",
       "disconnect": "Отключить",
       "disconnecting": "Отключение...",
-      "connectedSuccess": "OLX.uz подключен. Пароль, CAPTCHA и SMS-коды не передавались в Talanty.",
       "connectError": "Не удалось подключить OLX.uz.",
       "disconnected": "Подключение OLX.uz удалено.",
       "disconnectError": "Не удалось удалить подключение OLX.uz.",
