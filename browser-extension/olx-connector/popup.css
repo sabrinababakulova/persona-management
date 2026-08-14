@@ -1,0 +1,27 @@
+body {
+  width: 310px;
+  margin: 0;
+  background: #ffffff;
+  color: #1f2d2d;
+  font:
+    14px / 1.45 Arial,
+    sans-serif;
+}
+
+main {
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+.hint {
+  color: #60706f;
+  font-size: 13px;
+}

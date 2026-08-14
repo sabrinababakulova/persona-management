@@ -6,7 +6,7 @@ import {
 } from "node:crypto";
 
 const ENCRYPTION_VERSION = 1;
-const KEY_CONTEXT = "persona:olx-browser-session:v1";
+const KEY_CONTEXT = "persona:olx-api-credentials:v1";
 
 type EncryptedPayload = {
   v: typeof ENCRYPTION_VERSION;
@@ -23,8 +23,8 @@ function deriveKey(secret: string): Buffer {
     .digest();
 }
 
-/** Encrypts Playwright storage state with authenticated AES-256-GCM. */
-export function encryptOlxStorageState(value: unknown, secret: string): string {
+/** Encrypts the OLX token set with authenticated AES-256-GCM encryption. */
+export function encryptOlxCredentials(value: unknown, secret: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", deriveKey(secret), iv);
   const plaintext = Buffer.from(JSON.stringify(value), "utf8");
@@ -40,11 +40,8 @@ export function encryptOlxStorageState(value: unknown, secret: string): string {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
-/** Decrypts and authenticates a saved Playwright storage state. */
-export function decryptOlxStorageState<T>(
-  encrypted: string,
-  secret: string,
-): T {
+/** Decrypts and authenticates a saved OLX API token set. */
+export function decryptOlxCredentials<T>(encrypted: string, secret: string): T {
   const payload = JSON.parse(
     Buffer.from(encrypted, "base64url").toString("utf8"),
   ) as Partial<EncryptedPayload>;
@@ -55,7 +52,7 @@ export function decryptOlxStorageState<T>(
     !payload.tag ||
     !payload.data
   ) {
-    throw new Error("Unsupported OLX browser session format");
+    throw new Error("Unsupported OLX API credential format");
   }
 
   const decipher = createDecipheriv(

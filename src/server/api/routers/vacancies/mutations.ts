@@ -62,7 +62,7 @@ import { FEATURE_PERSON_HUNTER_PUBLICATIONS } from "~/shared/feature-flags";
 import { formatTelegramVacancy } from "~/utils/format-telegram-vacancy";
 import { generateVacancyKeyword } from "~/utils/generate-vacancy-keyword";
 import {
-  type OlxBrowserPublicationMeta,
+  type OlxPublicationMeta,
   type PersonHunterPublicationMeta,
   vacancyCreateInputSchema,
   vacancyIdInputSchema,
@@ -686,7 +686,7 @@ export const updateVacancyProcedure = protectedProcedure
       isActive: boolean;
       isPublication: boolean;
       personHunterMeta: PersonHunterPublicationMeta | null;
-      olxBrowserMeta: OlxBrowserPublicationMeta | null;
+      olxBrowserMeta: OlxPublicationMeta | null;
     }> = {};
 
     if (input.title && input.title !== existing.title)

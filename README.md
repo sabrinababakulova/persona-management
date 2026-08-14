@@ -70,10 +70,13 @@ bun run db:migrate
 
 ## OLX.uz vacancy publishing
 
-OLX.uz publishing is browser-assisted because OLX.uz does not provide this
-project a supported third-party publishing API. Persona launches one short-lived
-system Chrome process only after an explicit user action, encrypts the reusable
-login session, never stores the OLX password, and stops on CAPTCHA/OTP.
+OLX.uz has no supported third-party publishing API for Uzbekistan. The
+integration therefore uses a one-time Chrome connector to transfer the user's
+OLX web authorization to Persona, encrypts the tokens at rest, and performs
+later preview/publication requests through a short-lived headless
+Chrome/Chromium network context on the server. The context closes after each
+request and does not automate OLX pages. Passwords, CAPTCHAs, and SMS codes stay
+on the official OLX.uz website.
 
 Setup, security boundaries, deployment requirements, and live-test steps are in
-[`docs/olx-browser-publishing.md`](docs/olx-browser-publishing.md).
+[`docs/olx-integration.md`](docs/olx-integration.md).

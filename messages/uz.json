@@ -516,66 +516,49 @@
     "adminsRequired": "Kamida bitta administrator qo‘shing",
     "olx": {
       "title": "OLX.uz hisobi",
-      "browserUnavailable": "Serverda OLX.uz uchun Chrome/Chromium sozlanmagan.",
-      "browserUnavailableHint": "Brauzerni o‘rnating yoki OLX_BROWSER_EXECUTABLE_PATH ni kiriting. Persona har ishga tushishda alohida brauzer yuklamaydi.",
       "status": "Holat",
       "connected": "Ulangan",
       "reauthRequired": "Qayta kirish kerak",
       "account": "Hisob",
       "lastVerified": "Oxirgi tekshiruv",
-      "login": "OLX.uz email yoki telefon",
-      "loginPlaceholder": "Email yoki telefon raqami",
-      "password": "OLX.uz paroli",
       "reconnect": "OLX.uz’ni qayta ulash",
       "connect": "OLX.uz’ni ulash",
-      "connecting": "Kirilmoqda...",
-      "verify": "Sessiyani tekshirish",
+      "starting": "OLX.uz ochilmoqda...",
+      "continueOnOlx": "OLX.uz rasmiy sayti ochildi. Hisobga kiring, zarur tekshiruvni yakunlang va “Kirdim — hisobni ulash” tugmasini bosing.",
+      "verify": "Ulanishni tekshirish",
       "verifying": "Tekshirilmoqda...",
       "disconnect": "Uzish",
       "disconnecting": "Uzilmoqda...",
-      "connectedSuccess": "OLX.uz ulandi. Parol saqlanmadi.",
+      "connectedSuccess": "OLX.uz ulandi. Parol, CAPTCHA va SMS-kodlar Talanty’ga yuborilmadi.",
       "connectError": "OLX.uz’ni ulab bo‘lmadi.",
-      "verified": "OLX.uz sessiyasi faol.",
-      "expired": "OLX.uz sessiyasi tugagan. Hisobni qayta ulang.",
-      "verifyError": "OLX.uz sessiyasini tekshirib bo‘lmadi.",
-      "disconnected": "OLX.uz sessiyasi o‘chirildi.",
-      "disconnectError": "OLX.uz sessiyasini o‘chirib bo‘lmadi.",
-      "connectionInProgressTitle": "Kuting — Persona OLX.uz hisobiga kirmoqda",
-      "connectionInProgressDescription": "Bu odatda bir necha soniya davom etadi, lekin 90 soniyagacha cho‘zilishi mumkin. Sahifani yangilamang, bu oynani yopmang va ulash tugmasini qayta bosmang.",
+      "verified": "OLX.uz ulanishi faol.",
+      "expired": "OLX.uz kirish huquqi tugagan. Hisobni qayta ulang.",
+      "verifyError": "OLX.uz ulanishini tekshirib bo‘lmadi.",
+      "disconnected": "OLX.uz ulanishi o‘chirildi.",
+      "disconnectError": "OLX.uz ulanishini o‘chirib bo‘lmadi.",
+      "extensionMissing": "Talanty — OLX.uz Connector kengaytmasi topilmadi",
+      "extensionMissingHint": "Sinash uchun chrome://extensions sahifasini oching, dasturchi rejimini yoqing, “Load unpacked”ni bosing va loyihadagi browser-extension/olx-connector papkasini tanlang. Keyin bu sahifani yangilang.",
       "connectionSteps": {
         "title": "Hisobni qanday ulash kerak",
-        "description": "Odatda hisobni faqat bir marta ulash kerak.",
-        "enter": {
-          "title": "Login va parolni kiriting",
-          "description": "OLX.uz’ga kirishda ishlatadigan ma’lumotlarni kiriting."
+        "description": "Oddiy Chrome brauzeringizda bir marta ulang. Keyingi e’lonlarni server yuboradi.",
+        "install": {
+          "title": "Kengaytmani o‘rnating",
+          "description": "chrome://extensions sahifasini oching, dasturchi rejimini yoqing va browser-extension/olx-connector papkasini yuklang. Talanty’ni yangilang."
         },
-        "wait": {
+        "start": {
           "title": "“OLX.uz’ni ulash”ni bosing",
-          "description": "Bir marta bosing va jarayon tugaguncha sahifani yopmang."
+          "description": "Talanty bir martalik so‘rov yaratadi va OLX.uz rasmiy saytini ochadi."
         },
-        "confirm": {
-          "title": "Holatni tekshiring",
-          "description": "Muvaffaqiyatli kirganda “Ulangan” holati ko‘rinadi."
+        "signIn": {
+          "title": "OLX.uz hisobiga kiring",
+          "description": "Parol, CAPTCHA yoki SMS-kodni faqat OLX.uz rasmiy saytida kiriting. Talanty ularni ko‘rmaydi."
+        },
+        "finish": {
+          "title": "Ulanishni tasdiqlang",
+          "description": "Kirish yakunlangach, OLX.uz’da “Kirdim — hisobni ulash” tugmasini bosing. Talanty’ga qaytib holatni tekshiring."
         }
       },
-      "challengeSteps": {
-        "title": "CAPTCHA, SMS-kod yoki kirishni tasdiqlash",
-        "description": "Persona to‘xtaydi. Tekshiruvni OLX.uz rasmiy saytida yakunlang va darhol qayta urinmang.",
-        "openOlx": {
-          "title": "OLX.uz’ni oching",
-          "description": "Rasmiy saytda o‘sha hisobga kiring."
-        },
-        "complete": {
-          "title": "Tekshiruvni yakunlang",
-          "description": "Kod yoki CAPTCHA’ni faqat OLX.uz saytida kiriting."
-        },
-        "return": {
-          "title": "Persona’ga qayting",
-          "description": "60 soniya kuting va “Ulash”ni bir marta bosing. 15 daqiqada ko‘pi bilan 3 marta urinish mumkin."
-        },
-        "openOlxButton": "OLX.uz rasmiy saytini ochish",
-        "privateDataWarning": "Parol, kod, CAPTCHA yoki sessiya ma’lumotlarini yubormang. Yordam uchun xato matni yetarli."
-      }
+      "privateDataWarning": "Parol, CAPTCHA, SMS-kod yoki brauzer sessiyasi ma’lumotlarini yordam xizmatiga yubormang. Tashxis uchun xato matni yetarli."
     }
   },
   "Candidates": {
@@ -1104,7 +1087,7 @@
       "pageTitle": "OLX.uz’da e’lon qilish",
       "notFound": "Vakansiya topilmadi",
       "vacancy": "Vakansiya",
-      "browserUnavailable": "OLX.uz integratsiyasi uchun brauzer sozlanmagan.",
+      "serviceUnavailable": "OLX.uz ma’lumotnomalari hozir mavjud emas. Sahifani keyinroq yangilang.",
       "notConnected": "Avval OLX.uz hisobingizni ulang.",
       "openSettings": "Ulanish sozlamalarini ochish",
       "alreadyPublished": "Bu versiya OLX.uz’da allaqachon e’lon qilingan.",
@@ -1114,23 +1097,30 @@
       "title": "Vakansiya nomi",
       "titlePlaceholder": "Masalan, Savdo menejeri",
       "titleRequired": "Vakansiya nomini kiriting",
+      "titleLength": "Nom 16 dan 70 tagacha belgidan iborat bo‘lishi kerak.",
       "description": "Vakansiya tavsifi",
       "descriptionPlaceholder": "Vazifalar, talablar va shartlarni yozing",
       "descriptionRequired": "Vakansiya tavsifini kiriting",
+      "descriptionLength": "Tavsif 80 dan 9000 tagacha belgidan iborat bo‘lishi kerak.",
       "plainTextHint": "Yuborishdan oldin formatlash OLX.uz shakli qo‘llaydigan oddiy matnga aylantiriladi.",
       "placement": "Joylashtirish parametrlari",
-      "labelsHint": "Ko‘rinadigan nomlarni OLX.uz ro‘yxatlaridagidek aniq kiriting. Rasmiy API bo‘lmagani sababli bu ma’lumotnomalarni oldindan xavfsiz yuklab bo‘lmaydi.",
-      "categoryPath": "Kategoriya yo‘li",
-      "categoryPathPlaceholder": "Ish > Vakansiyalar",
-      "categoryRequired": "Kategoriya yo‘lini kiriting",
+      "category": "OLX.uz mutaxassisligi",
+      "categoryPlaceholder": "Mutaxassislikni tanlang",
+      "categoryRequired": "OLX.uz ro‘yxatidan mutaxassislikni tanlang.",
       "location": "Shahar yoki joylashuv",
       "locationPlaceholder": "Masalan, Toshkent",
-      "locationRequired": "Joylashuvni kiriting",
+      "locationRequired": "Shaharni yozishni boshlang va OLX.uz takliflaridan aniq variantni tanlang.",
+      "locationHint": "Shaharni yozishni boshlang, so‘ng ro‘yxatdan shahar yoki tumanni tanlang.",
+      "locationSearching": "OLX.uz joylashuvlari qidirilmoqda...",
       "district": "Tuman (ixtiyoriy)",
       "optionalExactLabel": "OLX.uz’dagi aniq nom",
-      "employmentType": "Bandlik turi (ixtiyoriy)",
+      "employmentType": "Ish turi",
+      "employmentPermanent": "Doimiy ish",
+      "employmentTemporary": "Vaqtinchalik ish",
       "employmentPlaceholder": "Masalan, To‘liq bandlik",
-      "schedule": "Ish jadvali (ixtiyoriy)",
+      "schedule": "Bandlik darajasi",
+      "scheduleFull": "To‘liq stavkada ish",
+      "schedulePart": "Qisman bandlik",
       "schedulePlaceholder": "Masalan, To‘liq kun",
       "experience": "Ish tajribasi (ixtiyoriy)",
       "experiencePlaceholder": "Masalan, 1–3 yil",
@@ -1139,6 +1129,7 @@
       "salaryTo": "Maosh, gacha",
       "currency": "Valyuta",
       "contactName": "Aloqa uchun shaxs",
+      "contactNameRequired": "Aloqa uchun ismni kiriting — kamida 2 ta belgi.",
       "contactPhone": "Telefon",
       "contactPhoneHint": "O‘zbekiston raqamini kiriting. 90 123 45 67 yoki +998 (90) 123-45-67 shaklidan foydalanishingiz mumkin; Persona uni OLX.uz’ga +998901234567 ko‘rinishida yuboradi.",
       "contactPhoneInvalid": "+998 va undan keyin 9 ta raqamdan iborat O‘zbekiston raqamini kiriting, masalan +998 90 123 45 67.",
@@ -1148,9 +1139,9 @@
       "preview": "Shaklni tekshirish",
       "previewing": "OLX.uz tekshirilmoqda...",
       "publish": "OLX.uz’da e’lon qilish",
-      "confirmDescription": "Persona bitta brauzer ochadi, shaklni to‘ldiradi va yakuniy e’lon qilish tugmasini bosadi. Takrorlash dublikat yaratishi mumkin, shuning uchun natija darhol saqlanadi.",
+      "confirmDescription": "Persona e’lonni serverdan ulangan OLX.uz hisobingizga yuboradi. Ikki marta bosmang: takroriy so‘rov dublikat yaratishi mumkin.",
       "confirmTitle": "E’lon OLX.uz’da chop etilsinmi?",
-      "previewSuccess": "OLX.uz shakli yuborilmasdan to‘ldirildi. Brauzer yopildi va e’lon chop etilmadi.",
+      "previewSuccess": "OLX.uz ko‘rib chiqish ma’lumotlarini qabul qildi. E’lon chop etilmadi.",
       "actionError": "OLX.uz e’lonini qayta ishlab bo‘lmadi."
     }
   },

@@ -122,7 +122,9 @@ Google OAuth:
 
 - Enabled if `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` exist.
 - Dangerous email account linking is enabled.
-- OAuth users are assigned to the default company and marked verified.
+- Google-verified e-mail addresses are marked verified.
+- New Google users remain without a company until `/onboarding/company`, where
+  they create a company or return through an invitation link to join one.
 
 Password reset:
 

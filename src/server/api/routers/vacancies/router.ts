@@ -27,8 +27,9 @@ import {
   updateVacancyProcedure,
 } from "./mutations";
 import {
-  getOlxBrowserConfigProcedure,
-  publishOlxBrowserProcedure,
+  getOlxConfigProcedure,
+  publishOlxProcedure,
+  searchOlxLocationsProcedure,
 } from "./olx";
 
 export const vacanciesRouter = createTRPCRouter({
@@ -52,6 +53,7 @@ export const vacanciesRouter = createTRPCRouter({
   getPersonHunterConfig: getPersonHunterConfigProcedure,
   getPersonHunterPublication: getPersonHunterPublicationProcedure,
   publishPersonHunter: publishPersonHunterProcedure,
-  getOlxBrowserConfig: getOlxBrowserConfigProcedure,
-  publishOlxBrowser: publishOlxBrowserProcedure,
+  getOlxConfig: getOlxConfigProcedure,
+  searchOlxLocations: searchOlxLocationsProcedure,
+  publishOlx: publishOlxProcedure,
 });

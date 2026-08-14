@@ -12,15 +12,15 @@ import {
 } from "~/server/auth/rate-limit";
 import { userOlxSessions, vacancies } from "~/server/db/schema";
 import {
-  decryptOlxStorageState,
-  htmlToOlxPlainText,
-  OlxBrowserFlowError,
-  OlxBrowserRuntimeError,
-  type OlxStorageState,
-  publishOlxAdvertWithBrowser,
-  resolveOlxBrowserExecutable,
-} from "~/server/services/olx-browser";
-import { olxBrowserMetaSchema } from "./schemas";
+  decryptOlxCredentials,
+  encryptOlxCredentials,
+  getOlxJobCategories,
+  OlxApiError,
+  type OlxCredentials,
+  searchOlxLocations,
+  submitOlxOffer,
+} from "~/server/services/olx-api";
+import { olxPublicationMetaSchema } from "./schemas";
 import { isUserVisibleVacancy } from "./shared";
 
 const OLX_ACTION_COOLDOWN_MS = 30 * 1000;
@@ -28,84 +28,118 @@ const OLX_ACTION_WINDOW_MS = 60 * 60 * 1000;
 
 const olxPublishInputSchema = z.object({
   id: z.string().min(1).max(255),
-  /** Fills and validates the live form, then closes Chrome without submitting. */
+  /** Validates through OLX's preview endpoint without creating an advert. */
   dryRun: z.boolean().default(true),
 });
 
+const olxLocationSearchSchema = z.object({
+  query: z.string().trim().min(2).max(100),
+});
+
 function describeOlxPublishError(error: unknown): TRPCError {
-  if (error instanceof OlxBrowserRuntimeError) {
-    if (error.code === "busy") {
-      return new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message:
-          "Сейчас выполняется другая операция OLX.uz. Дождитесь её завершения.",
-      });
-    }
-    if (error.code === "unavailable") {
+  if (error instanceof OlxApiError) {
+    if (error.code === "reauth_required") {
       return new TRPCError({
         code: "PRECONDITION_FAILED",
         message:
-          "Chrome/Chromium для OLX.uz не найден на сервере. Настройте OLX_BROWSER_EXECUTABLE_PATH.",
+          "Доступ OLX.uz истёк. Переподключите аккаунт в настройках компании.",
+      });
+    }
+    if (error.code === "rate_limited") {
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "OLX.uz временно ограничил запросы. Повторите позже.",
+      });
+    }
+    if (error.code === "validation_failed") {
+      const details = error.validation.length
+        ? ` ${error.validation.join("; ")}`
+        : "";
+      return new TRPCError({
+        code: "BAD_REQUEST",
+        message: `OLX.uz отклонил данные объявления.${details}`,
       });
     }
     return new TRPCError({
-      code: "TIMEOUT",
-      message: "OLX.uz не ответил вовремя. Попробуйте позже.",
+      code: "BAD_GATEWAY",
+      message: "OLX.uz сейчас не отвечает. Попробуйте позже.",
     });
   }
 
-  if (error instanceof OlxBrowserFlowError) {
-    const messageByCode: Record<typeof error.code, string> = {
-      invalid_credentials: "OLX.uz отклонил данные входа.",
-      challenge_required:
-        "OLX.uz запросил CAPTCHA или код подтверждения. Автоматизация остановлена; подключите аккаунт заново после проверки.",
-      reauth_required:
-        "Сессия OLX.uz истекла. Подключите аккаунт заново в настройках профиля.",
-      form_changed:
-        "Форма OLX.uz изменилась или указанное значение не найдено. Объявление не отправлено.",
-      publish_failed:
-        "OLX.uz не подтвердил публикацию. Объявление не было отмечено опубликованным в Persona.",
-    };
+  const localMessage = error instanceof Error ? error.message : "";
+  const messageByCode: Record<string, string> = {
+    OLX_TITLE_LENGTH:
+      "Название для OLX.uz должно содержать от 16 до 70 знаков.",
+    OLX_DESCRIPTION_LENGTH:
+      "Описание для OLX.uz должно содержать от 80 до 9000 знаков.",
+    OLX_CATEGORY_REQUIRED: "Выберите специальность из списка OLX.uz.",
+    OLX_CONTACT_REQUIRED: "Укажите имя контактного лица (не менее 2 знаков).",
+    OLX_LOCATION_NOT_FOUND: "Выберите местоположение из подсказок OLX.uz.",
+    OLX_LOCATION_DISTRICT_REQUIRED:
+      "Для этого города выберите конкретный район из подсказок OLX.uz.",
+    OLX_PUBLISH_RESPONSE_INVALID:
+      "OLX.uz не подтвердил создание объявления. Повторно не отправляйте его; проверьте объявления в OLX.uz.",
+  };
+  if (messageByCode[localMessage]) {
     return new TRPCError({
-      code:
-        error.code === "reauth_required" || error.code === "challenge_required"
-          ? "PRECONDITION_FAILED"
-          : "BAD_REQUEST",
-      message: messageByCode[error.code],
+      code: "BAD_REQUEST",
+      message: messageByCode[localMessage],
     });
   }
 
-  console.error("Unexpected OLX browser publication error", error);
+  console.error("Unexpected OLX API publication error", error);
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: "Не удалось обработать публикацию OLX.uz.",
   });
 }
 
-export const getOlxBrowserConfigProcedure = protectedProcedure.query(
+export const getOlxConfigProcedure = protectedProcedure.query(
   async ({ ctx }) => {
-    const rows = await ctx.db
-      .select({ status: userOlxSessions.status })
-      .from(userOlxSessions)
-      .where(eq(userOlxSessions.userId, ctx.session.user.id))
-      .limit(1);
+    const [rows, categoriesResult] = await Promise.all([
+      ctx.db
+        .select({ status: userOlxSessions.status })
+        .from(userOlxSessions)
+        .where(eq(userOlxSessions.userId, ctx.session.user.id))
+        .limit(1),
+      getOlxJobCategories()
+        .then((categories) => ({ categories, serviceAvailable: true }))
+        .catch((error) => {
+          console.error("Failed to load OLX job categories", error);
+          return { categories: [], serviceAvailable: false };
+        }),
+    ]);
 
     return {
-      browserAvailable: Boolean(resolveOlxBrowserExecutable()),
+      ...categoriesResult,
       connected: rows[0]?.status === "connected",
       status: rows[0]?.status ?? null,
     };
   },
 );
 
-export const publishOlxBrowserProcedure = protectedProcedure
+export const searchOlxLocationsProcedure = protectedProcedure
+  .input(olxLocationSearchSchema)
+  .query(async ({ input }) => {
+    try {
+      return await searchOlxLocations(input.query);
+    } catch (error) {
+      console.error("Failed to search OLX locations", error);
+      throw new TRPCError({
+        code: "BAD_GATEWAY",
+        message: "Не удалось загрузить местоположения OLX.uz.",
+      });
+    }
+  });
+
+export const publishOlxProcedure = protectedProcedure
   .input(olxPublishInputSchema)
   .mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
     const companyId = await getRequiredCompanyId(ctx.db, userId);
     const action = input.dryRun ? "preview" : "publish";
     const cooldownKey = `olx-${action}-cooldown:${userId}`;
-    const hourlyKey = `olx-browser-actions:${userId}`;
+    const hourlyKey = `olx-api-actions:${userId}`;
 
     if (
       (await hasActiveRecord(cooldownKey)) ||
@@ -114,7 +148,7 @@ export const publishOlxBrowserProcedure = protectedProcedure
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message:
-          "OLX.uz запускается только по явному действию и не чаще одного раза в 30 секунд. Подождите и повторите.",
+          "OLX.uz отправляется только по вашему нажатию и не чаще одного раза в 30 секунд. Подождите и повторите.",
       });
     }
 
@@ -146,25 +180,20 @@ export const publishOlxBrowserProcedure = protectedProcedure
         message: "Публикация OLX.uz не найдена.",
       });
     }
-    const parsedMeta = olxBrowserMetaSchema.safeParse(vacancy.olxBrowserMeta);
+    const parsedMeta = olxPublicationMetaSchema.safeParse(
+      vacancy.olxBrowserMeta,
+    );
     if (!parsedMeta.success) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message:
-          "Проверьте параметры публикации OLX.uz, включая номер телефона.",
+        message: "Проверьте обязательные параметры публикации OLX.uz.",
       });
     }
-    if (!htmlToOlxPlainText(vacancy.descriptionHtml ?? "")) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Заполните описание публикации OLX.uz.",
-      });
-    }
-    if (!input.dryRun && vacancy.olxAdvertUrl) {
+    if (!input.dryRun && (vacancy.olxAdvertId || vacancy.olxAdvertUrl)) {
       throw new TRPCError({
         code: "CONFLICT",
         message:
-          "Эта версия уже опубликована на OLX.uz. Откройте существующее объявление, чтобы избежать дубликата.",
+          "Эта версия уже отправлена в OLX.uz. Откройте существующее объявление, чтобы не создать дубликат.",
       });
     }
 
@@ -172,18 +201,13 @@ export const publishOlxBrowserProcedure = protectedProcedure
     if (!session || session.status !== "connected") {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "Подключите OLX.uz аккаунт в настройках профиля.",
+        message: "Подключите аккаунт OLX.uz в настройках компании.",
       });
     }
 
-    await Promise.all([
-      recordAttempt(hourlyKey, OLX_ACTION_WINDOW_MS),
-      setMarker(cooldownKey, OLX_ACTION_COOLDOWN_MS),
-    ]);
-
-    let storageState: OlxStorageState;
+    let credentials: OlxCredentials;
     try {
-      storageState = decryptOlxStorageState<OlxStorageState>(
+      credentials = decryptOlxCredentials(
         session.encryptedStorageState,
         env.AUTH_SECRET,
       );
@@ -193,19 +217,24 @@ export const publishOlxBrowserProcedure = protectedProcedure
         .set({
           status: "reauth_required",
           lastOperationAt: new Date(),
-          lastError: "session_decryption_failed",
+          lastError: "credential_decryption_failed",
         })
         .where(eq(userOlxSessions.id, session.id));
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message:
-          "Сохранённая сессия OLX.uz больше недействительна. Подключите аккаунт заново.",
+          "Сохранённый доступ OLX.uz недействителен. Подключите аккаунт заново.",
       });
     }
 
+    await Promise.all([
+      recordAttempt(hourlyKey, OLX_ACTION_WINDOW_MS),
+      setMarker(cooldownKey, OLX_ACTION_COOLDOWN_MS),
+    ]);
+
     try {
-      const result = await publishOlxAdvertWithBrowser({
-        storageState,
+      const submitted = await submitOlxOffer({
+        credentials,
         dryRun: input.dryRun,
         advert: {
           title: vacancy.title,
@@ -221,6 +250,10 @@ export const publishOlxBrowserProcedure = protectedProcedure
       await ctx.db
         .update(userOlxSessions)
         .set({
+          encryptedStorageState: encryptOlxCredentials(
+            submitted.credentials,
+            env.AUTH_SECRET,
+          ),
           status: "connected",
           lastVerifiedAt: now,
           lastOperationAt: now,
@@ -228,12 +261,12 @@ export const publishOlxBrowserProcedure = protectedProcedure
         })
         .where(eq(userOlxSessions.id, session.id));
 
-      if (result.mode === "published") {
+      if (submitted.result.mode === "published") {
         await ctx.db
           .update(vacancies)
           .set({
-            olxAdvertUrl: result.advertUrl,
-            olxAdvertId: result.advertId,
+            olxAdvertUrl: submitted.result.advertUrl,
+            olxAdvertId: submitted.result.advertId,
             olxLastPublishedAt: now,
             olxLastError: null,
             isActive: true,
@@ -246,18 +279,16 @@ export const publishOlxBrowserProcedure = protectedProcedure
           .where(eq(vacancies.id, vacancy.id));
       }
 
-      return result;
+      return submitted.result;
     } catch (error) {
       const reauthenticationNeeded =
-        error instanceof OlxBrowserFlowError &&
-        (error.code === "reauth_required" ||
-          error.code === "challenge_required");
+        error instanceof OlxApiError && error.code === "reauth_required";
       const safeError =
-        error instanceof OlxBrowserFlowError
-          ? `flow:${error.code}`
-          : error instanceof OlxBrowserRuntimeError
-            ? `runtime:${error.code}`
-            : "unexpected_browser_error";
+        error instanceof OlxApiError
+          ? `api:${error.code}`
+          : error instanceof Error && error.message.startsWith("OLX_")
+            ? `input:${error.message}`
+            : "unexpected_api_error";
 
       await Promise.all([
         ctx.db

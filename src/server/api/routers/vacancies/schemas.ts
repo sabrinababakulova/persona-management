@@ -98,20 +98,24 @@ export const olxContactPhoneSchema = z
     return normalized;
   });
 
-/**
- * Values that are specific to the OLX.uz web advert form.
- *
- * OLX.uz does not expose its Jobs dictionaries to third-party applications, so
- * labels are deliberately stored as user-entered text. The browser worker
- * selects the matching visible option instead of depending on undocumented ids.
- */
-export const olxBrowserMetaSchema = z.object({
+/** Values used by OLX.uz's own Jobs posting requests. */
+export const olxPublicationMetaSchema = z.object({
+  categoryId: z.number().int().positive().optional(),
   categoryPath: z
     .array(z.string().trim().min(1).max(120))
     .min(1)
     .max(6)
-    .default(["Работа", "Вакансии"]),
+    .default(["Работа"]),
   location: z.string().trim().min(1).max(255),
+  cityId: z.number().int().positive().optional(),
+  cityName: z.string().trim().min(1).max(255).optional(),
+  regionId: z.number().int().positive().optional(),
+  regionName: z.string().trim().min(1).max(255).optional(),
+  districtId: z.number().int().positive().optional(),
+  districtName: z.string().trim().min(1).max(255).optional(),
+  latitude: z.number().finite().min(-90).max(90).optional(),
+  longitude: z.number().finite().min(-180).max(180).optional(),
+  /** Legacy text fields remain readable so existing drafts can be upgraded. */
   district: z.string().trim().max(255).optional(),
   employmentType: z.string().trim().max(255).optional(),
   schedule: z.string().trim().max(255).optional(),
@@ -123,7 +127,7 @@ export const olxBrowserMetaSchema = z.object({
   onlineRecruitment: z.boolean().default(false),
 });
 
-export type OlxBrowserPublicationMeta = z.infer<typeof olxBrowserMetaSchema>;
+export type OlxPublicationMeta = z.infer<typeof olxPublicationMetaSchema>;
 
 export const vacancyCreateInputSchema = z.object({
   id: z.string().min(1).max(255).optional(),
@@ -150,7 +154,7 @@ export const vacancyCreateInputSchema = z.object({
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
   personHunterMeta: personHunterMetaSchema.optional(),
-  olxBrowserMeta: olxBrowserMetaSchema.optional(),
+  olxBrowserMeta: olxPublicationMetaSchema.optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -174,7 +178,7 @@ export const vacancyUpdateInputSchema = z.object({
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   personHunterMeta: personHunterMetaSchema.nullable().optional(),
-  olxBrowserMeta: olxBrowserMetaSchema.nullable().optional(),
+  olxBrowserMeta: olxPublicationMetaSchema.nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({

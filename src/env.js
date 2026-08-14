@@ -51,12 +51,7 @@ export const env = createEnv({
     HH_CLIENT_SECRET: z.string().min(1).optional(),
     HH_REDIRECT_URI: z.string().url().optional(),
     PERSON_HUNTER_API_KEY: z.string().min(1).optional(),
-    /**
-     * System Chrome/Chromium used for the short-lived OLX.uz browser flow.
-     * When omitted, common macOS and Linux installation paths are checked.
-     */
     OLX_BROWSER_EXECUTABLE_PATH: z.string().min(1).optional(),
-    /** Explicit emergency opt-in for hosts that run Chrome as root. */
     OLX_BROWSER_NO_SANDBOX: z.enum(["true", "false"]).optional(),
   },
 

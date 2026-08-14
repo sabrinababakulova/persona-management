@@ -34,6 +34,7 @@ type OlxErrors = Partial<
     | "description"
     | "category"
     | "location"
+    | "contactName"
     | "contactPhone"
     | "_form",
     string
@@ -48,6 +49,18 @@ function hasVisibleText(html: string): boolean {
       .trim().length > 0
   );
 }
+
+type OlxLocationSelection = {
+  cityId: number;
+  cityName: string;
+  districtId?: number;
+  districtName?: string;
+  regionId: number;
+  regionName: string;
+  latitude: number;
+  longitude: number;
+  label: string;
+};
 
 export function OlxPublicationForm({
   vacancyId,
@@ -67,16 +80,17 @@ export function OlxPublicationForm({
   const vacancyQuery = api.vacancies.get.useQuery({
     id: effectivePublicationId || vacancyId,
   });
-  const configQuery = api.vacancies.getOlxBrowserConfig.useQuery();
+  const configQuery = api.vacancies.getOlxConfig.useQuery();
 
   const [title, setTitle] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
-  const [categoryPath, setCategoryPath] = useState("Работа > Вакансии");
+  const [categoryId, setCategoryId] = useState("");
   const [location, setLocation] = useState("");
-  const [district, setDistrict] = useState("");
-  const [employmentType, setEmploymentType] = useState("");
-  const [schedule, setSchedule] = useState("");
-  const [experience, setExperience] = useState("");
+  const [selectedLocation, setSelectedLocation] =
+    useState<OlxLocationSelection | null>(null);
+  const [debouncedLocation, setDebouncedLocation] = useState("");
+  const [employmentType, setEmploymentType] = useState("perm");
+  const [schedule, setSchedule] = useState("full");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [salaryFrom, setSalaryFrom] = useState("");
@@ -90,9 +104,22 @@ export function OlxPublicationForm({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedLocation(location.trim()),
+      350,
+    );
+    return () => window.clearTimeout(timer);
+  }, [location]);
+
+  const locationsQuery = api.vacancies.searchOlxLocations.useQuery(
+    { query: debouncedLocation },
+    { enabled: debouncedLocation.length >= 2 },
+  );
+
+  useEffect(() => {
     const vacancy = vacancyQuery.data;
     const hydrationKey = effectivePublicationId || vacancyId;
-    if (!vacancy || hydratedFor.current === hydrationKey) {
+    if (!vacancy || !configQuery.data || hydratedFor.current === hydrationKey) {
       return;
     }
     hydratedFor.current = hydrationKey;
@@ -113,49 +140,80 @@ export function OlxPublicationForm({
 
     const meta = vacancy.olxBrowserMeta;
     if (meta) {
-      setCategoryPath(meta.categoryPath.join(" > "));
+      const category = configQuery.data.categories.find(
+        (item) =>
+          item.id === meta.categoryId ||
+          item.path.at(-1) === meta.categoryPath.at(-1),
+      );
+      setCategoryId(category ? String(category.id) : "");
       setLocation(meta.location);
-      setDistrict(meta.district ?? "");
-      setEmploymentType(meta.employmentType ?? "");
-      setSchedule(meta.schedule ?? "");
-      setExperience(meta.experience ?? "");
+      if (
+        meta.cityId &&
+        meta.cityName &&
+        meta.regionId &&
+        meta.regionName &&
+        meta.latitude !== undefined &&
+        meta.longitude !== undefined
+      ) {
+        setSelectedLocation({
+          cityId: meta.cityId,
+          cityName: meta.cityName,
+          regionId: meta.regionId,
+          regionName: meta.regionName,
+          latitude: meta.latitude,
+          longitude: meta.longitude,
+          label: meta.location,
+          ...(meta.districtId && meta.districtName
+            ? {
+                districtId: meta.districtId,
+                districtName: meta.districtName,
+              }
+            : {}),
+        });
+      }
+      setEmploymentType(meta.employmentType === "temp" ? "temp" : "perm");
+      setSchedule(meta.schedule === "part" ? "part" : "full");
       setContactName(meta.contactName ?? "");
       setContactPhone(meta.contactPhone ?? vacancy.contactPhone ?? "");
       setSalaryNegotiable(meta.salaryNegotiable);
       setRemoteWork(meta.remoteWork);
       setOnlineRecruitment(meta.onlineRecruitment);
     }
-  }, [effectivePublicationId, vacancyId, vacancyQuery.data]);
+  }, [configQuery.data, effectivePublicationId, vacancyId, vacancyQuery.data]);
 
   const createPublication = api.vacancies.create.useMutation();
   const updatePublication = api.vacancies.update.useMutation();
-  const runBrowser = api.vacancies.publishOlxBrowser.useMutation();
+  const runOlx = api.vacancies.publishOlx.useMutation();
 
   const isSubmitting =
     createPublication.isPending ||
     updatePublication.isPending ||
-    runBrowser.isPending;
+    runOlx.isPending;
   const existingAdvertUrl = vacancyQuery.data?.olxAdvertUrl ?? null;
   const normalizedContactPhone = contactPhone.trim()
     ? normalizeOlxUzPhone(contactPhone)
     : null;
 
-  const buildMeta = () => ({
-    categoryPath: categoryPath
-      .split(">")
-      .map((segment) => segment.trim())
-      .filter(Boolean),
-    location: location.trim(),
-    ...(district.trim() ? { district: district.trim() } : {}),
-    ...(employmentType.trim() ? { employmentType: employmentType.trim() } : {}),
-    ...(schedule.trim() ? { schedule: schedule.trim() } : {}),
-    ...(experience.trim() ? { experience: experience.trim() } : {}),
-    ...(contactName.trim() ? { contactName: contactName.trim() } : {}),
-    ...(normalizedContactPhone ? { contactPhone: normalizedContactPhone } : {}),
-    salaryNegotiable,
-    remoteWork,
-    onlineRecruitment,
-  });
+  const buildMeta = () => {
+    const category = configQuery.data?.categories.find(
+      (item) => String(item.id) === categoryId,
+    );
+    return {
+      ...(category ? { categoryId: category.id } : {}),
+      categoryPath: category?.path ?? ["Работа"],
+      location: location.trim(),
+      ...(selectedLocation ?? {}),
+      employmentType,
+      schedule,
+      ...(contactName.trim() ? { contactName: contactName.trim() } : {}),
+      ...(normalizedContactPhone
+        ? { contactPhone: normalizedContactPhone }
+        : {}),
+      salaryNegotiable,
+      remoteWork,
+      onlineRecruitment,
+    };
+  };
 
   const validate = (): boolean => {
     const next: OlxErrors = {};
@@ -163,10 +221,23 @@ export function OlxPublicationForm({
     if (!hasVisibleText(descriptionHtml)) {
       next.description = t("descriptionRequired");
     }
-    if (buildMeta().categoryPath.length === 0) {
-      next.category = t("categoryRequired");
+    if (title.trim().length < 16 || title.trim().length > 70) {
+      next.title = t("titleLength");
     }
-    if (!location.trim()) next.location = t("locationRequired");
+    const descriptionLength = descriptionHtml
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .trim().length;
+    if (descriptionLength < 80 || descriptionLength > 9_000) {
+      next.description = t("descriptionLength");
+    }
+    if (!categoryId) next.category = t("categoryRequired");
+    if (!location.trim() || !selectedLocation) {
+      next.location = t("locationRequired");
+    }
+    if (contactName.trim().length < 2) {
+      next.contactName = t("contactNameRequired");
+    }
     if (contactPhone.trim() && !normalizedContactPhone) {
       next.contactPhone = t("contactPhoneInvalid");
     }
@@ -207,14 +278,14 @@ export function OlxPublicationForm({
     return created.id;
   };
 
-  const executeBrowserAction = async (dryRun: boolean) => {
+  const executeOlxAction = async (dryRun: boolean) => {
     if (!validate()) return;
     setFeedback(null);
     setErrors({});
 
     try {
       const publicationId = await saveLocalPublication();
-      const result = await runBrowser.mutateAsync({
+      const result = await runOlx.mutateAsync({
         id: publicationId,
         dryRun,
       });
@@ -268,7 +339,16 @@ export function OlxPublicationForm({
   }
 
   const connected = configQuery.data?.connected ?? false;
-  const browserAvailable = configQuery.data?.browserAvailable ?? false;
+  const serviceAvailable = configQuery.data?.serviceAvailable ?? false;
+  const categoryOptions =
+    configQuery.data?.categories.map((category) => ({
+      value: String(category.id),
+      label: category.label,
+    })) ?? [];
+  const locationOptions = locationsQuery.data ?? [];
+  const alreadyPublished = Boolean(
+    vacancyQuery.data?.olxAdvertId || existingAdvertUrl,
+  );
 
   return (
     <main className="relative w-full bg-bg-canvas">
@@ -284,10 +364,10 @@ export function OlxPublicationForm({
         />
         <h1 className="page-title mt-5 mb-5">{t("pageTitle")}</h1>
 
-        {!browserAvailable || !connected ? (
+        {!serviceAvailable || !connected ? (
           <div className="mb-5 rounded-lg border border-border-input bg-bg-input px-4 py-3 text-sm leading-5">
             <p className="font-medium text-text-heading">
-              {!browserAvailable ? t("browserUnavailable") : t("notConnected")}
+              {!serviceAvailable ? t("serviceUnavailable") : t("notConnected")}
             </p>
             <Link
               className="mt-1 inline-block text-primary-blue hover:underline"
@@ -298,7 +378,7 @@ export function OlxPublicationForm({
           </div>
         ) : null}
 
-        {existingAdvertUrl ? (
+        {alreadyPublished ? (
           <div className="mb-5 rounded-lg border border-border-input bg-bg-input px-4 py-3 text-sm leading-5">
             <p className="font-medium text-text-heading">
               {t("alreadyPublished")}
@@ -306,14 +386,16 @@ export function OlxPublicationForm({
             <p className="mt-1 text-text-secondary">
               {t("alreadyPublishedHint")}
             </p>
-            <a
-              className="mt-2 inline-block text-primary-blue hover:underline"
-              href={existingAdvertUrl}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {t("openAdvert")}
-            </a>
+            {existingAdvertUrl ? (
+              <a
+                className="mt-2 inline-block text-primary-blue hover:underline"
+                href={existingAdvertUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {t("openAdvert")}
+              </a>
+            ) : null}
           </div>
         ) : null}
 
@@ -349,55 +431,66 @@ export function OlxPublicationForm({
 
           <div className="surface-card p-5 sm:p-6">
             <ClosableSection title={t("placement")}>
-              <p className="text-sm text-text-secondary leading-5">
-                {t("labelsHint")}
-              </p>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Input
-                    label={t("categoryPath")}
-                    onChange={(event) =>
-                      setCategoryPath(event.currentTarget.value)
-                    }
-                    placeholder={t("categoryPathPlaceholder")}
-                    value={categoryPath}
+                  <Dropdown
+                    label={t("category")}
+                    onChange={setCategoryId}
+                    options={categoryOptions}
+                    placeholder={t("categoryPlaceholder")}
+                    value={categoryId}
                   />
                   {errorText("category")}
                 </div>
                 <div className="flex flex-col gap-2">
                   <Input
+                    autoComplete="off"
                     label={t("location")}
-                    onChange={(event) => setLocation(event.currentTarget.value)}
+                    list="olx-location-options"
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setLocation(value);
+                      setSelectedLocation(
+                        locationOptions.find(
+                          (option) => option.label === value,
+                        ) ?? null,
+                      );
+                    }}
                     placeholder={t("locationPlaceholder")}
                     value={location}
                   />
+                  <datalist id="olx-location-options">
+                    {locationOptions.map((option) => (
+                      <option
+                        key={`${option.cityId}:${option.districtId ?? 0}`}
+                        value={option.label}
+                      />
+                    ))}
+                  </datalist>
+                  <p className="text-text-placeholder text-xs leading-5">
+                    {locationsQuery.isFetching
+                      ? t("locationSearching")
+                      : t("locationHint")}
+                  </p>
                   {errorText("location")}
                 </div>
-                <Input
-                  label={t("district")}
-                  onChange={(event) => setDistrict(event.currentTarget.value)}
-                  placeholder={t("optionalExactLabel")}
-                  value={district}
-                />
-                <Input
+                <Dropdown
                   label={t("employmentType")}
-                  onChange={(event) =>
-                    setEmploymentType(event.currentTarget.value)
-                  }
-                  placeholder={t("employmentPlaceholder")}
+                  onChange={setEmploymentType}
+                  options={[
+                    { value: "perm", label: t("employmentPermanent") },
+                    { value: "temp", label: t("employmentTemporary") },
+                  ]}
                   value={employmentType}
                 />
-                <Input
+                <Dropdown
                   label={t("schedule")}
-                  onChange={(event) => setSchedule(event.currentTarget.value)}
-                  placeholder={t("schedulePlaceholder")}
+                  onChange={setSchedule}
+                  options={[
+                    { value: "full", label: t("scheduleFull") },
+                    { value: "part", label: t("schedulePart") },
+                  ]}
                   value={schedule}
-                />
-                <Input
-                  label={t("experience")}
-                  onChange={(event) => setExperience(event.currentTarget.value)}
-                  placeholder={t("experiencePlaceholder")}
-                  value={experience}
                 />
               </div>
             </ClosableSection>
@@ -444,6 +537,7 @@ export function OlxPublicationForm({
                   }
                   value={contactName}
                 />
+                {errorText("contactName")}
                 <div className="flex flex-col gap-1">
                   <Input
                     aria-describedby="olx-contact-phone-hint olx-contact-phone-error"
@@ -536,20 +630,20 @@ export function OlxPublicationForm({
               </button>
               <button
                 className="ui-button ui-button-secondary"
-                disabled={isSubmitting || !connected || !browserAvailable}
-                onClick={() => void executeBrowserAction(true)}
+                disabled={isSubmitting || !connected || !serviceAvailable}
+                onClick={() => void executeOlxAction(true)}
                 type="button"
               >
                 <LoadingButtonContent
-                  isLoading={runBrowser.isPending}
+                  isLoading={runOlx.isPending}
                   label={t("preview")}
                   loadingLabel={t("previewing")}
                 />
               </button>
-              {!existingAdvertUrl ? (
+              {!alreadyPublished ? (
                 <button
                   className="ui-button ui-button-primary"
-                  disabled={isSubmitting || !connected || !browserAvailable}
+                  disabled={isSubmitting || !connected || !serviceAvailable}
                   onClick={() => {
                     if (validate()) setIsConfirmOpen(true);
                   }}
@@ -569,7 +663,7 @@ export function OlxPublicationForm({
         isOpen={isConfirmOpen}
         isPending={isSubmitting}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => void executeBrowserAction(false)}
+        onConfirm={() => void executeOlxAction(false)}
         onReject={() => setIsConfirmOpen(false)}
         rejectLabel={commonT("cancel")}
         title={t("confirmTitle")}

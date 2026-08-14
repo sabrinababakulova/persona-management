@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Talanty — OLX.uz Connector",
+  "version": "0.1.5",
+  "description": "Connects an OLX.uz account to Talanty after the user signs in on the official OLX.uz website.",
+  "permissions": ["scripting", "storage", "tabs", "webRequest"],
+  "host_permissions": [
+    "https://*.olx.uz/*",
+    "https://*.talanty.uz/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Talanty — OLX.uz Connector"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.talanty.uz/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["persona-content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.olx.uz/*"],
+      "js": ["olx-content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

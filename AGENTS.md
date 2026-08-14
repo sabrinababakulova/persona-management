@@ -241,17 +241,16 @@ Defined and validated in `src/env.js`:
 | `DIRECTUS_TOKEN` | Yes | Directus API token |
 | `NODE_ENV` | No | `"development"` (default) / `"test"` / `"production"` |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | No | Google Gemini API key for AI resume analysis |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google OAuth web-client credentials. When set, Google sign-in is enabled. Authorized redirect URIs must end in `/api/auth/callback/google`. |
 | `RESUME_STORAGE_PATH` | No | Local path for resume file storage |
 | `DIRECTUS_INTERNAL_URL` | No | Internal Directus URL (defaults to `DIRECTUS_URL`) |
 | `DIRECTUS_PUBLIC_URL` | No | Public Directus URL for file access (defaults to `DIRECTUS_URL`) |
 | `DIRECTUS_FOLDER` | No | Directus folder ID for uploaded files |
-| `AUTH_URL` | No | NextAuth base URL override |
+| `AUTH_URL` | No | NextAuth public application origin, for example `https://admin.talanty.uz` |
 | `VERCEL_URL` | No | Auto-set by Vercel deployment |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram bot token for vacancy posting |
 | `TELEGRAM_CHANNEL_ID` | No | Target Telegram channel (e.g., `@channelname` or numeric chat ID) |
 | `PERSON_HUNTER_API_KEY` | No | PersonHunters Vacancies API key — single shared key (not per-user OAuth); when unset, the PersonHunters channel is disabled |
-| `OLX_BROWSER_EXECUTABLE_PATH` | No | System Chrome/Chromium executable for explicit OLX.uz browser-assisted publishing; common macOS/Linux paths are auto-detected |
-| `OLX_BROWSER_NO_SANDBOX` | No | Explicit `"true"` fallback for a separately hardened root/container deployment. Prefer an unprivileged app user and Chrome sandbox. |
 
 No `NEXT_PUBLIC_*` variables exist — all env vars are server-only.
 
@@ -280,14 +279,14 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `companies` — id (UUID), name, city, country, description, website, phone, `logoUrl` / `logoFileId` (Directus asset of an uploaded logo). Each user belongs to a company; vacancies and candidates are scoped to a company. Editable from **My profile → Company settings** via the `company` router.
 - `companyInvitations` (table `company_invitation`) — shareable "join our company" links. `token` (43-char base64url random, UNIQUE — stored as-is so the link stays copyable), `companyId`, `createdById`, `expiresAt` (14 days), `revokedAt`, `usesCount` / `lastUsedAt`. Consumed by `/invite/[token]`; see `src/server/company/invitations.ts`.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` + `personHunterMeta`, and OLX browser fields `olxAdvertUrl` / `olxAdvertId` / `olxBrowserMeta` / `olxLastPublishedAt` / `olxLastError`.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` + `personHunterMeta`, and OLX fields `olxAdvertUrl` / `olxAdvertId` / `olxBrowserMeta` (legacy column name) / `olxLastPublishedAt` / `olxLastError`.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy). `actorUserId` is `ON DELETE SET NULL` so a deleted user does not block deletion or erase the log; `actorName` keeps it readable.
 
 **Integration tables**:
 - `company_hh_account` (Drizzle export: `userHhAccounts`) — hh.uz OAuth tokens and employer metadata, **per user**. Despite the legacy table name, the FK is `userId` (references `user.id`) with a UNIQUE constraint on `userId`. Two users in the same company connect to hh.uz independently — and the sync covers **all** of a company's connected employers (`resolveCompanyHhAccounts`). See `src/server/services/hh-company-account.ts` (`getUserHhAccount`, `resolveUserHhAuth`, `resolveCompanyHhAccounts`, `listHhConnectedCompanyIds`) and `src/app/api/integrations/hh/callback/route.ts`.
 - `company_telegram_channel` (Drizzle export: `userTelegramChannels`) — Telegram channels configured per user (same per-user pattern; legacy table name retained).
-- `user_olx_session` (Drizzle export: `userOlxSessions`) — one encrypted Playwright storage state per user. OLX passwords are never persisted. Status and last-operation metadata support reconnection without exposing cookies to the client.
+- `user_olx_session` (Drizzle export: `userOlxSessions`) — one encrypted OLX web access/refresh token set per user (the legacy encrypted-storage-state column name is retained). OLX passwords are never persisted. Status and last-operation metadata support reconnection without exposing tokens to the client.
 
 **hh.uz candidate sync tables**:
 - `hh_vacancy_sync_state` (`hhVacancySyncState`) — per-vacancy sync cursors. `lastNegotiationAt` is the discovery watermark (negotiation `created_at`); `lastStatusNegotiationAt` is the status-sync watermark (negotiation `updated_at`); plus run timestamps + last error.
@@ -461,24 +460,25 @@ Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single share
 
 ---
 
-## OLX.uz Browser-Assisted Publishing
+## OLX.uz Server-Side Publishing
 
-OLX.uz does not provide this project a supported third-party publishing API, so
-the integration fills the normal web form with `playwright-core` and a
-system-installed Chrome/Chromium. The user enters OLX credentials once over the
-authenticated Persona connection; the password is used only in memory and only
-encrypted browser storage state is persisted.
+OLX.uz does not provide a supported third-party publishing API for Uzbekistan.
+The integration uses a user-installed Chrome connector once to read OLX's web
+access/refresh tokens after the user signs in on the official website. Persona
+never receives the password, CAPTCHA, or SMS code. Tokens are AES-256-GCM
+encrypted with `AUTH_SECRET` in `user_olx_session`.
 
-Browser work is explicit and short-lived: one operation per process/host, no queue,
-no cron/polling/retries, a 90-second timeout, per-user database rate limits, and
-browser teardown in `finally`. A safe preview fills the form without submitting;
-final publishing has a separate confirmation. CAPTCHA/OTP/security challenges
-stop the flow and are never bypassed. No stealth or fingerprint-evasion code is
-used.
+Preview and publication then use the same private JSON endpoints as OLX's web
+form through one short-lived headless Chrome/Chromium network context per
+request. The context closes after the response and does not automate OLX pages.
+Actions are explicit, limited to one every 30 seconds and ten per hour, with no
+polling, automatic retries, cron, persistent browser, or stealth behavior. Live
+job categories and location suggestions come from OLX. Duplicate submission is
+blocked after an OLX advert id is saved.
 
-Published-ad editing/deactivation/deletion are intentionally not automated in
-the first version. Full design, production setup, limitations, and test
-checklist: `docs/olx-browser-publishing.md`.
+This private contract is unsupported and can change without notice. Editing and
+deletion remain manual. Full security, deployment, limitation, and test notes:
+`docs/olx-integration.md`.
 
 ---
 

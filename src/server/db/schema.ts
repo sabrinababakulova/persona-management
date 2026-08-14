@@ -9,7 +9,7 @@ import type { AdapterAccount } from "next-auth/adapters";
 
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import type {
-  OlxBrowserPublicationMeta,
+  OlxPublicationMeta,
   PersonHunterPublicationMeta,
 } from "~/server/api/routers/vacancies/schemas";
 import { COMPANY_ROLE_MEMBER } from "~/shared/company-roles";
@@ -521,14 +521,12 @@ export const vacancies = createTable(
     personHunterMeta: d
       .json("person_hunter_meta")
       .$type<PersonHunterPublicationMeta>(),
-    /** Public advert URL captured after the OLX browser submits the form. */
+    /** Public advert URL returned after the OLX server publication request. */
     olxAdvertUrl: d.varchar("olx_advert_url", { length: 1000 }),
     /** Advert id parsed from the public OLX URL when one is present. */
     olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
     /** OLX web-form labels entered by the recruiter. */
-    olxBrowserMeta: d
-      .json("olx_browser_meta")
-      .$type<OlxBrowserPublicationMeta>(),
+    olxBrowserMeta: d.json("olx_browser_meta").$type<OlxPublicationMeta>(),
     olxLastPublishedAt: d.timestamp("olx_last_published_at", {
       withTimezone: true,
     }),
@@ -1133,8 +1131,10 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
 }));
 
 /**
- * Per-user OLX.uz browser login. Only an encrypted Playwright storage state is
- * persisted; OLX passwords and challenge responses are never stored.
+ * Per-user OLX.uz connection. The legacy column name is retained for migration
+ * compatibility, but it now stores an encrypted API token set captured only
+ * after the user signs in on OLX.uz. Passwords and challenge responses are
+ * never sent to Persona.
  */
 export const userOlxSessions = createTable("user_olx_session", (d) => ({
   id: d
@@ -1147,6 +1147,7 @@ export const userOlxSessions = createTable("user_olx_session", (d) => ({
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
+  /** AES-GCM encrypted OLX access/refresh credentials (legacy DB name). */
   encryptedStorageState: d.text("encrypted_storage_state").notNull(),
   /** Masked hint only, such as `sa***@example.com`; never the full login. */
   loginHint: d.varchar("login_hint", { length: 255 }),

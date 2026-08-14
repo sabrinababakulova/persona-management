@@ -91,18 +91,39 @@ logrotate policy rotates daily or at 10 MB, keeps 14 rotations, and compresses
 old logs. The three legacy `/var/log/hh-*.log` files are retained for four
 weekly rotations after migration.
 
-## OLX.uz browser runtime
+## Google sign-in
 
-OLX.uz publishing uses `playwright-core` with a system-installed Chrome or
-Chromium. It does not download or keep a browser pool. Configure
-`OLX_BROWSER_EXECUTABLE_PATH` when Chrome is outside the common installation
-paths.
+Set `AUTH_URL` to the public application origin (for example,
+`https://admin.talanty.uz`) and provide `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` from a Google OAuth **Web application** client.
 
-Run the application process as an unprivileged service account so Chrome's
-sandbox remains enabled. The current root-owned PM2 deployment must be moved to
-an unprivileged service account before enabling OLX in production. The explicit
-`OLX_BROWSER_NO_SANDBOX=true` fallback is only suitable for a separately
-hardened container/host; it is not enabled automatically.
+Configure Google Cloud with exact values; paths, schemes, ports, and trailing
+slashes are significant:
 
-See `docs/olx-browser-publishing.md` for the session security model, rate
-limits, safe live-test procedure, and troubleshooting.
+| Environment | Authorized JavaScript origin | Authorized redirect URI |
+| --- | --- | --- |
+| Local | `http://localhost:3000` | `http://localhost:3000/api/auth/callback/google` |
+| Production | `https://admin.talanty.uz` | `https://admin.talanty.uz/api/auth/callback/google` |
+
+The bare site origin is not a valid NextAuth redirect URI. After changing the
+Google client, restart Persona and confirm `/api/auth/providers` reports the
+expected `callbackUrl` before attempting an account sign-in.
+
+## OLX.uz integration
+
+OLX.uz publishing requires a current Google Chrome or Chromium binary but no
+display server. Each authenticated operation creates one short-lived headless
+network context and closes it after the response; there is no idle browser
+process. Common Linux paths are detected automatically. Set
+`OLX_BROWSER_EXECUTABLE_PATH` only for a nonstandard install, and run Persona as
+an unprivileged user so the browser sandbox remains enabled. Keep `AUTH_SECRET`
+stable: it encrypts each user's saved OLX credentials. The server needs outbound
+HTTPS access to `login.olx.uz`, `www.olx.uz`, and `categories.olxcdn.com`.
+
+Users connect once through the Chrome extension in
+`browser-extension/olx-connector`. For production, package and distribute that
+extension through an approved enterprise policy or the Chrome Web Store instead
+of asking normal users to enable Developer mode.
+
+See `docs/olx-integration.md` for the security model, deployment checklist,
+rate limits, limitations, live-test procedure, and troubleshooting.
