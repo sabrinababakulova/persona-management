@@ -3,6 +3,11 @@ import { env } from "~/env";
 
 const REQUEST_TIMEOUT_MS = 20_000;
 const MAX_RESPONSE_CHARS = 2_000_000;
+const MAX_CONCURRENT_BROWSERS = 2;
+const MAX_QUEUED_BROWSER_REQUESTS = 20;
+const BROWSER_QUEUE_TIMEOUT_MS = 10_000;
+const CIRCUIT_FAILURE_LIMIT = 3;
+const CIRCUIT_OPEN_MS = 60_000;
 
 const COMMON_BROWSER_PATHS = [
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -15,6 +20,69 @@ const COMMON_BROWSER_PATHS = [
 ];
 
 let detectedExecutable: Promise<string> | undefined;
+let activeBrowsers = 0;
+let consecutiveBrowserFailures = 0;
+let browserCircuitOpenUntil = 0;
+const browserWaiters: Array<{
+  resolve: (release: () => void) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}> = [];
+
+function releaseBrowserSlot(): void {
+  const next = browserWaiters.shift();
+  if (next) {
+    clearTimeout(next.timer);
+    next.resolve(releaseBrowserSlot);
+    return;
+  }
+  activeBrowsers = Math.max(0, activeBrowsers - 1);
+}
+
+async function acquireBrowserSlot(): Promise<() => void> {
+  if (browserCircuitOpenUntil > Date.now()) {
+    throw new Error("OLX browser transport circuit is open");
+  }
+  if (activeBrowsers < MAX_CONCURRENT_BROWSERS) {
+    activeBrowsers += 1;
+    return releaseBrowserSlot;
+  }
+  if (browserWaiters.length >= MAX_QUEUED_BROWSER_REQUESTS) {
+    throw new Error("OLX browser transport queue is full");
+  }
+
+  return new Promise((resolve, reject) => {
+    const waiter = {
+      resolve,
+      reject,
+      timer: setTimeout(() => {
+        const index = browserWaiters.indexOf(waiter);
+        if (index >= 0) browserWaiters.splice(index, 1);
+        reject(new Error("OLX browser transport queue timed out"));
+      }, BROWSER_QUEUE_TIMEOUT_MS),
+    };
+    browserWaiters.push(waiter);
+  });
+}
+
+function recordBrowserSuccess(): void {
+  consecutiveBrowserFailures = 0;
+  browserCircuitOpenUntil = 0;
+}
+
+function recordBrowserFailure(): void {
+  consecutiveBrowserFailures += 1;
+  if (consecutiveBrowserFailures >= CIRCUIT_FAILURE_LIMIT) {
+    browserCircuitOpenUntil = Date.now() + CIRCUIT_OPEN_MS;
+    consecutiveBrowserFailures = 0;
+    while (browserWaiters.length > 0) {
+      const waiter = browserWaiters.shift();
+      if (!waiter) break;
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("OLX browser transport circuit is open"));
+    }
+  }
+}
 
 async function isExecutable(path: string) {
   try {
@@ -49,6 +117,18 @@ function inputUrl(input: URL | RequestInfo) {
   if (input instanceof URL) return input.toString();
   if (typeof input === "string") return input;
   return input.url;
+}
+
+export function isAllowedOlxBrowserUrl(value: string | URL): boolean {
+  try {
+    const url = value instanceof URL ? value : new URL(value);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "olx.uz" || url.hostname.endsWith(".olx.uz"))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function cookieHeaderToBrowserCookies(
@@ -112,7 +192,7 @@ export async function fetchOlxWithBrowser(
 ): Promise<Response> {
   const targetUrl = inputUrl(input);
   const target = new URL(targetUrl);
-  if (target.protocol !== "https:" || !target.hostname.endsWith("olx.uz")) {
+  if (!isAllowedOlxBrowserUrl(target)) {
     throw new Error("OLX browser transport rejected a non-OLX destination");
   }
 
@@ -127,27 +207,37 @@ export async function fetchOlxWithBrowser(
     );
   }
 
-  const { chromium } = await import("playwright-core");
-  const executablePath = await browserExecutable();
   const noSandbox = env.OLX_BROWSER_NO_SANDBOX === "true";
-  const browser = await chromium.launch({
-    executablePath,
-    headless: true,
-    chromiumSandbox: !noSandbox,
-    timeout: REQUEST_TIMEOUT_MS,
-    args: [
-      "--disable-background-networking",
-      "--disable-component-update",
-      "--disable-default-apps",
-      "--disable-extensions",
-      "--disable-sync",
-      "--metrics-recording-only",
-      "--no-first-run",
-      ...(noSandbox ? ["--no-sandbox"] : []),
-    ],
-  });
+  if (noSandbox && env.NODE_ENV === "production") {
+    throw new Error("OLX browser sandbox cannot be disabled in production");
+  }
+
+  const releaseSlot = await acquireBrowserSlot();
+  let browser:
+    | Awaited<
+        ReturnType<typeof import("playwright-core")["chromium"]["launch"]>
+      >
+    | undefined;
 
   try {
+    const { chromium } = await import("playwright-core");
+    const executablePath = await browserExecutable();
+    browser = await chromium.launch({
+      executablePath,
+      headless: true,
+      chromiumSandbox: !noSandbox,
+      timeout: REQUEST_TIMEOUT_MS,
+      args: [
+        "--disable-background-networking",
+        "--disable-component-update",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-sync",
+        "--metrics-recording-only",
+        "--no-first-run",
+        ...(noSandbox ? ["--no-sandbox"] : []),
+      ],
+    });
     const context = await browser.newContext({
       locale: "ru-RU",
       serviceWorkers: "block",
@@ -163,10 +253,13 @@ export async function fetchOlxWithBrowser(
     const bootstrapUrl = `${target.origin}/robots.txt`;
     await page.route("**/*", async (route) => {
       const request = route.request();
+      const requestAllowed = isAllowedOlxBrowserUrl(request.url());
       if (
-        request.url() === targetUrl ||
-        (request.resourceType() === "document" &&
-          request.url().startsWith(target.origin))
+        requestAllowed &&
+        (request.url() === targetUrl ||
+          Boolean(request.redirectedFrom()) ||
+          (request.resourceType() === "document" &&
+            request.url().startsWith(target.origin)))
       ) {
         await route.continue();
         return;
@@ -203,6 +296,16 @@ export async function fetchOlxWithBrowser(
             credentials: "include",
             signal: controller.signal,
           });
+          const responseUrl = new URL(response.url);
+          if (
+            responseUrl.protocol !== "https:" ||
+            !(
+              responseUrl.hostname === "olx.uz" ||
+              responseUrl.hostname.endsWith(".olx.uz")
+            )
+          ) {
+            throw new Error("OLX browser transport rejected a redirect");
+          }
           return {
             body: (await response.text()).slice(0, request.maxResponseChars),
             headers: Array.from(response.headers.entries()),
@@ -224,12 +327,17 @@ export async function fetchOlxWithBrowser(
     );
 
     const hasNoBody = [101, 204, 205, 304].includes(result.status);
+    recordBrowserSuccess();
     return new Response(hasNoBody ? null : result.body, {
       status: result.status,
       statusText: result.statusText,
       headers: result.headers,
     });
+  } catch (error) {
+    recordBrowserFailure();
+    throw error;
   } finally {
-    await browser.close().catch(() => undefined);
+    await browser?.close().catch(() => undefined);
+    releaseSlot();
   }
 }

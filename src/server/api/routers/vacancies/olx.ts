@@ -1,30 +1,25 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { env } from "~/env";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
-import {
-  hasActiveRecord,
-  isRateLimited,
-  recordAttempt,
-  setMarker,
-} from "~/server/auth/rate-limit";
+import { takeRateLimitSlot } from "~/server/auth/rate-limit";
 import { userOlxSessions, vacancies } from "~/server/db/schema";
 import {
-  decryptOlxCredentials,
-  encryptOlxCredentials,
   getOlxJobCategories,
   OlxApiError,
-  type OlxCredentials,
   searchOlxLocations,
   submitOlxOffer,
 } from "~/server/services/olx-api";
+import { runOlxOperation } from "./olx-lifecycle";
 import { olxPublicationMetaSchema } from "./schemas";
 import { isUserVisibleVacancy } from "./shared";
 
 const OLX_ACTION_COOLDOWN_MS = 30 * 1000;
 const OLX_ACTION_WINDOW_MS = 60 * 60 * 1000;
+const OLX_LOCATION_SEARCH_WINDOW_MS = 15 * 60 * 1000;
+const OLX_PUBLISH_CLAIM_STALE_MS = 5 * 60 * 1000;
 
 const olxPublishInputSchema = z.object({
   id: z.string().min(1).max(255),
@@ -94,6 +89,26 @@ function describeOlxPublishError(error: unknown): TRPCError {
   });
 }
 
+function failedPublicationState(error: unknown): "failed" | "unknown" {
+  if (error instanceof OlxApiError) {
+    return error.code === "unavailable" || error.code === "unexpected_response"
+      ? "unknown"
+      : "failed";
+  }
+  const knownLocalFailures = new Set([
+    "OLX_TITLE_LENGTH",
+    "OLX_DESCRIPTION_LENGTH",
+    "OLX_CATEGORY_REQUIRED",
+    "OLX_CONTACT_REQUIRED",
+    "OLX_LOCATION_NOT_FOUND",
+    "OLX_LOCATION_DISTRICT_REQUIRED",
+    "OLX_POSTING_ID_REQUIRED",
+  ]);
+  return error instanceof Error && knownLocalFailures.has(error.message)
+    ? "failed"
+    : "unknown";
+}
+
 export const getOlxConfigProcedure = protectedProcedure.query(
   async ({ ctx }) => {
     const [rows, categoriesResult] = await Promise.all([
@@ -120,7 +135,23 @@ export const getOlxConfigProcedure = protectedProcedure.query(
 
 export const searchOlxLocationsProcedure = protectedProcedure
   .input(olxLocationSearchSchema)
-  .query(async ({ input }) => {
+  .query(async ({ ctx, input }) => {
+    const userId = ctx.session.user.id;
+    const ip =
+      ctx.headers.get("x-real-ip")?.trim() ??
+      ctx.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
+      "unknown";
+    const userKey = `olx-location-search-user:${userId}`;
+    const ipKey = `olx-location-search-ip:${ip.slice(0, 100)}`;
+    if (
+      !(await takeRateLimitSlot(userKey, 120, OLX_LOCATION_SEARCH_WINDOW_MS)) ||
+      !(await takeRateLimitSlot(ipKey, 300, OLX_LOCATION_SEARCH_WINDOW_MS))
+    ) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Слишком много поисковых запросов olx.uz. Повторите позже.",
+      });
+    }
     try {
       return await searchOlxLocations(input.query);
     } catch (error) {
@@ -142,8 +173,8 @@ export const publishOlxProcedure = protectedProcedure
     const hourlyKey = `olx-api-actions:${userId}`;
 
     if (
-      (await hasActiveRecord(cooldownKey)) ||
-      (await isRateLimited(hourlyKey, 10))
+      !(await takeRateLimitSlot(cooldownKey, 1, OLX_ACTION_COOLDOWN_MS)) ||
+      !(await takeRateLimitSlot(hourlyKey, 10, OLX_ACTION_WINDOW_MS))
     ) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
@@ -205,64 +236,69 @@ export const publishOlxProcedure = protectedProcedure
       });
     }
 
-    let credentials: OlxCredentials;
-    try {
-      credentials = decryptOlxCredentials(
-        session.encryptedStorageState,
-        env.AUTH_SECRET,
+    let postingId: string | undefined;
+    if (!input.dryRun) {
+      const claimTime = new Date();
+      const staleBefore = new Date(
+        claimTime.getTime() - OLX_PUBLISH_CLAIM_STALE_MS,
       );
-    } catch {
-      await ctx.db
-        .update(userOlxSessions)
+      const claimed = await ctx.db
+        .update(vacancies)
         .set({
-          status: "reauth_required",
-          lastOperationAt: new Date(),
-          lastError: "credential_decryption_failed",
+          olxPostingId: sql`coalesce(${vacancies.olxPostingId}, ${randomUUID()})`,
+          olxPublicationState: "publishing",
+          olxPublishClaimedAt: claimTime,
+          olxLastError: null,
         })
-        .where(eq(userOlxSessions.id, session.id));
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "Сохранённый доступ olx.uz недействителен. Подключите аккаунт заново.",
-      });
+        .where(
+          and(
+            eq(vacancies.id, vacancy.id),
+            isNull(vacancies.olxAdvertId),
+            isNull(vacancies.olxAdvertUrl),
+            or(
+              isNull(vacancies.olxPublicationState),
+              inArray(vacancies.olxPublicationState, ["failed", "unknown"]),
+              and(
+                eq(vacancies.olxPublicationState, "publishing"),
+                or(
+                  isNull(vacancies.olxPublishClaimedAt),
+                  lt(vacancies.olxPublishClaimedAt, staleBefore),
+                ),
+              ),
+            ),
+          ),
+        )
+        .returning({ postingId: vacancies.olxPostingId });
+      postingId = claimed[0]?.postingId ?? undefined;
+      if (!postingId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Публикация уже отправлена или обрабатывается. Обновите страницу перед повторной попыткой.",
+        });
+      }
     }
 
-    await Promise.all([
-      recordAttempt(hourlyKey, OLX_ACTION_WINDOW_MS),
-      setMarker(cooldownKey, OLX_ACTION_COOLDOWN_MS),
-    ]);
-
     try {
-      const submitted = await submitOlxOffer({
-        credentials,
-        dryRun: input.dryRun,
-        advert: {
-          title: vacancy.title,
-          descriptionHtml: vacancy.descriptionHtml ?? "",
-          salaryFrom: vacancy.salaryFrom,
-          salaryTo: vacancy.salaryTo,
-          salaryCurrency: vacancy.salaryCurrency === "USD" ? "USD" : "UZS",
-          meta: parsedMeta.data,
-        },
-      });
+      const submitted = await runOlxOperation(ctx.db, userId, (credentials) =>
+        submitOlxOffer({
+          credentials,
+          dryRun: input.dryRun,
+          postingId,
+          advert: {
+            title: vacancy.title,
+            descriptionHtml: vacancy.descriptionHtml ?? "",
+            salaryFrom: vacancy.salaryFrom,
+            salaryTo: vacancy.salaryTo,
+            salaryCurrency: vacancy.salaryCurrency === "USD" ? "USD" : "UZS",
+            meta: parsedMeta.data,
+          },
+        }),
+      );
       const now = new Date();
 
-      await ctx.db
-        .update(userOlxSessions)
-        .set({
-          encryptedStorageState: encryptOlxCredentials(
-            submitted.credentials,
-            env.AUTH_SECRET,
-          ),
-          status: "connected",
-          lastVerifiedAt: now,
-          lastOperationAt: now,
-          lastError: null,
-        })
-        .where(eq(userOlxSessions.id, session.id));
-
       if (submitted.result.mode === "published") {
-        await ctx.db
+        const persisted = await ctx.db
           .update(vacancies)
           .set({
             olxAdvertUrl: submitted.result.advertUrl,
@@ -270,9 +306,18 @@ export const publishOlxProcedure = protectedProcedure
             olxPublisherUserId: userId,
             olxLastPublishedAt: now,
             olxLastError: null,
+            olxPublicationState: "succeeded",
+            olxPublishClaimedAt: null,
             isActive: true,
           })
-          .where(eq(vacancies.id, vacancy.id));
+          .where(
+            and(
+              eq(vacancies.id, vacancy.id),
+              eq(vacancies.olxPostingId, postingId as string),
+            ),
+          )
+          .returning({ id: vacancies.id });
+        if (!persisted[0]) throw new Error("OLX_PUBLICATION_PERSIST_FAILED");
       } else {
         await ctx.db
           .update(vacancies)
@@ -282,8 +327,6 @@ export const publishOlxProcedure = protectedProcedure
 
       return submitted.result;
     } catch (error) {
-      const reauthenticationNeeded =
-        error instanceof OlxApiError && error.code === "reauth_required";
       const safeError =
         error instanceof OlxApiError
           ? `api:${error.code}`
@@ -291,20 +334,19 @@ export const publishOlxProcedure = protectedProcedure
             ? `input:${error.message}`
             : "unexpected_api_error";
 
-      await Promise.all([
-        ctx.db
-          .update(vacancies)
-          .set({ olxLastError: safeError })
-          .where(eq(vacancies.id, vacancy.id)),
-        ctx.db
-          .update(userOlxSessions)
-          .set({
-            status: reauthenticationNeeded ? "reauth_required" : session.status,
-            lastOperationAt: new Date(),
-            lastError: safeError,
-          })
-          .where(eq(userOlxSessions.id, session.id)),
-      ]);
+      await ctx.db
+        .update(vacancies)
+        .set({
+          olxLastError: safeError,
+          ...(input.dryRun
+            ? {}
+            : {
+                olxPublicationState: failedPublicationState(error),
+                olxPublishClaimedAt: null,
+              }),
+        })
+        .where(eq(vacancies.id, vacancy.id))
+        .catch(() => undefined);
 
       throw describeOlxPublishError(error);
     }

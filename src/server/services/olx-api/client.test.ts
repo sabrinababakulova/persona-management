@@ -4,6 +4,7 @@ import {
   type OlxCredentials,
   refreshOlxCredentials,
   requestOlxApi,
+  sanitizeOlxCookieHeader,
   verifyOlxCredentials,
 } from "./client";
 
@@ -21,10 +22,9 @@ function credentials(overrides: Partial<OlxCredentials> = {}): OlxCredentials {
     source: "olx_ciam",
     accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3_600 }),
     refreshToken: "refresh-token-value-that-is-long-enough",
-    idToken: jwt({ sub: "user-123", email: "person@example.com" }),
     deviceId: "test-device-id-123",
     fingerprint: "test-browser-fingerprint-123",
-    cookieHeader: "deviceGUID=test-device; lang=ru",
+    cookieHeader: "deviceGUID=test-device",
     userAgent:
       "Mozilla/5.0 Test Browser AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36",
     expiresAt: Date.now() + 3_600_000,
@@ -33,6 +33,14 @@ function credentials(overrides: Partial<OlxCredentials> = {}): OlxCredentials {
 }
 
 describe("OLX API credentials", () => {
+  test("retains only the OLX cookies required by authenticated requests", () => {
+    expect(
+      sanitizeOlxCookieHeader(
+        "deviceGUID=device; access_token=token; tracking=yes; session=secret",
+      ),
+    ).toBe("deviceGUID=device; access_token=token");
+  });
+
   test("verifies an active account without refreshing", async () => {
     const calls: string[] = [];
     const fetchImpl = async (input: URL | RequestInfo) => {
@@ -98,7 +106,7 @@ describe("OLX API credentials", () => {
 
   test("rotates a matching access-token cookie during refresh", async () => {
     const previous = credentials({ expiresAt: Date.now() - 1 });
-    previous.cookieHeader = `deviceGUID=test; access_token=${previous.accessToken}; lang=ru`;
+    previous.cookieHeader = `deviceGUID=test; access_token=${previous.accessToken}`;
     const nextAccessToken = jwt({ exp: Math.floor(Date.now() / 1000) + 7_200 });
     let apiCookie = "";
     const fetchImpl = async (input: URL | RequestInfo, init?: RequestInit) => {

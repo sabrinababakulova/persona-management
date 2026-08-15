@@ -1,16 +1,11 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import {
-  hasActiveRecord,
-  isRateLimited,
-  recordAttempt,
-  setMarker,
-} from "~/server/auth/rate-limit";
+import { takeRateLimitSlot } from "~/server/auth/rate-limit";
 import {
   telegramChannelAdmins,
   telegramDeliveryModes,
@@ -127,12 +122,19 @@ export const integrationsRouter = createTRPCRouter({
 
   createOlxConnectionTicket: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
+    const extensionId = env.OLX_CONNECTOR_EXTENSION_ID;
+    if (!extensionId || !env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Коннектор olx.uz не полностью настроен администратором.",
+      });
+    }
     const attemptsKey = `olx-login-attempts:${userId}`;
     const cooldownKey = `olx-login-cooldown:${userId}`;
 
     if (
-      (await isRateLimited(attemptsKey, 3)) ||
-      (await hasActiveRecord(cooldownKey))
+      !(await takeRateLimitSlot(cooldownKey, 1, OLX_LOGIN_COOLDOWN_MS)) ||
+      !(await takeRateLimitSlot(attemptsKey, 3, OLX_LOGIN_WINDOW_MS))
     ) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
@@ -140,27 +142,32 @@ export const integrationsRouter = createTRPCRouter({
           "Слишком много попыток подключения olx.uz. Подождите минуту и попробуйте снова.",
       });
     }
-
-    await Promise.all([
-      recordAttempt(attemptsKey, OLX_LOGIN_WINDOW_MS),
-      setMarker(cooldownKey, OLX_LOGIN_COOLDOWN_MS),
-    ]);
-
     try {
-      const connection = await createOlxConnectionTicket(ctx.db, userId);
+      const connection = await createOlxConnectionTicket(
+        ctx.db,
+        userId,
+        extensionId,
+      );
       return {
         ticket: connection.ticket,
         expiresAt: connection.expiresAt,
       };
     } catch (error) {
+      if (error instanceof TRPCError) throw error;
       throw olxTicketError(error);
     }
   }),
 
   removeOlxSession: protectedProcedure.mutation(async ({ ctx }) => {
-    await ctx.db
-      .delete(userOlxSessions)
-      .where(eq(userOlxSessions.userId, ctx.session.user.id));
+    const userId = ctx.session.user.id;
+    await ctx.db.transaction(async (transaction) => {
+      await transaction.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`olx-account:${userId}`}, 0))`,
+      );
+      await transaction
+        .delete(userOlxSessions)
+        .where(eq(userOlxSessions.userId, userId));
+    });
     return { success: true };
   }),
 

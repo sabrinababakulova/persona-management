@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   browserSafeHeaders,
   cookieHeaderToBrowserCookies,
+  isAllowedOlxBrowserUrl,
 } from "./browser-transport";
 
 describe("OLX browser transport", () => {
@@ -37,5 +38,15 @@ describe("OLX browser transport", () => {
       authorization: "Bearer test",
       "x-device-id": "device-1",
     });
+  });
+
+  test("accepts only HTTPS olx.uz hosts", () => {
+    expect(isAllowedOlxBrowserUrl("https://olx.uz/path")).toBe(true);
+    expect(isAllowedOlxBrowserUrl("https://www.olx.uz/path")).toBe(true);
+    expect(isAllowedOlxBrowserUrl("https://evilolx.uz/path")).toBe(false);
+    expect(isAllowedOlxBrowserUrl("https://olx.uz.evil.example/path")).toBe(
+      false,
+    );
+    expect(isAllowedOlxBrowserUrl("http://www.olx.uz/path")).toBe(false);
   });
 });

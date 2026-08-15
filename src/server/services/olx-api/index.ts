@@ -5,8 +5,10 @@ export {
   verifyOlxCredentials,
 } from "./client";
 export {
-  consumeOlxConnectionTicket,
+  claimOlxConnectionTicket,
+  completeOlxConnectionTicket,
   createOlxConnectionTicket,
+  releaseOlxConnectionTicket,
 } from "./connection-ticket";
 export { decryptOlxCredentials, encryptOlxCredentials } from "./crypto";
 export {
@@ -15,3 +17,7 @@ export {
 } from "./dictionaries";
 export { deleteOlxAdvert, setOlxAdvertActive } from "./lifecycle";
 export { submitOlxOffer } from "./publication";
+export {
+  decryptStoredOlxCredentials,
+  encryptStoredOlxCredentials,
+} from "./stored-credentials";

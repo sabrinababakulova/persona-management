@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Talanty — olx.uz Connector",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Connects an olx.uz account to Talanty after the user signs in on the official olx.uz website.",
   "minimum_chrome_version": "102",
   "icons": {
@@ -11,7 +11,7 @@
     "128": "icons/icon128.png"
   },
   "permissions": ["scripting", "storage", "tabs", "webRequest"],
-  "host_permissions": ["https://*.olx.uz/*", "https://*.talanty.uz/*"],
+  "host_permissions": ["https://www.olx.uz/*", "https://admin.talanty.uz/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -25,12 +25,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.talanty.uz/*"],
+      "matches": ["https://admin.talanty.uz/*"],
       "js": ["persona-content.js"],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://*.olx.uz/*"],
+      "matches": ["https://www.olx.uz/*"],
       "js": ["olx-content.js"],
       "run_at": "document_idle"
     }

@@ -68,6 +68,7 @@ import {
   runOlxOperation,
   safeOlxLifecycleError,
 } from "./olx-lifecycle";
+import { requireOlxPublisherOwnership } from "./olx-ownership";
 import {
   type OlxPublicationMeta,
   type PersonHunterPublicationMeta,
@@ -336,6 +337,11 @@ export const updateVacancyProcedure = protectedProcedure
       }
 
       const action = input.isActive ? "activate" : "deactivate";
+      requireOlxPublisherOwnership(
+        existing.olxPublisherUserId,
+        ctx.session.user.id,
+        "manage",
+      );
       const publisherUserId =
         existing.olxPublisherUserId ?? ctx.session.user.id;
       await enforceOlxLifecycleRateLimit(publisherUserId);
@@ -350,7 +356,7 @@ export const updateVacancyProcedure = protectedProcedure
         );
         // Legacy rows predate publisher ownership. A successful command proves
         // which connected account owns the advert, so persist it for later
-        // actions by any teammate who can manage this company publication.
+        // owner-only lifecycle actions.
         if (!existing.olxPublisherUserId) {
           olxPublisherUserIdToPersist = publisherUserId;
         }
@@ -936,6 +942,12 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
             "У этой старой публикации нет идентификатора olx.uz. Удалите объявление непосредственно на olx.uz.",
         });
       }
+
+      requireOlxPublisherOwnership(
+        existing.olxPublisherUserId,
+        ctx.session.user.id,
+        "delete",
+      );
 
       const publisherUserId =
         existing.olxPublisherUserId ?? ctx.session.user.id;

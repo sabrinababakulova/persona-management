@@ -172,6 +172,8 @@ export async function submitOlxOffer(input: {
   credentials: OlxCredentials;
   advert: OlxAdvertInput;
   dryRun: boolean;
+  /** Durable idempotency key. Required for creates and persisted before calling OLX. */
+  postingId?: string;
   fetchImpl?: FetchLike;
 }): Promise<{ credentials: OlxCredentials; result: OlxPublishResult }> {
   const apiFetch = input.fetchImpl ?? fetchOlxWithBrowser;
@@ -179,7 +181,10 @@ export async function submitOlxOffer(input: {
     input.advert,
     input.fetchImpl ?? fetch,
   );
-  const postingId = randomUUID();
+  const postingId = input.postingId ?? randomUUID();
+  if (!input.dryRun && !input.postingId) {
+    throw new Error("OLX_POSTING_ID_REQUIRED");
+  }
   const submitted = await requestOlxApi(
     input.credentials,
     input.dryRun ? "offers-preview" : "offers",

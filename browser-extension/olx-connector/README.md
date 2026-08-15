@@ -4,9 +4,9 @@ This Manifest V3 Chrome extension performs the one-time, user-controlled olx.uz
 account connection. It does not collect the user's password, CAPTCHA, or SMS
 code. Those values are entered only on the official olx.uz website.
 
-The connector transfers the OLX access, refresh, and identity tokens plus the
-OLX-generated device id, request fingerprint, user agent, and first-party cookie
-header required by OLX's own authenticated requests. Its network listener is
+The connector transfers the OLX access and refresh tokens plus the OLX-generated
+device id, request fingerprint, user agent, and the allowlisted `deviceGUID` and
+`access_token` cookies required by OLX's own authenticated requests. Its network listener is
 limited to olx.uz API request headers. It hashes the active authorization token locally
 only to select the matching OLX Auth0 cache entry; the request's authorization
 header is never stored or transmitted. Form bodies and responses are ignored.
@@ -32,7 +32,7 @@ they do not need Developer mode or access to this repository. The production
 package excludes all localhost permissions.
 
 1. Run `bun run olx:extension:package` from the project root.
-2. Upload `build/talanty-olx-connector-0.1.5.zip` in the Chrome Web Store
+2. Upload `build/talanty-olx-connector-0.1.6.zip` in the Chrome Web Store
    developer dashboard.
 3. Complete the listing with the answers in `STORE_LISTING.md` and use
    `https://admin.talanty.uz/privacy/olx-connector` as the privacy-policy URL.

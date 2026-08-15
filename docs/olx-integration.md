@@ -11,8 +11,8 @@ The flow is split into two parts:
 1. A user installs the small Chrome extension in
    `browser-extension/olx-connector`, starts connection from Company settings,
    and signs in on the official `olx.uz` website.
-2. The extension sends only the OLX access, refresh, and identity tokens plus
-   OLX's device id, request fingerprint, and first-party request cookies through
+2. The extension sends only the OLX access and refresh tokens plus OLX's device
+   id, request fingerprint, and the allowlisted `deviceGUID` and `access_token` cookies through
    a single-use, 15-minute Persona ticket. OLX's current web client sends this
    context on authenticated requests, so the server preserves the same pairing.
    Persona verifies the account and stores the values encrypted. Later previews
@@ -29,15 +29,16 @@ on olx.uz itself.
 ## Why the connector is necessary
 
 olx.uz's tokens live in the user's browser origin and cannot be read by a normal
-Talanty web page because of browser same-origin protections. The connector has a
-narrow host allow-list for `*.olx.uz`, `*.talanty.uz`, localhost, and
-127.0.0.1. It runs only after the user presses Connect and then presses the
-confirmation button shown on olx.uz.
+Talanty web page because of browser same-origin protections. The production
+connector is limited to `www.olx.uz` and `admin.talanty.uz`. The unpacked
+development manifest additionally supports localhost and 127.0.0.1. It runs
+only after the user presses Connect and then presses the confirmation button
+shown on olx.uz.
 
 The extension does not automate login, click OLX controls, solve challenges,
 hide automation, poll the website, or retain connection data in persistent
 extension storage. Its OLX-only network listener copies `X-Device-Id` and
-`X-Fingerprint` and the same request's first-party cookie header. It computes a
+`X-Fingerprint` and the same request's allowlisted authentication cookies. It computes a
 one-way SHA-256 digest of the active access token to select the exact matching
 Auth0 cache entry, then discards the request value; the authorization header
 itself is never stored or transmitted. Bodies, responses, and non-OLX traffic
@@ -45,21 +46,29 @@ are ignored.
 
 ## Server security model
 
-- `createOlxConnectionTicket` creates a random one-time value. Only its SHA-256
-  hash is stored in `verification_token`; it expires after 15 minutes and is
-  atomically deleted when consumed.
-- `/api/integrations/olx/token-connect` accepts Chrome-extension origins only,
-  validates payload size/schema, consumes the ticket, and verifies the token
-  against `GET /api/v1/users/me` before saving it.
+- `createOlxConnectionTicket` creates a random one-time value bound to the
+  configured Chrome extension id. Only its SHA-256 hash is stored in
+  `verification_token`; it expires after 15 minutes. Redemption atomically
+  claims it, verifies the account, and consumes it only after the encrypted
+  session is saved. Failed verification releases the claim for a safe retry.
+- `/api/integrations/olx/token-connect` exact-matches
+  `OLX_CONNECTOR_EXTENSION_ID`, throttles by client IP, and enforces the payload
+  limit while streaming before schema validation.
 - `src/server/services/olx-api/crypto.ts` encrypts credentials with AES-256-GCM
-  and a key derived from `AUTH_SECRET`. Authentication tags detect tampering.
-- Access, refresh, and identity tokens, device id, request fingerprint, and OLX
+  and a dedicated `OLX_CREDENTIALS_ENCRYPTION_KEY`. The ciphertext contains a
+  key id for rotation and is authenticated with the user and OLX-session ids as
+  additional data. Previous keys can be retained temporarily for decryption.
+- Access and refresh tokens, device id, request fingerprint, and allowlisted OLX
   cookies never enter client React state, tRPC responses, logs, or vacancy
   metadata.
 - Disconnect deletes the encrypted row. Expired/rejected tokens change the row
   to `reauth_required` and require the user to connect again.
-- Keep `AUTH_SECRET` stable and backed up. Rotating it invalidates all saved OLX
-  connections, by design.
+- Credentials are retained only while the user keeps the integration connected.
+  Reconnection replaces the prior ciphertext, explicit disconnect deletes it,
+  and deleting the Persona user cascades deletion of the per-user OLX session.
+- Legacy `AUTH_SECRET` ciphertext is read for migration and rewritten with the
+  dedicated key after a successful operation. Rotating `AUTH_SECRET` no longer
+  invalidates credentials written in the new format.
 
 ## Publication behavior
 
@@ -76,14 +85,16 @@ are ignored.
   to one short-lived Chromium request and then use the caches above.
 - The contact-phone field always starts with `+998`, keeps only nine national
   digits, and formats them as `+998 XX XXX XX XX` while the user types.
-- **Publish** validates the form in Persona before confirmation, then validates
-  the payload on the server and sends one `POST /api/v1/offers` request with a
-  unique `posting-id`. If the response does not include the public URL, Persona
+- **Publish** atomically claims the vacancy and persists a stable `posting-id`
+  before sending one `POST /api/v1/offers` request. Concurrent attempts cannot
+  both claim the row, and uncertain retries reuse the same idempotency key. If
+  the response does not include the public URL, Persona
   performs one read-back by advert id. It does not resubmit.
 - Once an OLX advert id is stored, the same publication record cannot be sent
   again. This remains true even if the public URL is delayed by moderation.
-- A per-user 30-second cooldown and ten-operation hourly cap apply to publication
-  actions. There are no background jobs, automatic retries, or polling.
+- A per-user 30-second cooldown and ten-operation hourly cap apply atomically to
+  publication actions. Refresh-token operations are serialized per OLX account
+  with a PostgreSQL advisory lock.
 - Changing the publications-table status sends the same `UpdateAd` GraphQL
   mutation as olx.uz's current **My ads** page, with `DEACTIVATE` or `ACTIVATE`.
   Persona changes its local status only after OLX accepts the mutation.
@@ -96,8 +107,9 @@ are ignored.
 - Lifecycle actions have a ten-second shared cooldown and a twenty-operation
   hourly cap per connected OLX account. They are never run by a background task. A rejected
   access token can trigger one refresh-and-replay; other failures are not retried.
-- The publishing user's id is stored with new OLX adverts so later lifecycle
-  actions use the same connected OLX account. Older rows adopt the current
+- The publishing user's id is stored with new OLX adverts. Only that authenticated
+  user can activate, deactivate, or delete the remote advert; teammates cannot
+  operate the publisher's personal OLX credentials. Older rows adopt the current
   account only after OLX successfully accepts a lifecycle mutation.
 
 ## Linux deployment
@@ -106,13 +118,18 @@ Install Google Chrome or Chromium. Headless mode needs no display server. Deploy
 like the rest of Persona:
 
 1. Pull the branch and run `bun install --frozen-lockfile`.
-2. Keep the existing production `AUTH_SECRET`; do not generate a new value for
-   each deploy.
+2. Set a random, backed-up `OLX_CREDENTIALS_ENCRYPTION_KEY` of at least 32
+   characters and set `OLX_CONNECTOR_EXTENSION_ID` to the exact production
+   Chrome Web Store id. During key rotation, put old keys in
+   `OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS` as a comma-separated list.
 3. Apply migrations with `bun run db:migrate` (or the documented custom migrator
    if that database has migration-ledger drift).
 4. Install a current `google-chrome-stable` or `chromium` package. Common paths
    are detected automatically; otherwise set `OLX_BROWSER_EXECUTABLE_PATH`.
    Run Persona as an unprivileged user so the Chrome sandbox stays enabled.
+   Production refuses `OLX_BROWSER_NO_SANDBOX=true`. Chromium launches are
+   bounded to two concurrent processes with a finite queue and circuit breaker;
+   additionally apply container/process memory and CPU limits in production.
 5. Ensure outbound HTTPS/DNS can reach `login.olx.uz`, `www.olx.uz`,
    `categories.olxcdn.com`, and
    `production-graphql.eu-sharedservices.olxcdn.com`.

@@ -118,8 +118,10 @@ process. Public category and location lookups try normal server-side HTTP first;
 OLX HTTP 403 responses use the same short-lived Chromium transport and cached
 results. Common Linux paths are detected automatically. Set
 `OLX_BROWSER_EXECUTABLE_PATH` only for a nonstandard install, and run Persona as
-an unprivileged user so the browser sandbox remains enabled. Keep `AUTH_SECRET`
-stable: it encrypts each user's saved OLX credentials. The server needs outbound
+an unprivileged user so the browser sandbox remains enabled. Production refuses
+to run the OLX transport without the sandbox. Set a dedicated
+`OLX_CREDENTIALS_ENCRYPTION_KEY` and the exact Chrome Web Store
+`OLX_CONNECTOR_EXTENSION_ID`; do not reuse `AUTH_SECRET`. The server needs outbound
 HTTPS access to `login.olx.uz`, `www.olx.uz`, and `categories.olxcdn.com`.
 
 Users connect once through the Chrome extension in

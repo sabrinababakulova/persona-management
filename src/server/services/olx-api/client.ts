@@ -13,14 +13,15 @@ export const olxCredentialsSchema = z.object({
   source: z.literal("olx_ciam"),
   accessToken: z.string().min(20).max(20_000),
   refreshToken: z.string().min(20).max(20_000),
-  idToken: z.string().min(20).max(20_000),
   deviceId: z.string().min(8).max(255),
   fingerprint: z.string().min(8).max(2_000),
   cookieHeader: z
     .string()
     .min(1)
-    .max(20_000)
-    .regex(/^[^\r\n]+$/),
+    .max(4_000)
+    .regex(/^[^\r\n]+$/)
+    .transform(sanitizeOlxCookieHeader)
+    .refine((value) => value.length > 0, "No allowed OLX cookies found"),
   userAgent: z
     .string()
     .min(20)
@@ -107,40 +108,27 @@ function maskPhone(value: string): string {
 
 function accountHintFromPayload(
   payload: Record<string, unknown>,
-  credentials: OlxCredentials,
 ): string | null {
   const nested =
     payload.data && typeof payload.data === "object"
       ? (payload.data as Record<string, unknown>)
       : payload;
-  const claims = decodeJwtPayload(credentials.idToken);
-  const email =
-    stringValue(nested.email) ??
-    stringValue(nested.email_address) ??
-    stringValue(claims.email);
+  const email = stringValue(nested.email) ?? stringValue(nested.email_address);
   if (email?.includes("@")) return maskEmail(email);
 
-  const phone =
-    stringValue(nested.phone) ??
-    stringValue(nested.phone_number) ??
-    stringValue(claims.phone_number);
+  const phone = stringValue(nested.phone) ?? stringValue(nested.phone_number);
   return phone ? maskPhone(phone) : null;
 }
 
-function accountIdFromPayload(
-  payload: Record<string, unknown>,
-  credentials: OlxCredentials,
-): string | null {
+function accountIdFromPayload(payload: Record<string, unknown>): string | null {
   const nested =
     payload.data && typeof payload.data === "object"
       ? (payload.data as Record<string, unknown>)
       : payload;
-  const claims = decodeJwtPayload(credentials.idToken);
   return (
     stringValue(nested.id) ??
     stringValue(nested.uuid) ??
     stringValue(nested.user_id) ??
-    stringValue(claims.sub) ??
     null
   );
 }
@@ -180,6 +168,21 @@ function cookieValue(header: string, name: string): string | undefined {
   return undefined;
 }
 
+const ALLOWED_OLX_COOKIES = new Set(["access_token", "deviceGUID"]);
+
+export function sanitizeOlxCookieHeader(header: string): string {
+  return header
+    .split(";")
+    .flatMap((part) => {
+      const separator = part.indexOf("=");
+      if (separator < 1) return [];
+      const name = part.slice(0, separator).trim();
+      if (!ALLOWED_OLX_COOKIES.has(name)) return [];
+      return [`${name}=${part.slice(separator + 1).trim()}`];
+    })
+    .join("; ");
+}
+
 function replaceCookieValue(header: string, name: string, value: string) {
   return header
     .split(";")
@@ -195,7 +198,6 @@ function replaceCookieValue(header: string, name: string, value: string) {
 function refreshCookieHeader(
   previous: OlxCredentials,
   nextAccessToken: string,
-  nextIdToken: string,
 ) {
   const current = cookieValue(previous.cookieHeader, "access_token");
   if (current === previous.accessToken) {
@@ -203,13 +205,6 @@ function refreshCookieHeader(
       previous.cookieHeader,
       "access_token",
       nextAccessToken,
-    );
-  }
-  if (current === previous.idToken) {
-    return replaceCookieValue(
-      previous.cookieHeader,
-      "access_token",
-      nextIdToken,
     );
   }
   return previous.cookieHeader;
@@ -396,16 +391,12 @@ export async function refreshOlxCredentials(
       ? payload.expires_in
       : 3_600;
 
-  const nextIdToken =
-    stringValue(payload.id_token, 20_000) ?? credentials.idToken;
-
   return olxCredentialsSchema.parse({
     ...credentials,
     accessToken,
     refreshToken:
       stringValue(payload.refresh_token, 20_000) ?? credentials.refreshToken,
-    idToken: nextIdToken,
-    cookieHeader: refreshCookieHeader(credentials, accessToken, nextIdToken),
+    cookieHeader: refreshCookieHeader(credentials, accessToken),
     scope: stringValue(payload.scope, 1_000) ?? credentials.scope,
     expiresAt: Date.now() + expiresIn * 1_000,
   });
@@ -434,8 +425,8 @@ export async function verifyOlxCredentials(
   return {
     credentials,
     account: {
-      id: accountIdFromPayload(payload, credentials),
-      loginHint: accountHintFromPayload(payload, credentials),
+      id: accountIdFromPayload(payload),
+      loginHint: accountHintFromPayload(payload),
     },
   };
 }

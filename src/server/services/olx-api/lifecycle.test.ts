@@ -15,10 +15,9 @@ const credentials: OlxCredentials = {
   source: "olx_ciam",
   accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3_600 }),
   refreshToken: "refresh-token-value-that-is-long-enough",
-  idToken: jwt({ sub: "test-user" }),
   deviceId: "test-device-id-123",
   fingerprint: "test-browser-fingerprint-123",
-  cookieHeader: "deviceGUID=test-device; lang=ru",
+  cookieHeader: "deviceGUID=test-device",
   userAgent:
     "Mozilla/5.0 Test Browser AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36",
   expiresAt: Date.now() + 3_600_000,

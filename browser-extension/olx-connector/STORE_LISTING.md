@@ -51,9 +51,9 @@ vacancy publication actions that user starts.
   obtain the OLX device ID, request fingerprint, user agent, first-party cookie
   header, and a one-way digest used to match the active OLX token record. It
   does not read request bodies or response bodies.
-- **`https://*.olx.uz/*`:** Runs the explicit confirmation UI on olx.uz and
+- **`https://www.olx.uz/*`:** Runs the explicit confirmation UI on olx.uz and
   reads the OLX-owned authenticated session values needed for the connection.
-- **`https://*.talanty.uz/*`:** Receives a short-lived connection ticket from
+- **`https://admin.talanty.uz/*`:** Receives a short-lived connection ticket from
   Talanty and sends the captured connection values only to the same Talanty
   origin.
 
@@ -61,8 +61,8 @@ vacancy publication actions that user starts.
 
 Select the dashboard categories that cover all of the following data:
 
-- Authentication information: OLX access, refresh, and identity tokens, plus
-  the first-party OLX cookie header.
+- Authentication information: OLX access and refresh tokens, plus only the
+  allowlisted `deviceGUID` and `access_token` first-party OLX cookies.
 - Website content / browser storage: the OLX-owned Auth0 token records read from
   olx.uz local storage.
 - Web history or user activity, if the dashboard classifies the observed OLX

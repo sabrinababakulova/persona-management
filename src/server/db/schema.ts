@@ -525,6 +525,14 @@ export const vacancies = createTable(
     olxAdvertUrl: d.varchar("olx_advert_url", { length: 1000 }),
     /** Stable advert id returned by OLX after publication. */
     olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
+    /** Stable idempotency key persisted before the first OLX create request. */
+    olxPostingId: d.varchar("olx_posting_id", { length: 100 }),
+    /** Durable publication operation state used to serialize create requests. */
+    olxPublicationState: d.varchar("olx_publication_state", { length: 30 }),
+    /** Time at which the current publisher claimed this row. */
+    olxPublishClaimedAt: d.timestamp("olx_publish_claimed_at", {
+      withTimezone: true,
+    }),
     /** User whose connected OLX account created the advert. */
     olxPublisherUserId: d
       .varchar("olx_publisher_user_id", { length: 255 })
@@ -568,6 +576,7 @@ export const vacancies = createTable(
     index("vacancy_parent_id_idx").on(t.parentId),
     index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
     index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
+    uniqueIndex("vacancy_olx_posting_id_idx").on(t.olxPostingId),
     index("vacancy_olx_publisher_user_id_idx").on(t.olxPublisherUserId),
   ],
 );

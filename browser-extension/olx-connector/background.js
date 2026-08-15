@@ -3,6 +3,20 @@ const SESSION_KEY = "pendingOlxConnection";
 const REQUEST_CONTEXT_KEY = "olxRequestContext";
 const OLX_URL = "https://www.olx.uz/adding/";
 const CONNECTION_TTL_MS = 15 * 60 * 1000;
+const ALLOWED_COOKIE_NAMES = new Set(["access_token", "deviceGUID"]);
+
+function sanitizeCookieHeader(header) {
+  return header
+    .split(";")
+    .flatMap((part) => {
+      const separator = part.indexOf("=");
+      if (separator < 1) return [];
+      const name = part.slice(0, separator).trim();
+      if (!ALLOWED_COOKIE_NAMES.has(name)) return [];
+      return [`${name}=${part.slice(separator + 1).trim()}`];
+    })
+    .join("; ");
+}
 
 function headerValue(headers, name) {
   return headers
@@ -23,7 +37,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     const deviceId = headerValue(details.requestHeaders, "x-device-id");
     const fingerprint = headerValue(details.requestHeaders, "x-fingerprint");
     const authorization = headerValue(details.requestHeaders, "authorization");
-    const cookieHeader = headerValue(details.requestHeaders, "cookie");
+    const cookieHeader = sanitizeCookieHeader(
+      headerValue(details.requestHeaders, "cookie") || "",
+    );
     const userAgent = headerValue(details.requestHeaders, "user-agent");
     const accessToken = authorization?.startsWith("Bearer ")
       ? authorization.slice("Bearer ".length).trim()
@@ -68,10 +84,7 @@ function isPersonaOrigin(value) {
     ) {
       return true;
     }
-    return (
-      url.protocol === "https:" &&
-      (url.hostname === "talanty.uz" || url.hostname.endsWith(".talanty.uz"))
-    );
+    return url.protocol === "https:" && url.hostname === "admin.talanty.uz";
   } catch {
     return false;
   }
@@ -131,28 +144,6 @@ async function focusPersona(pending) {
 async function extractOlxCredentials(activeAccessTokenDigest) {
   const clientId = "4b7edpvrarh6co2rp6lhae0jva";
   const tokenEntries = [];
-  const idTokens = [];
-
-  function addIdToken(value) {
-    if (typeof value === "string" && !idTokens.includes(value)) {
-      idTokens.push(value);
-    }
-  }
-
-  function decodeJwtPayload(value) {
-    try {
-      const payload = value.split(".")[1];
-      if (!payload) return null;
-      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = normalized.padEnd(
-        normalized.length + ((4 - (normalized.length % 4)) % 4),
-        "=",
-      );
-      return JSON.parse(atob(padded));
-    } catch {
-      return null;
-    }
-  }
 
   async function digestToken(value) {
     const bytes = new TextEncoder().encode(value);
@@ -171,10 +162,6 @@ async function extractOlxCredentials(activeAccessTokenDigest) {
     try {
       const parsed = JSON.parse(window.localStorage.getItem(key) || "null");
       const body = parsed?.body;
-      // Auth0 stores the ID token in a separate `@@user@@` cache record,
-      // outside `body`. Older cache entries can still keep it inside `body`.
-      addIdToken(parsed?.id_token);
-      addIdToken(body?.id_token);
       if (
         typeof body?.access_token === "string" &&
         typeof body?.refresh_token === "string"
@@ -197,14 +184,7 @@ async function extractOlxCredentials(activeAccessTokenDigest) {
     }
   }
 
-  if (!tokenEntry || idTokens.length === 0) return null;
-
-  const accessSubject = decodeJwtPayload(tokenEntry.body.access_token)?.sub;
-  const idToken =
-    idTokens.find(
-      (candidate) =>
-        accessSubject && decodeJwtPayload(candidate)?.sub === accessSubject,
-    ) || idTokens[0];
+  if (!tokenEntry) return null;
   const rawExpiresAt = tokenEntry.parsed.expiresAt;
   const expiresAt =
     typeof rawExpiresAt === "number"
@@ -218,7 +198,6 @@ async function extractOlxCredentials(activeAccessTokenDigest) {
     source: "olx_ciam",
     accessToken: tokenEntry.body.access_token,
     refreshToken: tokenEntry.body.refresh_token,
-    idToken,
     ...(expiresAt ? { expiresAt } : {}),
     ...(typeof tokenEntry.body.scope === "string"
       ? { scope: tokenEntry.body.scope }
@@ -308,7 +287,6 @@ async function completeConnection(sender) {
     await chrome.storage.session.remove(REQUEST_CONTEXT_KEY);
     credentials.accessToken = "";
     credentials.refreshToken = "";
-    if (credentials.idToken) credentials.idToken = "";
     credentials.deviceId = "";
     credentials.fingerprint = "";
     credentials.cookieHeader = "";

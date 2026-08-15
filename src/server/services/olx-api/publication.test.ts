@@ -20,10 +20,9 @@ const credentials: OlxCredentials = {
   source: "olx_ciam",
   accessToken: jwt({ exp: Math.floor(Date.now() / 1000) + 3_600 }),
   refreshToken: "refresh-token-value-that-is-long-enough",
-  idToken: jwt({ sub: "test-user" }),
   deviceId: "test-device-id-123",
   fingerprint: "test-browser-fingerprint-123",
-  cookieHeader: "deviceGUID=test-device; lang=ru",
+  cookieHeader: "deviceGUID=test-device",
   userAgent:
     "Mozilla/5.0 Test Browser AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36",
   expiresAt: Date.now() + 3_600_000,
@@ -119,9 +118,9 @@ describe("OLX publication requests", () => {
   });
 
   test("creates once and resolves the public URL without resubmitting", async () => {
-    const calls: string[] = [];
-    const fetchImpl = async (input: URL | RequestInfo) => {
-      calls.push(String(input));
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchImpl = async (input: URL | RequestInfo, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
       return calls.length === 1
         ? Response.json({ data: { id: 65713044 } })
         : Response.json({
@@ -136,10 +135,11 @@ describe("OLX publication requests", () => {
       credentials,
       advert,
       dryRun: false,
+      postingId: "stable-posting-id",
       fetchImpl,
     });
 
-    expect(calls).toEqual([
+    expect(calls.map((call) => call.url)).toEqual([
       "https://www.olx.uz/api/v1/offers",
       "https://www.olx.uz/api/v1/offers/65713044",
     ]);
@@ -148,5 +148,19 @@ describe("OLX publication requests", () => {
       advertId: "65713044",
       advertUrl: "https://www.olx.uz/obyavlenie/rabota/test-IDabc.html",
     });
+    expect(new Headers(calls[0]?.init?.headers).get("posting-id")).toBe(
+      "stable-posting-id",
+    );
+  });
+
+  test("refuses a create request without a durable posting id", async () => {
+    expect(
+      submitOlxOffer({
+        credentials,
+        advert,
+        dryRun: false,
+        fetchImpl: async () => Response.json({ data: { id: 1 } }),
+      }),
+    ).rejects.toThrow("OLX_POSTING_ID_REQUIRED");
   });
 });
