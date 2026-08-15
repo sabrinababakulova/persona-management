@@ -1187,6 +1187,7 @@
     "serverError": "Amalni bajarib bo‘lmadi. Keyinroq urinib ko‘ring.",
     "network": "Server bilan aloqa yo‘q. Internet ulanishini tekshiring.",
     "dismiss": "Bildirishnomani yopish",
-    "hhUnavailable": "hh.uz vaqtincha ishlamayapti — faqat lokal ma’lumotlar ko‘rsatilmoqda."
+    "hhUnavailable": "hh.uz vaqtincha ishlamayapti — faqat lokal ma’lumotlar ko‘rsatilmoqda.",
+    "hhSessionExpired": "hh.uz sessiyangiz muddati tugadi. Hisobingizni qayta ulang."
   }
 }

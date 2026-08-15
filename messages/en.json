@@ -1187,6 +1187,7 @@
     "serverError": "The action could not be completed. Please try again later.",
     "network": "No connection to the server. Check your internet connection.",
     "dismiss": "Dismiss notification",
-    "hhUnavailable": "hh.uz is temporarily unavailable — showing local data only."
+    "hhUnavailable": "hh.uz is temporarily unavailable — showing local data only.",
+    "hhSessionExpired": "Your hh.uz session has expired. Reconnect your account."
   }
 }

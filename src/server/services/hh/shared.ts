@@ -464,6 +464,20 @@ export function isHhAccessError(error: unknown): boolean {
   return error.status === 404 && error.errorTypes.includes("not_found");
 }
 
+/**
+ * True when hh.uz rejected the connected account's OAuth credentials.
+ *
+ * Unlike a conventional API, hh.uz reports an expired access token as
+ * `403 { errors: [{ type: "oauth", value: "token_expired" }] }` rather than
+ * `401`, so both the HTTP status and the structured OAuth discriminator matter.
+ */
+export function isHhAuthenticationError(error: unknown): boolean {
+  return (
+    error instanceof HhApiError &&
+    (error.status === 401 || error.errorTypes.includes("oauth"))
+  );
+}
+
 export async function fetchHhJson<T>(url: string, init?: RequestInit) {
   const response = await fetch(url, {
     cache: "no-store",

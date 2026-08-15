@@ -99,20 +99,23 @@ export default function VacanciesPage() {
   const totalItems = vacanciesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
-  // hh.uz failing is not an error for this page — local vacancies still render —
-  // but the list is incomplete, and saying nothing would pass it off as the
-  // full set.
-  const hhUnavailable = vacanciesData?.hhUnavailable ?? false;
+  // Local vacancies still render when hh.uz fails, but the list is incomplete.
+  // Authentication failures get a stronger, actionable message than outages.
+  const hhUnavailableReason = vacanciesData?.hhUnavailableReason ?? null;
   useEffect(() => {
-    if (!hhUnavailable) {
+    if (!hhUnavailableReason) {
       return;
     }
     publishToast({
-      variant: "warning",
-      messageKey: "hhUnavailable",
+      variant:
+        hhUnavailableReason === "authenticationExpired" ? "error" : "warning",
+      messageKey:
+        hhUnavailableReason === "authenticationExpired"
+          ? "hhSessionExpired"
+          : "hhUnavailable",
       dedupeKey: "hh-unavailable",
     });
-  }, [hhUnavailable]);
+  }, [hhUnavailableReason]);
 
   useEffect(() => {
     if (!toastMessage) {

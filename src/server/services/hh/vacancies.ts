@@ -10,6 +10,7 @@ import {
   type HhVacancyItem,
   type HhVacancyPage,
   type HhVacancySearchResponse,
+  isHhAuthenticationError,
   stripHtml,
   toHhDescriptionHtml,
   toHhSalaryCurrency,
@@ -113,7 +114,10 @@ export async function fetchHhVacancyResponseCounts(
 export async function fetchCompanyHhVacancies(
   employerId: string,
   accessToken?: string,
-  options?: { includeArchived?: boolean },
+  options?: {
+    includeArchived?: boolean;
+    throwOnAuthenticationError?: boolean;
+  },
 ): Promise<HhVacancy[]> {
   const includeArchived = options?.includeArchived ?? true;
   const vacancies = new Map<string, HhVacancy>();
@@ -169,6 +173,9 @@ export async function fetchCompanyHhVacancies(
       all_accessible: "true",
     });
   } catch (error) {
+    if (options?.throwOnAuthenticationError && isHhAuthenticationError(error)) {
+      throw error;
+    }
     console.error("Failed to fetch active hh.uz vacancies", {
       employerId,
       error,
@@ -180,6 +187,12 @@ export async function fetchCompanyHhVacancies(
     try {
       await fetchKind("archived", HH_API_ARCHIVED_PER_PAGE);
     } catch (error) {
+      if (
+        options?.throwOnAuthenticationError &&
+        isHhAuthenticationError(error)
+      ) {
+        throw error;
+      }
       console.error("Failed to fetch archived hh.uz vacancies", {
         employerId,
         error,
