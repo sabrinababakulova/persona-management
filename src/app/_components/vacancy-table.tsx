@@ -266,7 +266,7 @@ export function VacancyTable({
         <>
           <div
             className={cn(
-              "vacancy-list-body min-h-0 flex-1 overflow-auto",
+              "vacancy-list-body min-h-0 flex-1 overflow-visible xl:overflow-auto",
               bodyClassName,
             )}
           >

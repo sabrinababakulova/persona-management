@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon } from "./icons";
+import { ChevronDownIcon, ChevronRightIcon } from "./icons";
 
 export const DEFAULT_PAGE_SIZE_OPTIONS = [10, 15, 20] as const;
 
@@ -70,7 +70,7 @@ export function TablePagination({
     totalItems > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
 
   return (
-    <div className="mobile-pagination flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mobile-pagination grid border-border-input border-t sm:flex sm:flex-row sm:items-center sm:justify-between sm:bg-bg-light sm:px-4 sm:py-3">
       <div className="pagination-range text-text-placeholder text-xs">
         {t("paginationRange", {
           start: rangeStart,
@@ -79,33 +79,38 @@ export function TablePagination({
         })}
       </div>
 
-      <div className="pagination-controls flex items-center gap-2">
+      <div className="pagination-controls grid items-center sm:flex sm:gap-2">
         <button
-          className="ui-button ui-button-secondary px-3"
+          aria-label={t("previous")}
+          className="ui-button ui-button-secondary p-0 sm:px-3"
           disabled={currentPage === 1}
           onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
           type="button"
         >
-          {t("previous")}
+          <ChevronRightIcon className="h-4 w-4 rotate-180 sm:hidden" />
+          <span className="hidden sm:inline">{t("previous")}</span>
         </button>
-        <span className="min-w-16 text-center text-sm text-text-secondary">
+        <span className="pagination-current min-w-12 text-center text-text-secondary text-xs sm:min-w-16 sm:text-sm">
           {currentPage} / {totalPages}
         </span>
         <button
-          className="ui-button ui-button-secondary px-3"
+          aria-label={t("next")}
+          className="ui-button ui-button-secondary p-0 sm:px-3"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
           type="button"
         >
-          {t("next")}
+          <span className="hidden sm:inline">{t("next")}</span>
+          <ChevronRightIcon className="h-4 w-4 sm:hidden" />
         </button>
       </div>
 
       <label className="pagination-size flex items-center gap-3 text-sm text-text-secondary">
-        <span>{t("rowsPerPage")}</span>
+        <span className="pagination-size-label">{t("rowsPerPage")}</span>
         <div className="relative">
           <select
-            className="h-9 min-w-20 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-input px-3 pr-8 text-sm text-text-secondary"
+            aria-label={t("rowsPerPage")}
+            className="h-8 min-w-13.5 cursor-pointer appearance-none rounded-lg border border-border-input bg-bg-light py-0 pr-6 pl-2.5 text-text-secondary text-xs sm:h-9 sm:min-w-20 sm:bg-bg-input sm:px-3 sm:pr-8 sm:text-sm"
             onChange={(event) =>
               onItemsPerPageChange(Number(event.target.value))
             }
@@ -117,7 +122,7 @@ export function TablePagination({
               </option>
             ))}
           </select>
-          <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 h-3.5 w-3.5 -translate-y-1/2 text-text-secondary" />
+          <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2.5 h-3 w-3 -translate-y-1/2 text-text-secondary sm:right-3 sm:h-3.5 sm:w-3.5" />
         </div>
       </label>
     </div>

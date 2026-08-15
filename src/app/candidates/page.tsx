@@ -20,12 +20,12 @@ import {
 } from "../_components/filter-modal";
 import {
   FilterIcon,
-  FloatingAddIcon,
   ImageUploadPlaceholderIcon,
   MoreIcon,
   NoCandidates,
   SearchIcon,
   SortIcon,
+  UsersIcon,
 } from "../_components/icons";
 import {
   FeedbackPresence,
@@ -403,9 +403,9 @@ export default function CandidatesPage() {
 
       <MotionToast message={toastMessage} />
 
-      <main className="flex h-full flex-1 overflow-auto">
+      <main className="flex flex-1 overflow-visible sm:h-full sm:overflow-auto">
         <div className="app-page flex min-h-full flex-col">
-          <div className="page-header">
+          <div className="page-header list-page-header">
             <h1 className="page-title">{t("title")}</h1>
             {showCandidatesTable && (
               <PeriodFilter
@@ -422,40 +422,51 @@ export default function CandidatesPage() {
           {showCandidatesTable ? (
             <>
               <div className="mb-5 flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
-                  <input
-                    className="ui-search"
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder={t("search")}
-                    type="text"
-                    value={searchQuery}
-                  />
-                </div>
-                <button
-                  className={`ui-button ui-button-secondary ${
-                    activeFilterCount > 0
-                      ? "border-primary-blue bg-primary-blue/5"
-                      : "border-border-light bg-bg-light"
-                  }`}
-                  onClick={() => setIsFilterModalOpen(true)}
-                  type="button"
-                >
-                  <FilterIcon className="h-5 w-5" />
-                  <span>{t("addFilters")}</span>
-                  <span
-                    className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                <div className="flex min-w-0 flex-1 gap-3">
+                  <div className="relative min-w-0 flex-1">
+                    <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
+                    <input
+                      className="ui-search"
+                      onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder={t("search")}
+                      type="text"
+                      value={searchQuery}
+                    />
+                  </div>
+                  <button
+                    aria-label={t("addFilters")}
+                    className={`ui-button ui-button-secondary relative h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11 ${
                       activeFilterCount > 0
-                        ? "bg-primary-blue text-bg-light"
-                        : "bg-border-light text-text-label"
+                        ? "border-primary-blue bg-primary-blue-light text-primary-blue"
+                        : "border-border-light bg-bg-light"
                     }`}
+                    onClick={() => setIsFilterModalOpen(true)}
+                    title={t("addFilters")}
+                    type="button"
                   >
-                    {activeFilterCount > 0 ? activeFilterCount : "+"}
-                  </span>
-                </button>
+                    <FilterIcon className="h-5 w-5" />
+                    {activeFilterCount > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-blue px-1 font-semibold text-bg-light text-xs"
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    aria-label={t("add")}
+                    className="ui-button ui-button-primary h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11"
+                    onClick={() => setIsQuickAddModalOpen(true)}
+                    title={t("add")}
+                    type="button"
+                  >
+                    <UsersIcon className="h-5 w-5" />
+                  </button>
+                </div>
                 {telegramWarehouse && (
                   <Link
                     className="ui-button ui-button-secondary border-border-light bg-bg-light"
@@ -495,7 +506,7 @@ export default function CandidatesPage() {
                   <CandidatesTableSkeleton />
                 ) : (
                   <>
-                    <div className="candidate-list-body min-h-0 flex-1 overflow-auto">
+                    <div className="candidate-list-body min-h-0 flex-1 overflow-visible lg:overflow-auto">
                       {visibleCandidates.map((candidate: Candidate, index) => {
                         const isHhCandidate = candidate.source === "hh.uz";
 
@@ -662,15 +673,6 @@ export default function CandidatesPage() {
           )}
         </div>
       </main>
-
-      <button
-        aria-label={t("quickAdd")}
-        className="mobile-floating-action fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
-        onClick={() => setIsQuickAddModalOpen(true)}
-        type="button"
-      >
-        <FloatingAddIcon className="h-10 w-10" />
-      </button>
     </>
   );
 }

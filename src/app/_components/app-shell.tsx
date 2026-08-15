@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Header } from "./header";
 import { LocaleSwitcher } from "./locale-switcher";
-import { MobileNavigation } from "./mobile-navigation";
 import { RouteTransition } from "./motion-system";
 import { Sidebar } from "./sidebar";
 
@@ -83,7 +82,6 @@ export function AppShell({ children }: AppShellProps) {
         >
           {children}
         </RouteTransition>
-        <MobileNavigation />
       </div>
     </div>
   );
