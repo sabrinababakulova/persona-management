@@ -1,5 +1,5 @@
 import {
-  SKELETON_KEYS,
+  SecondaryNavSkeleton,
   SkeletonBlock,
   SkeletonCard,
   SkeletonPage,
@@ -8,32 +8,45 @@ import {
 export function MyProfilePageSkeleton() {
   return (
     <SkeletonPage>
-      <div className="mb-7 flex gap-3">
-        <SkeletonBlock className="h-11 w-36" />
-        <SkeletonBlock className="h-11 w-48" />
-      </div>
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-8">
+        <SecondaryNavSkeleton count={2} />
 
-      <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <SkeletonCard className="h-fit">
-          <SkeletonBlock className="mx-auto h-28 w-28 rounded-full" />
-          <SkeletonBlock className="mx-auto mt-6 h-6 w-40" />
-          <SkeletonBlock className="mx-auto mt-3 h-4 w-48 max-w-full rounded-md" />
-          <SkeletonBlock className="mt-8 h-11 w-full" />
-        </SkeletonCard>
-        <div className="space-y-5">
-          <SkeletonCard className="min-h-72">
-            <SkeletonBlock className="h-7 w-48" />
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {SKELETON_KEYS.slice(0, 4).map((key) => (
-                <SkeletonBlock className="h-20 w-full" key={`info-${key}`} />
-              ))}
+        <section className="min-w-0 flex-1">
+          <div className="w-full max-w-2xl">
+            <SkeletonBlock className="hidden h-4 w-44 rounded-md md:block" />
+
+            <div className="mt-1 flex items-center gap-4 sm:gap-5 md:mt-5">
+              <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
+              <div className="min-w-0 flex-1">
+                <SkeletonBlock className="h-8 w-3/4 max-w-64 sm:h-10" />
+                <SkeletonBlock className="mt-3 h-5 w-1/2 max-w-44 rounded-md" />
+              </div>
             </div>
-          </SkeletonCard>
-          <SkeletonCard className="min-h-56">
-            <SkeletonBlock className="h-7 w-36" />
-            <SkeletonBlock className="mt-6 h-28 w-full rounded-2xl" />
-          </SkeletonCard>
-        </div>
+
+            <div className="mt-8 space-y-5">
+              <SkeletonCard>
+                <SkeletonBlock className="mb-6 h-6 w-44" />
+                <div className="space-y-4">
+                  {["name", "city", "email"].map((key) => (
+                    <div key={key}>
+                      <SkeletonBlock className="mb-2 h-3 w-20 rounded-md" />
+                      <SkeletonBlock className="h-12 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </SkeletonCard>
+
+              <SkeletonCard>
+                <SkeletonBlock className="mb-6 h-6 w-40" />
+                <div className="space-y-4">
+                  <SkeletonBlock className="h-12 w-full" />
+                  <SkeletonBlock className="h-12 w-full" />
+                </div>
+                <SkeletonBlock className="mt-6 h-11 w-full sm:ml-auto sm:w-40" />
+              </SkeletonCard>
+            </div>
+          </div>
+        </section>
       </div>
     </SkeletonPage>
   );

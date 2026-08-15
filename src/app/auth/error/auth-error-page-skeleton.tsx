@@ -10,9 +10,9 @@ export function AuthErrorPageSkeleton() {
         <SkeletonBlock className="h-9 w-3/4" />
         <SkeletonBlock className="mt-6 h-4 w-full rounded-md" />
         <SkeletonBlock className="mt-3 h-4 w-4/5 rounded-md" />
-        <div className="mt-8 flex gap-3">
-          <SkeletonBlock className="h-12 flex-1" />
-          <SkeletonBlock className="h-12 flex-1" />
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SkeletonBlock className="h-12 w-full" />
+          <SkeletonBlock className="h-12 w-full" />
         </div>
       </section>
     </main>

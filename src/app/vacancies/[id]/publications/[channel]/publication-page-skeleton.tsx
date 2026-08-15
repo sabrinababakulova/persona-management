@@ -8,22 +8,34 @@ import {
 export function PublicationPageSkeleton() {
   return (
     <SkeletonPage>
-      <SkeletonBlock className="mb-5 h-4 w-52 rounded-md" />
-      <SkeletonBlock className="mb-7 h-10 w-96 max-w-full" />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <SkeletonCard>
-          <SkeletonBlock className="mb-6 h-6 w-52" />
-          <FormFieldsSkeleton count={6} />
-          <SkeletonBlock className="mt-6 h-44 w-full" />
-          <div className="mt-6 flex justify-end gap-3">
-            <SkeletonBlock className="h-12 w-36" />
-            <SkeletonBlock className="h-12 w-44" />
-          </div>
-        </SkeletonCard>
-        <SkeletonCard className="h-fit min-h-72">
-          <SkeletonBlock className="h-6 w-36" />
-          <SkeletonBlock className="mt-6 h-48 w-full rounded-2xl" />
-        </SkeletonCard>
+      <div className="mx-auto w-full max-w-[976px]">
+        <SkeletonBlock className="mb-5 hidden h-4 w-52 rounded-md md:block" />
+        <SkeletonBlock className="mb-5 h-9 w-4/5 max-w-sm sm:h-10" />
+
+        <div className="space-y-5">
+          <SkeletonCard>
+            <SkeletonBlock className="mb-6 h-6 w-44" />
+            <SkeletonBlock className="mb-2 h-3 w-24 rounded-md" />
+            <SkeletonBlock className="h-12 w-full" />
+            <SkeletonBlock className="mt-5 mb-2 h-3 w-24 rounded-md" />
+            <SkeletonBlock className="h-44 w-full" />
+          </SkeletonCard>
+
+          <SkeletonCard>
+            <SkeletonBlock className="mb-6 h-6 w-40" />
+            <FormFieldsSkeleton count={4} />
+          </SkeletonCard>
+
+          <SkeletonCard>
+            <SkeletonBlock className="mb-6 h-6 w-36" />
+            <FormFieldsSkeleton count={2} />
+          </SkeletonCard>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+          <SkeletonBlock className="h-11 w-full sm:w-36" />
+          <SkeletonBlock className="h-11 w-full sm:w-44" />
+        </div>
       </div>
     </SkeletonPage>
   );

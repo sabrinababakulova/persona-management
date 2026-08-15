@@ -23,20 +23,21 @@ export function VacancyDescriptionPanelSkeleton() {
 export function VacancyFunnelPageSkeleton() {
   return (
     <SkeletonPage>
-      <SkeletonBlock className="mb-5 h-4 w-52 rounded-md" />
+      <SkeletonBlock className="hidden h-4 w-52 rounded-md md:block" />
       <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <SkeletonBlock className="h-10 w-96 max-w-full" />
-        <SkeletonBlock className="h-11 w-52" />
+        <SkeletonBlock className="h-9 w-4/5 max-w-96 sm:h-10" />
+        <SkeletonBlock className="h-11 w-full sm:w-52" />
       </div>
-      <SkeletonBlock className="mb-5 h-11 w-80 max-w-full" />
-      <div className="mb-5 flex gap-3">
+      <SkeletonBlock className="mb-5 h-11 w-full max-w-80" />
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row">
         <SkeletonBlock className="h-12 flex-1" />
-        <SkeletonBlock className="h-12 w-36" />
+        <SkeletonBlock className="h-12 w-full sm:w-36" />
       </div>
-      <div className="flex gap-4 overflow-hidden">
+      <div className="-mx-1 flex gap-3 overflow-hidden px-1 pb-3">
         {SKELETON_KEYS.slice(0, 4).map((columnKey, columnIndex) => (
-          <SkeletonCard
-            className="min-h-[440px] min-w-[270px] flex-1"
+          <section
+            aria-hidden="true"
+            className="min-h-[440px] w-full shrink-0 rounded-xl border border-transparent bg-bg-input p-4 lg:w-80"
             key={`column-${columnKey}`}
           >
             <div className="flex items-center justify-between">
@@ -46,14 +47,18 @@ export function VacancyFunnelPageSkeleton() {
             <div className="mt-5 space-y-4">
               {SKELETON_KEYS.slice(0, columnIndex % 2 === 0 ? 3 : 2).map(
                 (cardKey) => (
-                  <SkeletonBlock
-                    className="h-28 w-full rounded-2xl"
+                  <div
+                    className="surface-card h-28 w-full p-4"
                     key={`candidate-${columnKey}-${cardKey}`}
-                  />
+                  >
+                    <SkeletonBlock className="h-4 w-2/3 rounded-md" />
+                    <SkeletonBlock className="mt-3 h-3 w-1/2 rounded-md" />
+                    <SkeletonBlock className="mt-5 h-7 w-24 rounded-lg" />
+                  </div>
                 ),
               )}
             </div>
-          </SkeletonCard>
+          </section>
         ))}
       </div>
     </SkeletonPage>
