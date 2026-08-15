@@ -121,7 +121,7 @@ export function ChannelStatistics({
   };
 
   return (
-    <section className="surface-card flex min-h-[380px] flex-col overflow-hidden p-5 sm:p-6 xl:min-h-[420px]">
+    <section className="surface-card flex min-h-0 flex-col overflow-hidden p-5 sm:min-h-[380px] sm:p-6 xl:min-h-[420px]">
       <h3 className="font-bold text-lg text-text-heading leading-6">
         {t("channelStatistics")}
       </h3>

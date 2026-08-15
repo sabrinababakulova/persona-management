@@ -70,8 +70,8 @@ export function TablePagination({
     totalItems > 0 ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
 
   return (
-    <div className="flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-text-placeholder text-xs">
+    <div className="mobile-pagination flex flex-col gap-3 border-border-input border-t bg-bg-light px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="pagination-range text-text-placeholder text-xs">
         {t("paginationRange", {
           start: rangeStart,
           end: rangeEnd,
@@ -79,7 +79,7 @@ export function TablePagination({
         })}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="pagination-controls flex items-center gap-2">
         <button
           className="ui-button ui-button-secondary px-3"
           disabled={currentPage === 1}
@@ -101,7 +101,7 @@ export function TablePagination({
         </button>
       </div>
 
-      <label className="flex items-center gap-3 text-sm text-text-secondary">
+      <label className="pagination-size flex items-center gap-3 text-sm text-text-secondary">
         <span>{t("rowsPerPage")}</span>
         <div className="relative">
           <select

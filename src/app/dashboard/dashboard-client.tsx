@@ -88,7 +88,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
           </div>
 
           {/* Stats Cards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             {dashboardData?.statsCards.map((stat, index) => (
               <StatsCard
                 key={stat.title}

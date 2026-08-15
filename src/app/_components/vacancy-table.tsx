@@ -137,21 +137,50 @@ function toVacancyFunnelPath(vacancy: VacancyTableItem) {
 function MobileMeta({ item }: { item: VacancyTableItem }) {
   const t = useTranslations("Vacancies");
   const common = useTranslations("Common");
+  const connections = getVacancyConnectionIconsMeta(item);
 
   return (
     <>
-      <span>
-        {t("region")}: {item.areaId || "-"}
-      </span>
-      <span>
-        {t("responses")}: {item.responses}
-      </span>
-      <span>
-        {t("employment")}:{" "}
-        {item.employmentId
-          ? formatHhEmployment(item.employmentId, common)
-          : "-"}
-      </span>
+      <div>
+        <dt>{t("region")}</dt>
+        <dd>{item.areaId || "-"}</dd>
+      </div>
+      <div>
+        <dt>{t("responses")}</dt>
+        <dd>{item.responses}</dd>
+      </div>
+      <div>
+        <dt>{t("employment")}</dt>
+        <dd>
+          {item.employmentId
+            ? formatHhEmployment(item.employmentId, common)
+            : "-"}
+        </dd>
+      </div>
+      <div>
+        <dt>{t("links")}</dt>
+        <dd className="flex min-h-5 items-center gap-2">
+          {connections.length === 0 ? (
+            <span>{t("localConnection")}</span>
+          ) : (
+            connections.map((connection) => {
+              const meta = VACANCY_CONNECTION_ICONS[connection];
+              return (
+                <Image
+                  alt={meta.label}
+                  className="h-5 w-5"
+                  height={20}
+                  key={connection}
+                  src={meta.src}
+                  title={meta.label}
+                  unoptimized
+                  width={20}
+                />
+              );
+            })
+          )}
+        </dd>
+      </div>
     </>
   );
 }
@@ -183,7 +212,7 @@ export function VacancyTable({
   return (
     <div
       className={cn(
-        "surface-card flex min-h-0 flex-1 flex-col overflow-hidden",
+        "vacancy-list-surface surface-card flex min-h-0 flex-1 flex-col overflow-hidden",
         containerClassName,
       )}
     >
@@ -235,7 +264,12 @@ export function VacancyTable({
         <TableRowsSkeleton count={5} />
       ) : (
         <>
-          <div className={cn("min-h-0 flex-1 overflow-auto", bodyClassName)}>
+          <div
+            className={cn(
+              "vacancy-list-body min-h-0 flex-1 overflow-auto",
+              bodyClassName,
+            )}
+          >
             {items.map((item, index) =>
               (() => {
                 const statusTone =
@@ -259,11 +293,11 @@ export function VacancyTable({
                   <motion.div
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      "grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 xl:grid-cols-[minmax(190px,1fr)_150px_minmax(104px,0.7fr)_88px_minmax(120px,0.9fr)_minmax(72px,0.4fr)_124px] xl:items-center xl:gap-x-3 xl:py-2.5",
+                      "vacancy-list-card grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 xl:grid-cols-[minmax(190px,1fr)_150px_minmax(104px,0.7fr)_88px_minmax(120px,0.9fr)_minmax(72px,0.4fr)_124px] xl:items-center xl:gap-x-3 xl:py-2.5",
                       stripedRows &&
                         (index % 2 === 0
-                          ? "bg-bg-light"
-                          : "bg-table-stripe-bg"),
+                          ? "xl:bg-bg-light"
+                          : "xl:bg-table-stripe-bg"),
                       rowClassName,
                     )}
                     initial={{ opacity: 0, y: 7 }}
@@ -274,7 +308,7 @@ export function VacancyTable({
                       duration: 0.24,
                     }}
                   >
-                    <div className="col-span-12 flex min-w-0 items-start gap-2.5 xl:col-auto">
+                    <div className="vacancy-card-primary col-span-12 flex min-w-0 items-start gap-2.5 xl:col-auto">
                       {onToggleSelection && (
                         <Checkbox
                           //TODO: fix it when selection will be implemented
@@ -305,7 +339,7 @@ export function VacancyTable({
                       </div>
                     </div>
 
-                    <div className="col-span-6 mt-3 min-w-0 xl:col-auto xl:mt-0">
+                    <div className="vacancy-card-status col-span-6 mt-3 min-w-0 xl:col-auto xl:mt-0">
                       {isHhVacancy || !onStatusChange ? (
                         <span
                           className={`inline-flex h-6 w-fit items-center whitespace-nowrap rounded-md px-2.5 font-semibold text-black text-xs lowercase leading-none ${statusTone.containerClassName}`}
@@ -382,7 +416,7 @@ export function VacancyTable({
                       )}
                     </div>
 
-                    <div className="col-span-6 mt-3 flex min-w-0 items-center justify-end gap-3 xl:col-auto xl:mt-0">
+                    <div className="vacancy-card-actions col-span-6 mt-3 flex min-w-0 items-center justify-end gap-2 xl:col-auto xl:mt-0">
                       <Link
                         className="ui-button ui-button-primary h-6.5 min-h-6.5 min-w-20 shrink-0 whitespace-nowrap px-4"
                         href={getFunnelPath(item)}
@@ -390,16 +424,17 @@ export function VacancyTable({
                         {t("responses")}
                       </Link>
                       <button
-                        className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
+                        aria-label={common("details")}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-secondary xl:h-auto xl:w-auto xl:rounded-none xl:p-1"
                         type="button"
                       >
                         <MoreIcon className="h-4 w-4" />
                       </button>
                     </div>
 
-                    <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs xl:hidden">
+                    <dl className="vacancy-card-meta col-span-12 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs xl:hidden">
                       <MobileMeta item={item} />
-                    </div>
+                    </dl>
                   </motion.div>
                 );
               })(),

@@ -466,7 +466,7 @@ export default function CandidatesPage() {
                 )}
               </div>
 
-              <div className="surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="candidate-list-surface surface-card flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="hidden grid-cols-12 border-border-input border-b bg-table-header-bg px-4 py-3 lg:grid">
                   <div className="col-span-3 flex items-center gap-1 font-semibold text-text-muted text-xs">
                     <span>{common("name")}</span>
@@ -495,17 +495,17 @@ export default function CandidatesPage() {
                   <CandidatesTableSkeleton />
                 ) : (
                   <>
-                    <div className="min-h-0 flex-1 overflow-auto">
+                    <div className="candidate-list-body min-h-0 flex-1 overflow-auto">
                       {visibleCandidates.map((candidate: Candidate, index) => {
                         const isHhCandidate = candidate.source === "hh.uz";
 
                         return (
                           <motion.div
                             animate={{ opacity: 1, y: 0 }}
-                            className={`grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center ${
+                            className={`candidate-list-card grid grid-cols-12 items-start border-border-input border-b px-4 py-3.5 last:border-b-0 lg:items-center ${
                               index % 2 === 0
-                                ? "bg-bg-light"
-                                : "bg-table-stripe-bg"
+                                ? "lg:bg-bg-light"
+                                : "lg:bg-table-stripe-bg"
                             }`}
                             initial={{ opacity: 0, y: 7 }}
                             key={candidate.id}
@@ -515,7 +515,7 @@ export default function CandidatesPage() {
                               duration: 0.24,
                             }}
                           >
-                            <div className="col-span-12 flex items-start gap-2.5 lg:col-span-3">
+                            <div className="candidate-card-primary col-span-12 flex items-start gap-2.5 lg:col-span-3">
                               <Checkbox
                                 //TODO: fix it when selection will be implemented
                                 checked={false}
@@ -546,7 +546,7 @@ export default function CandidatesPage() {
                               </div>
                             </div>
 
-                            <div className="col-span-6 mt-3 lg:col-span-2 lg:mt-0">
+                            <div className="candidate-card-status col-span-6 mt-3 lg:col-span-2 lg:mt-0">
                               <CandidateStatusSelect
                                 candidateId={candidate.id}
                                 candidateName={candidate.name}
@@ -574,37 +574,52 @@ export default function CandidatesPage() {
                               <CandidateSourceIcon source={candidate.source} />
                             </div>
 
-                            <div className="col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
+                            <div className="candidate-card-actions col-span-6 mt-3 flex items-center justify-end gap-3 lg:col-span-1 lg:mt-0">
                               <Link
                                 className="flex items-center gap-1 font-medium text-primary-blue text-sm leading-none hover:text-primary-blue-hover"
                                 href={`/candidates/${candidate.id}`}
                               >
-                                <span className="hidden xl:inline">
+                                <span className="inline lg:hidden xl:inline">
                                   {common("details")}
                                 </span>
                               </Link>
                               <button
-                                className="p-1 text-text-placeholder transition-colors hover:text-text-secondary"
+                                aria-label={common("details")}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-secondary lg:h-auto lg:w-auto lg:rounded-none lg:p-1"
                                 type="button"
                               >
                                 <MoreIcon className="h-4 w-4" />
                               </button>
                             </div>
 
-                            <div className="col-span-12 mt-3 flex flex-wrap gap-4 text-text-placeholder text-xs lg:hidden">
-                              <span>
-                                {t("city")} {candidate.city || "-"}
-                              </span>
-                              <span>
-                                {t("created")} {candidate.createdAt || "-"}
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                {t("source")}
-                                <CandidateSourceIcon
-                                  source={candidate.source}
-                                />
-                              </span>
-                            </div>
+                            <dl className="candidate-card-meta col-span-12 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs lg:hidden">
+                              <div>
+                                <dt className="text-text-placeholder">
+                                  {t("city")}
+                                </dt>
+                                <dd className="mt-1 font-semibold text-text-heading">
+                                  {candidate.city || "-"}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-text-placeholder">
+                                  {t("created")}
+                                </dt>
+                                <dd className="mt-1 font-semibold text-text-heading">
+                                  {candidate.createdAt || "-"}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-text-placeholder">
+                                  {t("source")}
+                                </dt>
+                                <dd className="mt-1 flex min-h-5 items-center gap-1.5">
+                                  <CandidateSourceIcon
+                                    source={candidate.source}
+                                  />
+                                </dd>
+                              </div>
+                            </dl>
                           </motion.div>
                         );
                       })}
@@ -650,7 +665,7 @@ export default function CandidatesPage() {
 
       <button
         aria-label={t("quickAdd")}
-        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
+        className="mobile-floating-action fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         onClick={() => setIsQuickAddModalOpen(true)}
         type="button"
       >

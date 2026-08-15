@@ -204,11 +204,11 @@ export function MyProfileClient({
               rootLabel={t("home")}
             />
 
-            <div className="mt-5 flex items-center gap-5">
+            <div className="mt-5 flex items-center gap-4 sm:gap-5">
               <AvatarUploader avatarSrc={avatarSrc} />
-              <div className="space-y-2.5">
-                <h1 className="page-title">{userFullName}</h1>
-                <p className="font-medium text-lg text-text-secondary leading-none">
+              <div className="min-w-0 space-y-2 sm:space-y-2.5">
+                <h1 className="page-title truncate">{userFullName}</h1>
+                <p className="truncate font-medium text-base text-text-secondary leading-none sm:text-lg">
                   {companyName}
                 </p>
               </div>

@@ -131,7 +131,7 @@ export function Modal({
           aria-label={ariaLabel}
           aria-labelledby={labelledBy}
           aria-modal="true"
-          className={`fixed inset-0 isolate z-[100] flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6 ${containerClassName ?? ""}`}
+          className={`fixed inset-0 isolate z-[100] flex items-end justify-center overflow-y-auto overscroll-contain p-0 sm:items-center sm:p-6 ${containerClassName ?? ""}`}
           exit={{ opacity: 1 }}
           initial={{ opacity: 1 }}
           role="dialog"
@@ -148,7 +148,7 @@ export function Modal({
 
           <motion.div
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`relative z-10 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl border border-white/80 bg-bg-light p-5 shadow-dialog outline-none sm:max-h-[calc(100dvh-3rem)] sm:p-6 ${maxWidthClassName} ${panelClassName ?? ""}`}
+            className={`relative z-10 max-h-[min(92dvh,760px)] w-full overflow-y-auto overscroll-contain rounded-t-[22px] border border-white/80 bg-bg-light p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-dialog outline-none sm:max-h-[calc(100dvh-3rem)] sm:rounded-2xl sm:p-6 ${maxWidthClassName} ${panelClassName ?? ""}`}
             exit={{
               opacity: 0,
               scale: 0.992,

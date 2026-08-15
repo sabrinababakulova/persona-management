@@ -148,7 +148,7 @@ export default function CandidateDetailPage() {
           </div>
 
           <div className="mb-6 flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="candidate-detail-actions grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
               {candidate.hhResumeUrl && (
                 <a
                   className="ui-button ui-button-secondary"
@@ -179,7 +179,7 @@ export default function CandidateDetailPage() {
           </div>
 
           {/* Main Grid */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
             {/* Left Column - Profile Info */}
             <div className="lg:col-span-4">
               <CandidateSummaryCard

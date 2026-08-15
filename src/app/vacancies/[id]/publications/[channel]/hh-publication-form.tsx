@@ -917,7 +917,7 @@ export function HhPublicationForm({
                   </p>
                 </FeedbackPresence>
               </div>
-              <div className="flex flex-wrap items-end gap-3">
+              <div className="mobile-form-actions flex flex-wrap items-end gap-3">
                 <Dropdown
                   className="w-full min-w-[240px] sm:w-[260px]"
                   label={t("hh.action")}

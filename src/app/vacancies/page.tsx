@@ -326,7 +326,7 @@ export default function VacanciesPage() {
 
       <Link
         aria-label={t("create")}
-        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
+        className="mobile-floating-action fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
         href="/vacancies/create"
       >
         <FloatingAddIcon className="h-10 w-10" />

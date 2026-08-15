@@ -73,13 +73,13 @@ export function ActionDropdown({
 
   return (
     <div
-      className={`relative inline-block ${className ?? ""}`}
+      className={`relative w-full sm:inline-block sm:w-auto ${className ?? ""}`}
       ref={containerRef}
     >
       <motion.button
         aria-expanded={open}
         aria-haspopup="menu"
-        className="ui-button ui-button-primary justify-between"
+        className="ui-button ui-button-primary w-full justify-between sm:w-auto"
         onClick={() => setOpen((prev) => !prev)}
         type="button"
         whileTap={{ scale: 0.975 }}
@@ -96,7 +96,7 @@ export function ActionDropdown({
         {open ? (
           <motion.ul
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`absolute top-full right-0 z-20 mt-2 flex w-[210px] origin-top-right flex-col overflow-hidden rounded-xl border border-border-input bg-bg-light shadow-lg ${menuClassName ?? ""}`}
+            className={`absolute top-full right-0 left-0 z-20 mt-2 flex origin-top-right flex-col overflow-hidden rounded-xl border border-border-input bg-bg-light shadow-lg sm:left-auto sm:w-[210px] ${menuClassName ?? ""}`}
             exit={{ opacity: 0, scale: 0.98, y: -5 }}
             initial={{ opacity: 0, scale: 0.97, y: -8 }}
           >

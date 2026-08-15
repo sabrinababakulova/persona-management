@@ -14,7 +14,7 @@ export function DashboardPageSkeleton() {
         <SkeletonBlock className="h-10 w-80 max-w-full" />
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {SKELETON_KEYS.slice(0, 4).map((key) => (
           <SkeletonCard className="min-h-32" key={`stat-${key}`}>
             <SkeletonBlock className="h-3 w-24 rounded-md" />

@@ -259,6 +259,47 @@
     padding: 24px 32px 40px;
   }
 
+  .mobile-bottom-navigation {
+    position: relative;
+    z-index: 35;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    flex: none;
+    padding: 7px 6px max(7px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border-light);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 24px rgba(28, 28, 30, 0.05);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-bottom-navigation__item {
+    display: flex;
+    min-width: 0;
+    min-height: 49px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 12px;
+    color: var(--color-text-placeholder);
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.05;
+    text-align: center;
+  }
+
+  .mobile-bottom-navigation__item > span {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-bottom-navigation__item[data-active="true"] {
+    background: var(--color-primary-blue-light);
+    color: var(--color-primary-blue);
+  }
+
   .page-header {
     display: flex;
     align-items: center;
@@ -373,6 +414,268 @@
     border-color: var(--color-primary-blue);
   }
 
+  @media (max-width: 1023px) {
+    .candidate-list-surface {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .candidate-list-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      overflow: visible;
+    }
+
+    .candidate-list-card {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-content: start;
+      padding: 16px;
+      border: 1px solid var(--color-border-light);
+      border-radius: 16px;
+      background: var(--color-bg-light);
+      box-shadow: 0 2px 10px rgba(28, 28, 30, 0.035);
+    }
+
+    .candidate-card-primary,
+    .candidate-card-meta {
+      grid-column: 1 / -1;
+    }
+
+    .candidate-card-status {
+      grid-column: 1;
+      align-self: center;
+      margin-top: 16px;
+    }
+
+    .candidate-card-actions {
+      grid-column: 2;
+      margin-top: 10px;
+    }
+
+    .candidate-card-actions > a {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      border-radius: 12px;
+      padding-inline: 12px;
+      background: var(--color-primary-blue-light);
+    }
+
+    .candidate-card-meta {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--color-border-light);
+    }
+  }
+
+  @media (max-width: 1279px) {
+    .vacancy-list-surface {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .vacancy-list-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      overflow: visible;
+    }
+
+    .vacancy-list-card {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-content: start;
+      padding: 16px;
+      border: 1px solid var(--color-border-light);
+      border-radius: 16px;
+      background: var(--color-bg-light);
+      box-shadow: 0 2px 10px rgba(28, 28, 30, 0.035);
+    }
+
+    .vacancy-card-primary,
+    .vacancy-card-meta {
+      grid-column: 1 / -1;
+    }
+
+    .vacancy-card-primary a {
+      font-size: 16px;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    .vacancy-card-status {
+      grid-column: 1;
+      align-self: center;
+      margin-top: 16px;
+    }
+
+    .vacancy-card-status > span,
+    .vacancy-card-status > div,
+    .vacancy-card-status select {
+      min-height: 30px;
+      border-radius: 9px;
+    }
+
+    .vacancy-card-actions {
+      grid-column: 2;
+      margin-top: 10px;
+    }
+
+    .vacancy-card-actions .ui-button {
+      min-height: 40px;
+      border-radius: 12px;
+      padding-inline: 14px;
+    }
+
+    .vacancy-card-meta {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--color-border-light);
+    }
+
+    .vacancy-card-meta dt {
+      color: var(--color-text-placeholder);
+    }
+
+    .vacancy-card-meta dd {
+      margin-top: 4px;
+      color: var(--color-text-heading);
+      font-weight: 650;
+      line-height: 1.35;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .app-route-frame {
+      scrollbar-gutter: auto;
+    }
+
+    .app-page,
+    .app-page-narrow {
+      max-width: none;
+      padding: 18px 14px 28px;
+    }
+
+    .page-header {
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      line-height: 1.18;
+    }
+
+    .section-title {
+      font-size: 18px;
+    }
+
+    .surface-card {
+      border-radius: 16px;
+    }
+
+    .ui-button {
+      min-height: 44px;
+      border-radius: 12px;
+      padding-inline: 14px;
+    }
+
+    .ui-search {
+      height: 48px;
+      border-radius: 14px;
+    }
+
+    .candidate-detail-actions > a,
+    .candidate-detail-actions > button {
+      width: 100%;
+    }
+
+    .mobile-form-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+    }
+
+    .mobile-form-actions > .ui-button {
+      width: 100%;
+    }
+
+    .mobile-form-actions > :not(.ui-button) {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .mobile-secondary-nav {
+      margin-inline: -16px;
+      padding-inline: 16px;
+      scroll-padding-inline: 16px;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+
+    .mobile-secondary-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mobile-floating-action {
+      right: 16px;
+      bottom: calc(73px + env(safe-area-inset-bottom));
+      width: 54px;
+      height: 54px;
+    }
+
+    .mobile-pagination {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      padding: 14px 4px 0;
+      border-top: 0;
+      background: transparent;
+    }
+
+    .pagination-range {
+      align-self: center;
+      padding-left: 4px;
+    }
+
+    .pagination-size {
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .pagination-size select {
+      min-width: 62px;
+      background: var(--color-bg-light);
+    }
+
+    .pagination-controls {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      width: 100%;
+    }
+
+    .pagination-controls .ui-button {
+      width: 100%;
+    }
+
+    .candidate-list-body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vacancy-list-body {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
   .auth-layout {
     position: fixed;
     inset: 0;
@@ -423,6 +726,72 @@
 
     .auth-content {
       padding-inline: clamp(48px, 7vw, 112px);
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .publication-list-surface {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .publication-list-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 16px;
+      border: 1px solid var(--color-border-light);
+      border-radius: 16px;
+      background: var(--color-bg-light);
+      box-shadow: 0 2px 10px rgba(28, 28, 30, 0.035);
+    }
+
+    .publication-card-checkbox {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: start;
+    }
+
+    .publication-card-title {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
+      overflow: visible;
+      font-size: 15px;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    .publication-card-channel {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .publication-card-state {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .publication-card-status {
+      grid-column: 3;
+      grid-row: 2;
+      justify-self: end;
+    }
+
+    .publication-card-date {
+      grid-column: 2;
+      grid-row: 3;
+      align-self: center;
+      color: var(--color-text-placeholder);
+      font-size: 12px;
+    }
+
+    .publication-card-actions {
+      grid-column: 3;
+      grid-row: 3;
     }
   }
 

@@ -13,11 +13,11 @@ export function SideMenu({ items, activeId, onSelect }: SideMenuProps) {
     <aside className="w-full shrink-0 lg:w-44 lg:pt-4">
       <nav
         aria-label={t("secondaryNavigation")}
-        className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-0"
+        className="mobile-secondary-nav flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-0"
       >
         {items.map((item) => {
           const isActive = activeId === item.id;
-          const baseClassName = `relative w-auto shrink-0 overflow-hidden whitespace-nowrap rounded-lg px-3 py-2 text-left font-semibold text-sm leading-5 transition-colors lg:w-full ${
+          const baseClassName = `relative w-auto shrink-0 snap-start overflow-hidden whitespace-nowrap rounded-xl px-3.5 py-2.5 text-left font-semibold text-sm leading-5 transition-colors lg:w-full lg:rounded-lg lg:px-3 lg:py-2 ${
             isActive ? "text-primary-blue" : "text-text-muted"
           }`;
 

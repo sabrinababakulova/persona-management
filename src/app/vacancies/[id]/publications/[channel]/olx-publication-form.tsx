@@ -604,7 +604,7 @@ export function OlxPublicationForm({
         <div className="sticky bottom-0 z-10 mt-6 border-border-input border-t bg-bg-frosted py-4 backdrop-blur-xl">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-h-5">{errorText("_form")}</div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="mobile-form-actions flex flex-wrap items-center gap-3">
               <button
                 className="ui-button ui-button-secondary"
                 onClick={() =>

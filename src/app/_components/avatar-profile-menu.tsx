@@ -104,7 +104,7 @@ export function AvatarProfileMenu() {
         aria-expanded={isOpen}
         aria-haspopup="menu"
         aria-label={t("profile")}
-        className="h-10 w-10 overflow-hidden rounded-full border border-bg-light bg-primary-blue text-bg-light shadow-sm outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2"
+        className="h-11 w-11 overflow-hidden rounded-full border border-bg-light bg-primary-blue text-bg-light shadow-sm outline-none ring-primary-blue transition-[box-shadow,transform] duration-200 ease-out focus-visible:ring-2 sm:h-10 sm:w-10"
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
         whileHover={{ scale: 1.045 }}

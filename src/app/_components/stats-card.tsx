@@ -27,21 +27,23 @@ export function StatsCard({
 
   return (
     <motion.div
-      className="surface-card p-5"
+      className="surface-card p-4 sm:p-5"
       transition={{ type: "spring", stiffness: 360, damping: 28 }}
       whileHover={{ y: -3 }}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="font-medium text-sm text-text-secondary">{title}</span>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <span className="font-medium text-text-secondary text-xs sm:text-sm">
+          {title}
+        </span>
         <button
-          className="font-semibold text-primary-blue text-sm hover:text-primary-blue-hover"
+          className="hidden font-semibold text-primary-blue text-sm hover:text-primary-blue-hover sm:block"
           type="button"
         >
           {t("details")}
         </button>
       </div>
       <div className="flex items-end gap-3">
-        <span className="font-bold text-4xl text-text-heading tracking-tight">
+        <span className="font-bold text-3xl text-text-heading tracking-tight sm:text-4xl">
           {value}
         </span>
         {change && changeType && (
