@@ -26,6 +26,14 @@ jobs:
     env:
       CI: "true"
       SKIP_ENV_VALIDATION: "true"
+      # Import-time clients require syntactically valid configuration, but the
+      # validation suite never connects to these local-only placeholders.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/persona_ci
+      AUTH_SECRET: ci-only-auth-secret-that-is-never-used
+      MAIL_LOGIN: ci@example.invalid
+      MAIL_LOGIN_PASSWORD: ci-only-password
+      DIRECTUS_URL: http://127.0.0.1:8055
+      DIRECTUS_TOKEN: ci-only-directus-token
 
     steps:
       - name: Checkout
