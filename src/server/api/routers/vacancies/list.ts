@@ -10,6 +10,7 @@ import {
   fetchCompanyHhVacancies,
   fetchCompanyHhVacanciesPage,
   fetchHhVacancyResponseCounts,
+  isHhAuthenticationError,
 } from "~/server/services/hh";
 import { resolveUserHhAuth } from "~/server/services/hh-company-account";
 
@@ -21,6 +22,8 @@ import {
   getVacancyResponseCounts,
   isUserVisibleVacancy,
 } from "./shared";
+
+type HhUnavailableReason = "authenticationExpired" | "unavailable";
 
 /**
  * Builds the SQL predicate that restricts local `vacancies` rows to the requested sources:
@@ -180,13 +183,13 @@ export const listVacanciesProcedure = protectedProcedure
       );
     }
 
-    // `hhUnavailable` distinguishes "hh.uz returned nothing" from "hh.uz could
-    // not be reached". Without it a failed integration is indistinguishable from
-    // an empty result set, and the list silently under-reports.
+    // Availability metadata distinguishes "hh.uz returned nothing" from a failed
+    // integration and lets the UI call out an expired connection separately.
     const localOnlyResult = {
       items: paginate(localVacancies),
       total: localVacancies.length,
       hhUnavailable: false,
+      hhUnavailableReason: null as HhUnavailableReason | null,
     };
 
     // --- hh.uz vacancies ------------------------------------------------------------
@@ -274,6 +277,7 @@ export const listVacanciesProcedure = protectedProcedure
           ],
           total: localVacancies.length + hhPage.total - linkedHhCount,
           hhUnavailable: false,
+          hhUnavailableReason: null as HhUnavailableReason | null,
         };
       }
 
@@ -283,7 +287,10 @@ export const listVacanciesProcedure = protectedProcedure
       const hhVacancies = await fetchCompanyHhVacancies(
         hhAccount.employerId,
         hhAccount.accessToken,
-        { includeArchived: false },
+        {
+          includeArchived: false,
+          throwOnAuthenticationError: true,
+        },
       );
       const hhItems = hhVacancies
         .filter((vacancy) => {
@@ -320,6 +327,7 @@ export const listVacanciesProcedure = protectedProcedure
         items: paginate(items),
         total: items.length,
         hhUnavailable: false,
+        hhUnavailableReason: null as HhUnavailableReason | null,
       };
     } catch (error) {
       console.error("Failed to fetch hh.uz vacancies for company", {
@@ -329,6 +337,12 @@ export const listVacanciesProcedure = protectedProcedure
       });
       // Degraded, not empty: local rows are still returned so the page works,
       // but the caller is told the hh.uz half of the list is missing.
-      return { ...localOnlyResult, hhUnavailable: true };
+      return {
+        ...localOnlyResult,
+        hhUnavailable: true,
+        hhUnavailableReason: (isHhAuthenticationError(error)
+          ? "authenticationExpired"
+          : "unavailable") as HhUnavailableReason | null,
+      };
     }
   });

@@ -1,4 +1,9 @@
+import { redirect } from "next/navigation";
+import { auth } from "~/server/auth";
+import { hasConnectedOlxSession } from "~/server/services/olx-session";
+import { OLX_ACCOUNT_SETTINGS_URL } from "~/shared/publication-navigation";
 import { HhPublicationForm } from "../hh-publication-form";
+import { OlxPublicationForm } from "../olx-publication-form";
 import { PersonHunterPublicationForm } from "../person-hunter-publication-form";
 import { TgPublicationForm } from "../tg-publication-form";
 
@@ -19,6 +24,17 @@ export default async function VacancyPublicationIdPage({
 
   if (channel === "person-hunter") {
     return <PersonHunterPublicationForm pubId={pubid} vacancyId={id} />;
+  }
+
+  if (channel === "olx.uz") {
+    const session = await auth();
+    if (
+      !session?.user?.id ||
+      !(await hasConnectedOlxSession(session.user.id))
+    ) {
+      redirect(OLX_ACCOUNT_SETTINGS_URL);
+    }
+    return <OlxPublicationForm pubId={pubid} vacancyId={id} />;
   }
 
   return (

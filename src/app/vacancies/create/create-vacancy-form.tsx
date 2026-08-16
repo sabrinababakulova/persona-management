@@ -380,7 +380,7 @@ export function CreateVacancyForm({
               </p>
             </FeedbackPresence>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="mobile-form-actions flex flex-wrap items-center gap-3">
             <button
               className="ui-button ui-button-secondary"
               onClick={handleCancel}

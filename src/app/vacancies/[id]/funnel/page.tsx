@@ -891,7 +891,7 @@ export default function VacancyFunnelPage() {
       <div className="app-page flex flex-col gap-5">
         <nav
           aria-label={t("breadcrumb")}
-          className="flex min-w-0 items-center gap-2 font-semibold text-text-placeholder text-xs uppercase tracking-[0.16em]"
+          className="hidden min-w-0 items-center gap-2 font-semibold text-text-placeholder text-xs uppercase tracking-[0.16em] md:flex"
         >
           <Link className="shrink-0 hover:text-text-heading" href="/vacancies">
             ← {navigationT("vacancies")}

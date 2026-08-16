@@ -31,9 +31,11 @@ export function HhAccountSection() {
 
       {!isLoading && isConnected && (
         <div className="space-y-1 rounded-lg border border-border-input bg-bg-input px-3 py-3">
-          <p className="text-sm text-text-heading">
-            <span className="font-medium">{t("status")}:</span>{" "}
-            <span className="text-success-green">{t("connected")}</span>
+          <p className="flex items-center gap-2 text-sm text-text-heading">
+            <span className="font-medium">{t("status")}:</span>
+            <span className="rounded-lg bg-status-active-bg px-2 py-1.5 font-semibold text-text-heading text-xs uppercase leading-none">
+              {t("connected")}
+            </span>
           </p>
           <p className="text-text-secondary text-xs">
             Employer ID: {account.employerId}

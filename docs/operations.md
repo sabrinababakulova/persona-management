@@ -90,3 +90,44 @@ Cron output is written under `/var/log/persona-management/`. The installed
 logrotate policy rotates daily or at 10 MB, keeps 14 rotations, and compresses
 old logs. The three legacy `/var/log/hh-*.log` files are retained for four
 weekly rotations after migration.
+
+## Google sign-in
+
+Set `AUTH_URL` to the public application origin (for example,
+`https://admin.talanty.uz`) and provide `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` from a Google OAuth **Web application** client.
+
+Configure Google Cloud with exact values; paths, schemes, ports, and trailing
+slashes are significant:
+
+| Environment | Authorized JavaScript origin | Authorized redirect URI |
+| --- | --- | --- |
+| Local | `http://localhost:3000` | `http://localhost:3000/api/auth/callback/google` |
+| Production | `https://admin.talanty.uz` | `https://admin.talanty.uz/api/auth/callback/google` |
+
+The bare site origin is not a valid NextAuth redirect URI. After changing the
+Google client, restart Persona and confirm `/api/auth/providers` reports the
+expected `callbackUrl` before attempting an account sign-in.
+
+## olx.uz integration
+
+olx.uz publishing requires a current Google Chrome or Chromium binary but no
+display server. Each authenticated operation creates one short-lived headless
+network context and closes it after the response; there is no idle browser
+process. Public category and location lookups try normal server-side HTTP first;
+OLX HTTP 403 responses use the same short-lived Chromium transport and cached
+results. Common Linux paths are detected automatically. Set
+`OLX_BROWSER_EXECUTABLE_PATH` only for a nonstandard install, and run Persona as
+an unprivileged user so the browser sandbox remains enabled. Production refuses
+to run the OLX transport without the sandbox. Set a dedicated
+`OLX_CREDENTIALS_ENCRYPTION_KEY` and the exact Chrome Web Store
+`OLX_CONNECTOR_EXTENSION_ID`; do not reuse `AUTH_SECRET`. The server needs outbound
+HTTPS access to `login.olx.uz`, `www.olx.uz`, and `categories.olxcdn.com`.
+
+Users connect once through the Chrome extension in
+`browser-extension/olx-connector`. For production, package and distribute that
+extension through an approved enterprise policy or the Chrome Web Store instead
+of asking normal users to enable Developer mode.
+
+See `docs/olx-integration.md` for the security model, deployment checklist,
+rate limits, limitations, live-test procedure, and troubleshooting.

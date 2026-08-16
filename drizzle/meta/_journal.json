@@ -365,6 +365,27 @@
       "when": 1786287322258,
       "tag": "0051_remarkable_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786346028404,
+      "tag": "0052_yellow_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1786724992090,
+      "tag": "0053_white_network",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786826740740,
+      "tag": "0054_reflective_lightspeed",
+      "breakpoints": true
     }
   ]
 }

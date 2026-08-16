@@ -19,6 +19,10 @@ import {
 import { Modal } from "~/app/_components/modal";
 import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { useErrorToast } from "~/app/_components/use-error-toast";
+import {
+  getPublicationCreationUrl,
+  OLX_PUBLICATION_CHANNEL,
+} from "~/shared/publication-navigation";
 import { api } from "~/trpc/react";
 import { PublicationConfirmationModal } from "./publications/[channel]/publication-confirmation-modal";
 
@@ -28,7 +32,7 @@ const CHANNEL_ICONS: Record<string, { src: string; label: string }> = {
   "hh.uz": { src: "/hh.svg", label: "HH" },
   telegram: { src: "/telegram.svg", label: "Telegram" },
   "person-hunter": { src: "/person-hunter.svg", label: "PersonHunters" },
-  "olx.uz": { src: "/olx.svg", label: "OLX.uz" },
+  "olx.uz": { src: "/olx.svg", label: "olx.uz" },
 };
 
 type PublicationState = "published" | "draft" | "local";
@@ -43,8 +47,13 @@ function getPublicationState(publication: {
   hhVacancyId?: string | null;
   hhDraftId?: string | null;
   personHunterVacancyId?: string | null;
+  olxAdvertUrl?: string | null;
 }): PublicationState {
-  if (publication.hhVacancyId || publication.personHunterVacancyId) {
+  if (
+    publication.hhVacancyId ||
+    publication.personHunterVacancyId ||
+    publication.olxAdvertUrl
+  ) {
     return "published";
   }
   if (publication.hhDraftId) {
@@ -63,6 +72,7 @@ function getPublicationExternalUrl(
     hhVacancyId?: string | null;
     personHunterUniqueCode?: string | null;
     telegramPostId?: string | null;
+    olxAdvertUrl?: string | null;
   },
   locale: string,
 ): string | null {
@@ -79,6 +89,9 @@ function getPublicationExternalUrl(
   }
   if (publication.destination === "telegram" && publication.telegramPostId) {
     return publication.telegramPostId;
+  }
+  if (publication.destination === "olx.uz" && publication.olxAdvertUrl) {
+    return publication.olxAdvertUrl;
   }
   return null;
 }
@@ -138,6 +151,7 @@ export function PublicationsTable() {
   const utils = api.useUtils();
   const showError = useErrorToast();
   const { data: companyFeatures } = api.company.getFeatures.useQuery();
+  const olxSessionQuery = api.integrations.getOlxSession.useQuery();
   const channelOptions: ActionDropdownItem[] = [
     { value: "hh.uz", label: t("table.forHh"), iconSrc: "/hh.svg" },
     {
@@ -225,7 +239,28 @@ export function PublicationsTable() {
   });
 
   const handleChannelSelect = (value: string) => {
-    router.push(`/vacancies/${parentVacancyId}/publications/${value}`);
+    const navigate = (sessionData: typeof olxSessionQuery.data): void => {
+      router.push(
+        getPublicationCreationUrl({
+          channel: value,
+          isOlxConnected: sessionData?.session?.status === "connected",
+          vacancyId: parentVacancyId,
+        }),
+      );
+    };
+
+    if (value === OLX_PUBLICATION_CHANNEL && !olxSessionQuery.data) {
+      void utils.integrations.getOlxSession
+        .fetch()
+        .then(navigate)
+        .catch((error) => {
+          console.error("Failed to check OLX connection status", error);
+          navigate(undefined);
+        });
+      return;
+    }
+
+    navigate(olxSessionQuery.data);
   };
 
   const toggle = (id: string) => {
@@ -265,6 +300,7 @@ export function PublicationsTable() {
       isActive: false,
       isPublication: true,
       destination: publication.destination ?? undefined,
+      olxBrowserMeta: publication.olxBrowserMeta ?? undefined,
     });
   };
   const onDelete = (id: string) => {
@@ -286,12 +322,13 @@ export function PublicationsTable() {
       return;
     }
 
-    // hh.uz / PersonHunters changes and Telegram deactivations need a confirmation step (the
-    // latter deletes the channel post); other status changes apply directly.
+    // External lifecycle changes need confirmation before they modify a live
+    // third-party publication. Telegram only has a destructive deactivation.
 
     if (
       destination === "hh.uz" ||
       destination === "person-hunter" ||
+      destination === "olx.uz" ||
       (destination === "telegram" && !isActive)
     ) {
       setPendingStatusChange({ id, isActive, destination });
@@ -335,9 +372,16 @@ export function PublicationsTable() {
     );
   };
 
+  const deleteCandidate = publications?.find(
+    (publication) => publication.id === deleteCandidateId,
+  );
+  const deletesOlxAdvert =
+    deleteCandidate?.destination === "olx.uz" &&
+    Boolean(deleteCandidate.olxAdvertId || deleteCandidate.olxAdvertUrl);
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
         <h2 className="page-title">{t("table.versions")}</h2>
         <ActionDropdown
           items={channelOptions}
@@ -346,7 +390,7 @@ export function PublicationsTable() {
         />
       </div>
 
-      <div className="surface-card overflow-hidden">
+      <div className="publication-list-surface surface-card overflow-hidden">
         <div className="hidden grid-cols-12 gap-x-4 border-border-input border-b bg-table-header-bg px-4 py-3 text-sm text-text-placeholder lg:grid">
           <div className="col-span-1" />
           <div className="col-span-3 flex items-center gap-1">
@@ -391,16 +435,16 @@ export function PublicationsTable() {
           const externalUrl = getPublicationExternalUrl(pub, locale);
           return (
             <div
-              className="grid grid-cols-12 items-center gap-x-4 gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
+              className="publication-list-card grid grid-cols-12 items-center gap-x-4 gap-y-2 border-border-input border-b px-4 py-4 last:border-b-0"
               key={pub.id}
             >
-              <div className="col-span-1">
+              <div className="publication-card-checkbox col-span-1">
                 <Checkbox
                   checked={selectedIds.includes(pub.id)}
                   onChange={() => toggle(pub.id)}
                 />
               </div>
-              <div className="col-span-11 truncate font-medium text-sm text-text-heading lg:col-span-3">
+              <div className="publication-card-title col-span-11 truncate font-medium text-sm text-text-heading lg:col-span-3">
                 {externalUrl ? (
                   <a
                     className="hover:text-primary-blue hover:underline"
@@ -414,7 +458,7 @@ export function PublicationsTable() {
                   pub.title
                 )}
               </div>
-              <div className="col-span-1 lg:col-span-1">
+              <div className="publication-card-channel col-span-1 lg:col-span-1">
                 {icon && (
                   <Image
                     alt={icon.label}
@@ -427,14 +471,14 @@ export function PublicationsTable() {
                   />
                 )}
               </div>
-              <div className="col-span-3 lg:col-span-2">
+              <div className="publication-card-state col-span-3 lg:col-span-2">
                 <span
                   className={`inline-flex h-6 w-fit items-center whitespace-nowrap rounded-md px-2.5 font-semibold text-black text-xs lowercase leading-none ${PUBLICATION_STATE_CLASS[state]}`}
                 >
                   {publicationStateLabels[state]}
                 </span>
               </div>
-              <div className="col-span-2 lg:col-span-2">
+              <div className="publication-card-status col-span-2 lg:col-span-2">
                 <Dropdown
                   className="w-fit"
                   disabled={updatePublicationStatus.isPending}
@@ -457,13 +501,13 @@ export function PublicationsTable() {
                   value={pub.isActive ? "active" : "inactive"}
                 />
               </div>
-              <div className="col-span-3 text-sm text-text-heading lg:col-span-2">
+              <div className="publication-card-date col-span-3 text-sm text-text-heading lg:col-span-2">
                 {dateLabel}
               </div>
-              <div className="col-span-3 flex items-center justify-end gap-3 lg:col-span-1">
+              <div className="publication-card-actions col-span-3 flex items-center justify-end gap-1 lg:col-span-1 lg:gap-3">
                 <button
                   aria-label={t("table.edit")}
-                  className="text-text-placeholder transition-colors hover:text-text-heading"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading lg:h-auto lg:w-auto lg:rounded-none"
                   onClick={() => onEdit?.(pub.id, pub.destination ?? "")}
                   type="button"
                 >
@@ -471,7 +515,7 @@ export function PublicationsTable() {
                 </button>
                 <button
                   aria-label={t("table.duplicate")}
-                  className="text-text-placeholder transition-colors hover:text-text-heading"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-heading lg:h-auto lg:w-auto lg:rounded-none"
                   disabled={duplicatePublication.isPending}
                   onClick={() => onCopy?.(pub.id)}
                   type="button"
@@ -480,7 +524,7 @@ export function PublicationsTable() {
                 </button>
                 <button
                   aria-label={t("table.delete")}
-                  className="text-accent-red transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-accent-red transition-[background-color,opacity] hover:bg-danger-red-bg hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40 lg:h-auto lg:w-auto lg:rounded-none"
                   disabled={pub.isActive || deletePublication.isPending}
                   onClick={() => onDelete?.(pub.id)}
                   type="button"
@@ -508,7 +552,11 @@ export function PublicationsTable() {
       >
         <div className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary leading-[1.4]">
-            {t("table.deleteDescription")}
+            {t(
+              deletesOlxAdvert
+                ? "table.olxDeleteDescription"
+                : "table.deleteDescription",
+            )}
           </p>
           <div className="flex justify-end gap-3">
             <button
@@ -586,9 +634,13 @@ export function PublicationsTable() {
               ? pendingStatusChange?.isActive
                 ? t("table.personHunterActivate")
                 : t("table.personHunterDeactivate")
-              : pendingStatusChange?.isActive
-                ? t("table.hhActivate")
-                : t("table.hhDeactivate")
+              : pendingStatusChange?.destination === "olx.uz"
+                ? pendingStatusChange?.isActive
+                  ? t("table.olxActivate")
+                  : t("table.olxDeactivate")
+                : pendingStatusChange?.isActive
+                  ? t("table.hhActivate")
+                  : t("table.hhDeactivate")
         }
         isOpen={Boolean(pendingStatusChange)}
         isPending={updatePublicationStatus.isPending}

@@ -1,5 +1,10 @@
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { auth } from "~/server/auth";
+import { hasConnectedOlxSession } from "~/server/services/olx-session";
+import { OLX_ACCOUNT_SETTINGS_URL } from "~/shared/publication-navigation";
 import { HhPublicationForm } from "./hh-publication-form";
+import { OlxPublicationForm } from "./olx-publication-form";
 import { PersonHunterPublicationForm } from "./person-hunter-publication-form";
 import { TgPublicationForm } from "./tg-publication-form";
 
@@ -9,7 +14,7 @@ const CHANNEL_DISPLAY_NAME: Record<string, string> = {
   "hh.uz": "HH",
   telegram: "Telegram",
   "person-hunter": "PersonHunters",
-  "olx.uz": "OLX.uz",
+  "olx.uz": "olx.uz",
 };
 
 /**
@@ -37,6 +42,17 @@ export default async function VacancyPublicationChannelPage({
 
   if (channel === "person-hunter") {
     return <PersonHunterPublicationForm vacancyId={id} />;
+  }
+
+  if (channel === "olx.uz") {
+    const session = await auth();
+    if (
+      !session?.user?.id ||
+      !(await hasConnectedOlxSession(session.user.id))
+    ) {
+      redirect(OLX_ACCOUNT_SETTINGS_URL);
+    }
+    return <OlxPublicationForm vacancyId={id} />;
   }
 
   const channelName = CHANNEL_DISPLAY_NAME[channel] ?? channel;

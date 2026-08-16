@@ -15,8 +15,8 @@ import {
 } from "../_components/filter-modal";
 import {
   FilterIcon,
-  FloatingAddIcon,
   NoVacancies,
+  OutlineBriefcaseIcon,
   SearchIcon,
 } from "../_components/icons";
 import { MotionToast } from "../_components/motion-system";
@@ -99,20 +99,23 @@ export default function VacanciesPage() {
   const totalItems = vacanciesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
-  // hh.uz failing is not an error for this page — local vacancies still render —
-  // but the list is incomplete, and saying nothing would pass it off as the
-  // full set.
-  const hhUnavailable = vacanciesData?.hhUnavailable ?? false;
+  // Local vacancies still render when hh.uz fails, but the list is incomplete.
+  // Authentication failures get a stronger, actionable message than outages.
+  const hhUnavailableReason = vacanciesData?.hhUnavailableReason ?? null;
   useEffect(() => {
-    if (!hhUnavailable) {
+    if (!hhUnavailableReason) {
       return;
     }
     publishToast({
-      variant: "warning",
-      messageKey: "hhUnavailable",
+      variant:
+        hhUnavailableReason === "authenticationExpired" ? "error" : "warning",
+      messageKey:
+        hhUnavailableReason === "authenticationExpired"
+          ? "hhSessionExpired"
+          : "hhUnavailable",
       dedupeKey: "hh-unavailable",
     });
-  }, [hhUnavailable]);
+  }, [hhUnavailableReason]);
 
   useEffect(() => {
     if (!toastMessage) {
@@ -222,9 +225,9 @@ export default function VacanciesPage() {
         statusOptions={vacancyStatusOptions}
       />
 
-      <main className="flex h-full flex-1 overflow-auto">
+      <main className="flex flex-1 overflow-visible sm:h-full sm:overflow-auto">
         <div className="app-page flex min-h-full flex-col">
-          <div className="page-header">
+          <div className="page-header list-page-header">
             <h1 className="page-title">{t("title")}</h1>
             <PeriodFilter
               ariaLabel={t("periodFilter")}
@@ -239,40 +242,50 @@ export default function VacanciesPage() {
           {showVacanciesTable ? (
             <>
               <div className="mb-5 flex flex-col gap-3 sm:flex-row">
-                <div className="relative flex-1">
-                  <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
-                  <input
-                    className="ui-search"
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder={t("search")}
-                    type="text"
-                    value={searchQuery}
-                  />
-                </div>
-                <button
-                  className={`ui-button ui-button-secondary ${
-                    activeFilterCount > 0
-                      ? "border-primary-blue bg-primary-blue-light"
-                      : "border-border-light bg-bg-light"
-                  }`}
-                  onClick={() => setIsFilterModalOpen(true)}
-                  type="button"
-                >
-                  <FilterIcon className="h-5 w-5" />
-                  <span>{t("addFilters")}</span>
-                  <span
-                    className={`ml-1 flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                <div className="flex min-w-0 flex-1 gap-3">
+                  <div className="relative min-w-0 flex-1">
+                    <SearchIcon className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-text-placeholder" />
+                    <input
+                      className="ui-search"
+                      onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder={t("search")}
+                      type="text"
+                      value={searchQuery}
+                    />
+                  </div>
+                  <button
+                    aria-label={t("addFilters")}
+                    className={`ui-button ui-button-secondary relative h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11 ${
                       activeFilterCount > 0
-                        ? "bg-primary-blue text-bg-light"
-                        : "bg-bg-hover text-text-secondary"
+                        ? "border-primary-blue bg-primary-blue-light text-primary-blue"
+                        : "border-border-light bg-bg-light"
                     }`}
+                    onClick={() => setIsFilterModalOpen(true)}
+                    title={t("addFilters")}
+                    type="button"
                   >
-                    {activeFilterCount > 0 ? activeFilterCount : "+"}
-                  </span>
-                </button>
+                    <FilterIcon className="h-5 w-5" />
+                    {activeFilterCount > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-blue px-1 font-semibold text-bg-light text-xs"
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                  <Link
+                    aria-label={t("add")}
+                    className="ui-button ui-button-primary h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11"
+                    href="/vacancies/create"
+                    title={t("add")}
+                  >
+                    <OutlineBriefcaseIcon className="h-5 w-5" />
+                  </Link>
+                </div>
               </div>
 
               <VacancyTable
@@ -320,14 +333,6 @@ export default function VacanciesPage() {
           )}
         </div>
       </main>
-
-      <Link
-        aria-label={t("create")}
-        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
-        href="/vacancies/create"
-      >
-        <FloatingAddIcon className="h-10 w-10" />
-      </Link>
     </>
   );
 }

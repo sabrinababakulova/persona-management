@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AvatarProfileMenu } from "~/app/_components/avatar-profile-menu";
@@ -26,20 +27,29 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-bg-frosted px-4 py-3 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 w-full border-border-light border-b bg-bg-frosted px-3 py-2.5 backdrop-blur-xl sm:border-b-0 sm:px-6 sm:py-3">
       <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             aria-expanded={isSidebarOpen}
             aria-label={isSidebarOpen ? t("collapseSidebar") : t("openSidebar")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover xl:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border-light bg-bg-light text-text-secondary shadow-sm transition-colors hover:border-border-control hover:bg-bg-hover xl:hidden"
             onClick={onSidebarToggle}
             type="button"
           >
             <MenuIcon className="h-5 w-5" />
           </button>
 
-          <div className="relative w-full max-w-lg">
+          <Image
+            alt="Talanty"
+            className="h-8 w-8 sm:hidden"
+            height={32}
+            priority
+            src="/talanty-mark.svg"
+            width={32}
+          />
+
+          <div className="relative hidden w-full max-w-lg sm:block">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-text-secondary" />
             <input
               className="h-10 w-full rounded-lg border border-border-light bg-bg-input py-2 pr-4 pl-9 text-sm text-text-heading shadow-sm placeholder:text-text-placeholder focus:border-primary-blue focus:outline-none"
@@ -52,13 +62,13 @@ export function Header({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <div>
+          <div className="hidden md:block">
             <LocaleSwitcher />
           </div>
 
           <button
             aria-label={t("notifications")}
-            className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border-light bg-bg-light text-text-heading shadow-sm hover:border-border-control hover:bg-bg-panel-hover"
+            className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border-light bg-bg-light text-text-heading shadow-sm hover:border-border-control hover:bg-bg-panel-hover sm:h-10 sm:w-10 sm:rounded-lg"
             type="button"
           >
             <BellIcon className="h-5 w-5" />

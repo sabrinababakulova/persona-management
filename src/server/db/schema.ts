@@ -8,7 +8,10 @@ import {
 import type { AdapterAccount } from "next-auth/adapters";
 
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
-import type { PersonHunterPublicationMeta } from "~/server/api/routers/vacancies/schemas";
+import type {
+  OlxPublicationMeta,
+  PersonHunterPublicationMeta,
+} from "~/server/api/routers/vacancies/schemas";
 import { COMPANY_ROLE_MEMBER } from "~/shared/company-roles";
 
 export const createTable = pgTableCreator((name) => name);
@@ -518,6 +521,28 @@ export const vacancies = createTable(
     personHunterMeta: d
       .json("person_hunter_meta")
       .$type<PersonHunterPublicationMeta>(),
+    /** Public advert URL returned after the OLX server publication request. */
+    olxAdvertUrl: d.varchar("olx_advert_url", { length: 1000 }),
+    /** Stable advert id returned by OLX after publication. */
+    olxAdvertId: d.varchar("olx_advert_id", { length: 100 }),
+    /** Stable idempotency key persisted before the first OLX create request. */
+    olxPostingId: d.varchar("olx_posting_id", { length: 100 }),
+    /** Durable publication operation state used to serialize create requests. */
+    olxPublicationState: d.varchar("olx_publication_state", { length: 30 }),
+    /** Time at which the current publisher claimed this row. */
+    olxPublishClaimedAt: d.timestamp("olx_publish_claimed_at", {
+      withTimezone: true,
+    }),
+    /** User whose connected OLX account created the advert. */
+    olxPublisherUserId: d
+      .varchar("olx_publisher_user_id", { length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
+    /** OLX web-form labels entered by the recruiter. */
+    olxBrowserMeta: d.json("olx_browser_meta").$type<OlxPublicationMeta>(),
+    olxLastPublishedAt: d.timestamp("olx_last_published_at", {
+      withTimezone: true,
+    }),
+    olxLastError: d.text("olx_last_error"),
     telegramPostId: d.varchar("telegram_post_id", { length: 255 }),
     /** Directus file id of the Telegram publication image, set via the image uploader. */
     telegramFileId: d.varchar("telegram_file_id", { length: 255 }),
@@ -550,6 +575,9 @@ export const vacancies = createTable(
     index("vacancy_company_id_idx").on(t.companyId),
     index("vacancy_parent_id_idx").on(t.parentId),
     index("vacancy_hh_vacancy_id_idx").on(t.hhVacancyId),
+    index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
+    uniqueIndex("vacancy_olx_posting_id_idx").on(t.olxPostingId),
+    index("vacancy_olx_publisher_user_id_idx").on(t.olxPublisherUserId),
   ],
 );
 
@@ -1109,6 +1137,38 @@ export const userHhAccounts = createTable("company_hh_account", (d) => ({
   refreshToken: d.text(),
   employerId: d.varchar({ length: 255 }),
   email: d.varchar({ length: 255 }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+/**
+ * Per-user olx.uz connection. The legacy column name is retained for migration
+ * compatibility, but it now stores an encrypted API token set captured only
+ * after the user signs in on olx.uz. Passwords and challenge responses are
+ * never sent to Persona.
+ */
+export const userOlxSessions = createTable("user_olx_session", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: d
+    .varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  /** AES-GCM encrypted OLX access/refresh credentials (legacy DB name). */
+  encryptedStorageState: d.text("encrypted_storage_state").notNull(),
+  /** Masked hint only, such as `sa***@example.com`; never the full login. */
+  loginHint: d.varchar("login_hint", { length: 255 }),
+  status: d.varchar({ length: 30 }).notNull().default("connected"),
+  lastVerifiedAt: d.timestamp("last_verified_at", { withTimezone: true }),
+  lastOperationAt: d.timestamp("last_operation_at", { withTimezone: true }),
+  lastError: d.text("last_error"),
   createdAt: d
     .timestamp({ withTimezone: true })
     .$defaultFn(() => new Date())

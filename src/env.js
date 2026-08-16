@@ -51,6 +51,14 @@ export const env = createEnv({
     HH_CLIENT_SECRET: z.string().min(1).optional(),
     HH_REDIRECT_URI: z.string().url().optional(),
     PERSON_HUNTER_API_KEY: z.string().min(1).optional(),
+    OLX_BROWSER_EXECUTABLE_PATH: z.string().min(1).optional(),
+    OLX_BROWSER_NO_SANDBOX: z.enum(["true", "false"]).optional(),
+    OLX_CONNECTOR_EXTENSION_ID: z
+      .string()
+      .regex(/^[a-p]{32}$/)
+      .optional(),
+    OLX_CREDENTIALS_ENCRYPTION_KEY: z.string().min(32).optional(),
+    OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS: z.string().optional(),
   },
 
   /**
@@ -59,7 +67,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_OLX_CONNECTOR_URL: z.string().url().optional(),
   },
 
   /**
@@ -94,6 +102,13 @@ export const env = createEnv({
     HH_CLIENT_SECRET: process.env.HH_CLIENT_SECRET,
     HH_REDIRECT_URI: process.env.HH_REDIRECT_URI,
     PERSON_HUNTER_API_KEY: process.env.PERSON_HUNTER_API_KEY,
+    OLX_BROWSER_EXECUTABLE_PATH: process.env.OLX_BROWSER_EXECUTABLE_PATH,
+    OLX_BROWSER_NO_SANDBOX: process.env.OLX_BROWSER_NO_SANDBOX,
+    OLX_CONNECTOR_EXTENSION_ID: process.env.OLX_CONNECTOR_EXTENSION_ID,
+    OLX_CREDENTIALS_ENCRYPTION_KEY: process.env.OLX_CREDENTIALS_ENCRYPTION_KEY,
+    OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS:
+      process.env.OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS,
+    NEXT_PUBLIC_OLX_CONNECTOR_URL: process.env.NEXT_PUBLIC_OLX_CONNECTOR_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

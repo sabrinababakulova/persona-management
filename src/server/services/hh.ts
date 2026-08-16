@@ -31,7 +31,11 @@ export type {
   HhVacancy,
   HhVacancyApplicant,
 } from "./hh/shared";
-export { HhApiError, isHhAccessError } from "./hh/shared";
+export {
+  HhApiError,
+  isHhAccessError,
+  isHhAuthenticationError,
+} from "./hh/shared";
 export {
   type SyncHhStatusesResult,
   syncHhCandidateStatuses,

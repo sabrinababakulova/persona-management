@@ -241,11 +241,12 @@ Defined and validated in `src/env.js`:
 | `DIRECTUS_TOKEN` | Yes | Directus API token |
 | `NODE_ENV` | No | `"development"` (default) / `"test"` / `"production"` |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | No | Google Gemini API key for AI resume analysis |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | No | Google OAuth web-client credentials. When set, Google sign-in is enabled. Authorized redirect URIs must end in `/api/auth/callback/google`. |
 | `RESUME_STORAGE_PATH` | No | Local path for resume file storage |
 | `DIRECTUS_INTERNAL_URL` | No | Internal Directus URL (defaults to `DIRECTUS_URL`) |
 | `DIRECTUS_PUBLIC_URL` | No | Public Directus URL for file access (defaults to `DIRECTUS_URL`) |
 | `DIRECTUS_FOLDER` | No | Directus folder ID for uploaded files |
-| `AUTH_URL` | No | NextAuth base URL override |
+| `AUTH_URL` | No | NextAuth public application origin, for example `https://admin.talanty.uz` |
 | `VERCEL_URL` | No | Auto-set by Vercel deployment |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram bot token for vacancy posting |
 | `TELEGRAM_CHANNEL_ID` | No | Target Telegram channel (e.g., `@channelname` or numeric chat ID) |
@@ -278,13 +279,14 @@ Tables use their plain schema names with no `persona-management_` prefix.
 - `companies` — id (UUID), name, city, country, description, website, phone, `logoUrl` / `logoFileId` (Directus asset of an uploaded logo). Each user belongs to a company; vacancies and candidates are scoped to a company. Editable from **My profile → Company settings** via the `company` router.
 - `companyInvitations` (table `company_invitation`) — shareable "join our company" links. `token` (43-char base64url random, UNIQUE — stored as-is so the link stays copyable), `companyId`, `createdById`, `expiresAt` (14 days), `revokedAt`, `usesCount` / `lastUsedAt`. Consumed by `/invite/[token]`; see `src/server/company/invitations.ts`.
 - `candidates` — Full candidate profiles with JSON fields for contacts, skills, languages, workExperience, education, notes, activities. Includes resumeUrl, resumeFileName, resumeFileSize, matchScore, aiAnalysis, companyId (FK). `experience` is an **integer count of months** (formatted for display by `formatExperienceMonths` in `src/utils/russian-plural.ts`) — it was previously a free-text varchar. **hh.uz sync columns**: `hhResumeId` (stable per-resume external key), `hhResumeUrl`, `hhResumeFetchedAt` (null ⇒ unenriched stub), `hhSyncedAt`, `profileLocked` (recruiter edited the profile ⇒ sync stops overwriting it). Partial unique index `(companyId, hhResumeId)` is the dedup guarantee + sync upsert target.
-- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` (external id once published), and `personHunterMeta` — a JSON blob (`$type<PersonHunterPublicationMeta>`) holding the PersonHunters-only fields (duties, requirements, conditions, selected reference ids, employment/schedule, experience range) that have no dedicated column, so the publish form can be re-populated on edit.
+- `vacancies` — Job listings with title, level, status, city, workType, responses count, salary fields, work schedule, tasks, team, companyDescription, companyId (FK), `hhVacancyId`. Discovery auto-creates a base vacancy row for **every** hh.uz vacancy the employer has ever had — active rows are fully synced, archived ones are stored as **stubs** (id, title, `status="archive"`) so the list view can render them without a live API call. The status column is reconciled on every discovery run, so a flip from active→archive on hh.uz propagates locally. **Publication columns**: `telegramPostId` / `telegramFileId`, `personHunterVacancyId` + `personHunterMeta`, and OLX fields `olxAdvertUrl` / `olxAdvertId` / `olxPublisherUserId` / `olxBrowserMeta` (legacy column name) / `olxLastPublishedAt` / `olxLastError`.
 - `vacancyCandidates` (table `vacancy_candidate`) — a candidate's **application** to a vacancy. Promoted from a bare join to carry per-application state: `hhNegotiationId`, `stage` (recruiter-owned funnel stage), `hhStage` (raw hh.uz state, sync-owned), `applicationState` (`active`/`withdrawn`/`archived`), `matchScore` (0–100 from the candidate-vacancy match agent), `appliedAt`, timestamps. Partial unique index `(vacancyId, hhNegotiationId)`.
 - `recentActivityLogs` — Audit trail for entity actions (candidate/vacancy). `actorUserId` is `ON DELETE SET NULL` so a deleted user does not block deletion or erase the log; `actorName` keeps it readable.
 
 **Integration tables**:
 - `company_hh_account` (Drizzle export: `userHhAccounts`) — hh.uz OAuth tokens and employer metadata, **per user**. Despite the legacy table name, the FK is `userId` (references `user.id`) with a UNIQUE constraint on `userId`. Two users in the same company connect to hh.uz independently — and the sync covers **all** of a company's connected employers (`resolveCompanyHhAccounts`). See `src/server/services/hh-company-account.ts` (`getUserHhAccount`, `resolveUserHhAuth`, `resolveCompanyHhAccounts`, `listHhConnectedCompanyIds`) and `src/app/api/integrations/hh/callback/route.ts`.
 - `company_telegram_channel` (Drizzle export: `userTelegramChannels`) — Telegram channels configured per user (same per-user pattern; legacy table name retained).
+- `user_olx_session` (Drizzle export: `userOlxSessions`) — one encrypted OLX web access/refresh token set per user (the legacy encrypted-storage-state column name is retained). OLX passwords are never persisted. Status and last-operation metadata support reconnection without exposing tokens to the client.
 
 **hh.uz candidate sync tables**:
 - `hh_vacancy_sync_state` (`hhVacancySyncState`) — per-vacancy sync cursors. `lastNegotiationAt` is the discovery watermark (negotiation `created_at`); `lastStatusNegotiationAt` is the status-sync watermark (negotiation `updated_at`); plus run timestamps + last error.
@@ -455,6 +457,34 @@ Unlike hh.uz (per-user OAuth), PersonHunters authenticates with a **single share
 ### Notes
 - The API pre-resolves related entities (`{ id, name }`) and localizes on the fly via `?lang=` (GET) / `"lang"` in the body (write) — languages `ru` / `uz` / `en`.
 - Design doc: `PERSON_HUNTER_DOC.md`. Schema helpers: `src/server/api/routers/vacancies/schemas.ts` (`PersonHunterPublicationMeta`).
+
+---
+
+## olx.uz Server-Side Publishing
+
+olx.uz does not provide a supported third-party publishing API for Uzbekistan.
+The integration uses a user-installed Chrome connector once to read OLX's web
+access/refresh tokens after the user signs in on the official website. Persona
+never receives the password, CAPTCHA, or SMS code. Tokens are AES-256-GCM
+encrypted with `AUTH_SECRET` in `user_olx_session`.
+
+Preview and publication then use the same private JSON endpoints as OLX's web
+form through one short-lived headless Chrome/Chromium network context per
+request. Status changes and deletion use the lightweight `UpdateAd` GraphQL
+mutation used by olx.uz's own **My ads** page and do not launch Chromium.
+Actions are explicit and rate-limited (publication: 30 seconds / ten per hour;
+lifecycle: ten seconds between actions / twenty per hour per connected account), with no polling, repeated
+action retries, cron, persistent browser, or stealth behavior. A rejected token
+can be refreshed and replayed once. OLX lifecycle calls run
+before local status/deletion writes. New adverts retain the publishing user id so
+the same connected account is used later. Live
+job categories and location suggestions first use normal server-side HTTP, fall
+back to a short-lived Chromium request when OLX returns HTTP 403, and are cached.
+Duplicate submission is blocked after an OLX advert id is saved.
+
+This private contract is unsupported and can change without notice. Full
+security, deployment, limitation, and test notes:
+`docs/olx-integration.md`.
 
 ---
 

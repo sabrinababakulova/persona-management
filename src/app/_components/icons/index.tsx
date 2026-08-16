@@ -16,7 +16,6 @@ export { EducationIcon } from "./EducationIcon";
 export { FileOutlineIcon } from "./FileOutlineIcon";
 export { FileUploadIcon } from "./FileUploadIcon";
 export { FilterIcon } from "./FilterIcon";
-export { FloatingAddIcon } from "./FloatingAddIcon";
 export { FunnelIcon } from "./FunnelIcon";
 export { GlobeIcon } from "./GlobeIcon";
 export { HomeIcon } from "./HomeIcon";

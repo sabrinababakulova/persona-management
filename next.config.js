@@ -31,7 +31,7 @@ if (directusAssetBaseUrl) {
 
 /** @type {import("next").NextConfig} */
 const config = {
-  serverExternalPackages: ["argon2", "@react-pdf/renderer"],
+  serverExternalPackages: ["argon2", "@react-pdf/renderer", "playwright-core"],
   poweredByHeader: false,
   images: {
     remotePatterns,

@@ -1,0 +1,3 @@
+ALTER TABLE "vacancy" ADD COLUMN "olx_publisher_user_id" varchar(255);--> statement-breakpoint
+ALTER TABLE "vacancy" ADD CONSTRAINT "vacancy_olx_publisher_user_id_user_id_fk" FOREIGN KEY ("olx_publisher_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "vacancy_olx_publisher_user_id_idx" ON "vacancy" USING btree ("olx_publisher_user_id");

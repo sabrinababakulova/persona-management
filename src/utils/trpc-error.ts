@@ -25,6 +25,7 @@ export type ErrorMessageKey =
   | "clientClosed"
   | "conflict"
   | "forbidden"
+  | "hhSessionExpired"
   | "hhUnavailable"
   | "network"
   | "notFound"

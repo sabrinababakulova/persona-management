@@ -1,18 +1,21 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { takeRateLimitSlot } from "~/server/auth/rate-limit";
 import {
   telegramChannelAdmins,
   telegramDeliveryModes,
   userHhAccounts,
+  userOlxSessions,
   userTelegramChannels,
   vacancies,
 } from "~/server/db/schema";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
+import { createOlxConnectionTicket } from "~/server/services/olx-api";
 import {
   isTelegramConfigured,
   normalizeTelegramUsername,
@@ -32,6 +35,17 @@ const channelInputSchema = z.object({
   deliveryMode: z.enum(telegramDeliveryModes),
   admins: z.array(channelAdminInputSchema).max(20),
 });
+
+const OLX_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const OLX_LOGIN_COOLDOWN_MS = 60 * 1000;
+
+function olxTicketError(error: unknown): TRPCError {
+  console.error("Could not create an OLX connection ticket", error);
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "Не удалось подключить olx.uz.",
+  });
+}
 
 /**
  * Normalizes and de-duplicates the admin list from the modal.
@@ -84,6 +98,79 @@ async function requireCompanyChannel(
 }
 
 export const integrationsRouter = createTRPCRouter({
+  // ── olx.uz account connection ─────────────────────────────────────
+
+  getOlxSession: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        id: userOlxSessions.id,
+        loginHint: userOlxSessions.loginHint,
+        status: userOlxSessions.status,
+        lastVerifiedAt: userOlxSessions.lastVerifiedAt,
+        lastOperationAt: userOlxSessions.lastOperationAt,
+        createdAt: userOlxSessions.createdAt,
+        updatedAt: userOlxSessions.updatedAt,
+      })
+      .from(userOlxSessions)
+      .where(eq(userOlxSessions.userId, ctx.session.user.id))
+      .limit(1);
+
+    return {
+      session: rows[0] ?? null,
+    };
+  }),
+
+  createOlxConnectionTicket: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const extensionId = env.OLX_CONNECTOR_EXTENSION_ID;
+    if (!extensionId || !env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Коннектор olx.uz не полностью настроен администратором.",
+      });
+    }
+    const attemptsKey = `olx-login-attempts:${userId}`;
+    const cooldownKey = `olx-login-cooldown:${userId}`;
+
+    if (
+      !(await takeRateLimitSlot(cooldownKey, 1, OLX_LOGIN_COOLDOWN_MS)) ||
+      !(await takeRateLimitSlot(attemptsKey, 3, OLX_LOGIN_WINDOW_MS))
+    ) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "Слишком много попыток подключения olx.uz. Подождите минуту и попробуйте снова.",
+      });
+    }
+    try {
+      const connection = await createOlxConnectionTicket(
+        ctx.db,
+        userId,
+        extensionId,
+      );
+      return {
+        ticket: connection.ticket,
+        expiresAt: connection.expiresAt,
+      };
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw olxTicketError(error);
+    }
+  }),
+
+  removeOlxSession: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db.transaction(async (transaction) => {
+      await transaction.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`olx-account:${userId}`}, 0))`,
+      );
+      await transaction
+        .delete(userOlxSessions)
+        .where(eq(userOlxSessions.userId, userId));
+    });
+    return { success: true };
+  }),
+
   // ── Telegram resume warehouse ──────────────────────────────────────
 
   /**

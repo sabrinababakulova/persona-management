@@ -67,3 +67,19 @@ To apply locally:
 ./scripts/start-database.sh
 bun run db:migrate
 ```
+
+## olx.uz vacancy publishing
+
+olx.uz has no supported third-party publishing API for Uzbekistan. The
+integration therefore uses a one-time Chrome connector to transfer the user's
+OLX web authorization to Persona, encrypts the tokens at rest, and performs
+later preview/publication requests through a short-lived headless
+Chrome/Chromium network context on the server. Activation, deactivation, and
+deletion use the lightweight GraphQL mutation used by olx.uz's own **My ads**
+page, without launching Chromium. Passwords, CAPTCHAs, and SMS codes stay on the
+official olx.uz website. Public category and location lookups try normal
+server-side HTTP first, use a short-lived Chromium fallback when OLX returns
+HTTP 403, and are cached to avoid repeated browser launches.
+
+Setup, security boundaries, deployment requirements, and live-test steps are in
+[`docs/olx-integration.md`](docs/olx-integration.md).

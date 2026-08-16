@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { periodSchema } from "~/server/api/router-utils/period";
+import {
+  normalizeOlxUzPhone,
+  OLX_UZ_PHONE_INPUT_REGEX,
+} from "~/shared/olx-phone";
 
 export const vacancyListInputSchema = z
   .object({
@@ -74,6 +78,57 @@ export type PersonHunterPublicationMeta = z.infer<
   typeof personHunterMetaSchema
 >;
 
+export const olxContactPhoneSchema = z
+  .string()
+  .trim()
+  .max(30)
+  .regex(
+    OLX_UZ_PHONE_INPUT_REGEX,
+    "Введите номер Узбекистана в формате +998 90 123 45 67.",
+  )
+  .transform((value, ctx) => {
+    const normalized = normalizeOlxUzPhone(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Не удалось привести номер к формату +998XXXXXXXXX.",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
+/** Values used by olx.uz's own Jobs posting requests. */
+export const olxPublicationMetaSchema = z.object({
+  categoryId: z.number().int().positive().optional(),
+  categoryPath: z
+    .array(z.string().trim().min(1).max(120))
+    .min(1)
+    .max(6)
+    .default(["Работа"]),
+  location: z.string().trim().min(1).max(255),
+  cityId: z.number().int().positive().optional(),
+  cityName: z.string().trim().min(1).max(255).optional(),
+  regionId: z.number().int().positive().optional(),
+  regionName: z.string().trim().min(1).max(255).optional(),
+  districtId: z.number().int().positive().optional(),
+  districtName: z.string().trim().min(1).max(255).optional(),
+  latitude: z.number().finite().min(-90).max(90).optional(),
+  longitude: z.number().finite().min(-180).max(180).optional(),
+  /** Legacy text fields remain readable so existing drafts can be upgraded. */
+  district: z.string().trim().max(255).optional(),
+  employmentType: z.string().trim().max(255).optional(),
+  schedule: z.string().trim().max(255).optional(),
+  experience: z.string().trim().max(255).optional(),
+  contactName: z.string().trim().max(255).optional(),
+  contactPhone: olxContactPhoneSchema.optional(),
+  salaryNegotiable: z.boolean().default(false),
+  remoteWork: z.boolean().default(false),
+  onlineRecruitment: z.boolean().default(false),
+});
+
+export type OlxPublicationMeta = z.infer<typeof olxPublicationMetaSchema>;
+
 export const vacancyCreateInputSchema = z.object({
   id: z.string().min(1).max(255).optional(),
   parentId: z.string().min(1).max(255).optional(),
@@ -99,6 +154,7 @@ export const vacancyCreateInputSchema = z.object({
   isPublication: z.boolean().optional(),
   destination: z.string().max(255).optional(),
   personHunterMeta: personHunterMetaSchema.optional(),
+  olxBrowserMeta: olxPublicationMetaSchema.optional(),
 });
 
 export const vacancyUpdateInputSchema = z.object({
@@ -122,6 +178,7 @@ export const vacancyUpdateInputSchema = z.object({
   isActive: z.boolean().optional(),
   isPublication: z.boolean().optional(),
   personHunterMeta: personHunterMetaSchema.nullable().optional(),
+  olxBrowserMeta: olxPublicationMetaSchema.nullable().optional(),
 });
 
 export const vacancyPublicationListInputSchema = z.object({

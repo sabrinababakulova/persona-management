@@ -17,7 +17,7 @@ export function Breadcrumbs({
   return (
     <nav
       aria-label={t("breadcrumbs")}
-      className="flex min-w-0 items-center gap-2 text-sm"
+      className="hidden min-w-0 items-center gap-2 text-sm md:flex"
     >
       <Link
         className="shrink-0 font-medium text-text-muted hover:text-text-heading"

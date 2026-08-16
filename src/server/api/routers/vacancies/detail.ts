@@ -197,6 +197,11 @@ export const getVacancyProcedure = protectedProcedure
           hhVacancyId,
           hhDraftId: null,
           personHunterMeta: null,
+          olxAdvertId: null,
+          olxAdvertUrl: null,
+          olxBrowserMeta: null,
+          olxLastPublishedAt: null,
+          olxLastError: null,
           telegramPostId: null,
           telegramFileId: null,
           publishedAt: hhVacancy.publishedAt,
@@ -491,6 +496,9 @@ export const listVacancyPublicationsProcedure = protectedProcedure
         hhDraftId: vacancies.hhDraftId,
         personHunterVacancyId: vacancies.personHunterVacancyId,
         personHunterUniqueCode: vacancies.personHunterUniqueCode,
+        olxAdvertId: vacancies.olxAdvertId,
+        olxAdvertUrl: vacancies.olxAdvertUrl,
+        olxBrowserMeta: vacancies.olxBrowserMeta,
         telegramPostId: vacancies.telegramPostId,
       })
       .from(vacancies)
