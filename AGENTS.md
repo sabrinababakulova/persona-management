@@ -15,6 +15,8 @@
 | Typecheck | `bun run typecheck` (`tsc --noEmit`) |
 | Lint / format | `bun run check` (Biome) — fix with `bun run check:write` |
 | DB migrate | `bun run db:migrate` (`drizzle-kit migrate`) |
+| Production-safe migrate | `bun run db:migrate-custom` |
+| Migration/schema check | `bun run db:migrations:check` |
 | DB generate migration | `bun run db:generate` |
 | DB migrate | `bun run db:migrate` |
 | DB seed | `bun run db:seed` (lookups + default company) |
@@ -316,7 +318,7 @@ Located in `/drizzle/`. Generated with `bun run db:generate`, applied with `bun 
 
 **Ledger drift:** `db:push` changes the schema without writing to `drizzle.__drizzle_migrations`, so a push-maintained database looks unmigrated and `drizzle-kit migrate` (`bun run db:migrate`) replays old migrations and fails with "column already exists". Use **`bun run db:migrate-custom`** (`src/server/db/migrate.ts`) there: it runs each statement in its own savepoint and skips the ones whose object already exists (or, for `DROP`s, no longer exists), then records the migration. Any other error still aborts.
 
-**Production deploy (`scripts/deploy.sh`) uses `bun run db:migrate`.** `db:push` applies `schema.ts` directly and skips the `.sql` files, so a backfill written in a migration would never run — it is therefore kept out of the deploy path entirely. A change that rewrites existing rows (new `NOT NULL` column, replaced column) belongs in the generated `.sql`, hand-edited between the `ADD COLUMN` and the `SET NOT NULL`.
+**Production deploy (`scripts/deploy.sh`) uses `bun run db:migrate-custom` automatically.** The GitHub workflow first runs `bun run db:migrations:check`, builds the application, and takes a verified database backup before applying migrations. Any non-idempotent SQL error fails the GitHub pipeline before PM2 restarts. `db:push` applies `schema.ts` directly and skips the `.sql` files, so a backfill written in a migration would never run — it is therefore kept out of the deploy path entirely. A change that rewrites existing rows (new `NOT NULL` column, replaced column) belongs in the generated `.sql`, hand-edited between the `ADD COLUMN` and the `SET NOT NULL`.
 
 `db:generate` prompts interactively when a table both loses and gains a column, since it cannot distinguish a rename from a drop-plus-add. Answer **create column** unless the old values really should carry over.
 

@@ -107,6 +107,7 @@ async function processJob(
         hhResumeId: candidates.hhResumeId,
         profileLocked: candidates.profileLocked,
         aiAnalysis: candidates.aiAnalysis,
+        aiAnalysisTranslations: candidates.aiAnalysisTranslations,
       })
       .from(candidates)
       .where(eq(candidates.id, job.candidateId))
@@ -175,8 +176,9 @@ async function processJob(
         };
 
     let aiAnalysis = candidate.aiAnalysis?.trim() ?? "";
+    let aiAnalysisTranslations = candidate.aiAnalysisTranslations ?? null;
     let aiErrorMessage: string | null = null;
-    if (!aiAnalysis) {
+    if (!aiAnalysis || !aiAnalysisTranslations) {
       const analysis = await generateCandidateAiAnalysis(
         {
           resumeText: formatHhCandidateForAiAnalysis(resume),
@@ -192,6 +194,7 @@ async function processJob(
       );
       if (analysis.status === "success") {
         aiAnalysis = analysis.text;
+        aiAnalysisTranslations = analysis.translations ?? null;
       } else {
         aiErrorMessage =
           analysis.errorMessage || "Failed to generate candidate AI analysis";
@@ -206,6 +209,7 @@ async function processJob(
         hhResumeFetchedAt: new Date(),
         hhSyncedAt: new Date(),
         ...(aiAnalysis ? { aiAnalysis } : {}),
+        ...(aiAnalysisTranslations ? { aiAnalysisTranslations } : {}),
       })
       .where(eq(candidates.id, candidate.id));
 
@@ -369,7 +373,12 @@ async function computeMatchScores(input: {
       .update(candidateVacancies)
       .set({
         matchScore: matchResult.score,
-        matchAnalysis: matchResult.reasoning || null,
+        matchAnalysis: matchResult.analysis.ru || null,
+        matchAnalysisTranslations: matchResult.analysis,
+        matchedSkills: matchResult.matchedRequirements.ru,
+        matchedSkillsTranslations: matchResult.matchedRequirements,
+        missingSkills: matchResult.missingRequirements.ru,
+        missingSkillsTranslations: matchResult.missingRequirements,
       })
       .where(eq(candidateVacancies.id, pair.applicationId));
 

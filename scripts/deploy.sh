@@ -1,10 +1,40 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 DEPLOY_PATH="${DEPLOY_PATH:-/root/projects/persona-management}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_REPOSITORY="${DEPLOY_REPOSITORY:-origin}"
 APP_NAME="${APP_NAME:-yeshunt}"
+SOURCE_ALREADY_UPDATED="${SOURCE_ALREADY_UPDATED:-false}"
+CURRENT_DEPLOY_STEP="Initialize deployment"
+
+report_deploy_error() {
+  local exit_code="$?"
+  local line_number="$1"
+
+  echo "::endgroup::"
+  printf 'Deployment failed during "%s" at scripts/deploy.sh:%s (exit %s).\n' \
+    "$CURRENT_DEPLOY_STEP" \
+    "$line_number" \
+    "$exit_code" >&2
+  printf '::error title=Production deployment failed::Step "%s" failed on the server (scripts/deploy.sh:%s, exit %s). Review the preceding log group.\n' \
+    "$CURRENT_DEPLOY_STEP" \
+    "$line_number" \
+    "$exit_code" >&2
+  exit "$exit_code"
+}
+
+trap 'report_deploy_error "$LINENO"' ERR
+
+run_step() {
+  local label="$1"
+  shift
+
+  CURRENT_DEPLOY_STEP="$label"
+  printf '::group::%s\n' "$label"
+  "$@"
+  echo "::endgroup::"
+}
 
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -42,29 +72,37 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
-git fetch "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
+if [ "$SOURCE_ALREADY_UPDATED" != "true" ]; then
+  run_step "Fetch deployment source" \
+    git fetch "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
 
-current_branch="$(git branch --show-current)"
-if [ "$current_branch" != "$DEPLOY_BRANCH" ]; then
-  git checkout "$DEPLOY_BRANCH"
+  current_branch="$(git branch --show-current)"
+  if [ "$current_branch" != "$DEPLOY_BRANCH" ]; then
+    run_step "Check out deployment branch" git checkout "$DEPLOY_BRANCH"
+  fi
+
+  run_step "Fast-forward deployment source" \
+    git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
+else
+  echo "Deployment source was fast-forwarded by the CI bootstrap step."
 fi
 
-git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
-bun install --frozen-lockfile
+run_step "Install dependencies" bun install --frozen-lockfile
+run_step "Build application" bun run build
 
 # Refuse schema changes unless a validated PostgreSQL snapshot succeeds first.
-run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
-# Migrations only — `db:push` is deliberately not used here. Push applies
-# schema.ts directly, which silently skips the data backfills that live in the
-# .sql files and leaves `drizzle.__drizzle_migrations` empty.
-#
-# If this database was previously deployed with push, its ledger is behind the
-# schema and this step will fail on "already exists". Run `bun run
-# db:migrate-custom` once to reconcile it, then this returns to working.
-bun run db:migrate
-bun run build
+run_step "Back up production database" \
+  run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
+
+# The custom migrator is the only production schema path. It applies committed
+# SQL migrations, reconciles databases whose schema is ahead of the Drizzle
+# ledger, and exits non-zero on every non-idempotent SQL error. `db:push` is
+# deliberately excluded because it skips migration backfills and ledger writes.
+run_step "Apply database migrations" bun run db:migrate-custom
 
 # Restart or start the app with pm2
+CURRENT_DEPLOY_STEP="Restart application"
+echo "::group::$CURRENT_DEPLOY_STEP"
 if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
   pm2 restart "$APP_NAME"
   echo "Restarted '$APP_NAME' with pm2"
@@ -72,10 +110,12 @@ else
   pm2 start bun --name "$APP_NAME" -- run start
   echo "Started '$APP_NAME' with pm2"
 fi
+echo "::endgroup::"
 
-pm2 save
+run_step "Persist process configuration" pm2 save
 
-run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
+run_step "Install operational schedules" \
+  run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
 
 echo ""
-pm2 status "$APP_NAME"
+run_step "Show application status" pm2 status "$APP_NAME"

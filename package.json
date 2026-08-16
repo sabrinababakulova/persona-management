@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate-custom": "bun run src/server/db/migrate.ts",
+    "db:migrations:check": "bash scripts/validate-migrations.sh",
     "db:backup": "bash scripts/backup-database.sh",
     "db:backup:verify": "bash scripts/verify-database-backup.sh",
     "db:push": "drizzle-kit push",

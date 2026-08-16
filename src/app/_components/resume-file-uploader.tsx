@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
+import type { LocalizedText } from "~/shared/localized-ai";
 import { api } from "~/trpc/react";
 import { bytesToBase64 } from "~/utils/bytes-to-base64";
 import { resolveTrpcError } from "~/utils/trpc-error";
@@ -17,6 +18,7 @@ export type ResumeUploadMeta = {
   prefillStatus: "success" | "no_data" | "failed";
   prefillErrorMessage?: string;
   aiAnalysis: string;
+  aiAnalysisTranslations?: LocalizedText;
   aiAnalysisStatus: "success" | "failed";
   aiAnalysisErrorMessage?: string;
 };

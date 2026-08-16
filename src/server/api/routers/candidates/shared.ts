@@ -1,5 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
-
+import type { AppLocale } from "~/i18n/config";
 import { formatActivityTime } from "~/server/activity/recent-activity";
 import {
   candidates,
@@ -10,6 +10,7 @@ import {
 } from "~/server/db/schema";
 import type { HhResumeCandidate } from "~/server/services/hh";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import { getLocalizedText } from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 import { isUserVisibleVacancy } from "../vacancies/shared";
 
@@ -184,12 +185,14 @@ export async function buildCandidateDetailResponse({
   db,
   companyId,
   candidate,
+  locale,
   resumeNameOverride,
   resumeUrlOverride,
 }: {
   db: DatabaseClient;
   companyId: string;
   candidate: StoredCandidateRecord;
+  locale: AppLocale;
   resumeNameOverride?: string;
   resumeUrlOverride?: string;
 }) {
@@ -259,7 +262,11 @@ export async function buildCandidateDetailResponse({
     }[],
     skills: (candidate.skills ?? []) as string[],
     contacts: { phone, telegram, email },
-    aiAnalysis: candidate.aiAnalysis ?? "",
+    aiAnalysis: getLocalizedText(
+      candidate.aiAnalysisTranslations,
+      locale,
+      candidate.aiAnalysis ?? "",
+    ),
     otherVacancies: relatedVacancyRows.map((vacancy) => vacancy.title),
     relatedVacancies: relatedVacancyRows,
     workExperience: (candidate.workExperience ?? []) as {

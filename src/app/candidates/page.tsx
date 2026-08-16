@@ -331,6 +331,7 @@ export default function CandidatesPage() {
       contacts: mergedContacts,
       source: payload.source || prefill?.source || undefined,
       aiAnalysis: payload.aiAnalysis || undefined,
+      aiAnalysisTranslations: payload.aiAnalysisTranslations,
       salaryExpectation: prefill?.salaryExpectation,
       salaryCurrency: prefill?.salaryCurrency ?? "UZS",
       currentPosition: prefill?.currentPosition || undefined,

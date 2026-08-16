@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
+import { getRequestLocale } from "~/i18n/server-locale";
 import {
   buildActivityPreview,
   writeRecentActivityLog,
@@ -33,6 +34,7 @@ import {
 export const getCandidateProcedure = protectedProcedure
   .input(candidateIdInputSchema)
   .query(async ({ ctx, input }) => {
+    const locale = getRequestLocale(ctx.headers);
     const userCompanyId = await getOptionalCompanyId(
       ctx.db,
       ctx.session.user.id,
@@ -60,6 +62,7 @@ export const getCandidateProcedure = protectedProcedure
               db: ctx.db,
               companyId: userCompanyId,
               candidate: storedCandidate,
+              locale,
             })
           : null;
       }
@@ -67,6 +70,8 @@ export const getCandidateProcedure = protectedProcedure
       try {
         const hhCandidate = await fetchHhResumeById(resumeId, accessToken);
         let aiAnalysis = storedCandidate?.aiAnalysis?.trim() ?? "";
+        let aiAnalysisTranslations =
+          storedCandidate?.aiAnalysisTranslations ?? null;
 
         // Generate AI analysis once and reuse the stored text on later reads.
         if (!aiAnalysis) {
@@ -86,6 +91,7 @@ export const getCandidateProcedure = protectedProcedure
 
           if (aiAnalysisResult.status === "success") {
             aiAnalysis = aiAnalysisResult.text;
+            aiAnalysisTranslations = aiAnalysisResult.translations ?? null;
           }
         }
 
@@ -107,6 +113,7 @@ export const getCandidateProcedure = protectedProcedure
           experience: hhCandidate.experience ?? null,
           matchScore: storedCandidate?.matchScore ?? null,
           aiAnalysis: aiAnalysis || null,
+          aiAnalysisTranslations,
           contacts: toStoredCandidateContacts(hhCandidate),
           skills: hhCandidate.skills,
           languages: hhCandidate.languages,
@@ -140,6 +147,7 @@ export const getCandidateProcedure = protectedProcedure
           db: ctx.db,
           companyId: userCompanyId,
           candidate: persistedCandidate,
+          locale,
           resumeNameOverride: "Резюме на hh.uz",
           resumeUrlOverride: hhCandidate.resumeUrl,
         });
@@ -155,6 +163,7 @@ export const getCandidateProcedure = protectedProcedure
               db: ctx.db,
               companyId: userCompanyId,
               candidate: storedCandidate,
+              locale,
             })
           : null;
       }
@@ -168,6 +177,7 @@ export const getCandidateProcedure = protectedProcedure
       db: ctx.db,
       companyId: userCompanyId,
       candidate: storedCandidate,
+      locale,
     });
   });
 

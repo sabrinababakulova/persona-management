@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { periodSchema } from "~/server/api/router-utils/period";
+import { localizedTextSchema } from "~/shared/localized-ai";
 
 /** Optional filters and pagination accepted by candidate list endpoints. */
 export const candidateListInputSchema = z
@@ -150,6 +151,7 @@ export const candidateCreateInputSchema = z.object({
     .default([]),
   status: z.string().max(50).default("new"),
   aiAnalysis: z.string().max(5000).optional(),
+  aiAnalysisTranslations: localizedTextSchema.optional(),
   resumeFileId: z.string().max(255).optional(),
   resumeFileName: z.string().max(255).optional(),
   resumeFileSize: z.string().max(50).optional(),

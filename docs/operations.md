@@ -9,6 +9,36 @@ sudo bash scripts/install-operations.sh
 `scripts/deploy.sh` runs this installer automatically after restarting the
 application.
 
+## Automated production migrations
+
+The deploy workflow validates that `src/server/db/schema.ts` matches the
+committed files under `drizzle/` on every pull request and before every
+production deployment. When a schema change has no generated migration, the
+validation job fails with a `Database migration is missing` annotation.
+
+After the application builds and a verified database backup completes,
+`scripts/deploy.sh` runs:
+
+```bash
+bun run db:migrate-custom
+```
+
+The custom migrator reconciles historical databases that are ahead of the
+Drizzle ledger, but fails on every SQL error that is not safely idempotent. A
+failure leaves the existing PM2 process running and marks the GitHub deployment
+job failed; the new application version is not restarted.
+
+For each schema change, generate and review the SQL, commit the schema and
+migration files, then run the same clean-worktree guard used by CI:
+
+```bash
+bun run db:generate
+bun run db:migrations:check
+```
+
+Never use `db:push` in production because it bypasses migration backfills and
+does not maintain the migration ledger.
+
 ## Scheduled jobs
 
 The installer writes `/etc/cron.d/persona-management`.

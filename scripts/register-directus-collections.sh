@@ -712,7 +712,7 @@ if database_column_exists "user" "role"; then
       }
     }' "user.role"
 else
-  echo "Skipping 'user.role' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+  echo "Skipping 'user.role' Directus metadata: column is missing. Run 'bun run db:migrate-custom' first."
 fi
 
 # Master account: set once by registration for whoever created the company. Read-only on
@@ -732,7 +732,7 @@ if database_column_exists "user" "isMasterAccount"; then
       }
     }' "user.isMasterAccount"
 else
-  echo "Skipping 'user.isMasterAccount' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+  echo "Skipping 'user.isMasterAccount' Directus metadata: column is missing. Run 'bun run db:migrate-custom' first."
 fi
 
 # Deactivation timestamp. The master account sets it by removing someone from the company;
@@ -749,7 +749,7 @@ if database_column_exists "user" "deactivatedAt"; then
       }
     }' "user.deactivatedAt"
 else
-  echo "Skipping 'user.deactivatedAt' Directus metadata: column is missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+  echo "Skipping 'user.deactivatedAt' Directus metadata: column is missing. Run 'bun run db:migrate-custom' first."
 fi
 
 patch_field "company_hh_account" "userId" '{
@@ -1192,7 +1192,7 @@ patch_field "ai_usage_log" "error_message" '{
 
 configure_readonly_collection_permissions "ai_usage_log" "ai_usage_log"
 else
-  echo "Skipping 'ai_usage_log' Directus metadata: database table or cost columns are missing. Run 'bun run db:migrate' or 'bun run db:push' first."
+  echo "Skipping 'ai_usage_log' Directus metadata: database table or cost columns are missing. Run 'bun run db:migrate-custom' first."
 fi
 
 # Per-application AI match score (0–100), written by the candidateVacancyMatch

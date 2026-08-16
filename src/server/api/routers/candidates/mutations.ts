@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 
+import { getRequestLocale } from "~/i18n/server-locale";
 import { writeRecentActivityLog } from "~/server/activity/recent-activity";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
@@ -29,6 +30,7 @@ import {
   sanitizeResumeFileName,
   uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
+import { getLocalizedText } from "~/shared/localized-ai";
 
 import {
   candidateCreateInputSchema,
@@ -47,6 +49,7 @@ import { validateCandidateInput } from "./validators";
 export const uploadResumeProcedure = protectedProcedure
   .input(candidateUploadResumeInputSchema)
   .mutation(async ({ ctx, input }) => {
+    const locale = getRequestLocale(ctx.headers);
     const normalizedBase64 = input.fileBase64.replace(/\s+/g, "");
     // Estimate size before decoding so oversized payloads are rejected early.
     const base64Padding = normalizedBase64.endsWith("==")
@@ -296,6 +299,10 @@ export const uploadResumeProcedure = protectedProcedure
         resumeFileSize,
         aiAnalysis:
           aiAnalysisResult.status === "success" ? aiAnalysisResult.text : null,
+        aiAnalysisTranslations:
+          aiAnalysisResult.status === "success"
+            ? aiAnalysisResult.translations
+            : null,
       })
       .where(eq(candidates.id, input.candidateId));
 
@@ -308,7 +315,14 @@ export const uploadResumeProcedure = protectedProcedure
       prefillStatus: prefillExtraction.status,
       prefillErrorMessage: prefillExtraction.errorMessage,
       aiAnalysis:
-        aiAnalysisResult.status === "success" ? aiAnalysisResult.text : "",
+        aiAnalysisResult.status === "success"
+          ? getLocalizedText(
+              aiAnalysisResult.translations,
+              locale,
+              aiAnalysisResult.text,
+            )
+          : "",
+      aiAnalysisTranslations: aiAnalysisResult.translations,
       aiAnalysisStatus: aiAnalysisResult.status,
       aiAnalysisErrorMessage: aiAnalysisResult.errorMessage,
     };
@@ -344,7 +358,11 @@ export const createCandidateProcedure = protectedProcedure
           workExperience: input.workExperience,
           education: input.education,
           status: input.status,
-          aiAnalysis: input.aiAnalysis?.trim() || null,
+          aiAnalysis:
+            input.aiAnalysisTranslations?.ru?.trim() ||
+            input.aiAnalysis?.trim() ||
+            null,
+          aiAnalysisTranslations: input.aiAnalysisTranslations ?? null,
           resumeFileId: input.resumeFileId ?? null,
           resumeFileName: input.resumeFileName ?? null,
           resumeFileSize: input.resumeFileSize ?? null,

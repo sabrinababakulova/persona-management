@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { ChevronDownIcon, GlobeIcon } from "~/app/_components/icons";
 import { type AppLocale, localeCookieName, locales } from "~/i18n/config";
+import { api } from "~/trpc/react";
 
 type LocaleSwitcherProps = {
   variant?: "header" | "auth";
@@ -20,6 +21,7 @@ export function LocaleSwitcher({ variant = "header" }: LocaleSwitcherProps) {
   const locale = useLocale();
   const router = useRouter();
   const t = useTranslations("LocaleSwitcher");
+  const utils = api.useUtils();
   const [isPending, startTransition] = useTransition();
 
   const changeLocale = (nextLocale: AppLocale) => {
@@ -30,7 +32,10 @@ export function LocaleSwitcher({ variant = "header" }: LocaleSwitcherProps) {
     // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API support is not universal; this first-party preference cookie is intentionally set synchronously.
     document.cookie = `${localeCookieName}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
     startTransition(() => {
-      router.refresh();
+      void Promise.all([
+        utils.candidates.get.invalidate(),
+        utils.vacancies.getFunnel.invalidate(),
+      ]).finally(() => router.refresh());
     });
   };
 

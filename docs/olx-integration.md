@@ -122,8 +122,8 @@ like the rest of Persona:
    characters and set `OLX_CONNECTOR_EXTENSION_ID` to the exact production
    Chrome Web Store id. During key rotation, put old keys in
    `OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS` as a comma-separated list.
-3. Apply migrations with `bun run db:migrate` (or the documented custom migrator
-   if that database has migration-ledger drift).
+3. Commit the generated migration. The production workflow applies it with
+   `bun run db:migrate-custom` after taking a verified database backup.
 4. Install a current `google-chrome-stable` or `chromium` package. Common paths
    are detected automatically; otherwise set `OLX_BROWSER_EXECUTABLE_PATH`.
    Run Persona as an unprivileged user so the Chrome sandbox stays enabled.
