@@ -1,12 +1,11 @@
 /**
  * Applies pending migrations from `/drizzle`.
  *
- * Unlike `drizzle-kit migrate`, this one survives a database that is ahead of its ledger.
- * Production deploys run `bun run db:push`, which changes the schema without recording anything
- * in `drizzle.__drizzle_migrations`, so a plain migrator replays old migrations and dies on
- * "column already exists". Here every statement runs inside its own savepoint, and the errors
- * that mean "this change is already in place" are skipped instead of aborting the run. Any
- * other error still fails the migration, and each migration is recorded once it completes.
+ * Unlike `drizzle-kit migrate`, this one survives a database that is ahead of its ledger because
+ * it was historically maintained with `db:push`. Every statement runs inside its own savepoint,
+ * and errors meaning "this change is already in place" are skipped instead of aborting the run.
+ * Any other error fails the deployment, and a migration is recorded only after all of its
+ * statements have completed or been safely identified as already applied.
  */
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import postgres from "postgres";
@@ -33,6 +32,29 @@ function getErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
     ? String((error as { code: unknown }).code)
     : "";
+}
+
+function getErrorField(error: unknown, field: string) {
+  if (typeof error !== "object" || error === null || !(field in error)) {
+    return "";
+  }
+
+  const value = (error as Record<string, unknown>)[field];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function formatDatabaseError(error: unknown) {
+  const fields = [
+    ["code", getErrorCode(error)],
+    ["message", error instanceof Error ? error.message : String(error)],
+    ["detail", getErrorField(error, "detail")],
+    ["hint", getErrorField(error, "hint")],
+    ["table", getErrorField(error, "table_name")],
+    ["column", getErrorField(error, "column_name")],
+    ["constraint", getErrorField(error, "constraint_name")],
+  ].filter((entry) => entry[1]);
+
+  return fields.map(([label, value]) => `  ${label}: ${value}`).join("\n");
 }
 
 /**
@@ -84,8 +106,12 @@ try {
       .filter(Boolean);
     let skipped = 0;
 
+    console.log(
+      `Applying migration ${migration.folderMillis} (${statements.length} statement(s))...`,
+    );
+
     await sql.begin(async (tx) => {
-      for (const statement of statements) {
+      for (const [statementIndex, statement] of statements.entries()) {
         try {
           // A savepoint keeps one skippable statement from aborting the whole migration.
           await tx.savepoint(async (savepoint) => {
@@ -93,18 +119,20 @@ try {
           });
         } catch (error) {
           if (!isAlreadyApplied(error, statement)) {
+            console.error(
+              `\nMigration ${migration.folderMillis} failed at statement ${statementIndex + 1}/${statements.length}:\n${statement}\n${formatDatabaseError(error)}\n`,
+            );
             if (skipped > 0) {
-              // Part of this migration was already in place, so we are replaying history over
-              // a newer database. A failure here is usually an obsolete constraint that later
-              // migrations remove but current data no longer satisfies.
               console.error(
-                `\nStatement failed while replaying an already-applied migration (${migration.folderMillis}):\n  ${statement}\nThe database is ahead of the migration ledger. If this statement is obsolete, ` +
-                  `run 'bun run db:push' to sync the schema from schema.ts instead.\n`,
+                `${skipped} earlier statement(s) in this migration were already present. Add a corrective SQL migration if this statement is obsolete; do not use db:push in production.\n`,
               );
             }
             throw error;
           }
           skipped += 1;
+          console.log(
+            `  Skipped statement ${statementIndex + 1}/${statements.length}: already in place (PostgreSQL ${getErrorCode(error)}).`,
+          );
         }
       }
 
@@ -124,9 +152,9 @@ try {
   if (pending.length > 0) {
     console.log(`\n${pending.length} migration(s) applied successfully!`);
   }
-} catch (err) {
-  console.error("migration failed:", err);
-  process.exit(1);
+} catch (error) {
+  console.error(`Database migration failed.\n${formatDatabaseError(error)}`);
+  process.exitCode = 1;
 } finally {
   await sql.end();
 }

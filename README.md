@@ -35,8 +35,14 @@ This repo includes a GitHub Actions workflow at `.github/workflows/deploy.yml` t
 1. Run `bun install --frozen-lockfile`
 2. Run `bun run check`
 3. Run `bun run typecheck`
-4. SSH into the server
-5. Execute `scripts/deploy.sh`
+4. Run the test suite
+5. Verify that `schema.ts` has matching committed Drizzle migration files
+6. Run a production build
+7. On `main`, SSH into the server and fast-forward the deployment checkout
+8. Execute `scripts/deploy.sh`
+
+Pull requests run the validation job without deploying. A push to `main` deploys
+only after every validation step succeeds.
 
 The server-side deploy script:
 
@@ -44,7 +50,13 @@ The server-side deploy script:
 - fast-forwards the target branch
 - runs `bun install --frozen-lockfile`
 - runs `bun run build`
-- restarts `yeshunt.service`
+- creates and verifies a production database backup
+- runs `bun run db:migrate-custom` and stops on any non-idempotent SQL error
+- restarts the `yeshunt` PM2 process only after the build, backup, and migrations succeed
+
+Migration and remote deployment failures are emitted as GitHub Actions error
+annotations and fail the pipeline. Schema changes must still include a reviewed
+generated migration; CI deliberately does not invent or commit production SQL.
 
 Required GitHub repository secrets:
 

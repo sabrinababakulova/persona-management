@@ -1,32 +1,37 @@
 name: Deploy
 
 on:
+  pull_request:
   push:
     branches:
       - main
   workflow_dispatch:
     inputs:
       ref:
-        description: Git ref to deploy
+        description: Branch to deploy
         required: false
         default: main
 
+permissions:
+  contents: read
+
 concurrency:
-  group: production-deploy
-  cancel-in-progress: false
+  group: production-deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy:
+  validate:
+    name: Validate application and migrations
     runs-on: ubuntu-latest
     env:
-      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+      CI: "true"
       SKIP_ENV_VALIDATION: "true"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.DEPLOY_REF }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -42,6 +47,24 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Test
+        run: bun test
+
+      - name: Validate committed database migrations
+        run: bun run db:migrations:check
+
+      - name: Build
+        run: bun run build
+
+  deploy:
+    name: Deploy production
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+
+    steps:
       - name: Configure SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -59,16 +82,37 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
+          set -Eeuo pipefail
+
+          if ! [[ "$DEPLOY_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error title=Invalid deployment branch::The requested branch contains unsupported characters: $DEPLOY_REF"
+            exit 2
+          fi
+
           ssh -i ~/.ssh/id_ed25519 \
             -p "${DEPLOY_PORT:-22}" \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "bash -c '
-              cd /root/projects/persona-management &&
-              DEPLOY_BRANCH=${{ env.DEPLOY_REF }} \
-              APP_NAME=yeshunt \
-              DEPLOY_PATH=/root/projects/persona-management \
-              DEPLOY_REPOSITORY=origin \
-              bash ./scripts/deploy.sh
-            '"
+            "set -Eeuo pipefail
+             cd /root/projects/persona-management
+             if ! git diff --quiet || ! git diff --cached --quiet; then
+               echo '::error title=Remote worktree is dirty::Refusing to overwrite uncommitted production-server changes.' >&2
+               exit 1
+             fi
+             git fetch origin '$DEPLOY_REF'
+             current_branch=\$(git branch --show-current)
+             if [ \"\$current_branch\" != '$DEPLOY_REF' ]; then
+               git checkout '$DEPLOY_REF'
+             fi
+             git pull --ff-only origin '$DEPLOY_REF'
+             SOURCE_ALREADY_UPDATED=true \
+             DEPLOY_BRANCH='$DEPLOY_REF' \
+             APP_NAME=yeshunt \
+             DEPLOY_PATH=/root/projects/persona-management \
+             DEPLOY_REPOSITORY=origin \
+             bash ./scripts/deploy.sh" || {
+               status=$?
+               echo "::error title=Remote deployment failed::The production server exited with status $status. Review the deployment log above; the application was not restarted after a failed build, backup, or migration."
+               exit "$status"
+             }
