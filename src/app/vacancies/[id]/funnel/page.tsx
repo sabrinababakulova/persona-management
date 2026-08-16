@@ -57,11 +57,23 @@ function DotSeparator({
   return <span className={className}>|</span>;
 }
 
+type AiSummaryTone = "positive" | "negative" | "neutral";
+
+function getAiSummaryTone(line: string): AiSummaryTone {
+  if (/^(Подходит|Fits|Mos tomonlari):/i.test(line)) {
+    return "positive";
+  }
+  if (/^(Риски|Gaps|Kamchiliklar):/i.test(line)) {
+    return "negative";
+  }
+  return "neutral";
+}
+
 function toAiSummaryLines(aiAnalysis: string, fallback: string) {
   const normalized = aiAnalysis.trim();
 
   if (!normalized) {
-    return [fallback];
+    return [{ text: fallback, tone: "neutral" as const }];
   }
 
   const lines = normalized
@@ -77,7 +89,10 @@ function toAiSummaryLines(aiAnalysis: string, fallback: string) {
           .map((line) => line.replace(/^[•\-\s]+/, "").trim())
           .filter(Boolean);
 
-  return sourceLines.slice(0, 2);
+  return sourceLines.slice(0, 3).map((line) => ({
+    text: line,
+    tone: getAiSummaryTone(line),
+  }));
 }
 
 type FunnelCandidate = {
@@ -410,18 +425,24 @@ function VacancyStageCandidateCard({
           </div>
 
           <div className="flex flex-col gap-1">
-            {aiSummaryLines.map((line) => (
+            {aiSummaryLines.map(({ text, tone }) => (
               <p
                 className="flex items-start gap-1.5 text-text-secondary text-xs leading-[1.3]"
-                key={line}
+                key={text}
               >
                 <span
                   aria-hidden="true"
-                  className="font-bold text-success-green"
+                  className={`font-bold ${
+                    tone === "positive"
+                      ? "text-success-green"
+                      : tone === "negative"
+                        ? "text-accent-red"
+                        : "text-text-placeholder"
+                  }`}
                 >
-                  +
+                  {tone === "positive" ? "+" : tone === "negative" ? "−" : "•"}
                 </span>
-                <span>{line}</span>
+                <span>{text}</span>
               </p>
             ))}
           </div>

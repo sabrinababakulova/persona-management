@@ -5,6 +5,7 @@ import {
 } from "~/schemas/candidate-vacancy-match";
 import { recordAiUsage } from "~/server/ai/usage-logging";
 import { stripHtml } from "~/server/services/hh/shared";
+import type { LocalizedStringList, LocalizedText } from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 
 type Database = typeof import("~/server/db").db;
@@ -55,7 +56,13 @@ export type CandidateMatchInput = {
 };
 
 export type CandidateMatchResult =
-  | { status: "success"; score: number; reasoning: string }
+  | {
+      status: "success";
+      score: number;
+      analysis: LocalizedText;
+      matchedRequirements: LocalizedStringList;
+      missingRequirements: LocalizedStringList;
+    }
   | { status: "failed"; errorMessage: string };
 
 const MAX_DESCRIPTION_CHARS = 4_000;
@@ -172,15 +179,16 @@ export async function generateCandidateVacancyMatch(
   }
 
   const operation = usageContext?.operation ?? "candidate_vacancy_match";
-  const promptText = `Оцени соответствие кандидата вакансии.
+  const promptText = `Evaluate this candidate specifically against this vacancy.
 
-ВАКАНСИЯ
+VACANCY
 ${formatVacancyBlock(input.vacancy)}
 
-КАНДИДАТ
+Candidate
 ${formatCandidateBlock(input.candidate)}
 
-Верни JSON {"score": число от 0 до 100, "reasoning": краткое объяснение}.`;
+Return the structured multilingual score, analysis, matched requirements, and
+missing or unconfirmed requirements defined in your instructions.`;
 
   try {
     const matchAgent = mastra.getAgent("candidateVacancyMatch");
@@ -218,7 +226,13 @@ ${formatCandidateBlock(input.candidate)}
     }
 
     const score = clampScore(parsed.score);
-    const reasoning = (parsed.reasoning ?? "").trim().slice(0, 1200);
+    const analysis = {
+      ru: parsed.analysis.ru.trim().slice(0, 5000),
+      en: parsed.analysis.en.trim().slice(0, 5000),
+      uz: parsed.analysis.uz.trim().slice(0, 5000),
+    };
+    const matchedRequirements = parsed.matchedRequirements;
+    const missingRequirements = parsed.missingRequirements;
 
     if (usageContext) {
       await recordAiUsage({
@@ -231,7 +245,13 @@ ${formatCandidateBlock(input.candidate)}
       });
     }
 
-    return { status: "success", score, reasoning };
+    return {
+      status: "success",
+      score,
+      analysis,
+      matchedRequirements,
+      missingRequirements,
+    };
   } catch (error) {
     console.error("Failed to generate candidate-vacancy match", error);
     if (usageContext) {

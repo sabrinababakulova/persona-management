@@ -47,6 +47,8 @@ export function QuickAddCandidateModal({
   const [resumeFileName, setResumeFileName] = useState("");
   const [resumeFileSize, setResumeFileSize] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiAnalysisTranslations, setAiAnalysisTranslations] =
+    useState<ResumeUploadMeta["aiAnalysisTranslations"]>();
   const [resumePrefillData, setResumePrefillData] =
     useState<ResumeUploadMeta["prefillData"]>();
   const [isResumeUploading, setIsResumeUploading] = useState(false);
@@ -77,6 +79,7 @@ export function QuickAddCandidateModal({
       setResumeFileName("");
       setResumeFileSize("");
       setAiAnalysis("");
+      setAiAnalysisTranslations(undefined);
       setResumePrefillData(undefined);
       setIsResumeUploading(false);
       setLocalError(null);
@@ -108,6 +111,7 @@ export function QuickAddCandidateModal({
     setResumeFileName(uploadedResume.resumeFileName);
     setResumeFileSize(uploadedResume.resumeFileSize);
     setAiAnalysis(uploadedResume.aiAnalysis);
+    setAiAnalysisTranslations(uploadedResume.aiAnalysisTranslations);
     setResumePrefillData(uploadedResume.prefillData);
 
     const { prefillData } = uploadedResume;
@@ -182,6 +186,7 @@ export function QuickAddCandidateModal({
       status: status || undefined,
       source,
       aiAnalysis: aiAnalysis || undefined,
+      aiAnalysisTranslations,
       resumeFileId: resumeFileId || undefined,
       resumeFileName: resumeFileName || undefined,
       resumeFileSize: resumeFileSize || undefined,

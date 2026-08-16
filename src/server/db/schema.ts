@@ -13,6 +13,7 @@ import type {
   PersonHunterPublicationMeta,
 } from "~/server/api/routers/vacancies/schemas";
 import { COMPANY_ROLE_MEMBER } from "~/shared/company-roles";
+import type { LocalizedStringList, LocalizedText } from "~/shared/localized-ai";
 
 export const createTable = pgTableCreator((name) => name);
 
@@ -258,7 +259,12 @@ export const candidates = createTable(
     /** Total work experience in months; formatted for display by `formatExperienceMonths`. */
     experience: d.integer(),
     matchScore: d.integer(),
+    /** Legacy Russian summary retained for backwards compatibility. */
     aiAnalysis: d.text(),
+    /** Equivalent recruiter resume briefs in Russian, English, and Uzbek. */
+    aiAnalysisTranslations: d
+      .json("ai_analysis_translations")
+      .$type<LocalizedText>(),
     // JSON fields for arrays
     contacts: d.json().$type<{ type: string; value: string }[]>().default([]),
     skills: d.json().$type<string[]>().default([]),
@@ -614,22 +620,28 @@ export const candidateVacancies = createTable(
      * and weak for another. Refreshed by enrichment, null until first run.
      */
     matchScore: d.integer("match_score"),
-    /**
-     * Russian narrative justifying `matchScore` for THIS vacancy — the textual
-     * counterpart to the numeric score, written by the candidate-vacancy match
-     * agent. Per-application like the score; null until first enrichment run.
-     */
+    /** Legacy Russian match narrative retained for backwards compatibility. */
     matchAnalysis: d.text("match_analysis"),
+    /** Equivalent vacancy-specific analyses in Russian, English, and Uzbek. */
+    matchAnalysisTranslations: d
+      .json("match_analysis_translations")
+      .$type<LocalizedText>(),
     /**
      * Requirements of THIS vacancy the candidate's resume covers — the green
      * badges on funnel cards. Per-application, like `matchScore`.
      */
     matchedSkills: d.json("matched_skills").$type<string[]>().default([]),
+    matchedSkillsTranslations: d
+      .json("matched_skills_translations")
+      .$type<LocalizedStringList>(),
     /**
      * Requirements of THIS vacancy the candidate's resume does not cover —
      * the red badges on funnel cards. Per-application, like `matchScore`.
      */
     missingSkills: d.json("missing_skills").$type<string[]>().default([]),
+    missingSkillsTranslations: d
+      .json("missing_skills_translations")
+      .$type<LocalizedStringList>(),
     appliedAt: d.timestamp("applied_at", { withTimezone: true }),
     // DB-level default so `db:push` can add this NOT NULL column to the
     // already-populated vacancy_candidate table without a manual backfill.
@@ -756,6 +768,9 @@ export const telegramResumeImports = createTable(
     /** Cached successful AI outputs prevent paying for them again after retries. */
     prefillData: d.json("prefill_data").$type<CandidateResumePrefillData>(),
     aiAnalysis: d.text("ai_analysis"),
+    aiAnalysisTranslations: d
+      .json("ai_analysis_translations")
+      .$type<LocalizedText>(),
     /** `pending` | `processing` | `done` | `failed` | `ignored`. */
     status: d.varchar({ length: 20 }).notNull().default("pending"),
     attempts: d.integer().notNull().default(0),

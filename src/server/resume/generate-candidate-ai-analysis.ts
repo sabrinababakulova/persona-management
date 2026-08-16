@@ -1,5 +1,10 @@
 import { mastra } from "~/mastra";
+import {
+  type CandidateResumeSummary,
+  candidateResumeSummarySchema,
+} from "~/schemas/candidate-resume-summary";
 import { recordAiUsage } from "~/server/ai/usage-logging";
+import type { LocalizedText } from "~/shared/localized-ai";
 
 export type CandidateAiAnalysisStatus = "success" | "failed";
 
@@ -15,6 +20,7 @@ type AiUsageContext = {
 
 export type CandidateAiAnalysisResult = {
   text: string;
+  translations?: LocalizedText;
   status: CandidateAiAnalysisStatus;
   errorMessage?: string;
 };
@@ -33,19 +39,35 @@ type CandidateAiAnalysisInput =
       fileName?: never;
     };
 
-const MAX_ANALYSIS_WORDS = 150;
+const MAX_ANALYSIS_WORDS = 120;
 
-function normalizeWhitespace(value: string) {
-  return value.replace(/\s+/g, " ").trim();
+function normalizeSummary(value: string) {
+  return value
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^[•*-]\s*/, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n");
 }
 
 function truncateToWordLimit(value: string, wordLimit: number) {
-  const words = normalizeWhitespace(value).split(" ").filter(Boolean);
+  const normalized = normalizeSummary(value);
+  const words = normalized.split(/\s+/).filter(Boolean);
   if (words.length <= wordLimit) {
-    return words.join(" ");
+    return normalized;
   }
 
-  return words.slice(0, wordLimit).join(" ");
+  const lines = normalized.split("\n");
+  const wordsPerLine = Math.max(1, Math.floor(wordLimit / lines.length));
+  return lines
+    .map((line) =>
+      line.split(/\s+/).filter(Boolean).slice(0, wordsPerLine).join(" "),
+    )
+    .join("\n");
 }
 
 export async function generateCandidateAiAnalysis(
@@ -66,14 +88,9 @@ export async function generateCandidateAiAnalysis(
 
   try {
     const resumeSummaryAgent = mastra.getAgent("candidateResumeSummary");
-    const prompt = `
-Составь краткую оценку кандидата по резюме для HR-команды.
-Требования:
-- один абзац;
-- максимум ${MAX_ANALYSIS_WORDS} слов;
-- только факты из резюме;
-- выдели ключевой опыт, релевантные навыки и потенциальные риски/ограничения, если они явно есть в резюме.
-`;
+    const prompt = `Create the recruiter resume brief described in your
+instructions. Produce equivalent Russian, English, and Uzbek versions, each no
+longer than ${MAX_ANALYSIS_WORDS} words. Use only the supplied resume.`;
     const resumeText =
       "resumeText" in input ? input.resumeText?.trim() || "" : "";
 
@@ -104,17 +121,31 @@ ${resumeText}`,
             },
           ];
 
-    const result = await resumeSummaryAgent.generate([
+    const result = await resumeSummaryAgent.generate(
+      [
+        {
+          role: "user",
+          content,
+        },
+      ],
       {
-        role: "user",
-        content,
+        structuredOutput: {
+          schema: candidateResumeSummarySchema,
+        },
       },
-    ]);
+    );
 
-    const rawText = typeof result.text === "string" ? result.text : "";
-    const normalizedText = truncateToWordLimit(rawText, MAX_ANALYSIS_WORDS);
+    const parsed = result.object as CandidateResumeSummary | undefined;
+    const translations = parsed
+      ? {
+          ru: truncateToWordLimit(parsed.summaries.ru, MAX_ANALYSIS_WORDS),
+          en: truncateToWordLimit(parsed.summaries.en, MAX_ANALYSIS_WORDS),
+          uz: truncateToWordLimit(parsed.summaries.uz, MAX_ANALYSIS_WORDS),
+        }
+      : undefined;
+    const normalizedText = translations?.ru ?? "";
 
-    if (!normalizedText) {
+    if (!normalizedText || !translations?.en || !translations.uz) {
       if (usageContext) {
         await recordAiUsage({
           ...usageContext,
@@ -147,6 +178,7 @@ ${resumeText}`,
 
     return {
       text: normalizedText,
+      translations,
       status: "success",
     };
   } catch (error) {

@@ -21,6 +21,7 @@ import {
   MAX_RESUME_FILE_SIZE_BYTES,
   uploadCandidateResumeToStorage,
 } from "~/server/storage/resume-storage";
+import type { LocalizedText } from "~/shared/localized-ai";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -48,6 +49,7 @@ type ClaimedTelegramResumeJob = {
   resumeFileId: string | null;
   prefillData: CandidateResumePrefillData | null;
   aiAnalysis: string | null;
+  aiAnalysisTranslations: LocalizedText | null;
   attempts: number;
 };
 
@@ -91,6 +93,7 @@ function toCandidateValues(input: {
   resumeFileId: string;
   fileSize: number;
   aiAnalysis: string;
+  aiAnalysisTranslations: LocalizedText;
 }) {
   const { job, prefill } = input;
   const salaryExpectation =
@@ -138,6 +141,7 @@ function toCandidateValues(input: {
     })),
     status: "new",
     aiAnalysis: truncate(input.aiAnalysis, 5000),
+    aiAnalysisTranslations: input.aiAnalysisTranslations,
     resumeFileId: input.resumeFileId,
     resumeFileName: job.fileName,
     resumeFileSize: formatFileSize(input.fileSize),
@@ -218,6 +222,7 @@ export async function drainTelegramResumeImports(input: {
       "resume_file_id" AS "resumeFileId",
       "prefill_data" AS "prefillData",
       "ai_analysis" AS "aiAnalysis",
+      "ai_analysis_translations" AS "aiAnalysisTranslations",
       "attempts"
   `)) as unknown as RawClaimedTelegramResumeJob[];
   const claimedRows = rawClaimedRows.map((row) => ({
@@ -320,7 +325,8 @@ async function processTelegramResumeJob(
 
     let prefillData = job.prefillData;
     let aiAnalysis = job.aiAnalysis?.trim() || "";
-    if (!prefillData || !aiAnalysis) {
+    let aiAnalysisTranslations = job.aiAnalysisTranslations;
+    if (!prefillData || !aiAnalysis || !aiAnalysisTranslations) {
       const lookupSets = await loadCandidateLookupSets(db);
       const lookupOptions = {
         contactTypes: lookupSets.contactTypes,
@@ -346,7 +352,7 @@ async function processTelegramResumeJob(
                 candidateId: job.candidateId,
               },
             }),
-        aiAnalysis
+        aiAnalysis && aiAnalysisTranslations
           ? Promise.resolve(null)
           : generateCandidateAiAnalysis(
               {
@@ -367,6 +373,7 @@ async function processTelegramResumeJob(
       }
       if (analysis?.status === "success") {
         aiAnalysis = analysis.text;
+        aiAnalysisTranslations = analysis.translations ?? null;
       }
 
       await db
@@ -374,6 +381,7 @@ async function processTelegramResumeJob(
         .set({
           ...(prefillData ? { prefillData } : {}),
           ...(aiAnalysis ? { aiAnalysis } : {}),
+          ...(aiAnalysisTranslations ? { aiAnalysisTranslations } : {}),
         })
         .where(eq(telegramResumeImports.id, job.id));
 
@@ -390,7 +398,7 @@ async function processTelegramResumeJob(
       }
     }
 
-    if (!prefillData || !aiAnalysis) {
+    if (!prefillData || !aiAnalysis || !aiAnalysisTranslations) {
       return retryJob(db, job, "Mastra resume output is incomplete");
     }
 
@@ -400,6 +408,7 @@ async function processTelegramResumeJob(
       resumeFileId,
       fileSize: buffer.length,
       aiAnalysis,
+      aiAnalysisTranslations,
     });
 
     await db.transaction(async (tx) => {

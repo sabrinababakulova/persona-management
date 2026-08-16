@@ -1,3 +1,5 @@
+import type { LocalizedText } from "~/shared/localized-ai";
+
 export type CandidateFormData = {
   fullName: string;
   city: string;
@@ -23,6 +25,7 @@ export type CandidateFormData = {
   }[];
   status: string;
   aiAnalysis?: string;
+  aiAnalysisTranslations?: LocalizedText;
   resumeFileId?: string;
   resumeFileName?: string;
   resumeFileSize?: string;
