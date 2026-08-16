@@ -7,10 +7,10 @@
     "eyebrow": "olx.uz connector",
     "title": "Privacy notice",
     "intro": "This notice explains what the Talanty — olx.uz Connector handles when you choose to connect an olx.uz account.",
-    "updated": "Last updated: August 14, 2026",
+    "updated": "Last updated: August 16, 2026",
     "collected": {
       "title": "Data the connector transfers",
-      "body": "After you press Connect in Talanty, the connector reads the OLX access, refresh, and identity tokens, OLX device ID and request fingerprint, browser identification, and the first-party OLX cookie header needed for authenticated OLX requests. It sends this data only to the Talanty origin that created the one-time connection request."
+      "body": "After you press Connect in Talanty, the connector reads the OLX access and refresh tokens, OLX device ID and request fingerprint, browser identification, and only the first-party deviceGUID and access_token cookies needed for authenticated OLX requests. It sends this data only to the Talanty origin that created the one-time connection request."
     },
     "notCollected": {
       "title": "Data the connector does not collect",
@@ -562,7 +562,17 @@
       "disconnectError": "Could not remove the olx.uz connection.",
       "extensionMissing": "Talanty — olx.uz Connector was not detected",
       "extensionMissingHint": "Install the connector and refresh this page. If there is no installation button, ask your Talanty administrator for the link.",
-      "installExtension": "Install the Chrome extension",
+      "setupProgress": "Step {current} of {total}",
+      "installStepShort": "Extension",
+      "connectStepShort": "OLX account",
+      "installStepTitle": "Install the Talanty extension",
+      "installStepDescription": "Press the button below. In the Chrome Web Store, press “Add to Chrome”, then confirm the installation.",
+      "installExtension": "Open and install",
+      "checkInstallation": "I installed it — check",
+      "installReturnHint": "After installing, return to this tab — Talanty will check the extension automatically.",
+      "waitingForInstallation": "Install the extension in the opened tab and return here. The check will start automatically.",
+      "extensionReady": "Extension installed",
+      "connectStepDescription": "Now allow the connection and press the button below. We will open the official olx.uz website, where you can sign in to your account.",
       "dataDisclosure": "Talanty saves the olx.uz session tokens and browser details needed to publish. Your password, CAPTCHA, and SMS codes are not sent.",
       "privacyLink": "How your data is protected",
       "consent": "I agree to connect this olx.uz account.",
@@ -570,7 +580,7 @@
         "title": "How to connect your account",
         "install": {
           "title": "Install the connector",
-          "description": "Open the extension link, press “Add to Chrome”, then refresh this page."
+          "description": "Press “Open and install”, confirm the installation in Chrome, and return to Talanty. The check starts automatically."
         },
         "connect": {
           "title": "Start the connection",

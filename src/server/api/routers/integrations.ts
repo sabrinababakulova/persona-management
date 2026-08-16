@@ -22,6 +22,7 @@ import {
   resolveTelegramChannelInfo,
 } from "~/server/services/telegram";
 import { getTelegramResumeConfigForCompany } from "~/server/services/telegram-resume/config";
+import { OLX_CONNECTOR_EXTENSION_ID } from "~/shared/publication-navigation";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -122,8 +123,9 @@ export const integrationsRouter = createTRPCRouter({
 
   createOlxConnectionTicket: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const extensionId = env.OLX_CONNECTOR_EXTENSION_ID;
-    if (!extensionId || !env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
+    const extensionId =
+      env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
+    if (!env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
         message: "Коннектор olx.uz не полностью настроен администратором.",

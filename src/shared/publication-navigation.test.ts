@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   getPublicationCreationUrl,
   OLX_ACCOUNT_SETTINGS_URL,
+  OLX_CONNECTOR_EXTENSION_ID,
+  OLX_CONNECTOR_STORE_URL,
 } from "./publication-navigation";
 
 describe("publication creation navigation", () => {
@@ -33,5 +35,12 @@ describe("publication creation navigation", () => {
         vacancyId: "vacancy/1",
       }),
     ).toBe("/vacancies/vacancy%2F1/publications/telegram");
+  });
+
+  test("links to the published Chrome Web Store connector", () => {
+    expect(OLX_CONNECTOR_EXTENSION_ID).toBe("fojllciekjkejbnehccfkeoghpjippon");
+    expect(OLX_CONNECTOR_STORE_URL).toBe(
+      "https://chromewebstore.google.com/detail/talanty-%E2%80%94-olxuz-connector/fojllciekjkejbnehccfkeoghpjippon",
+    );
   });
 });

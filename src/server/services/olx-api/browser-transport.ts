@@ -174,6 +174,13 @@ export function browserSafeHeaders(init: RequestInit) {
   return result;
 }
 
+export function shouldDisableOlxBrowserSandbox(
+  nodeEnv: string,
+  configuredValue: string | undefined,
+): boolean {
+  return nodeEnv !== "production" && configuredValue === "true";
+}
+
 type BrowserFetchResult = {
   body: string;
   headers: Array<[string, string]>;
@@ -207,10 +214,13 @@ export async function fetchOlxWithBrowser(
     );
   }
 
-  const noSandbox = env.OLX_BROWSER_NO_SANDBOX === "true";
-  if (noSandbox && env.NODE_ENV === "production") {
-    throw new Error("OLX browser sandbox cannot be disabled in production");
-  }
+  // An old production setting must never turn the sandbox off. Production now
+  // runs as an unprivileged system user, so stale `true` values are safely
+  // ignored instead of disabling the whole OLX integration.
+  const noSandbox = shouldDisableOlxBrowserSandbox(
+    env.NODE_ENV,
+    env.OLX_BROWSER_NO_SANDBOX,
+  );
 
   const releaseSlot = await acquireBrowserSlot();
   let browser:

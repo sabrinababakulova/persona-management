@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Talanty — olx.uz Connector",
-  "version": "0.1.6",
-  "description": "Connects an olx.uz account to Talanty after the user signs in on the official olx.uz website.",
+  "version": "0.1.7",
+  "description": "Подключает аккаунт olx.uz к Talanty после входа пользователя на официальном сайте olx.uz.",
   "minimum_chrome_version": "102",
   "icons": {
     "16": "icons/icon16.png",

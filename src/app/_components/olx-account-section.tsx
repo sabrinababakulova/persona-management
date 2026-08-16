@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { env } from "~/env";
-import { OLX_ACCOUNT_SECTION_ID } from "~/shared/publication-navigation";
+import {
+  OLX_ACCOUNT_SECTION_ID,
+  OLX_CONNECTOR_STORE_URL,
+} from "~/shared/publication-navigation";
 import { api } from "~/trpc/react";
 import { Checkbox } from "./checkbox";
 import { ClosableSection } from "./closable-section";
-import { ChevronDownIcon } from "./icons";
+import { CheckIcon, ChevronDownIcon } from "./icons";
 import {
   AnimatePresence,
   FeedbackPresence,
@@ -56,6 +59,9 @@ export function OlxAccountSection() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [connectorAvailable, setConnectorAvailable] = useState(false);
   const [connectorChecked, setConnectorChecked] = useState(false);
+  const [isWaitingForInstallation, setIsWaitingForInstallation] =
+    useState(false);
+  const installFlowStartedRef = useRef(false);
   const [hasConnectionConsent, setHasConnectionConsent] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -196,6 +202,8 @@ export function OlxAccountSection() {
       if (event.data.type === "PERSONA_OLX_CONNECTOR_READY") {
         setConnectorAvailable(true);
         setConnectorChecked(true);
+        setIsWaitingForInstallation(false);
+        installFlowStartedRef.current = false;
         return;
       }
       if (event.data.type === "PERSONA_OLX_CONNECTION_COMPLETE") {
@@ -229,9 +237,69 @@ export function OlxAccountSection() {
     };
   }, [t, utils]);
 
+  useEffect(() => {
+    if (connectorAvailable) {
+      return;
+    }
+
+    let pageWasLeft = false;
+    let reloadScheduled = false;
+
+    const reloadAfterReturn = () => {
+      if (!pageWasLeft || reloadScheduled) {
+        return;
+      }
+      reloadScheduled = true;
+      window.setTimeout(() => window.location.reload(), 350);
+    };
+    const onBlur = () => {
+      if (!installFlowStartedRef.current) {
+        return;
+      }
+      pageWasLeft = true;
+    };
+    const onFocus = () => {
+      if (installFlowStartedRef.current) {
+        reloadAfterReturn();
+      }
+    };
+    const onVisibilityChange = () => {
+      if (!installFlowStartedRef.current) {
+        return;
+      }
+      if (document.visibilityState === "hidden") {
+        pageWasLeft = true;
+        return;
+      }
+      reloadAfterReturn();
+    };
+    const pingTimer = window.setInterval(() => {
+      if (!installFlowStartedRef.current) {
+        return;
+      }
+      window.postMessage(
+        { source: PAGE_SOURCE, type: "PERSONA_OLX_CONNECTOR_PING" },
+        window.location.origin,
+      );
+    }, 1_000);
+
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.clearInterval(pingTimer);
+    };
+  }, [connectorAvailable]);
+
   const session = sessionQuery.data?.session;
   const isConnected = session?.status === "connected";
+  const needsConnection = !isConnected;
   const isPending = startConnection.isPending || disconnect.isPending;
+  const connectorStoreUrl =
+    env.NEXT_PUBLIC_OLX_CONNECTOR_URL ?? OLX_CONNECTOR_STORE_URL;
   const connectionSteps = [
     {
       title: t("connectionSteps.install.title"),
@@ -304,109 +372,205 @@ export function OlxAccountSection() {
         </div>
       ) : null}
 
-      {connectorChecked && !connectorAvailable ? (
-        <div className="rounded-lg border border-border-input bg-bg-input px-3 py-3">
-          <p className="font-medium text-sm text-text-heading">
-            {t("extensionMissing")}
-          </p>
-          <p className="mt-1 text-text-secondary text-xs leading-5">
-            {t("extensionMissingHint")}
-          </p>
-          {env.NEXT_PUBLIC_OLX_CONNECTOR_URL ? (
-            <a
-              className="mt-3 inline-flex font-semibold text-primary-blue text-sm hover:underline"
-              href={env.NEXT_PUBLIC_OLX_CONNECTOR_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {t("installExtension")}
-            </a>
+      {needsConnection && !sessionQuery.isLoading ? (
+        <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
+          <div className="border-border-input border-b px-4 py-4">
+            <p className="font-semibold text-text-heading text-xs uppercase tracking-wide">
+              {t("setupProgress", {
+                current: connectorAvailable ? 2 : 1,
+                total: 2,
+              })}
+            </p>
+            <ol className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+              <li
+                aria-current={connectorAvailable ? undefined : "step"}
+                className="flex min-w-0 items-center gap-2"
+              >
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-semibold text-xs ${
+                    connectorAvailable
+                      ? "bg-status-active-bg text-success-green"
+                      : "bg-primary-blue text-white"
+                  }`}
+                >
+                  {connectorAvailable ? <CheckIcon className="h-4 w-4" /> : "1"}
+                </span>
+                <span className="hidden font-medium text-sm text-text-heading sm:inline">
+                  {t("installStepShort")}
+                </span>
+              </li>
+              <li aria-hidden="true" className="h-px min-w-4 bg-border-input" />
+              <li
+                aria-current={connectorAvailable ? "step" : undefined}
+                className="flex min-w-0 items-center gap-2"
+              >
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-semibold text-xs ${
+                    connectorAvailable
+                      ? "bg-primary-blue text-white"
+                      : "border border-border-input bg-bg-input text-text-secondary"
+                  }`}
+                >
+                  2
+                </span>
+                <span className="hidden font-medium text-sm text-text-heading sm:inline">
+                  {t("connectStepShort")}
+                </span>
+              </li>
+            </ol>
+          </div>
+
+          {!connectorChecked ? (
+            <div aria-busy="true" className="space-y-2 px-4 py-5">
+              <SkeletonBlock className="h-5 w-56" />
+              <SkeletonBlock className="h-4 w-full max-w-xl" />
+              <SkeletonBlock className="h-10 w-56" />
+            </div>
+          ) : null}
+
+          {connectorChecked && !connectorAvailable ? (
+            <div className="px-4 py-5">
+              <p className="font-semibold text-base text-text-heading">
+                {t("installStepTitle")}
+              </p>
+              <p className="mt-1 max-w-2xl text-sm text-text-secondary leading-6">
+                {t("installStepDescription")}
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <a
+                  className="ui-button ui-button-primary w-full sm:w-auto"
+                  href={connectorStoreUrl}
+                  onClick={() => {
+                    installFlowStartedRef.current = true;
+                    setIsWaitingForInstallation(true);
+                  }}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {t("installExtension")}
+                </a>
+                <button
+                  className="ui-button ui-button-secondary w-full sm:w-auto"
+                  onClick={() => window.location.reload()}
+                  type="button"
+                >
+                  {t("checkInstallation")}
+                </button>
+              </div>
+              <p className="mt-3 text-text-secondary text-xs leading-5">
+                {isWaitingForInstallation
+                  ? t("waitingForInstallation")
+                  : t("installReturnHint")}
+              </p>
+            </div>
+          ) : null}
+
+          {connectorAvailable ? (
+            <div className="px-4 py-5">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-status-active-bg text-success-green">
+                  <CheckIcon className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-semibold text-base text-text-heading">
+                    {t("extensionReady")}
+                  </p>
+                  <p className="mt-1 text-sm text-text-secondary leading-6">
+                    {t("connectStepDescription")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-border-input bg-bg-input px-4 py-4">
+                <p className="text-text-secondary text-xs leading-5">
+                  {t("dataDisclosure")}{" "}
+                  <Link
+                    className="font-semibold text-primary-blue hover:underline"
+                    href="/privacy/olx-connector"
+                    target="_blank"
+                  >
+                    {t("privacyLink")}
+                  </Link>
+                </p>
+                <div className="mt-3 flex items-start gap-3">
+                  <Checkbox
+                    ariaLabel={t("consent")}
+                    checked={hasConnectionConsent}
+                    id="olx-connection-consent"
+                    onChange={() =>
+                      setHasConnectionConsent(
+                        (currentConsent) => !currentConsent,
+                      )
+                    }
+                  />
+                  <label
+                    className="min-w-0 flex-1 cursor-pointer font-medium text-sm text-text-heading leading-5"
+                    htmlFor="olx-connection-consent"
+                  >
+                    {t("consent")}
+                  </label>
+                </div>
+              </div>
+
+              <button
+                className="ui-button ui-button-primary mt-4 w-full sm:w-auto"
+                disabled={isPending || !hasConnectionConsent}
+                onClick={() => {
+                  setFeedback(null);
+                  startConnection.mutate();
+                }}
+                type="button"
+              >
+                <LoadingButtonContent
+                  isLoading={startConnection.isPending}
+                  label={session ? t("reconnect") : t("connect")}
+                  loadingLabel={t("starting")}
+                />
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
-        <button
-          aria-controls="olx-connection-help"
-          aria-expanded={isHelpOpen}
-          className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-primary-blue focus-visible:outline-offset-[-2px]"
-          onClick={() => setIsHelpOpen((current) => !current)}
-          type="button"
-        >
-          <span className="font-semibold text-sm text-text-heading">
-            {t("connectionSteps.title")}
-          </span>
-          <ChevronDownIcon
-            aria-hidden="true"
-            className={`h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200 ${
-              isHelpOpen ? "rotate-180" : "rotate-0"
-            }`}
-          />
-        </button>
-
-        <AnimatePresence initial={false}>
-          {isHelpOpen ? (
-            <motion.div
-              animate={{ height: "auto", opacity: 1 }}
-              className="overflow-hidden"
-              exit={{ height: 0, opacity: 0 }}
-              id="olx-connection-help"
-              initial={{ height: 0, opacity: 0 }}
-            >
-              <div className="border-border-input border-t px-4 py-4">
-                <InstructionList items={connectionSteps} />
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </div>
-
-      <div className="rounded-lg border border-border-input bg-bg-input px-4 py-4">
-        <p className="text-text-secondary text-xs leading-5">
-          {t("dataDisclosure")}{" "}
-          <Link
-            className="font-semibold text-primary-blue hover:underline"
-            href="/privacy/olx-connector"
-            target="_blank"
+      {needsConnection && !sessionQuery.isLoading ? (
+        <div className="overflow-hidden rounded-lg border border-border-input bg-bg-light">
+          <button
+            aria-controls="olx-connection-help"
+            aria-expanded={isHelpOpen}
+            className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-bg-hover focus-visible:outline-2 focus-visible:outline-primary-blue focus-visible:outline-offset-[-2px]"
+            onClick={() => setIsHelpOpen((current) => !current)}
+            type="button"
           >
-            {t("privacyLink")}
-          </Link>
-        </p>
-        <div className="mt-3 flex items-start gap-3">
-          <Checkbox
-            ariaLabel={t("consent")}
-            checked={hasConnectionConsent}
-            id="olx-connection-consent"
-            onChange={() =>
-              setHasConnectionConsent((currentConsent) => !currentConsent)
-            }
-          />
-          <label
-            className="min-w-0 flex-1 cursor-pointer font-medium text-sm text-text-heading leading-5"
-            htmlFor="olx-connection-consent"
-          >
-            {t("consent")}
-          </label>
+            <span className="font-semibold text-sm text-text-heading">
+              {t("connectionSteps.title")}
+            </span>
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={`h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200 ${
+                isHelpOpen ? "rotate-180" : "rotate-0"
+              }`}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {isHelpOpen ? (
+              <motion.div
+                animate={{ height: "auto", opacity: 1 }}
+                className="overflow-hidden"
+                exit={{ height: 0, opacity: 0 }}
+                id="olx-connection-help"
+                initial={{ height: 0, opacity: 0 }}
+              >
+                <div className="border-border-input border-t px-4 py-4">
+                  <InstructionList items={connectionSteps} />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
-      </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <button
-          className="ui-button ui-button-soft"
-          disabled={isPending || !connectorAvailable || !hasConnectionConsent}
-          onClick={() => {
-            setFeedback(null);
-            startConnection.mutate();
-          }}
-          type="button"
-        >
-          <LoadingButtonContent
-            isLoading={startConnection.isPending}
-            label={session ? t("reconnect") : t("connect")}
-            loadingLabel={t("starting")}
-          />
-        </button>
-
         {session ? (
           <button
             className="h-10 rounded-lg border border-danger-red px-4 font-semibold text-danger-red text-sm leading-none transition-colors hover:bg-danger-red-bg disabled:cursor-not-allowed disabled:opacity-60"

@@ -39,7 +39,7 @@ window.addEventListener("message", (event) => {
           source: EXTENSION_SOURCE,
           type: "PERSONA_OLX_CONNECTION_ERROR",
           detail: {
-            message: response?.error || "Could not start olx.uz connection.",
+            message: response?.error || "Не удалось начать подключение olx.uz.",
           },
         },
         window.location.origin,

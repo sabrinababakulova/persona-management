@@ -3,6 +3,7 @@ import {
   browserSafeHeaders,
   cookieHeaderToBrowserCookies,
   isAllowedOlxBrowserUrl,
+  shouldDisableOlxBrowserSandbox,
 } from "./browser-transport";
 
 describe("OLX browser transport", () => {
@@ -48,5 +49,11 @@ describe("OLX browser transport", () => {
       false,
     );
     expect(isAllowedOlxBrowserUrl("http://www.olx.uz/path")).toBe(false);
+  });
+
+  test("never disables the Chromium sandbox in production", () => {
+    expect(shouldDisableOlxBrowserSandbox("production", "true")).toBe(false);
+    expect(shouldDisableOlxBrowserSandbox("development", "true")).toBe(true);
+    expect(shouldDisableOlxBrowserSandbox("development", "false")).toBe(false);
   });
 });
