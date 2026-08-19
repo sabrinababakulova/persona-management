@@ -6,7 +6,6 @@ import { env } from "~/env";
 import {
   getCompanyMembership,
   getRequiredCompanyId,
-  requireCompanyAdmin,
 } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { takeRateLimitSlot } from "~/server/auth/rate-limit";
@@ -206,7 +205,6 @@ export const integrationsRouter = createTRPCRouter({
       return {
         botConfigured: false,
         botUsername: null,
-        canManage: membership.isAdmin,
         warehouseVacancyId: warehouse?.id ?? null,
         group: config
           ? {
@@ -227,7 +225,6 @@ export const integrationsRouter = createTRPCRouter({
       return {
         botConfigured: true,
         botUsername: bot?.username ? `@${bot.username}` : null,
-        canManage: membership.isAdmin,
         warehouseVacancyId: warehouse?.id ?? null,
         group: null,
       };
@@ -238,7 +235,6 @@ export const integrationsRouter = createTRPCRouter({
       return {
         botConfigured: true,
         botUsername: bot?.username ? `@${bot.username}` : null,
-        canManage: membership.isAdmin,
         warehouseVacancyId: warehouse?.id ?? null,
         group: {
           ...verified,
@@ -251,7 +247,6 @@ export const integrationsRouter = createTRPCRouter({
       return {
         botConfigured: true,
         botUsername: bot?.username ? `@${bot.username}` : null,
-        canManage: membership.isAdmin,
         warehouseVacancyId: warehouse?.id ?? null,
         group: {
           chatId: config.chatId,
@@ -271,7 +266,7 @@ export const integrationsRouter = createTRPCRouter({
 
   createTelegramResumeConnectCode: protectedProcedure.mutation(
     async ({ ctx }) => {
-      const { companyId } = await requireCompanyAdmin(
+      const { companyId } = await getCompanyMembership(
         ctx.db,
         ctx.session.user.id,
       );
@@ -302,7 +297,7 @@ export const integrationsRouter = createTRPCRouter({
 
   disconnectTelegramResumeGroup: protectedProcedure.mutation(
     async ({ ctx }) => {
-      const { companyId } = await requireCompanyAdmin(
+      const { companyId } = await getCompanyMembership(
         ctx.db,
         ctx.session.user.id,
       );

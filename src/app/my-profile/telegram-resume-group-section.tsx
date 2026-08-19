@@ -121,7 +121,6 @@ export function TelegramResumeGroupSection() {
     ? t(`verification.${group.verification}`)
     : null;
   const isVerified = group?.verification === "verified";
-  const canManage = groupQuery.data?.canManage ?? false;
 
   return (
     <ClosableSection title={t("title")}>
@@ -256,7 +255,7 @@ export function TelegramResumeGroupSection() {
             </div>
           ) : null}
 
-          {canManage && !connectRequest && !confirmDisconnect ? (
+          {!connectRequest && !confirmDisconnect ? (
             <div className="flex flex-wrap gap-3">
               <button
                 className="ui-button ui-button-soft"
@@ -325,12 +324,6 @@ export function TelegramResumeGroupSection() {
                 </button>
               </div>
             </div>
-          ) : null}
-
-          {!canManage ? (
-            <p className="text-text-secondary text-xs leading-5">
-              {t("adminOnly")}
-            </p>
           ) : null}
         </div>
       ) : null}
