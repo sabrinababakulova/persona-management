@@ -4,7 +4,7 @@ MAILTO=""
 
 PERSONA_PROJECT_DIR=__PROJECT_DIR__
 PERSONA_CRON_ENV_FILE=/etc/persona-management/cron.env
-PERSONA_DATABASE_ENV_FILE=__PROJECT_DIR__/.env
+PERSONA_DATABASE_ENV_FILE=__DATABASE_ENV_FILE__
 PERSONA_CRON_LOCK_DIR=/run/lock/persona-management
 
 # Recreate the volatile lock directory on hosts that do not run systemd-tmpfiles.

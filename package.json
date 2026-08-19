@@ -20,6 +20,7 @@
     "dev": "next dev --turbo",
     "directus:brand": "bash scripts/configure-directus-branding.sh",
     "directus:token:repair": "bun run scripts/repair-directus-static-token.ts",
+    "deploy:check": "bash scripts/validate-deployment.sh",
     "i18n:check": "bun run scripts/check-i18n-catalogs.ts",
     "ops:install": "bash scripts/install-operations.sh",
     "olx:extension:package": "bash scripts/package-olx-connector.sh",

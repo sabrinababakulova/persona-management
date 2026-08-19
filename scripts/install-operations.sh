@@ -7,8 +7,9 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="$REPO_ROOT/.env"
+SOURCE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+OPERATION_PROJECT_DIR="${PERSONA_OPERATION_PROJECT_DIR:-$SOURCE_ROOT}"
+ENV_FILE="${PERSONA_DATABASE_ENV_FILE:-$OPERATION_PROJECT_DIR/.env}"
 CRON_USER="persona-cron"
 INSTALL_DIR="/usr/local/lib/persona-management"
 CONFIG_DIR="/etc/persona-management"
@@ -74,12 +75,12 @@ for lock_name in hh-enrich.lock hh-discover.lock hh-status.lock; do
 done
 
 install -m 0755 -o root -g root \
-  "$REPO_ROOT/scripts/run-hh-cron.sh" \
-  "$REPO_ROOT/scripts/hh-enrich-cron.sh" \
-  "$REPO_ROOT/scripts/hh-discover-cron.sh" \
-  "$REPO_ROOT/scripts/hh-status-cron.sh" \
-  "$REPO_ROOT/scripts/backup-database.sh" \
-  "$REPO_ROOT/scripts/verify-database-backup.sh" \
+  "$SOURCE_ROOT/scripts/run-hh-cron.sh" \
+  "$SOURCE_ROOT/scripts/hh-enrich-cron.sh" \
+  "$SOURCE_ROOT/scripts/hh-discover-cron.sh" \
+  "$SOURCE_ROOT/scripts/hh-status-cron.sh" \
+  "$SOURCE_ROOT/scripts/backup-database.sh" \
+  "$SOURCE_ROOT/scripts/verify-database-backup.sh" \
   "$INSTALL_DIR/"
 
 CRON_ENV_TEMP="$(mktemp)"
@@ -108,15 +109,16 @@ done
 
 CRON_TEMP="$(mktemp)"
 TEMP_FILES+=("$CRON_TEMP")
-sed "s|__PROJECT_DIR__|$REPO_ROOT|g" \
-  "$REPO_ROOT/deploy/cron/persona-management" >"$CRON_TEMP"
+sed "s|__PROJECT_DIR__|$OPERATION_PROJECT_DIR|g" \
+  "$SOURCE_ROOT/deploy/cron/persona-management" >"$CRON_TEMP"
+sed -i "s|__DATABASE_ENV_FILE__|$ENV_FILE|g" "$CRON_TEMP"
 install -m 0644 -o root -g root "$CRON_TEMP" "$CRON_DEST"
 
 install -m 0644 -o root -g root \
-  "$REPO_ROOT/deploy/logrotate/persona-management" \
+  "$SOURCE_ROOT/deploy/logrotate/persona-management" \
   "$LOGROTATE_DEST"
 install -m 0644 -o root -g root \
-  "$REPO_ROOT/deploy/tmpfiles/persona-management.conf" \
+  "$SOURCE_ROOT/deploy/tmpfiles/persona-management.conf" \
   "$TMPFILES_DEST"
 
 # Remove only the superseded project jobs from root's personal crontab.

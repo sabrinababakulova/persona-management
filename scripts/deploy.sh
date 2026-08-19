@@ -7,10 +7,16 @@ DEPLOY_REPOSITORY="${DEPLOY_REPOSITORY:-origin}"
 APP_NAME="${APP_NAME:-yeshunt}"
 APP_RUNTIME_USER="${APP_RUNTIME_USER:-persona-web}"
 APP_RUNTIME_HOME="${APP_RUNTIME_HOME:-/var/lib/persona-web}"
-APP_RUNTIME_PATH="/opt/persona-management-runtime"
+APP_RUNTIME_PATH="${APP_RUNTIME_PATH:-/opt/persona-management-runtime}"
+APP_STAGING_PATH="${APP_RUNTIME_PATH}.staging"
+APP_ROLLBACK_PATH="${APP_RUNTIME_PATH}.rollback"
 APP_SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 SOURCE_ALREADY_UPDATED="${SOURCE_ALREADY_UPDATED:-false}"
+DEPLOY_COMMIT="${DEPLOY_COMMIT:-}"
+OPERATIONS_PROJECT_PATH="${OPERATIONS_PROJECT_PATH:-$DEPLOY_PATH}"
+PRODUCTION_ENV_FILE="${PRODUCTION_ENV_FILE:-$OPERATIONS_PROJECT_PATH/.env}"
 CURRENT_DEPLOY_STEP="Initialize deployment"
+HAD_PREVIOUS_RUNTIME=false
 
 report_deploy_error() {
   local exit_code="$?"
@@ -48,6 +54,45 @@ run_as_root() {
   fi
 }
 
+remove_managed_runtime_path() {
+  local target="$1"
+
+  case "$target" in
+    "$APP_STAGING_PATH" | "$APP_ROLLBACK_PATH")
+      run_as_root rm -rf -- "$target"
+      ;;
+    *)
+      echo "Refusing to remove unmanaged runtime path: $target" >&2
+      return 1
+      ;;
+  esac
+}
+
+validate_deploy_configuration() {
+  case "$APP_RUNTIME_PATH" in
+    /opt/* | /srv/* | /var/lib/*) ;;
+    *)
+      echo "APP_RUNTIME_PATH must be below /opt, /srv, or /var/lib." >&2
+      return 2
+      ;;
+  esac
+
+  if [ ! -f "$PRODUCTION_ENV_FILE" ]; then
+    echo "Production environment file is missing: $PRODUCTION_ENV_FILE" >&2
+    return 1
+  fi
+  if [ "$(id -u)" -ne 0 ]; then
+    sudo -n true
+  fi
+
+  for command in curl git install rsync sed systemctl; do
+    if ! command -v "$command" >/dev/null 2>&1; then
+      echo "Required deployment command is missing: $command" >&2
+      return 127
+    fi
+  done
+}
+
 ensure_bun() {
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
@@ -79,34 +124,74 @@ ensure_runtime_user() {
 }
 
 stage_runtime() {
+  remove_managed_runtime_path "$APP_STAGING_PATH"
   run_as_root install -d -m 0750 \
     -o root \
     -g "$APP_RUNTIME_USER" \
-    "$APP_RUNTIME_PATH"
+    "$APP_STAGING_PATH"
   run_as_root rsync -a --delete \
     --exclude='.git/' \
     --exclude='backups/' \
     --exclude='build/' \
     --exclude='node_modules/' \
     "$DEPLOY_PATH/" \
-    "$APP_RUNTIME_PATH/"
+    "$APP_STAGING_PATH/"
 
   # Build a complete dependency tree in the staged runtime instead of copying
   # Bun's linked node_modules layout from the source checkout.
   run_as_root env HOME="$APP_RUNTIME_HOME" \
     /usr/local/bin/bun install \
-    --cwd "$APP_RUNTIME_PATH" \
+    --cwd "$APP_STAGING_PATH" \
     --frozen-lockfile \
-    --force \
     --production
 
-  run_as_root chown -R "root:$APP_RUNTIME_USER" "$APP_RUNTIME_PATH"
-  run_as_root chmod -R g+rX,o-rwx "$APP_RUNTIME_PATH"
+  run_as_root chown -R "root:$APP_RUNTIME_USER" "$APP_STAGING_PATH"
+  run_as_root chmod -R g+rX,o-rwx "$APP_STAGING_PATH"
   run_as_root chown -R "$APP_RUNTIME_USER:$APP_RUNTIME_USER" \
-    "$APP_RUNTIME_PATH/.next"
-  if [ -f "$APP_RUNTIME_PATH/.env" ]; then
-    run_as_root chmod 0640 "$APP_RUNTIME_PATH/.env"
+    "$APP_STAGING_PATH/.next"
+  if [ -f "$APP_STAGING_PATH/.env" ]; then
+    run_as_root chmod 0640 "$APP_STAGING_PATH/.env"
   fi
+}
+
+activate_staged_runtime() {
+  remove_managed_runtime_path "$APP_ROLLBACK_PATH"
+  HAD_PREVIOUS_RUNTIME=false
+
+  if [ -e "$APP_RUNTIME_PATH" ] || [ -L "$APP_RUNTIME_PATH" ]; then
+    run_as_root mv "$APP_RUNTIME_PATH" "$APP_ROLLBACK_PATH"
+    HAD_PREVIOUS_RUNTIME=true
+  fi
+  run_as_root mv "$APP_STAGING_PATH" "$APP_RUNTIME_PATH"
+}
+
+restore_previous_runtime() {
+  run_as_root systemctl stop "$APP_NAME.service" || true
+
+  if [ "$HAD_PREVIOUS_RUNTIME" != "true" ] ||
+    { [ ! -e "$APP_ROLLBACK_PATH" ] && [ ! -L "$APP_ROLLBACK_PATH" ]; }; then
+    echo "No previous runtime is available for rollback." >&2
+    return 1
+  fi
+
+  remove_managed_runtime_path "$APP_STAGING_PATH"
+  if [ -e "$APP_RUNTIME_PATH" ] || [ -L "$APP_RUNTIME_PATH" ]; then
+    run_as_root mv "$APP_RUNTIME_PATH" "$APP_STAGING_PATH"
+  fi
+  run_as_root mv "$APP_ROLLBACK_PATH" "$APP_RUNTIME_PATH"
+  run_as_root systemctl restart "$APP_NAME.service"
+}
+
+verify_application_health() {
+  curl \
+    --fail \
+    --silent \
+    --show-error \
+    --retry 10 \
+    --retry-connrefused \
+    --retry-delay 1 \
+    --max-time 5 \
+    "http://127.0.0.1:3000/api/auth/session" >/dev/null
 }
 
 install_service() {
@@ -124,7 +209,12 @@ install_service() {
   run_as_root systemctl daemon-reload
 }
 
+if [ "${DEPLOY_LIBRARY_ONLY:-false}" = "true" ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 cd "$DEPLOY_PATH"
+validate_deploy_configuration
 ensure_bun
 ensure_runtime_user
 
@@ -148,12 +238,23 @@ else
   echo "Deployment source was fast-forwarded by the CI bootstrap step."
 fi
 
+resolved_deploy_commit="$(git rev-parse HEAD)"
+if [ -n "$DEPLOY_COMMIT" ] && [ "$resolved_deploy_commit" != "$DEPLOY_COMMIT" ]; then
+  echo "Deployment source mismatch: expected $DEPLOY_COMMIT, got $resolved_deploy_commit." >&2
+  exit 1
+fi
+DEPLOY_COMMIT="$resolved_deploy_commit"
+echo "Deploying commit $DEPLOY_COMMIT."
+
 run_step "Install dependencies" bun install --frozen-lockfile
 run_step "Build application" bun run build
 
 # Refuse schema changes unless a validated PostgreSQL snapshot succeeds first.
 run_step "Back up production database" \
-  run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
+  run_as_root env \
+    PERSONA_PROJECT_DIR="$OPERATIONS_PROJECT_PATH" \
+    PERSONA_DATABASE_ENV_FILE="$PRODUCTION_ENV_FILE" \
+    bash "$DEPLOY_PATH/scripts/backup-database.sh"
 
 # The custom migrator is the only production schema path. It applies committed
 # SQL migrations, reconciles databases whose schema is ahead of the Drizzle
@@ -162,6 +263,7 @@ run_step "Back up production database" \
 run_step "Apply database migrations" bun run db:migrate-custom
 run_step "Stage application runtime" stage_runtime
 run_step "Install systemd service" install_service
+run_step "Activate staged runtime" activate_staged_runtime
 
 # Older deployments used root-owned PM2. Stop it before binding the same port,
 # but retain it until the systemd service passes its health check so rollback is
@@ -183,7 +285,11 @@ CURRENT_DEPLOY_STEP="Restart systemd service"
 echo "::group::$CURRENT_DEPLOY_STEP"
 if ! run_as_root systemctl restart "$APP_NAME.service"; then
   echo "::endgroup::"
-  if [ -n "$LEGACY_PM2" ]; then
+  ROLLBACK_HEALTHY=false
+  if restore_previous_runtime && verify_application_health; then
+    ROLLBACK_HEALTHY=true
+  fi
+  if [ "$ROLLBACK_HEALTHY" != "true" ] && [ -n "$LEGACY_PM2" ]; then
     "$LEGACY_PM2" restart "$APP_NAME"
   fi
   exit 1
@@ -192,20 +298,15 @@ echo "::endgroup::"
 
 CURRENT_DEPLOY_STEP="Verify application health"
 echo "::group::$CURRENT_DEPLOY_STEP"
-if ! curl \
-  --fail \
-  --silent \
-  --show-error \
-  --retry 10 \
-  --retry-connrefused \
-  --retry-delay 1 \
-  --max-time 5 \
-  "http://127.0.0.1:3000/api/auth/session" >/dev/null; then
+if ! verify_application_health; then
   echo "::endgroup::"
   run_as_root systemctl status "$APP_NAME.service" --no-pager || true
   run_as_root journalctl -u "$APP_NAME.service" -n 120 --no-pager || true
-  run_as_root systemctl stop "$APP_NAME.service"
-  if [ -n "$LEGACY_PM2" ]; then
+  ROLLBACK_HEALTHY=false
+  if restore_previous_runtime && verify_application_health; then
+    ROLLBACK_HEALTHY=true
+  fi
+  if [ "$ROLLBACK_HEALTHY" != "true" ] && [ -n "$LEGACY_PM2" ]; then
     "$LEGACY_PM2" restart "$APP_NAME"
   fi
   exit 1
@@ -221,7 +322,10 @@ if [ -n "$LEGACY_PM2" ]; then
 fi
 
 run_step "Install operational schedules" \
-  run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
+  run_as_root env \
+    PERSONA_OPERATION_PROJECT_DIR="$OPERATIONS_PROJECT_PATH" \
+    PERSONA_DATABASE_ENV_FILE="$PRODUCTION_ENV_FILE" \
+    bash "$DEPLOY_PATH/scripts/install-operations.sh"
 
 echo ""
 run_step "Show application status" \

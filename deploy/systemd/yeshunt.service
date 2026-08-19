@@ -11,11 +11,14 @@ WorkingDirectory=__RUNTIME_PATH__
 Environment=HOME=__RUNTIME_HOME__
 Environment=NODE_ENV=production
 Environment=PORT=3000
+ExecStartPre=/usr/bin/test -r __RUNTIME_PATH__/node_modules/next/dist/build/output/log.js
 ExecStart=/usr/local/bin/bun run start
 Restart=always
 RestartSec=5
+TimeoutStartSec=30
 TimeoutStopSec=30
 KillSignal=SIGINT
+UMask=0027
 PrivateTmp=true
 ProtectHome=true
 
