@@ -14,14 +14,11 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 
+import { ensureCompanyTelegramResumeWarehouse } from "../src/server/company/telegram-resume-warehouse";
 import { db } from "../src/server/db";
-import {
-  companies,
-  telegramResumeImports,
-  vacancies,
-} from "../src/server/db/schema";
+import { companies, telegramResumeImports } from "../src/server/db/schema";
 import {
   getTelegramBotProfile,
   getTelegramChat,
@@ -153,70 +150,21 @@ async function ensureCompanyAndVacancy(
       throw new Error("Failed to create the Telegram resume company");
     }
 
-    let [vacancy] = await tx
-      .select({
-        id: vacancies.id,
-        title: vacancies.title,
-        isInternal: vacancies.isInternal,
-      })
-      .from(vacancies)
-      .where(
-        and(
-          eq(vacancies.companyId, company.id),
-          eq(vacancies.title, vacancyTitle),
-          eq(vacancies.isPublication, false),
-        ),
-      )
-      .orderBy(asc(vacancies.createdAt))
-      .limit(1);
-    let vacancyCreated = false;
-
-    if (!vacancy) {
-      const vacancyId = crypto.randomUUID();
-      [vacancy] = await tx
-        .insert(vacancies)
-        .values({
-          id: vacancyId,
-          parentId: vacancyId,
-          title: vacancyTitle,
-          status: "active",
-          responses: 0,
-          salaryCurrency: "UZS",
-          companyId: company.id,
-          isPublication: false,
-          isInternal: true,
-          isActive: false,
-        })
-        .returning({
-          id: vacancies.id,
-          title: vacancies.title,
-          isInternal: vacancies.isInternal,
-        });
-      vacancyCreated = true;
-    }
-    if (!vacancy) {
-      throw new Error("Failed to create the Telegram resume vacancy");
-    }
-    if (!vacancy.isInternal) {
-      [vacancy] = await tx
-        .update(vacancies)
-        .set({ isInternal: true })
-        .where(eq(vacancies.id, vacancy.id))
-        .returning({
-          id: vacancies.id,
-          title: vacancies.title,
-          isInternal: vacancies.isInternal,
-        });
-    }
-    if (!vacancy) {
-      throw new Error("Failed to mark the Telegram resume vacancy as internal");
-    }
+    const warehouse = await ensureCompanyTelegramResumeWarehouse(
+      tx,
+      company.id,
+      { title: vacancyTitle },
+    );
 
     return {
       company,
       companyCreated,
-      vacancy,
-      vacancyCreated,
+      vacancy: {
+        id: warehouse.id,
+        title: warehouse.title,
+        isInternal: true,
+      },
+      vacancyCreated: warehouse.created,
     };
   });
 }
@@ -230,7 +178,7 @@ async function verifyDatabaseSchema() {
   } catch (error) {
     throw new Error(
       "Telegram resume database schema is missing or unavailable. Run " +
-        "`bun run db:push` and retry the setup.",
+        "`bun run db:migrate-custom` and retry the setup.",
       { cause: error },
     );
   }

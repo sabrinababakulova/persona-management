@@ -22,6 +22,7 @@ import {
   MAX_ACTIVE_INVITATIONS,
   markInvitationUsed,
 } from "~/server/company/invitations";
+import { ensureCompanyTelegramResumeWarehouse } from "~/server/company/telegram-resume-warehouse";
 import { companies, companyInvitations, users } from "~/server/db/schema";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
 import {
@@ -160,28 +161,33 @@ export const companyRouter = createTRPCRouter({
         });
       }
 
-      const [company] = await ctx.db
-        .insert(companies)
-        .values(toCompanyColumns(input))
-        .returning({ id: companies.id });
+      const companyId = await ctx.db.transaction(async (transaction) => {
+        const [company] = await transaction
+          .insert(companies)
+          .values(toCompanyColumns(input))
+          .returning({ id: companies.id });
 
-      if (!company) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Не удалось создать компанию",
-        });
-      }
+        if (!company) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Не удалось создать компанию",
+          });
+        }
 
-      await ctx.db
-        .update(users)
-        .set({
-          companyId: company.id,
-          role: COMPANY_ROLE_ADMIN,
-          isMasterAccount: true,
-        })
-        .where(eq(users.id, ctx.session.user.id));
+        await ensureCompanyTelegramResumeWarehouse(transaction, company.id);
+        await transaction
+          .update(users)
+          .set({
+            companyId: company.id,
+            role: COMPANY_ROLE_ADMIN,
+            isMasterAccount: true,
+          })
+          .where(eq(users.id, ctx.session.user.id));
 
-      return { success: true, companyId: company.id };
+        return company.id;
+      });
+
+      return { success: true, companyId };
     }),
 
   update: protectedProcedure

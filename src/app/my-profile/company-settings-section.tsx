@@ -12,6 +12,7 @@ import { TelegramChannelsSection } from "../_components/telegram-channels-sectio
 import { useErrorToast } from "../_components/use-error-toast";
 import { CompanyInviteSection } from "./company-invite-section";
 import { CompanyProfileSection } from "./company-profile-section";
+import { TelegramResumeGroupSection } from "./telegram-resume-group-section";
 
 type CompanySettingsSectionProps = {
   canEditCompany: boolean;
@@ -63,6 +64,7 @@ export function CompanySettingsSection({
       <DataMigrationLoadingScreen isLoading={isMigrating} />
       <CompanyProfileSection canEditCompany={canEditCompany} />
       <CompanyInviteSection canEditCompany={canEditCompany} />
+      <TelegramResumeGroupSection />
       <TelegramChannelsSection />
       <HhAccountSection />
       <OlxAccountSection />

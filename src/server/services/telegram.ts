@@ -301,6 +301,105 @@ export async function getTelegramChatMember(chatId: string, userId: number) {
   return getTelegramApi().getChatMember(chatId, userId);
 }
 
+export type TelegramResumeGroupVerificationErrorCode =
+  | "not_found"
+  | "not_group"
+  | "bot_not_member"
+  | "bot_cannot_read"
+  | "protected_content";
+
+export class TelegramResumeGroupVerificationError extends Error {
+  constructor(
+    public readonly code: TelegramResumeGroupVerificationErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "TelegramResumeGroupVerificationError";
+  }
+}
+
+export type VerifiedTelegramResumeGroup = {
+  chatId: string;
+  title: string;
+  type: "group" | "supergroup";
+  botStatus: "administrator" | "creator" | "member";
+};
+
+/**
+ * Confirms that a chat is a resume-capable group and that the shared bot can
+ * receive ordinary document messages there. Commands alone are delivered to
+ * privacy-mode bots, so this explicit check is what prevents a connection that
+ * would accept `/connect` but silently miss every resume afterwards.
+ */
+export async function verifyTelegramResumeGroup(
+  chatReference: string,
+): Promise<VerifiedTelegramResumeGroup> {
+  const api = getTelegramApi();
+
+  let chat: Awaited<ReturnType<typeof api.getChat>>;
+  try {
+    chat = await api.getChat(chatReference);
+  } catch {
+    throw new TelegramResumeGroupVerificationError(
+      "not_found",
+      "Telegram group was not found",
+    );
+  }
+
+  if (chat.type !== "group" && chat.type !== "supergroup") {
+    throw new TelegramResumeGroupVerificationError(
+      "not_group",
+      "Only Telegram groups and supergroups can receive resumes",
+    );
+  }
+  if (chat.has_protected_content) {
+    throw new TelegramResumeGroupVerificationError(
+      "protected_content",
+      "The Telegram group has protected content enabled",
+    );
+  }
+
+  const bot = await api.getMe();
+  let membership: Awaited<ReturnType<typeof api.getChatMember>>;
+  try {
+    membership = await api.getChatMember(chat.id, bot.id);
+  } catch {
+    throw new TelegramResumeGroupVerificationError(
+      "bot_not_member",
+      "The Telegram bot is not a member of the group",
+    );
+  }
+
+  if (
+    membership.status !== "administrator" &&
+    membership.status !== "creator" &&
+    membership.status !== "member"
+  ) {
+    throw new TelegramResumeGroupVerificationError(
+      "bot_not_member",
+      "The Telegram bot is not an active member of the group",
+    );
+  }
+
+  const receivesAllMessages =
+    membership.status === "administrator" ||
+    membership.status === "creator" ||
+    bot.can_read_all_group_messages === true;
+  if (!receivesAllMessages) {
+    throw new TelegramResumeGroupVerificationError(
+      "bot_cannot_read",
+      "The Telegram bot cannot read ordinary group documents",
+    );
+  }
+
+  return {
+    chatId: String(chat.id),
+    title: chat.title,
+    type: chat.type,
+    botStatus: membership.status,
+  };
+}
+
 export async function setTelegramResumeWebhook(input: {
   url: string;
   secretToken: string;

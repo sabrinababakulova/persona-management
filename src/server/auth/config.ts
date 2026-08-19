@@ -42,6 +42,7 @@ import {
   findUsableInvitation,
   markInvitationUsed,
 } from "~/server/company/invitations";
+import { ensureCompanyTelegramResumeWarehouse } from "~/server/company/telegram-resume-warehouse";
 import { db } from "~/server/db";
 import {
   accounts,
@@ -175,16 +176,19 @@ function parseNewCompanyCredentials(
 }
 
 async function createCompany(input: UpdateCompanyInput) {
-  const [company] = await db
-    .insert(companies)
-    .values(toCompanyColumns(input))
-    .returning({ id: companies.id });
+  return db.transaction(async (transaction) => {
+    const [company] = await transaction
+      .insert(companies)
+      .values(toCompanyColumns(input))
+      .returning({ id: companies.id });
 
-  if (!company) {
-    throw new AuthFlowError("registration_failed");
-  }
+    if (!company) {
+      throw new AuthFlowError("registration_failed");
+    }
 
-  return company.id;
+    await ensureCompanyTelegramResumeWarehouse(transaction, company.id);
+    return company.id;
+  });
 }
 
 /** The company this user already created (and administers), if registration is being retried. */
@@ -347,6 +351,7 @@ const providers: NextAuthConfig["providers"] = [
                   .update(companies)
                   .set(toCompanyColumns(newCompany))
                   .where(eq(companies.id, ownedCompanyId));
+                await ensureCompanyTelegramResumeWarehouse(db, ownedCompanyId);
                 // Repairs accounts that created a company before the flag existed.
                 await db
                   .update(users)
