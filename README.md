@@ -252,6 +252,18 @@ bun run db:migrations:check
 
 В production **не используйте `db:push`**. Deploy создаёт и проверяет backup, запускает `db:migrate-custom`, затем `yeshunt.service` от пользователя `persona-web`.
 
+Push в `main` автоматически запускает `.github/workflows/deploy.yml`. Workflow
+передаёт на сервер точный commit SHA, прошедший проверки, собирает его во
+временном Git worktree и атомарно меняет runtime. Текущая ветка и незакоммиченные
+файлы в постоянном server checkout не блокируют CI. При неуспешном старте или
+health check предыдущий runtime восстанавливается автоматически. Нужны GitHub
+secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` и
+`DEPLOY_KNOWN_HOSTS`. Необязательный secret `DEPLOY_PORT` по умолчанию равен
+`22`; необязательная variable `DEPLOY_PATH` —
+`/root/projects/persona-management`.
+
+Ручной deploy остаётся запасным вариантом:
+
 ```bash
 cd /root/projects/persona-management
 git status --short
@@ -425,6 +437,17 @@ bun run db:migrations:check
 ```
 
 Never use `db:push` in production. Deploy verifies a backup, runs `db:migrate-custom`, and starts `yeshunt.service` as `persona-web`.
+
+Every push to `main` automatically runs `.github/workflows/deploy.yml`. The
+workflow sends the exact validated commit SHA to the server, builds it in a
+temporary Git worktree, and atomically swaps the runtime. The branch and dirty
+files in the long-lived server checkout do not block CI. A failed service start
+or health check automatically restores the previous runtime. Required GitHub
+secrets are `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, and
+`DEPLOY_KNOWN_HOSTS`. Optional secret `DEPLOY_PORT` defaults to `22`; optional
+variable `DEPLOY_PATH` defaults to `/root/projects/persona-management`.
+
+Manual deployment remains a fallback:
 
 ```bash
 cd /root/projects/persona-management

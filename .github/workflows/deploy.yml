@@ -23,6 +23,8 @@ jobs:
   validate:
     name: Validate application and migrations
     runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.commit.outputs.sha }}
     env:
       CI: "true"
       SKIP_ENV_VALIDATION: "true"
@@ -37,9 +39,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Resolve validated commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -48,6 +55,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Validate deployment assets
+        run: bun run deploy:check
 
       - name: Lint
         run: bun run check
@@ -71,13 +81,25 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref_name }}
+      DEPLOY_SHA: ${{ needs.validate.outputs.commit_sha }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/root/projects/persona-management' }}
 
     steps:
+      - name: Checkout validated deployment scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          persist-credentials: false
+
       - name: Configure SSH
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          set -Eeuo pipefail
+          : "${DEPLOY_SSH_KEY:?DEPLOY_SSH_KEY secret is required}"
+          : "${DEPLOY_KNOWN_HOSTS:?DEPLOY_KNOWN_HOSTS secret is required}"
+
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
@@ -92,35 +114,36 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          if ! [[ "$DEPLOY_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+          : "${DEPLOY_HOST:?DEPLOY_HOST secret is required}"
+          : "${DEPLOY_USER:?DEPLOY_USER secret is required}"
+
+          if ! [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=Invalid deployment commit::Expected a full 40-character commit SHA."
+            exit 2
+          fi
+          if ! [[ "$DEPLOY_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] ||
+            [[ "$DEPLOY_REF" == *..* || "$DEPLOY_REF" == */ || "$DEPLOY_REF" == *//* ]]; then
             echo "::error title=Invalid deployment branch::The requested branch contains unsupported characters: $DEPLOY_REF"
             exit 2
           fi
+          if ! [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error title=Invalid deployment path::DEPLOY_PATH must be an absolute path without spaces."
+            exit 2
+          fi
 
-          ssh -i ~/.ssh/id_ed25519 \
+          if ssh -T -i ~/.ssh/id_ed25519 \
             -p "${DEPLOY_PORT:-22}" \
             -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
             -o StrictHostKeyChecking=yes \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "set -Eeuo pipefail
-             cd /root/projects/persona-management
-             if ! git diff --quiet || ! git diff --cached --quiet; then
-               echo '::error title=Remote worktree is dirty::Refusing to overwrite uncommitted production-server changes.' >&2
-               exit 1
-             fi
-             git fetch origin '$DEPLOY_REF'
-             current_branch=\$(git branch --show-current)
-             if [ \"\$current_branch\" != '$DEPLOY_REF' ]; then
-               git checkout '$DEPLOY_REF'
-             fi
-             git pull --ff-only origin '$DEPLOY_REF'
-             SOURCE_ALREADY_UPDATED=true \
-             DEPLOY_BRANCH='$DEPLOY_REF' \
-             APP_NAME=yeshunt \
-             DEPLOY_PATH=/root/projects/persona-management \
-             DEPLOY_REPOSITORY=origin \
-             bash ./scripts/deploy.sh" || {
-               status=$?
-               echo "::error title=Remote deployment failed::The production server exited with status $status. Review the deployment log above; the application was not restarted after a failed build, backup, or migration."
-               exit "$status"
-             }
+            "DEPLOY_SHA='$DEPLOY_SHA' DEPLOY_REF='$DEPLOY_REF' DEPLOY_REPO_PATH='$DEPLOY_PATH' bash -s" \
+            < deploy/remote-deploy.sh; then
+            echo "Deployment of $DEPLOY_SHA completed successfully."
+          else
+            status=$?
+            echo "::error title=Remote deployment failed::The production server exited with status $status. Review the failed grouped step; runtime rollback is automatic after activation failures."
+            exit "$status"
+          fi
