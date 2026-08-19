@@ -780,6 +780,9 @@ export const telegramResumeImports = createTable(
     aiAnalysisTranslations: d
       .json("ai_analysis_translations")
       .$type<LocalizedText>(),
+    /** Cached classifier output prevents repeating the AI call after retries. */
+    isResume: d.boolean("is_resume"),
+    resumeClassificationReason: d.text("resume_classification_reason"),
     /** `pending` | `processing` | `done` | `failed` | `ignored`. */
     status: d.varchar({ length: 20 }).notNull().default("pending"),
     attempts: d.integer().notNull().default(0),

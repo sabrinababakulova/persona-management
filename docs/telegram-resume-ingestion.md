@@ -3,7 +3,8 @@
 Production ingestion uses a Telegram webhook. Telegram sends each new
 `message` or `channel_post` update to the Next.js application, the webhook
 stores matching PDF documents in a durable PostgreSQL queue, and a separate
-worker processes that queue.
+worker processes that queue. Documents can come from a connected resume group
+or directly from an activated Telegram channel administrator.
 
 ```text
 New Telegram document
@@ -18,12 +19,34 @@ Webhook validates its secret and inserts a queue row
 Resume worker downloads the file
         |
         v
-Directus upload -> Mastra analysis -> candidate saved
+Resume classification -> Directus upload -> Mastra analysis -> candidate saved
 ```
 
 The webhook does not run file downloads or AI work. This keeps its response
 fast and lets Telegram retry failed deliveries safely. Unique database indexes
 on the Telegram message id and file unique id make retries idempotent.
+
+## Direct messages from channel administrators
+
+An administrator activated through `/start` can send a PDF directly to the
+bot. The numeric Telegram user id is resolved through
+`telegram_channel_admin` and `company_telegram_channel`; an unlinked sender is
+never allowed to select a company or vacancy.
+
+- A PDF without a recognized vacancy keyword goes to the company's internal
+  Telegram warehouse. This is accepted only when the administrator is linked
+  to exactly one company.
+- A PDF caption containing the eight-character keyword printed by
+  `formatTelegramVacancy` goes to that publication's parent/base vacancy. The
+  base vacancy is used because that is where the recruiter-facing funnel lives.
+- An administrator linked to several companies must include a recognized
+  vacancy keyword so the tenant is unambiguous.
+- Plain text messages are acknowledged by the webhook and otherwise ignored.
+
+The caption may contain other text; only a keyword that recomputes correctly
+for a Telegram publication owned by one of the administrator's companies can
+change the destination. A guessed vacancy id or a keyword from another company
+cannot cross the tenant boundary.
 
 ## Company self-service connection
 
@@ -167,9 +190,16 @@ bun run telegram:resume:drain
   are considered.
 - PDF files up to 10 MB are accepted. Invalid, empty, oversized, and non-PDF
   documents are retained as `ignored` queue records with a reason.
+- A dedicated Mastra classifier checks that a valid PDF is actually a resume
+  before it is uploaded or turned into a candidate. Non-resume PDFs are marked
+  `ignored`, and the successful classification is cached for retries.
 - The worker downloads the file from Telegram, stores it in Directus, runs the
   existing Mastra resume analyzer and summary agents, creates the candidate,
   and creates its `vacancy_candidate` link in one database transaction.
+- For a keyword-selected ordinary vacancy, the vacancy-match agent runs after
+  candidate creation and persists the per-application score, analysis, matched
+  requirements, and missing requirements. Warehouse vacancies intentionally
+  skip matching because they do not contain a real job description.
 - Successful AI output is cached on the queue row, so a later database retry
   does not repeat the analysis.
 - Transient errors retry up to five times with exponential backoff.

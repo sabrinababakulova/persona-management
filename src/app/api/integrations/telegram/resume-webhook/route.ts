@@ -21,7 +21,11 @@ import {
   parseTelegramResumeConnectCommand,
   type TelegramResumeConnectOutcome,
 } from "~/server/services/telegram-resume/connection";
-import { enqueueTelegramResumeUpdate } from "~/server/services/telegram-resume/ingestion";
+import { resolveTelegramDirectResumeTarget } from "~/server/services/telegram-resume/direct-message";
+import {
+  enqueueTelegramResumeDocument,
+  enqueueTelegramResumeUpdate,
+} from "~/server/services/telegram-resume/ingestion";
 
 export const runtime = "nodejs";
 
@@ -48,6 +52,7 @@ const telegramMessageSchema = z.object({
   }),
   from: telegramUserSchema.optional(),
   text: z.string().max(4096).optional(),
+  caption: z.string().max(4096).optional(),
   document: telegramDocumentSchema.optional(),
 });
 
@@ -197,6 +202,57 @@ export async function POST(request: Request) {
   const resumeMessage = update.message ?? update.channel_post;
   if (!resumeMessage?.document) {
     return NextResponse.json({ ok: true, outcome: "irrelevant" });
+  }
+
+  // Private documents are tenant-scoped through an activated channel-admin
+  // record. A valid caption keyword selects the published vacancy's parent;
+  // otherwise a one-company admin is routed to that company's warehouse.
+  if (resumeMessage.chat.type === "private") {
+    if (!resumeMessage.from) {
+      return NextResponse.json({ ok: true, outcome: "admin_not_linked" });
+    }
+
+    const target = await resolveTelegramDirectResumeTarget({
+      db,
+      telegramUserId: String(resumeMessage.from.id),
+      caption: resumeMessage.caption,
+    });
+    if (target.outcome !== "resolved") {
+      return NextResponse.json({ ok: true, outcome: target.outcome });
+    }
+
+    const features = await getCompanyFeatures(db, target.companyId);
+    if (!features.canUseTelegramWarehouse) {
+      return NextResponse.json({ ok: true, outcome: "feature_disabled" });
+    }
+
+    try {
+      const document = resumeMessage.document;
+      const result = await enqueueTelegramResumeDocument(db, {
+        companyId: target.companyId,
+        vacancyId: target.vacancyId,
+        chatId: String(resumeMessage.chat.id),
+        messageId: resumeMessage.message_id,
+        updateId: String(update.update_id),
+        source: "bot",
+        document: {
+          fileId: document.file_id,
+          fileUniqueId: document.file_unique_id,
+          fileName: document.file_name,
+          mimeType: document.mime_type,
+          fileSize: document.file_size,
+        },
+        messageDate: new Date(resumeMessage.date * 1000),
+      });
+      return NextResponse.json({
+        ok: true,
+        outcome: result.outcome,
+        destination: target.destination,
+      });
+    } catch (error) {
+      console.error("Failed to enqueue private Telegram resume", error);
+      return NextResponse.json({ error: "enqueue_failed" }, { status: 500 });
+    }
   }
 
   const config = await getTelegramResumeConfigForChat(

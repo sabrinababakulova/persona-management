@@ -25,6 +25,7 @@ type TelegramResumeMessage = {
     type: Message["chat"]["type"];
     title?: string;
   };
+  caption?: string;
   document?: TelegramResumeDocument;
 };
 
@@ -153,6 +154,7 @@ export async function enqueueTelegramResumeDocument(
     .select({
       id: telegramResumeImports.id,
       candidateId: telegramResumeImports.candidateId,
+      vacancyId: telegramResumeImports.vacancyId,
       status: telegramResumeImports.status,
     })
     .from(telegramResumeImports)
@@ -185,6 +187,34 @@ export async function enqueueTelegramResumeDocument(
         fileName,
         mimeType: input.document.mimeType ?? null,
         fileSize: input.document.fileSize ?? null,
+        status: "pending",
+        attempts: 0,
+        runAfter: new Date(),
+        lockedAt: null,
+        lastError: null,
+      })
+      .where(eq(telegramResumeImports.id, duplicate.id));
+
+    return {
+      outcome: "enqueued",
+      importId: duplicate.id,
+      candidateId: duplicate.candidateId,
+      status: "pending",
+    };
+  }
+
+  // Telegram reuses file_unique_id when the exact same resume is forwarded
+  // again. Keep one candidate, but let a later keyword attach that candidate
+  // to an additional vacancy and run its vacancy-specific match.
+  if (
+    duplicate.status === "done" &&
+    duplicate.vacancyId !== input.vacancyId &&
+    !ignoredReason
+  ) {
+    await db
+      .update(telegramResumeImports)
+      .set({
+        vacancyId: input.vacancyId,
         status: "pending",
         attempts: 0,
         runAfter: new Date(),

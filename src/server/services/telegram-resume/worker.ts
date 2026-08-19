@@ -10,8 +10,10 @@ import {
   telegramResumeImports,
   vacancies,
 } from "~/server/db/schema";
+import { classifyCandidateResume } from "~/server/resume/classify-candidate-resume";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
+import { runAndPersistCandidateVacancyMatch } from "~/server/resume/run-candidate-vacancy-match";
 import { downloadTelegramFile } from "~/server/services/telegram";
 import { parseDatabaseTimestamp } from "~/server/services/telegram-resume/dates";
 import {
@@ -51,6 +53,8 @@ type ClaimedTelegramResumeJob = {
   prefillData: CandidateResumePrefillData | null;
   aiAnalysis: string | null;
   aiAnalysisTranslations: LocalizedText | null;
+  isResume: boolean | null;
+  resumeClassificationReason: string | null;
   attempts: number;
 };
 
@@ -66,6 +70,7 @@ export type DrainTelegramResumeImportsResult = {
   created: number;
   retried: number;
   failed: number;
+  ignored: number;
 };
 
 function backoffDate(attempts: number): Date {
@@ -224,6 +229,8 @@ export async function drainTelegramResumeImports(input: {
       "prefill_data" AS "prefillData",
       "ai_analysis" AS "aiAnalysis",
       "ai_analysis_translations" AS "aiAnalysisTranslations",
+      "is_resume" AS "isResume",
+      "resume_classification_reason" AS "resumeClassificationReason",
       "attempts"
   `)) as unknown as RawClaimedTelegramResumeJob[];
   const claimedRows = rawClaimedRows.map((row) => ({
@@ -236,6 +243,7 @@ export async function drainTelegramResumeImports(input: {
     created: 0,
     retried: 0,
     failed: 0,
+    ignored: 0,
   };
 
   for (const job of claimedRows) {
@@ -249,24 +257,32 @@ export async function drainTelegramResumeImports(input: {
 async function processTelegramResumeJob(
   db: DatabaseClient,
   job: ClaimedTelegramResumeJob,
-): Promise<"created" | "retried" | "failed"> {
+): Promise<"created" | "retried" | "failed" | "ignored"> {
   try {
     const [targetVacancy] = await db
-      .select({ id: vacancies.id })
+      .select({
+        id: vacancies.id,
+        status: vacancies.status,
+        isInternal: vacancies.isInternal,
+        systemKey: vacancies.systemKey,
+      })
       .from(vacancies)
       .where(
         and(
           eq(vacancies.id, job.vacancyId),
           eq(vacancies.companyId, job.companyId),
           eq(vacancies.isPublication, false),
-          eq(vacancies.isInternal, true),
-          eq(vacancies.systemKey, TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY),
         ),
       )
       .limit(1);
-    if (!targetVacancy) {
+    const isWarehouse =
+      targetVacancy?.isInternal === true &&
+      targetVacancy.systemKey === TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY;
+    const isOrdinaryVacancy =
+      targetVacancy?.isInternal === false && targetVacancy.status !== "archive";
+    if (!targetVacancy || (!isWarehouse && !isOrdinaryVacancy)) {
       throw new PermanentTelegramResumeError(
-        "Configured Telegram resume vacancy does not belong to the target company",
+        "Telegram resume target is not an active vacancy of the target company",
       );
     }
 
@@ -301,11 +317,57 @@ async function processTelegramResumeJob(
           appliedAt: job.messageDate ?? new Date(),
         });
       }
+
+      const match = await runAndPersistCandidateVacancyMatch({
+        db,
+        candidateId: job.candidateId,
+        vacancyId: job.vacancyId,
+        companyId: job.companyId,
+        operation: "telegram_candidate_vacancy_match",
+      });
+      if (match.status === "failed") {
+        return retryJob(db, job, match.errorMessage);
+      }
       return finishJob(db, job, "done", null);
     }
 
     const buffer = await loadJobBuffer(job);
     validateResumePdf(buffer);
+
+    if (job.isResume === false) {
+      return ignoreJob(
+        db,
+        job,
+        job.resumeClassificationReason || "Document is not a resume",
+      );
+    }
+    if (job.isResume === null) {
+      const classification = await classifyCandidateResume({
+        fileBuffer: buffer,
+        fileName: job.fileName,
+        usageContext: {
+          db,
+          companyId: job.companyId,
+          candidateId: job.candidateId,
+          operation: "telegram_candidate_resume_classification",
+        },
+      });
+      if (classification.status === "failed") {
+        return retryJob(db, job, classification.errorMessage);
+      }
+
+      await db
+        .update(telegramResumeImports)
+        .set({
+          isResume: classification.isResume,
+          resumeClassificationReason: classification.reason,
+        })
+        .where(eq(telegramResumeImports.id, job.id));
+
+      if (!classification.isResume) {
+        return ignoreJob(db, job, classification.reason);
+      }
+    }
 
     let resumeFileId = job.resumeFileId;
     if (!resumeFileId) {
@@ -422,15 +484,6 @@ async function processTelegramResumeJob(
         applicationState: "active",
         appliedAt: job.messageDate ?? new Date(),
       });
-      await tx
-        .update(telegramResumeImports)
-        .set({
-          status: "done",
-          attempts: job.attempts + 1,
-          lockedAt: null,
-          lastError: null,
-        })
-        .where(eq(telegramResumeImports.id, job.id));
     });
 
     await writeRecentActivityLog(db, {
@@ -444,7 +497,18 @@ async function processTelegramResumeJob(
       targetStatus: "Создан",
     });
 
-    return "created";
+    const match = await runAndPersistCandidateVacancyMatch({
+      db,
+      candidateId: job.candidateId,
+      vacancyId: job.vacancyId,
+      companyId: job.companyId,
+      operation: "telegram_candidate_vacancy_match",
+    });
+    if (match.status === "failed") {
+      return retryJob(db, job, match.errorMessage);
+    }
+
+    return finishJob(db, job, "done", null);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown Telegram resume error";
@@ -485,6 +549,24 @@ async function retryJob(
     .where(eq(telegramResumeImports.id, job.id));
 
   return "retried";
+}
+
+async function ignoreJob(
+  db: DatabaseClient,
+  job: ClaimedTelegramResumeJob,
+  reason: string,
+): Promise<"ignored"> {
+  await db
+    .update(telegramResumeImports)
+    .set({
+      status: "ignored",
+      attempts: job.attempts + 1,
+      lockedAt: null,
+      lastError: truncate(reason, 5000),
+    })
+    .where(eq(telegramResumeImports.id, job.id));
+
+  return "ignored";
 }
 
 async function finishJob(
