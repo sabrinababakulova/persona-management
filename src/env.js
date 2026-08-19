@@ -57,6 +57,10 @@ export const env = createEnv({
       .string()
       .regex(/^[a-p]{32}$/)
       .optional(),
+    OLX_CONNECTOR_EXTENSION_IDS: z
+      .string()
+      .regex(/^[a-p]{32}(?:,[a-p]{32}){0,9}$/)
+      .optional(),
     OLX_CREDENTIALS_ENCRYPTION_KEY: z.string().min(32).optional(),
     OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS: z.string().optional(),
   },
@@ -105,6 +109,7 @@ export const env = createEnv({
     OLX_BROWSER_EXECUTABLE_PATH: process.env.OLX_BROWSER_EXECUTABLE_PATH,
     OLX_BROWSER_NO_SANDBOX: process.env.OLX_BROWSER_NO_SANDBOX,
     OLX_CONNECTOR_EXTENSION_ID: process.env.OLX_CONNECTOR_EXTENSION_ID,
+    OLX_CONNECTOR_EXTENSION_IDS: process.env.OLX_CONNECTOR_EXTENSION_IDS,
     OLX_CREDENTIALS_ENCRYPTION_KEY: process.env.OLX_CREDENTIALS_ENCRYPTION_KEY,
     OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS:
       process.env.OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS,

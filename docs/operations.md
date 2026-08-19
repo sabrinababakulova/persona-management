@@ -153,8 +153,10 @@ stages the built application under `/opt/persona-management-runtime` and runs
 sandbox enabled. A stale `OLX_BROWSER_NO_SANDBOX=true` setting is ignored in
 production. Set a dedicated
 `OLX_CREDENTIALS_ENCRYPTION_KEY` and the exact Chrome Web Store
-`OLX_CONNECTOR_EXTENSION_ID`; do not reuse `AUTH_SECRET`. The server needs outbound
-HTTPS access to `login.olx.uz`, `www.olx.uz`, and `categories.olxcdn.com`.
+`OLX_CONNECTOR_EXTENSION_ID`; do not reuse `AUTH_SECRET`. Additional unpacked
+builds can be enabled with a comma-separated exact allowlist in
+`OLX_CONNECTOR_EXTENSION_IDS`. The server needs outbound HTTPS access to
+`login.olx.uz`, `www.olx.uz`, and `categories.olxcdn.com`.
 
 Users connect once through the Chrome extension in
 `browser-extension/olx-connector`. For production, package and distribute that

@@ -10,6 +10,11 @@ export {
   createOlxConnectionTicket,
   releaseOlxConnectionTicket,
 } from "./connection-ticket";
+export {
+  getAllowedOlxConnectorExtensionIds,
+  getOlxConnectorExtensionIdFromOrigin,
+  parseOlxConnectorExtensionIds,
+} from "./connector-extension-ids";
 export { decryptOlxCredentials, encryptOlxCredentials } from "./crypto";
 export {
   getOlxJobCategories,

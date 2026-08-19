@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 
+import { ensureCompanyTelegramResumeWarehouse } from "~/server/company/telegram-resume-warehouse";
 import { db } from "~/server/db";
 import { companies, users } from "~/server/db/schema";
 import { isCompanyAdmin } from "~/shared/company-roles";
@@ -139,26 +140,29 @@ export async function requireCompanyMaster(
 }
 
 export async function ensureUserCompanyId(userId: string) {
-  await db
-    .insert(companies)
-    .values({
-      id: DEFAULT_COMPANY_ID,
-      name: "Default Company",
-    })
-    .onConflictDoNothing({ target: companies.id });
+  return db.transaction(async (transaction) => {
+    await transaction
+      .insert(companies)
+      .values({
+        id: DEFAULT_COMPANY_ID,
+        name: "Default Company",
+      })
+      .onConflictDoNothing({ target: companies.id });
 
-  await db
-    .update(users)
-    .set({
-      companyId: DEFAULT_COMPANY_ID,
-    })
-    .where(and(eq(users.id, userId), isNull(users.companyId)));
+    await ensureCompanyTelegramResumeWarehouse(transaction, DEFAULT_COMPANY_ID);
+    await transaction
+      .update(users)
+      .set({
+        companyId: DEFAULT_COMPANY_ID,
+      })
+      .where(and(eq(users.id, userId), isNull(users.companyId)));
 
-  const userRows = await db
-    .select({ companyId: users.companyId })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+    const userRows = await transaction
+      .select({ companyId: users.companyId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-  return userRows[0]?.companyId ?? DEFAULT_COMPANY_ID;
+    return userRows[0]?.companyId ?? DEFAULT_COMPANY_ID;
+  });
 }

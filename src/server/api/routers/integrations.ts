@@ -3,26 +3,38 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "~/env";
-import { getRequiredCompanyId } from "~/server/api/router-utils/company";
+import {
+  getCompanyMembership,
+  getRequiredCompanyId,
+  requireCompanyAdmin,
+} from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { takeRateLimitSlot } from "~/server/auth/rate-limit";
 import {
+  ensureCompanyTelegramResumeWarehouse,
+  getCompanyTelegramResumeWarehouse,
+} from "~/server/company/telegram-resume-warehouse";
+import {
+  companyTelegramResumeConfigs,
   telegramChannelAdmins,
   telegramDeliveryModes,
   userHhAccounts,
   userOlxSessions,
   userTelegramChannels,
-  vacancies,
 } from "~/server/db/schema";
-import { getCompanyFeatures } from "~/server/services/feature-flags";
-import { createOlxConnectionTicket } from "~/server/services/olx-api";
 import {
+  createOlxConnectionTicket,
+  getAllowedOlxConnectorExtensionIds,
+} from "~/server/services/olx-api";
+import {
+  getTelegramBotProfile,
   isTelegramConfigured,
   normalizeTelegramUsername,
   resolveTelegramChannelInfo,
+  TelegramResumeGroupVerificationError,
+  verifyTelegramResumeGroup,
 } from "~/server/services/telegram";
-import { getTelegramResumeConfigForCompany } from "~/server/services/telegram-resume/config";
-import { OLX_CONNECTOR_EXTENSION_ID } from "~/shared/publication-navigation";
+import { createTelegramResumeConnectCode } from "~/server/services/telegram-resume/connection";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -123,8 +135,7 @@ export const integrationsRouter = createTRPCRouter({
 
   createOlxConnectionTicket: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const extensionId =
-      env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
+    const extensionIds = getAllowedOlxConnectorExtensionIds();
     if (!env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -148,7 +159,7 @@ export const integrationsRouter = createTRPCRouter({
       const connection = await createOlxConnectionTicket(
         ctx.db,
         userId,
-        extensionId,
+        extensionIds,
       );
       return {
         ticket: connection.ticket,
@@ -175,40 +186,145 @@ export const integrationsRouter = createTRPCRouter({
 
   // ── Telegram resume warehouse ──────────────────────────────────────
 
+  getTelegramResumeGroup: protectedProcedure.query(async ({ ctx }) => {
+    const membership = await getCompanyMembership(ctx.db, ctx.session.user.id);
+    const warehouse = await getCompanyTelegramResumeWarehouse(
+      ctx.db,
+      membership.companyId,
+    );
+    const [config] = await ctx.db
+      .select({
+        chatId: companyTelegramResumeConfigs.chatId,
+        connectedAt: companyTelegramResumeConfigs.createdAt,
+        updatedAt: companyTelegramResumeConfigs.updatedAt,
+      })
+      .from(companyTelegramResumeConfigs)
+      .where(eq(companyTelegramResumeConfigs.companyId, membership.companyId))
+      .limit(1);
+
+    if (!isTelegramConfigured()) {
+      return {
+        botConfigured: false,
+        botUsername: null,
+        canManage: membership.isAdmin,
+        warehouseVacancyId: warehouse?.id ?? null,
+        group: config
+          ? {
+              chatId: config.chatId,
+              title: null,
+              type: null,
+              botStatus: null,
+              verification: "bot_not_configured" as const,
+              connectedAt: config.connectedAt,
+              connectionChangedAt: config.updatedAt ?? config.connectedAt,
+            }
+          : null,
+      };
+    }
+
+    const bot = await getTelegramBotProfile().catch(() => null);
+    if (!config) {
+      return {
+        botConfigured: true,
+        botUsername: bot?.username ? `@${bot.username}` : null,
+        canManage: membership.isAdmin,
+        warehouseVacancyId: warehouse?.id ?? null,
+        group: null,
+      };
+    }
+
+    try {
+      const verified = await verifyTelegramResumeGroup(config.chatId);
+      return {
+        botConfigured: true,
+        botUsername: bot?.username ? `@${bot.username}` : null,
+        canManage: membership.isAdmin,
+        warehouseVacancyId: warehouse?.id ?? null,
+        group: {
+          ...verified,
+          verification: "verified" as const,
+          connectedAt: config.connectedAt,
+          connectionChangedAt: config.updatedAt ?? config.connectedAt,
+        },
+      };
+    } catch (error) {
+      return {
+        botConfigured: true,
+        botUsername: bot?.username ? `@${bot.username}` : null,
+        canManage: membership.isAdmin,
+        warehouseVacancyId: warehouse?.id ?? null,
+        group: {
+          chatId: config.chatId,
+          title: null,
+          type: null,
+          botStatus: null,
+          verification:
+            error instanceof TelegramResumeGroupVerificationError
+              ? error.code
+              : ("not_found" as const),
+          connectedAt: config.connectedAt,
+          connectionChangedAt: config.updatedAt ?? config.connectedAt,
+        },
+      };
+    }
+  }),
+
+  createTelegramResumeConnectCode: protectedProcedure.mutation(
+    async ({ ctx }) => {
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
+      if (!isTelegramConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Telegram-бот не настроен администратором Talanty.",
+        });
+      }
+
+      const allowed = await takeRateLimitSlot(
+        `telegram-resume-connect:${ctx.session.user.id}`,
+        5,
+        15 * 60 * 1000,
+      );
+      if (!allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "Слишком много попыток подключения. Подождите и попробуйте снова.",
+        });
+      }
+
+      await ensureCompanyTelegramResumeWarehouse(ctx.db, companyId);
+      return createTelegramResumeConnectCode(ctx.db, companyId);
+    },
+  ),
+
+  disconnectTelegramResumeGroup: protectedProcedure.mutation(
+    async ({ ctx }) => {
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
+      await ctx.db
+        .delete(companyTelegramResumeConfigs)
+        .where(eq(companyTelegramResumeConfigs.companyId, companyId));
+      return { success: true };
+    },
+  ),
+
   /**
    * The warehouse vacancy that accumulates resumes ingested from the
-   * caller's company's Telegram group. Returns null unless the company has
-   * the warehouse feature flag, its own ingestion config
-   * (company_telegram_resume_config), and the configured vacancy actually
-   * exists in the company — the funnel page is company-scoped, so a link to
-   * anything else would dead-end.
+   * caller's company's Telegram group. It exists before a group is connected,
+   * so recruiters can open an empty warehouse immediately after registration.
    */
   getTelegramResumeVacancy: protectedProcedure.query(async ({ ctx }) => {
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
-
-    const features = await getCompanyFeatures(ctx.db, companyId);
-    if (!features.canUseTelegramWarehouse) {
-      return null;
-    }
-
-    const config = await getTelegramResumeConfigForCompany(ctx.db, companyId);
-    if (!config) {
-      return null;
-    }
-
-    const rows = await ctx.db
-      .select({ id: vacancies.id })
-      .from(vacancies)
-      .where(
-        and(
-          eq(vacancies.id, config.vacancyId),
-          eq(vacancies.companyId, companyId),
-        ),
-      )
-      .limit(1);
-
-    const vacancy = rows[0];
-    return vacancy ? { vacancyId: vacancy.id } : null;
+    const warehouse = await getCompanyTelegramResumeWarehouse(
+      ctx.db,
+      companyId,
+    );
+    return warehouse ? { vacancyId: warehouse.id } : null;
   }),
 
   // ── Telegram channels ──────────────────────────────────────────────

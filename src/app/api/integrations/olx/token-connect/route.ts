@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { env } from "~/env";
 import { clearIdentifier, takeRateLimitSlot } from "~/server/auth/rate-limit";
 import { db } from "~/server/db";
 import { userOlxSessions } from "~/server/db/schema";
@@ -14,12 +13,13 @@ import {
   claimOlxConnectionTicket,
   completeOlxConnectionTicket,
   encryptStoredOlxCredentials,
+  getAllowedOlxConnectorExtensionIds,
+  getOlxConnectorExtensionIdFromOrigin,
   OlxApiError,
   olxCredentialsSchema,
   releaseOlxConnectionTicket,
   verifyOlxCredentials,
 } from "~/server/services/olx-api";
-import { OLX_CONNECTOR_EXTENSION_ID } from "~/shared/publication-navigation";
 
 export const runtime = "nodejs";
 
@@ -31,11 +31,12 @@ const MAX_REQUEST_BYTES = 70_000;
 const TOKEN_CONNECT_WINDOW_MS = 15 * 60 * 1000;
 const TOKEN_CONNECT_ATTEMPT_LIMIT = 20;
 
-function extensionOrigin(request: Request): string | null {
+function extensionOrigin(
+  request: Request,
+): { extensionId: string; origin: string } | null {
   const origin = request.headers.get("origin");
-  const extensionId =
-    env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
-  return origin === `chrome-extension://${extensionId}` ? origin : null;
+  const extensionId = getOlxConnectorExtensionIdFromOrigin(origin);
+  return origin && extensionId ? { extensionId, origin } : null;
 }
 
 function clientIp(request: Request): string {
@@ -63,19 +64,26 @@ function json(origin: string, body: Record<string, unknown>, status: number) {
 }
 
 export async function OPTIONS(request: Request) {
-  const origin = extensionOrigin(request);
-  if (!origin) return new NextResponse(null, { status: 403 });
-  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+  const extension = extensionOrigin(request);
+  if (!extension) return new NextResponse(null, { status: 403 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(extension.origin),
+  });
 }
 
 export async function POST(request: Request) {
-  const origin = extensionOrigin(request);
-  if (!origin) {
+  const extension = extensionOrigin(request);
+  if (!extension) {
+    console.warn("Rejected OLX connector origin", {
+      origin: request.headers.get("origin") ?? "missing",
+    });
     return NextResponse.json(
       { error: "extension_origin_required" },
       { status: 403 },
     );
   }
+  const { extensionId, origin } = extension;
 
   const ipKey = `olx-token-connect-ip:${clientIp(request)}`;
   if (
@@ -105,9 +113,12 @@ export async function POST(request: Request) {
     return json(origin, { error: "invalid_request" }, 400);
   }
 
-  const extensionId =
-    env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
-  const claim = await claimOlxConnectionTicket(db, parsed.ticket, extensionId);
+  const claim = await claimOlxConnectionTicket(
+    db,
+    parsed.ticket,
+    extensionId,
+    getAllowedOlxConnectorExtensionIds(),
+  );
   if (!claim) {
     return json(origin, { error: "ticket_invalid_or_expired" }, 401);
   }

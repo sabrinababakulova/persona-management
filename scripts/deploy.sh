@@ -87,8 +87,19 @@ stage_runtime() {
     --exclude='.git/' \
     --exclude='backups/' \
     --exclude='build/' \
+    --exclude='node_modules/' \
     "$DEPLOY_PATH/" \
     "$APP_RUNTIME_PATH/"
+
+  # Build a complete dependency tree in the staged runtime instead of copying
+  # Bun's linked node_modules layout from the source checkout.
+  run_as_root env HOME="$APP_RUNTIME_HOME" \
+    /usr/local/bin/bun install \
+    --cwd "$APP_RUNTIME_PATH" \
+    --frozen-lockfile \
+    --force \
+    --production
+
   run_as_root chown -R "root:$APP_RUNTIME_USER" "$APP_RUNTIME_PATH"
   run_as_root chmod -R g+rX,o-rwx "$APP_RUNTIME_PATH"
   run_as_root chown -R "$APP_RUNTIME_USER:$APP_RUNTIME_USER" \

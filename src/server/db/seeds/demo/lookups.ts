@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { ensureCompanyTelegramResumeWarehouse } from "~/server/company/telegram-resume-warehouse";
 import * as schema from "~/server/db/schema";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
 import type { SeedDb } from "../../seed-utils";
@@ -224,6 +225,7 @@ export async function seedLookups(db: SeedDb) {
       name: "Default Company",
     })
     .onConflictDoNothing({ target: schema.companies.id });
+  await ensureCompanyTelegramResumeWarehouse(db, DEFAULT_COMPANY_ID);
   console.log("Seeded default company");
 
   await db

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
+import { sendTelegramPlainMessage } from "~/server/services/telegram";
 import {
   handlePostedCallback,
   handleTelegramStart,
@@ -15,7 +16,16 @@ import {
   getTelegramResumeConfigForChat,
   getTelegramResumeWebhookSecret,
 } from "~/server/services/telegram-resume/config";
-import { enqueueTelegramResumeUpdate } from "~/server/services/telegram-resume/ingestion";
+import {
+  connectTelegramResumeGroupFromCommand,
+  parseTelegramResumeConnectCommand,
+  type TelegramResumeConnectOutcome,
+} from "~/server/services/telegram-resume/connection";
+import { resolveTelegramDirectResumeTarget } from "~/server/services/telegram-resume/direct-message";
+import {
+  enqueueTelegramResumeDocument,
+  enqueueTelegramResumeUpdate,
+} from "~/server/services/telegram-resume/ingestion";
 
 export const runtime = "nodejs";
 
@@ -42,6 +52,7 @@ const telegramMessageSchema = z.object({
   }),
   from: telegramUserSchema.optional(),
   text: z.string().max(4096).optional(),
+  caption: z.string().max(4096).optional(),
   document: telegramDocumentSchema.optional(),
 });
 
@@ -58,6 +69,21 @@ const telegramUpdateSchema = z.object({
   channel_post: telegramMessageSchema.optional(),
   callback_query: telegramCallbackQuerySchema.optional(),
 });
+
+const CONNECT_RESPONSE: Record<TelegramResumeConnectOutcome, string> = {
+  connected:
+    "✅ Группа подключена. Новые PDF-резюме будут автоматически добавляться в склад кандидатов вашей компании.",
+  invalid_code:
+    "Код подключения недействителен или истёк. Создайте новый код в настройках компании.",
+  group_in_use: "Эта группа уже подключена к другой компании.",
+  not_group: "Подключить можно только группу или супергруппу Telegram.",
+  bot_not_member: "Добавьте бота в группу и повторите подключение.",
+  bot_cannot_read:
+    "Бот не может читать обычные сообщения. Назначьте его администратором группы и повторите подключение.",
+  protected_content:
+    "В группе включена защита контента. Отключите её и повторите подключение.",
+  not_found: "Не удалось проверить Telegram-группу. Попробуйте ещё раз.",
+};
 
 function secretsMatch(received: string | null, expected: string) {
   if (!received) {
@@ -136,12 +162,97 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "admin_update_failed" }, { status: 500 });
   }
 
+  // A one-time command generated in company settings is how a company admin
+  // proves control of a group without having to discover its numeric chat id.
+  const connectionMessage = update.message;
+  if (
+    connectionMessage &&
+    (connectionMessage.chat.type === "group" ||
+      connectionMessage.chat.type === "supergroup") &&
+    parseTelegramResumeConnectCommand(connectionMessage.text)
+  ) {
+    try {
+      const result = await connectTelegramResumeGroupFromCommand({
+        db,
+        chatId: String(connectionMessage.chat.id),
+        text: connectionMessage.text,
+      });
+      await sendTelegramPlainMessage(
+        String(connectionMessage.chat.id),
+        CONNECT_RESPONSE[result.outcome],
+      ).catch((error) => {
+        console.error(
+          "Failed to send Telegram group connection response",
+          error,
+        );
+      });
+      return NextResponse.json({ ok: true, outcome: result.outcome });
+    } catch (error) {
+      console.error("Failed to connect Telegram resume group", error);
+      return NextResponse.json(
+        { error: "resume_group_connection_failed" },
+        { status: 500 },
+      );
+    }
+  }
+
   // Resume documents are routed to a company by the chat they were posted
   // in — each company brings its own Telegram group. Unknown chats and
   // non-document updates are acked so Telegram stops retrying.
   const resumeMessage = update.message ?? update.channel_post;
   if (!resumeMessage?.document) {
     return NextResponse.json({ ok: true, outcome: "irrelevant" });
+  }
+
+  // Private documents are tenant-scoped through an activated channel-admin
+  // record. A valid caption keyword selects the published vacancy's parent;
+  // otherwise a one-company admin is routed to that company's warehouse.
+  if (resumeMessage.chat.type === "private") {
+    if (!resumeMessage.from) {
+      return NextResponse.json({ ok: true, outcome: "admin_not_linked" });
+    }
+
+    const target = await resolveTelegramDirectResumeTarget({
+      db,
+      telegramUserId: String(resumeMessage.from.id),
+      caption: resumeMessage.caption,
+    });
+    if (target.outcome !== "resolved") {
+      return NextResponse.json({ ok: true, outcome: target.outcome });
+    }
+
+    const features = await getCompanyFeatures(db, target.companyId);
+    if (!features.canUseTelegramWarehouse) {
+      return NextResponse.json({ ok: true, outcome: "feature_disabled" });
+    }
+
+    try {
+      const document = resumeMessage.document;
+      const result = await enqueueTelegramResumeDocument(db, {
+        companyId: target.companyId,
+        vacancyId: target.vacancyId,
+        chatId: String(resumeMessage.chat.id),
+        messageId: resumeMessage.message_id,
+        updateId: String(update.update_id),
+        source: "bot",
+        document: {
+          fileId: document.file_id,
+          fileUniqueId: document.file_unique_id,
+          fileName: document.file_name,
+          mimeType: document.mime_type,
+          fileSize: document.file_size,
+        },
+        messageDate: new Date(resumeMessage.date * 1000),
+      });
+      return NextResponse.json({
+        ok: true,
+        outcome: result.outcome,
+        destination: target.destination,
+      });
+    } catch (error) {
+      console.error("Failed to enqueue private Telegram resume", error);
+      return NextResponse.json({ error: "enqueue_failed" }, { status: 500 });
+    }
   }
 
   const config = await getTelegramResumeConfigForChat(

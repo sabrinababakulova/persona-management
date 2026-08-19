@@ -3,7 +3,8 @@
 Production ingestion uses a Telegram webhook. Telegram sends each new
 `message` or `channel_post` update to the Next.js application, the webhook
 stores matching PDF documents in a durable PostgreSQL queue, and a separate
-worker processes that queue.
+worker processes that queue. Documents can come from a connected resume group
+or directly from an activated Telegram channel administrator.
 
 ```text
 New Telegram document
@@ -18,12 +19,59 @@ Webhook validates its secret and inserts a queue row
 Resume worker downloads the file
         |
         v
-Directus upload -> Mastra analysis -> candidate saved
+Resume classification -> Directus upload -> Mastra analysis -> candidate saved
 ```
 
 The webhook does not run file downloads or AI work. This keeps its response
 fast and lets Telegram retry failed deliveries safely. Unique database indexes
 on the Telegram message id and file unique id make retries idempotent.
+
+## Direct messages from channel administrators
+
+An administrator activated through `/start` can send a PDF directly to the
+bot. The numeric Telegram user id is resolved through
+`telegram_channel_admin` and `company_telegram_channel`; an unlinked sender is
+never allowed to select a company or vacancy.
+
+- A PDF without a recognized vacancy keyword goes to the company's internal
+  Telegram warehouse. This is accepted only when the administrator is linked
+  to exactly one company.
+- A PDF caption containing the eight-character keyword printed by
+  `formatTelegramVacancy` goes to that publication's parent/base vacancy. The
+  base vacancy is used because that is where the recruiter-facing funnel lives.
+- An administrator linked to several companies must include a recognized
+  vacancy keyword so the tenant is unambiguous.
+- Plain text messages are acknowledged by the webhook and otherwise ignored.
+
+The caption may contain other text; only a keyword that recomputes correctly
+for a Telegram publication owned by one of the administrator's companies can
+change the destination. A guessed vacancy id or a keyword from another company
+cannot cross the tenant boundary.
+
+## Company self-service connection
+
+Every company receives an internal `Склад кандидатов из Telegram` vacancy when
+the company row is created. Existing companies are backfilled by the database
+migration. The vacancy is identified by the system key
+`telegram_resume_warehouse`, remains hidden from normal vacancy lists, and is
+never shared between companies.
+
+A company administrator connects a group from **Company settings → Telegram
+resume group**:
+
+1. Talanty creates a random one-time `/connect` command valid for 15 minutes.
+2. The administrator adds the configured bot to the target group, makes it an
+   administrator, and sends the command in that group.
+3. The webhook consumes the one-time code, verifies that the chat is a group,
+   the bot is an active member with access to ordinary messages, and protected
+   content is disabled.
+4. The numeric chat id is bound to exactly one company and that company's
+   warehouse vacancy in `company_telegram_resume_config`.
+
+The command flow supports private groups without asking users to discover a
+numeric chat id. Only company admins can create a connection code, replace a
+group, or disconnect it. Disconnecting stops new ingestion but keeps candidates
+already imported into the warehouse.
 
 ## One-time setup
 
@@ -35,16 +83,16 @@ resume agents.
 Run:
 
 ```bash
-bun run db:push
+bun run db:migrate-custom
 bun run telegram:resume:setup
 ```
 
-The setup command is idempotent and:
+The legacy operations setup command is idempotent and:
 
 1. Verifies the bot, target group, bot membership/privacy,
    protected-content setting, database schema, and Directus access.
 2. Reuses the canonical `Default Company`, or creates it if missing.
-3. Creates the internal base vacancy `placeholder-vacancy` unless it exists.
+3. Ensures the company's system-owned Telegram warehouse vacancy exists.
 4. Writes `TELEGRAM_RESUME_CHAT_ID`, `TELEGRAM_RESUME_COMPANY_ID`, and
    `TELEGRAM_RESUME_VACANCY_ID` to `.env.local`.
 5. Installs a managed cron entry that processes one queued resume per minute.
@@ -138,12 +186,20 @@ bun run telegram:resume:drain
 
 ## Processing guarantees
 
-- Only documents from the configured numeric chat id are considered.
+- Only documents from a chat bound to a company through the connection flow
+  are considered.
 - PDF files up to 10 MB are accepted. Invalid, empty, oversized, and non-PDF
   documents are retained as `ignored` queue records with a reason.
+- A dedicated Mastra classifier checks that a valid PDF is actually a resume
+  before it is uploaded or turned into a candidate. Non-resume PDFs are marked
+  `ignored`, and the successful classification is cached for retries.
 - The worker downloads the file from Telegram, stores it in Directus, runs the
   existing Mastra resume analyzer and summary agents, creates the candidate,
   and creates its `vacancy_candidate` link in one database transaction.
+- For a keyword-selected ordinary vacancy, the vacancy-match agent runs after
+  candidate creation and persists the per-application score, analysis, matched
+  requirements, and missing requirements. Warehouse vacancies intentionally
+  skip matching because they do not contain a real job description.
 - Successful AI output is cached on the queue row, so a later database retry
   does not repeat the analysis.
 - Transient errors retry up to five times with exponential backoff.

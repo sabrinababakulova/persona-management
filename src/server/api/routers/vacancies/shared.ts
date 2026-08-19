@@ -1,9 +1,8 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 
+import { TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY } from "~/server/company/telegram-resume-warehouse";
 import { candidates, candidateVacancies, vacancies } from "~/server/db/schema";
-import { getCompanyFeatures } from "~/server/services/feature-flags";
 import type { HhVacancy } from "~/server/services/hh";
-import { getTelegramResumeConfigForCompany } from "~/server/services/telegram-resume/config";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -180,12 +179,20 @@ export async function isUserVisibleOrWarehouseVacancy(
   vacancyId: string,
   companyId: string,
 ) {
-  const features = await getCompanyFeatures(db, companyId);
-  if (features.canUseTelegramWarehouse) {
-    const config = await getTelegramResumeConfigForCompany(db, companyId);
-    if (config?.vacancyId === vacancyId) {
-      return undefined;
-    }
+  const [warehouse] = await db
+    .select({ id: vacancies.id })
+    .from(vacancies)
+    .where(
+      and(
+        eq(vacancies.id, vacancyId),
+        eq(vacancies.companyId, companyId),
+        eq(vacancies.systemKey, TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY),
+        eq(vacancies.isInternal, true),
+      ),
+    )
+    .limit(1);
+  if (warehouse) {
+    return undefined;
   }
   return isUserVisibleVacancy();
 }
