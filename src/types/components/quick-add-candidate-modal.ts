@@ -1,4 +1,5 @@
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
+import type { LocalizedText } from "~/shared/localized-ai";
 import type { LookupOption } from "~/types/shared/candidate-lookups";
 
 export type QuickAddCandidatePayload = {
@@ -10,6 +11,7 @@ export type QuickAddCandidatePayload = {
   status?: string;
   source: string;
   aiAnalysis?: string;
+  aiAnalysisTranslations?: LocalizedText;
   resumeFileId?: string;
   resumeFileName?: string;
   resumeFileSize?: string;

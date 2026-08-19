@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
+import { getRequestLocale } from "~/i18n/server-locale";
 import { getOptionalCompanyId } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
 import {
@@ -25,6 +26,10 @@ import {
   isPersonHunterConfigured,
 } from "~/server/services/person-hunter";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import {
+  getLocalizedStringList,
+  getLocalizedText,
+} from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 
 import {
@@ -551,6 +556,7 @@ export const getPublicationTelegramPostsProcedure = protectedProcedure
 export const getVacancyFunnelProcedure = protectedProcedure
   .input(vacancyFunnelInputSchema)
   .query(async ({ ctx, input }) => {
+    const locale = getRequestLocale(ctx.headers);
     const userCompanyId = await getOptionalCompanyId(
       ctx.db,
       ctx.session.user.id,
@@ -718,8 +724,16 @@ export const getVacancyFunnelProcedure = protectedProcedure
         city: candidate.city ?? "",
         experience: formatExperienceMonths(candidate.experience),
         matchScore: candidate.matchScore ?? candidate.candidateMatchScore ?? 0,
-        matchAnalysis: candidate.matchAnalysis ?? "",
-        aiAnalysis: candidate.aiAnalysis ?? "",
+        matchAnalysis: getLocalizedText(
+          candidate.matchAnalysisTranslations,
+          locale,
+          candidate.matchAnalysis ?? "",
+        ),
+        aiAnalysis: getLocalizedText(
+          candidate.aiAnalysisTranslations,
+          locale,
+          candidate.aiAnalysis ?? "",
+        ),
         currentPosition:
           candidate.currentPosition ?? currentWorkplace?.position ?? "",
         currentCompany: currentWorkplace?.company ?? "",
@@ -736,8 +750,16 @@ export const getVacancyFunnelProcedure = protectedProcedure
         salaryExpectation: candidate.salaryExpectation ?? 0,
         salaryCurrency: candidate.salaryCurrency ?? "UZS",
         tags: (candidate.tags ?? []) as string[],
-        matchedSkills: (candidate.matchedSkills ?? []) as string[],
-        missingSkills: (candidate.missingSkills ?? []) as string[],
+        matchedSkills: getLocalizedStringList(
+          candidate.matchedSkillsTranslations,
+          locale,
+          (candidate.matchedSkills ?? []) as string[],
+        ),
+        missingSkills: getLocalizedStringList(
+          candidate.missingSkillsTranslations,
+          locale,
+          (candidate.missingSkills ?? []) as string[],
+        ),
         source: candidate.source ?? "",
         // Quick preview always has something to open: the uploaded resume when
         // one exists, otherwise the profile rendered to PDF on the fly.

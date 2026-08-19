@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 DEPLOY_PATH="${DEPLOY_PATH:-/root/projects/persona-management}"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
@@ -9,6 +9,36 @@ APP_RUNTIME_USER="${APP_RUNTIME_USER:-persona-web}"
 APP_RUNTIME_HOME="${APP_RUNTIME_HOME:-/var/lib/persona-web}"
 APP_RUNTIME_PATH="/opt/persona-management-runtime"
 APP_SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
+SOURCE_ALREADY_UPDATED="${SOURCE_ALREADY_UPDATED:-false}"
+CURRENT_DEPLOY_STEP="Initialize deployment"
+
+report_deploy_error() {
+  local exit_code="$?"
+  local line_number="$1"
+
+  echo "::endgroup::"
+  printf 'Deployment failed during "%s" at scripts/deploy.sh:%s (exit %s).\n' \
+    "$CURRENT_DEPLOY_STEP" \
+    "$line_number" \
+    "$exit_code" >&2
+  printf '::error title=Production deployment failed::Step "%s" failed on the server (scripts/deploy.sh:%s, exit %s). Review the preceding log group.\n' \
+    "$CURRENT_DEPLOY_STEP" \
+    "$line_number" \
+    "$exit_code" >&2
+  exit "$exit_code"
+}
+
+trap 'report_deploy_error "$LINENO"' ERR
+
+run_step() {
+  local label="$1"
+  shift
+
+  CURRENT_DEPLOY_STEP="$label"
+  printf '::group::%s\n' "$label"
+  "$@"
+  echo "::endgroup::"
+}
 
 run_as_root() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -92,49 +122,65 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
-git fetch "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
+if [ "$SOURCE_ALREADY_UPDATED" != "true" ]; then
+  run_step "Fetch deployment source" \
+    git fetch "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
 
-current_branch="$(git branch --show-current)"
-if [ "$current_branch" != "$DEPLOY_BRANCH" ]; then
-  git checkout "$DEPLOY_BRANCH"
+  current_branch="$(git branch --show-current)"
+  if [ "$current_branch" != "$DEPLOY_BRANCH" ]; then
+    run_step "Check out deployment branch" git checkout "$DEPLOY_BRANCH"
+  fi
+
+  run_step "Fast-forward deployment source" \
+    git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
+else
+  echo "Deployment source was fast-forwarded by the CI bootstrap step."
 fi
 
-git pull --ff-only "$DEPLOY_REPOSITORY" "$DEPLOY_BRANCH"
-bun install --frozen-lockfile
+run_step "Install dependencies" bun install --frozen-lockfile
+run_step "Build application" bun run build
 
 # Refuse schema changes unless a validated PostgreSQL snapshot succeeds first.
-run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
-# Migrations only — `db:push` is deliberately not used here. Push applies
-# schema.ts directly, which silently skips the data backfills that live in the
-# .sql files and leaves `drizzle.__drizzle_migrations` empty.
-#
-# If this database was previously deployed with push, its ledger is behind the
-# schema and this step will fail on "already exists". Run `bun run
-# db:migrate-custom` once to reconcile it, then this returns to working.
-bun run db:migrate
-bun run build
+run_step "Back up production database" \
+  run_as_root bash "$DEPLOY_PATH/scripts/backup-database.sh"
 
-stage_runtime
-install_service
+# The custom migrator is the only production schema path. It applies committed
+# SQL migrations, reconciles databases whose schema is ahead of the Drizzle
+# ledger, and exits non-zero on every non-idempotent SQL error. `db:push` is
+# deliberately excluded because it skips migration backfills and ledger writes.
+run_step "Apply database migrations" bun run db:migrate-custom
+run_step "Stage application runtime" stage_runtime
+run_step "Install systemd service" install_service
 
 # Older deployments used root-owned PM2. Stop it before binding the same port,
 # but retain it until the systemd service passes its health check so rollback is
 # still possible.
+CURRENT_DEPLOY_STEP="Stop legacy PM2 process"
+echo "::group::$CURRENT_DEPLOY_STEP"
 LEGACY_PM2=""
 if [ -x /root/.bun/bin/pm2 ] && \
   /root/.bun/bin/pm2 describe "$APP_NAME" >/dev/null 2>&1; then
   LEGACY_PM2=/root/.bun/bin/pm2
   "$LEGACY_PM2" stop "$APP_NAME"
 fi
+echo "::endgroup::"
 
-run_as_root systemctl enable "$APP_NAME.service"
+run_step "Enable systemd service" \
+  run_as_root systemctl enable "$APP_NAME.service"
+
+CURRENT_DEPLOY_STEP="Restart systemd service"
+echo "::group::$CURRENT_DEPLOY_STEP"
 if ! run_as_root systemctl restart "$APP_NAME.service"; then
+  echo "::endgroup::"
   if [ -n "$LEGACY_PM2" ]; then
     "$LEGACY_PM2" restart "$APP_NAME"
   fi
   exit 1
 fi
+echo "::endgroup::"
 
+CURRENT_DEPLOY_STEP="Verify application health"
+echo "::group::$CURRENT_DEPLOY_STEP"
 if ! curl \
   --fail \
   --silent \
@@ -144,6 +190,7 @@ if ! curl \
   --retry-delay 1 \
   --max-time 5 \
   "http://127.0.0.1:3000/api/auth/session" >/dev/null; then
+  echo "::endgroup::"
   run_as_root systemctl status "$APP_NAME.service" --no-pager || true
   run_as_root journalctl -u "$APP_NAME.service" -n 120 --no-pager || true
   run_as_root systemctl stop "$APP_NAME.service"
@@ -152,13 +199,19 @@ if ! curl \
   fi
   exit 1
 fi
+echo "::endgroup::"
 
 if [ -n "$LEGACY_PM2" ]; then
+  CURRENT_DEPLOY_STEP="Remove legacy PM2 process"
+  echo "::group::$CURRENT_DEPLOY_STEP"
   "$LEGACY_PM2" delete "$APP_NAME"
   "$LEGACY_PM2" save
+  echo "::endgroup::"
 fi
 
-run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
+run_step "Install operational schedules" \
+  run_as_root bash "$DEPLOY_PATH/scripts/install-operations.sh"
 
 echo ""
-run_as_root systemctl status "$APP_NAME.service" --no-pager
+run_step "Show application status" \
+  run_as_root systemctl status "$APP_NAME.service" --no-pager

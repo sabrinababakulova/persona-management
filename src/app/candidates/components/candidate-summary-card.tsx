@@ -213,7 +213,9 @@ export function CandidateSummaryCard({
               </span>
             </div>
 
-            <p className="text-sm leading-5">{summaryText}</p>
+            <p className="whitespace-pre-line text-sm leading-5">
+              {summaryText}
+            </p>
           </div>
 
           {tags.length > 0 ? (

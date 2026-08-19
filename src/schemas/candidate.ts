@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { localizedTextSchema } from "~/shared/localized-ai";
+
 export type CandidateValidationMessages = {
   contactType: string;
   contactRequired: string;
@@ -78,6 +80,7 @@ export function createCandidateFormSchema(
     education: z.array(educationSchema).default([]),
     status: z.string().default("new"),
     aiAnalysis: z.string().max(5000).optional(),
+    aiAnalysisTranslations: localizedTextSchema.optional(),
     resumeFileId: z.string().optional(),
     resumeFileName: z.string().optional(),
     resumeFileSize: z.string().optional(),

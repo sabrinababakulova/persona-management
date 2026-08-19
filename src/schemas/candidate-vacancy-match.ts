@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  localizedStringListSchema,
+  localizedTextSchema,
+} from "~/shared/localized-ai";
+
 /**
  * Structured output of the candidate ↔ vacancy match agent.
  *
@@ -10,14 +15,16 @@ import { z } from "zod";
  * applies that rubric holistically rather than as a keyword count, so the score
  * reflects qualitative fit and not just term frequency.
  *
- * `reasoning` is a Russian narrative (one concise paragraph, ~100 words)
- * justifying the score with concrete points from the résumé and vacancy. It is
- * surfaced to the recruiter per-application (stored on
- * `candidateVacancies.matchAnalysis`) and shown in the vacancy funnel.
+ * The score is language-independent. `analysis`, `matchedRequirements`, and
+ * `missingRequirements` contain equivalent Russian, English, and Uzbek
+ * recruiter-facing versions. They are stored per application and the API
+ * selects the current UI locale.
  */
 export const candidateVacancyMatchSchema = z.object({
   score: z.number().int().min(0).max(100),
-  reasoning: z.string().max(1200),
+  analysis: localizedTextSchema,
+  matchedRequirements: localizedStringListSchema,
+  missingRequirements: localizedStringListSchema,
 });
 
 export type CandidateVacancyMatch = z.infer<typeof candidateVacancyMatchSchema>;
