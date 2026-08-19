@@ -34,8 +34,6 @@ report_deploy_error() {
   exit "$exit_code"
 }
 
-trap 'report_deploy_error "$LINENO"' ERR
-
 run_step() {
   local label="$1"
   shift
@@ -212,6 +210,8 @@ install_service() {
 if [ "${DEPLOY_LIBRARY_ONLY:-false}" = "true" ]; then
   return 0 2>/dev/null || exit 0
 fi
+
+trap 'report_deploy_error "$LINENO"' ERR
 
 cd "$DEPLOY_PATH"
 validate_deploy_configuration

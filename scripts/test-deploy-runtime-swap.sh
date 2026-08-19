@@ -27,6 +27,13 @@ export APP_RUNTIME_PATH DEPLOY_LIBRARY_ONLY
 # shellcheck disable=SC1090
 source "$REPO_ROOT/scripts/deploy.sh"
 
+# This unit test runs as root locally and as an unprivileged user in GitHub
+# Actions. Avoid sudo's secure_path replacing the mocked systemctl above; sudo
+# behavior belongs to the real deployment preflight, not this runtime-swap test.
+run_as_root() {
+  "$@"
+}
+
 activate_staged_runtime
 test "$(cat "$TEST_ROOT/runtime/version")" = new
 test "$(cat "$TEST_ROOT/runtime.rollback/version")" = old
