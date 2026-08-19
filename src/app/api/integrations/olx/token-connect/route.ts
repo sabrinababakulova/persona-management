@@ -71,6 +71,9 @@ export async function OPTIONS(request: Request) {
 export async function POST(request: Request) {
   const origin = extensionOrigin(request);
   if (!origin) {
+    console.warn("Rejected OLX connector origin", {
+      origin: request.headers.get("origin") ?? "missing",
+    });
     return NextResponse.json(
       { error: "extension_origin_required" },
       { status: 403 },
