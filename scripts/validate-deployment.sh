@@ -32,20 +32,20 @@ sed \
   -e 's|__DATABASE_ENV_FILE__|/root/projects/persona-management/.env|g' \
   deploy/cron/persona-management >"$TEMP_DIR/persona-management.cron"
 
-if rg -n '__[A-Z0-9_]+__' "$TEMP_DIR"; then
+if grep -ERn '__[A-Z0-9_]+__' "$TEMP_DIR"; then
   echo "A deployment template contains an unresolved placeholder." >&2
   exit 1
 fi
 
-rg -q 'User=persona-web' "$TEMP_DIR/yeshunt.service"
-rg -q 'WorkingDirectory=/opt/persona-management-runtime' \
+grep -Fq 'User=persona-web' "$TEMP_DIR/yeshunt.service"
+grep -Fq 'WorkingDirectory=/opt/persona-management-runtime' \
   "$TEMP_DIR/yeshunt.service"
-rg -q 'PERSONA_DATABASE_ENV_FILE=/root/projects/persona-management/.env' \
+grep -Fq 'PERSONA_DATABASE_ENV_FILE=/root/projects/persona-management/.env' \
   "$TEMP_DIR/persona-management.cron"
-rg -q 'uses: actions/checkout@v6' .github/workflows/deploy.yml
-rg -q 'DEPLOY_SHA:.*needs.validate.outputs.commit_sha' \
+grep -Fq 'uses: actions/checkout@v6' .github/workflows/deploy.yml
+grep -Eq 'DEPLOY_SHA:.*needs.validate.outputs.commit_sha' \
   .github/workflows/deploy.yml
-rg -q 'deploy/remote-deploy.sh' .github/workflows/deploy.yml
+grep -Fq 'deploy/remote-deploy.sh' .github/workflows/deploy.yml
 
 bash scripts/test-remote-deploy.sh
 bash scripts/test-deploy-runtime-swap.sh

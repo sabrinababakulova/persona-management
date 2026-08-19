@@ -57,6 +57,6 @@ expected_sha="$(git -C "$SOURCE_PATH" rev-parse HEAD)"
 test "$(cat "$MARKER_PATH")" = "$expected_sha"
 test "$(git -C "$SERVER_PATH" branch --show-current)" = main
 test -n "$(git -C "$SERVER_PATH" status --porcelain README.md)"
-test "$(git -C "$SERVER_PATH" worktree list --porcelain | rg -c '^worktree ')" = 1
+test "$(git -C "$SERVER_PATH" worktree list --porcelain | grep -c '^worktree ')" = 1
 
 echo "Remote deployment uses the validated commit without mutating a dirty server checkout."

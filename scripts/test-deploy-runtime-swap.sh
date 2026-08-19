@@ -34,7 +34,7 @@ test "$(cat "$TEST_ROOT/runtime.rollback/version")" = old
 restore_previous_runtime
 test "$(cat "$TEST_ROOT/runtime/version")" = old
 test "$(cat "$TEST_ROOT/runtime.staging/version")" = new
-rg -q '^stop yeshunt.service$' "$SYSTEMCTL_LOG"
-rg -q '^restart yeshunt.service$' "$SYSTEMCTL_LOG"
+grep -Eq '^stop yeshunt.service$' "$SYSTEMCTL_LOG"
+grep -Eq '^restart yeshunt.service$' "$SYSTEMCTL_LOG"
 
 echo "Runtime activation and rollback preserve the previous release."
