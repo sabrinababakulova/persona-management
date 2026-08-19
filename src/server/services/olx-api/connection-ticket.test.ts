@@ -71,13 +71,19 @@ describe("OLX connection tickets", () => {
       allowedExtensionIds,
     );
 
+    const inserted = database.insertedValue() as {
+      expires: Date;
+      identifier: string;
+      token: string;
+    };
     expect(ticket.ticket).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(database.insertedValue()).toEqual({
+    expect(inserted).toEqual({
       identifier: `olx-connect:pending:${scope}:user-id`,
-      token: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      token: inserted.token,
       expires: ticket.expiresAt,
     });
-    expect(Array.isArray(database.insertedValue())).toBe(false);
+    expect(inserted.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(Array.isArray(inserted)).toBe(false);
   });
 
   test("claims a pending ticket with a concrete non-null identifier", async () => {
