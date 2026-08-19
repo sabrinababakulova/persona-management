@@ -545,7 +545,6 @@
       "confirmDisconnect": "Ha, uzish",
       "disconnecting": "Uzilmoqda...",
       "cancel": "Bekor qilish",
-      "adminOnly": "Guruhni faqat kompaniya administratori ulashi yoki uzishi mumkin.",
       "connectedMessage": "Telegram guruhi ulandi.",
       "disconnectedMessage": "Telegram guruhi uzildi.",
       "verification": {
