@@ -22,7 +22,10 @@ import {
   userOlxSessions,
   userTelegramChannels,
 } from "~/server/db/schema";
-import { createOlxConnectionTicket } from "~/server/services/olx-api";
+import {
+  createOlxConnectionTicket,
+  getAllowedOlxConnectorExtensionIds,
+} from "~/server/services/olx-api";
 import {
   getTelegramBotProfile,
   isTelegramConfigured,
@@ -32,7 +35,6 @@ import {
   verifyTelegramResumeGroup,
 } from "~/server/services/telegram";
 import { createTelegramResumeConnectCode } from "~/server/services/telegram-resume/connection";
-import { OLX_CONNECTOR_EXTENSION_ID } from "~/shared/publication-navigation";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -133,8 +135,7 @@ export const integrationsRouter = createTRPCRouter({
 
   createOlxConnectionTicket: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const extensionId =
-      env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
+    const extensionIds = getAllowedOlxConnectorExtensionIds();
     if (!env.OLX_CREDENTIALS_ENCRYPTION_KEY) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -158,7 +159,7 @@ export const integrationsRouter = createTRPCRouter({
       const connection = await createOlxConnectionTicket(
         ctx.db,
         userId,
-        extensionId,
+        extensionIds,
       );
       return {
         ticket: connection.ticket,

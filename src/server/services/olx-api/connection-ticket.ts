@@ -12,30 +12,47 @@ function digestTicket(ticket: string): string {
   return createHash("sha256").update(ticket).digest("base64url");
 }
 
+export function getOlxConnectionTicketScope(
+  extensionIds: readonly string[],
+): string {
+  const normalizedIds = [...new Set(extensionIds)].sort();
+  if (normalizedIds.length === 0) {
+    throw new Error("At least one OLX connector extension ID is required");
+  }
+  return createHash("sha256")
+    .update(normalizedIds.join(","))
+    .digest("base64url")
+    .slice(0, 22);
+}
+
 export async function createOlxConnectionTicket(
   db: Database,
   userId: string,
-  extensionId: string,
+  extensionIds: readonly string[],
 ): Promise<{ ticket: string; expiresAt: Date }> {
-  const identifier = `${IDENTIFIER_PREFIX}:pending:${extensionId}:${userId}`;
+  const extensionScope = getOlxConnectionTicketScope(extensionIds);
+  const identifier = `${IDENTIFIER_PREFIX}:pending:${extensionScope}:${userId}`;
   const ticket = randomBytes(32).toString("base64url");
+  const token = digestTicket(ticket);
   const expiresAt = new Date(Date.now() + TICKET_TTL_MS);
 
-  await db
-    .delete(verificationTokens)
-    .where(
-      or(
-        eq(verificationTokens.identifier, identifier),
-        like(
-          verificationTokens.identifier,
-          `${IDENTIFIER_PREFIX}:verifying:%:${extensionId}:${userId}`,
+  await db.transaction(async (transaction) => {
+    await transaction
+      .delete(verificationTokens)
+      .where(
+        or(
+          eq(verificationTokens.identifier, identifier),
+          like(
+            verificationTokens.identifier,
+            `${IDENTIFIER_PREFIX}:verifying:%:%:${extensionScope}:${userId}`,
+          ),
         ),
-      ),
-    );
-  await db.insert(verificationTokens).values({
-    identifier,
-    token: digestTicket(ticket),
-    expires: expiresAt,
+      );
+    await transaction.insert(verificationTokens).values({
+      identifier,
+      token,
+      expires: expiresAt,
+    });
   });
 
   return { ticket, expiresAt };
@@ -52,11 +69,15 @@ export async function claimOlxConnectionTicket(
   db: Database,
   ticket: string,
   extensionId: string,
+  allowedExtensionIds: readonly string[],
 ): Promise<ClaimedOlxConnectionTicket | null> {
+  if (!allowedExtensionIds.includes(extensionId)) return null;
+
   const tokenDigest = digestTicket(ticket);
   const claimId = randomBytes(16).toString("base64url");
-  const pendingPrefix = `${IDENTIFIER_PREFIX}:pending:${extensionId}:`;
-  const claimPrefix = `${IDENTIFIER_PREFIX}:verifying:${claimId}:${extensionId}:`;
+  const extensionScope = getOlxConnectionTicketScope(allowedExtensionIds);
+  const pendingPrefix = `${IDENTIFIER_PREFIX}:pending:${extensionScope}:`;
+  const claimPrefix = `${IDENTIFIER_PREFIX}:verifying:${claimId}:${extensionId}:${extensionScope}:`;
 
   return db.transaction(async (transaction) => {
     const pendingRows = await transaction

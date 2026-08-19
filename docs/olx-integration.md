@@ -46,14 +46,16 @@ are ignored.
 
 ## Server security model
 
-- `createOlxConnectionTicket` creates a random one-time value bound to the
-  configured Chrome extension id. Only its SHA-256 hash is stored in
-  `verification_token`; it expires after 15 minutes. Redemption atomically
-  claims it, verifies the account, and consumes it only after the encrypted
-  session is saved. Failed verification releases the claim for a safe retry.
+- `createOlxConnectionTicket` creates a random one-time value bound to a hash of
+  the exact configured Chrome extension-id allowlist. Only its SHA-256 hash is
+  stored in `verification_token`; it expires after 15 minutes. Either approved
+  extension can atomically claim the single row, so parallel redemptions cannot
+  both win. The ticket is consumed only after the encrypted session is saved;
+  failed verification releases the claim for a safe retry.
 - `/api/integrations/olx/token-connect` exact-matches
-  `OLX_CONNECTOR_EXTENSION_ID`, throttles by client IP, and enforces the payload
-  limit while streaming before schema validation.
+  the official `OLX_CONNECTOR_EXTENSION_ID` plus any ids explicitly listed in
+  `OLX_CONNECTOR_EXTENSION_IDS`, throttles by client IP, and enforces the
+  payload limit while streaming before schema validation.
 - `src/server/services/olx-api/crypto.ts` encrypts credentials with AES-256-GCM
   and a dedicated `OLX_CREDENTIALS_ENCRYPTION_KEY`. The ciphertext contains a
   key id for rotation and is authenticated with the user and OLX-session ids as
@@ -120,7 +122,9 @@ like the rest of Persona:
 1. Pull the branch and run `bun install --frozen-lockfile`.
 2. Set a random, backed-up `OLX_CREDENTIALS_ENCRYPTION_KEY` of at least 32
    characters and set `OLX_CONNECTOR_EXTENSION_ID` to the exact production
-   Chrome Web Store id. During key rotation, put old keys in
+   Chrome Web Store id. To support known unpacked development builds, set
+   `OLX_CONNECTOR_EXTENSION_IDS` to a comma-separated list of their exact ids;
+   never use a wildcard origin. During key rotation, put old keys in
    `OLX_CREDENTIALS_PREVIOUS_ENCRYPTION_KEYS` as a comma-separated list.
 3. Commit the generated migration. The production workflow applies it with
    `bun run db:migrate-custom` after taking a verified database backup.
