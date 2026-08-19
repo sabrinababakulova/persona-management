@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 import { writeRecentActivityLog } from "~/server/activity/recent-activity";
 import { loadCandidateLookupSets } from "~/server/api/routers/candidates/validators";
+import { TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY } from "~/server/company/telegram-resume-warehouse";
 import {
   candidates,
   candidateVacancies,
@@ -259,6 +260,7 @@ async function processTelegramResumeJob(
           eq(vacancies.companyId, job.companyId),
           eq(vacancies.isPublication, false),
           eq(vacancies.isInternal, true),
+          eq(vacancies.systemKey, TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY),
         ),
       )
       .limit(1);

@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { env } from "~/env";
+import { TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY } from "~/server/company/telegram-resume-warehouse";
 import { companyTelegramResumeConfigs, vacancies } from "~/server/db/schema";
 
 type DatabaseClient = typeof import("~/server/db").db;
@@ -87,14 +88,25 @@ async function validateWarehouseOwnership(
   config: TelegramResumeConfig,
 ): Promise<TelegramResumeConfig | null> {
   const [vacancy] = await database
-    .select({ companyId: vacancies.companyId })
+    .select({
+      companyId: vacancies.companyId,
+      isInternal: vacancies.isInternal,
+      isPublication: vacancies.isPublication,
+      systemKey: vacancies.systemKey,
+    })
     .from(vacancies)
     .where(eq(vacancies.id, config.vacancyId))
     .limit(1);
 
-  if (!vacancy || vacancy.companyId !== config.companyId) {
+  if (
+    !vacancy ||
+    vacancy.companyId !== config.companyId ||
+    !vacancy.isInternal ||
+    vacancy.isPublication ||
+    vacancy.systemKey !== TELEGRAM_RESUME_WAREHOUSE_SYSTEM_KEY
+  ) {
     console.error(
-      "Telegram resume config rejected: warehouse vacancy is missing or " +
+      "Telegram resume config rejected: warehouse vacancy is invalid or " +
         "belongs to a different company",
       { companyId: config.companyId, vacancyId: config.vacancyId },
     );
@@ -106,7 +118,8 @@ async function validateWarehouseOwnership(
 
 /**
  * Resolves the ingestion config for an incoming Telegram update by its chat
- * id. Table rows win; the env config applies only when its chat id matches.
+ * id. Runtime routing is database-only so disconnecting a group in company
+ * settings cannot be silently undone by the legacy environment fallback.
  */
 export async function getTelegramResumeConfigForChat(
   database: DatabaseClient,
@@ -126,17 +139,14 @@ export async function getTelegramResumeConfigForChat(
     .where(eq(companyTelegramResumeConfigs.chatId, chatId))
     .limit(1);
 
-  if (row) {
-    return validateWarehouseOwnership(database, toRuntimeConfig(row));
-  }
-
-  const legacy = getTelegramResumeConfig();
-  return legacy?.chatId === chatId ? legacy : null;
+  return row
+    ? validateWarehouseOwnership(database, toRuntimeConfig(row))
+    : null;
 }
 
 /**
- * Resolves a company's ingestion config (and thus its warehouse vacancy).
- * Table rows win; the env config applies only when its company id matches.
+ * Resolves a company's connected group. Environment variables remain for the
+ * setup/status/history scripts only; product runtime uses self-service rows.
  */
 export async function getTelegramResumeConfigForCompany(
   database: DatabaseClient,
@@ -152,10 +162,7 @@ export async function getTelegramResumeConfigForCompany(
     .where(eq(companyTelegramResumeConfigs.companyId, companyId))
     .limit(1);
 
-  if (row) {
-    return validateWarehouseOwnership(database, toRuntimeConfig(row));
-  }
-
-  const legacy = getTelegramResumeConfig();
-  return legacy?.companyId === companyId ? legacy : null;
+  return row
+    ? validateWarehouseOwnership(database, toRuntimeConfig(row))
+    : null;
 }

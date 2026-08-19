@@ -1234,6 +1234,18 @@ patch_field "vacancy" "is_internal" '{
     }
   }' "vacancy.is_internal"
 
+patch_field "vacancy" "system_key" '{
+    "type": "string",
+    "meta": {
+      "interface": "input",
+      "readonly": true,
+      "hidden": true,
+      "sort": 48,
+      "width": "half",
+      "note": "Стабильный системный ключ внутренней вакансии. Управляется приложением."
+    }
+  }' "vacancy.system_key"
+
 patch_field "vacancy" "destination" '{
     "type": "string",
     "meta": {

@@ -562,6 +562,12 @@ export const vacancies = createTable(
      * every recruiter-facing application query.
      */
     isInternal: d.boolean("is_internal").notNull().default(false),
+    /**
+     * Stable purpose of a system-owned vacancy. A nullable key lets every
+     * company own exactly one vacancy for a given internal workflow without
+     * relying on a translated title for identity.
+     */
+    systemKey: d.varchar("system_key", { length: 100 }),
     /** Active flag for publications; ignored when `isPublication` is `false`. */
     isActive: d.boolean("is_active").notNull().default(true),
     /**
@@ -584,6 +590,9 @@ export const vacancies = createTable(
     index("vacancy_olx_advert_id_idx").on(t.olxAdvertId),
     uniqueIndex("vacancy_olx_posting_id_idx").on(t.olxPostingId),
     index("vacancy_olx_publisher_user_id_idx").on(t.olxPublisherUserId),
+    uniqueIndex("vacancy_company_system_key_idx")
+      .on(t.companyId, t.systemKey)
+      .where(sql`${t.systemKey} is not null`),
   ],
 );
 
