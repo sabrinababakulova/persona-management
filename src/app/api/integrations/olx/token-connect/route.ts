@@ -19,6 +19,7 @@ import {
   releaseOlxConnectionTicket,
   verifyOlxCredentials,
 } from "~/server/services/olx-api";
+import { OLX_CONNECTOR_EXTENSION_ID } from "~/shared/publication-navigation";
 
 export const runtime = "nodejs";
 
@@ -32,10 +33,9 @@ const TOKEN_CONNECT_ATTEMPT_LIMIT = 20;
 
 function extensionOrigin(request: Request): string | null {
   const origin = request.headers.get("origin");
-  const extensionId = env.OLX_CONNECTOR_EXTENSION_ID;
-  return extensionId && origin === `chrome-extension://${extensionId}`
-    ? origin
-    : null;
+  const extensionId =
+    env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
+  return origin === `chrome-extension://${extensionId}` ? origin : null;
 }
 
 function clientIp(request: Request): string {
@@ -105,8 +105,8 @@ export async function POST(request: Request) {
     return json(origin, { error: "invalid_request" }, 400);
   }
 
-  const extensionId = env.OLX_CONNECTOR_EXTENSION_ID;
-  if (!extensionId) return json(origin, { error: "connector_disabled" }, 503);
+  const extensionId =
+    env.OLX_CONNECTOR_EXTENSION_ID ?? OLX_CONNECTOR_EXTENSION_ID;
   const claim = await claimOlxConnectionTicket(db, parsed.ticket, extensionId);
   if (!claim) {
     return json(origin, { error: "ticket_invalid_or_expired" }, 401);

@@ -1,0 +1,23 @@
+[Unit]
+Description=Talanty recruitment management application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUNTIME_USER__
+Group=__RUNTIME_USER__
+WorkingDirectory=__RUNTIME_PATH__
+Environment=HOME=__RUNTIME_HOME__
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/local/bin/bun run start
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

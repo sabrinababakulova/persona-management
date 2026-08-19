@@ -32,13 +32,14 @@ they do not need Developer mode or access to this repository. The production
 package excludes all localhost permissions.
 
 1. Run `bun run olx:extension:package` from the project root.
-2. Upload `build/talanty-olx-connector-0.1.6.zip` in the Chrome Web Store
+2. Upload `build/talanty-olx-connector-0.1.7.zip` in the Chrome Web Store
    developer dashboard.
 3. Complete the listing with the answers in `STORE_LISTING.md` and use
    `https://admin.talanty.uz/privacy/olx-connector` as the privacy-policy URL.
 4. Publish the extension as **Unlisted** unless public discovery is required.
-5. After approval, set `NEXT_PUBLIC_OLX_CONNECTOR_URL` on the deployed Talanty
-   application to the listing URL and rebuild/restart the app.
+5. The application links to the published listing by default. Set
+   `NEXT_PUBLIC_OLX_CONNECTOR_URL` only if the listing URL changes, then
+   rebuild/restart the app.
 
 Each extension update requires a higher `version` in both manifest files and a
 new ZIP. Keep the Chrome Web Store item ID unchanged by updating the existing

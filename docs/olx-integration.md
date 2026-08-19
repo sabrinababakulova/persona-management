@@ -126,8 +126,9 @@ like the rest of Persona:
    `bun run db:migrate-custom` after taking a verified database backup.
 4. Install a current `google-chrome-stable` or `chromium` package. Common paths
    are detected automatically; otherwise set `OLX_BROWSER_EXECUTABLE_PATH`.
-   Run Persona as an unprivileged user so the Chrome sandbox stays enabled.
-   Production refuses `OLX_BROWSER_NO_SANDBOX=true`. Chromium launches are
+   `scripts/deploy.sh` runs the production service as the unprivileged
+   `persona-web` user so the Chrome sandbox stays enabled. Production ignores
+   `OLX_BROWSER_NO_SANDBOX=true`; it cannot disable the sandbox. Chromium launches are
    bounded to two concurrent processes with a finite queue and circuit breaker;
    additionally apply container/process memory and CPU limits in production.
 5. Ensure outbound HTTPS/DNS can reach `login.olx.uz`, `www.olx.uz`,

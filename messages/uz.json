@@ -7,10 +7,10 @@
     "eyebrow": "olx.uz konnektori",
     "title": "Maxfiylik bildirishnomasi",
     "intro": "Ushbu bildirishnoma olx.uz hisobini ulashni tanlaganingizda Talanty — olx.uz Connector qanday ma’lumotlarni qayta ishlashini tushuntiradi.",
-    "updated": "Oxirgi yangilanish: 2026-yil 14-avgust",
+    "updated": "Oxirgi yangilanish: 2026-yil 16-avgust",
     "collected": {
       "title": "Konnektor uzatadigan ma’lumotlar",
-      "body": "Talanty’da “Ulash” tugmasini bosganingizdan so‘ng konnektor OLX kirish, yangilash va identifikatsiya tokenlarini, OLX qurilma identifikatori va so‘rov barmoq izini, brauzer ma’lumotlarini hamda tasdiqlangan OLX so‘rovlari uchun zarur bo‘lgan birinchi tomon OLX cookie sarlavhasini o‘qiydi. Bu ma’lumotlar faqat bir martalik ulanish so‘rovini yaratgan Talanty manziliga yuboriladi."
+      "body": "Talanty’da “Ulash” tugmasini bosganingizdan so‘ng konnektor OLX kirish va yangilash tokenlarini, OLX qurilma identifikatori va so‘rov barmoq izini, brauzer ma’lumotlarini hamda tasdiqlangan OLX so‘rovlari uchun zarur bo‘lgan faqat deviceGUID va access_token birinchi tomon cookielarini o‘qiydi. Bu ma’lumotlar faqat bir martalik ulanish so‘rovini yaratgan Talanty manziliga yuboriladi."
     },
     "notCollected": {
       "title": "Konnektor yig‘maydigan ma’lumotlar",
@@ -562,7 +562,17 @@
       "disconnectError": "olx.uz ulanishini o‘chirib bo‘lmadi.",
       "extensionMissing": "Talanty — olx.uz Connector kengaytmasi topilmadi",
       "extensionMissingHint": "Kengaytmani o‘rnating va sahifani yangilang. O‘rnatish tugmasi bo‘lmasa, havolani Talanty administratoridan so‘rang.",
-      "installExtension": "Chrome kengaytmasini o‘rnatish",
+      "setupProgress": "{total} qadamdan {current}-qadam",
+      "installStepShort": "Kengaytma",
+      "connectStepShort": "OLX hisobi",
+      "installStepTitle": "Talanty kengaytmasini o‘rnating",
+      "installStepDescription": "Quyidagi tugmani bosing. Chrome Web Store’da “Chrome’ga qo‘shish”ni bosing va o‘rnatishni tasdiqlang.",
+      "installExtension": "Ochish va o‘rnatish",
+      "checkInstallation": "O‘rnatdim — tekshirish",
+      "installReturnHint": "O‘rnatgach, ushbu oynaga qayting — Talanty kengaytmani avtomatik tekshiradi.",
+      "waitingForInstallation": "Ochilgan oynada kengaytmani o‘rnating va bu yerga qayting. Tekshiruv avtomatik boshlanadi.",
+      "extensionReady": "Kengaytma o‘rnatildi",
+      "connectStepDescription": "Endi ulanishga ruxsat bering va quyidagi tugmani bosing. Biz olx.uz rasmiy saytini ochamiz, u yerda hisobingizga kirasiz.",
       "dataDisclosure": "Talanty e’lon joylash uchun kerakli olx.uz sessiya tokenlari va brauzer ma’lumotlarini saqlaydi. Parol, CAPTCHA va SMS-kodlar yuborilmaydi.",
       "privacyLink": "Ma’lumotlar qanday himoyalanadi",
       "consent": "Ushbu olx.uz hisobini ulashga roziman.",
@@ -570,7 +580,7 @@
         "title": "Hisobni qanday ulash kerak",
         "install": {
           "title": "Kengaytmani o‘rnating",
-          "description": "Kengaytma havolasini oching, “Chrome’ga qo‘shish”ni bosing va bu sahifani yangilang."
+          "description": "“Ochish va o‘rnatish”ni bosing, Chrome’da o‘rnatishni tasdiqlang va Talanty’ga qayting. Tekshiruv avtomatik boshlanadi."
         },
         "connect": {
           "title": "Ulashni boshlang",

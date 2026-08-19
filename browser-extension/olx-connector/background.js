@@ -214,7 +214,7 @@ async function startConnection(message, sender) {
     typeof message.ticket !== "string" ||
     message.ticket.length < 40
   ) {
-    throw new Error("Invalid Talanty connection request.");
+    throw new Error("Некорректный запрос на подключение Talanty.");
   }
 
   const pending = {
@@ -233,12 +233,16 @@ async function startConnection(message, sender) {
 
 async function completeConnection(sender) {
   if (!sender.tab?.id || !sender.tab.url || !isOlxUrl(sender.tab.url)) {
-    throw new Error("Open the official olx.uz website to complete connection.");
+    throw new Error(
+      "Откройте официальный сайт olx.uz, чтобы завершить подключение.",
+    );
   }
 
   const pending = await getPendingConnection();
   if (!pending) {
-    throw new Error("The connection request expired. Start again in Talanty.");
+    throw new Error(
+      "Время подключения истекло. Начните подключение заново в Talanty.",
+    );
   }
 
   const storedContext = await chrome.storage.session.get(REQUEST_CONTEXT_KEY);
@@ -252,7 +256,7 @@ async function completeConnection(sender) {
     requestContext.capturedAt < Date.now() - CONNECTION_TTL_MS
   ) {
     throw new Error(
-      "olx.uz request context is not ready. Reload this olx.uz tab once, wait for it to finish loading, and press the connection button again.",
+      "Данные входа olx.uz ещё не готовы. Обновите эту вкладку, дождитесь полной загрузки и снова нажмите кнопку подключения.",
     );
   }
 
@@ -265,7 +269,7 @@ async function completeConnection(sender) {
   const credentials = results[0]?.result;
   if (!credentials) {
     throw new Error(
-      "olx.uz sign-in was not found. Sign in fully, then press the connection button once.",
+      "Вход в olx.uz не найден. Полностью войдите в аккаунт и один раз нажмите кнопку подключения.",
     );
   }
   credentials.deviceId = requestContext.deviceId;
@@ -300,12 +304,25 @@ async function completeConnection(sender) {
     if (response.status === 401) {
       await chrome.storage.session.remove(SESSION_KEY);
     }
+    const errorMessages = {
+      reauth_required:
+        "olx.uz не принял текущий вход. Выйдите из аккаунта olx.uz, войдите снова и повторите подключение.",
+      ticket_invalid_or_expired:
+        "Время подключения истекло. Начните подключение заново в Talanty.",
+      rate_limited:
+        "Слишком много попыток подключения. Подождите минуту и попробуйте снова.",
+      invalid_request:
+        "Talanty получил неполные данные входа. Обновите вкладку olx.uz и повторите подключение.",
+      payload_too_large:
+        "Talanty получил слишком много данных. Обновите расширение и повторите подключение.",
+      unavailable:
+        "Сервис проверки olx.uz временно недоступен. Попробуйте ещё раз через несколько минут.",
+      connection_failed:
+        "Talanty не смог сохранить подключение. Попробуйте ещё раз через несколько минут.",
+    };
     throw new Error(
-      result.error === "reauth_required"
-        ? "olx.uz did not accept this session. Sign out and sign in again on olx.uz."
-        : result.error === "ticket_invalid_or_expired"
-          ? "The connection request expired. Start again in Talanty."
-          : "Talanty could not verify the olx.uz account. Try again later.",
+      errorMessages[result.error] ||
+        "Не удалось проверить аккаунт olx.uz. Попробуйте ещё раз через несколько минут.",
     );
   }
 
@@ -329,7 +346,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case "PERSONA_OLX_COMPLETE_CONNECTION":
         return completeConnection(sender);
       default:
-        return { ok: false, error: "unsupported_message" };
+        return { ok: false, error: "Неподдерживаемая команда расширения." };
     }
   };
 
@@ -338,7 +355,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .catch(async (error) => {
       const pending = await getPendingConnection();
       const messageText =
-        error instanceof Error ? error.message : "Could not connect olx.uz.";
+        error instanceof Error
+          ? error.message
+          : "Не удалось подключить аккаунт olx.uz.";
       if (pending) {
         await notifyPersona(pending, "PERSONA_OLX_CONNECTION_ERROR", {
           message: messageText,
