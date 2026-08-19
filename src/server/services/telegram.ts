@@ -327,9 +327,8 @@ export type VerifiedTelegramResumeGroup = {
 
 /**
  * Confirms that a chat is a resume-capable group and that the shared bot can
- * receive ordinary document messages there. Commands alone are delivered to
- * privacy-mode bots, so this explicit check is what prevents a connection that
- * would accept `/connect` but silently miss every resume afterwards.
+ * receive ordinary document messages there. This prevents saving a group that
+ * looks reachable but would silently hide every resume from the bot.
  */
 export async function verifyTelegramResumeGroup(
   chatReference: string,

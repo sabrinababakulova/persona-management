@@ -6,7 +6,6 @@ import { z } from "zod";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getCompanyFeatures } from "~/server/services/feature-flags";
-import { sendTelegramPlainMessage } from "~/server/services/telegram";
 import {
   handlePostedCallback,
   handleTelegramStart,
@@ -16,11 +15,6 @@ import {
   getTelegramResumeConfigForChat,
   getTelegramResumeWebhookSecret,
 } from "~/server/services/telegram-resume/config";
-import {
-  connectTelegramResumeGroupFromCommand,
-  parseTelegramResumeConnectCommand,
-  type TelegramResumeConnectOutcome,
-} from "~/server/services/telegram-resume/connection";
 import { resolveTelegramDirectResumeTarget } from "~/server/services/telegram-resume/direct-message";
 import {
   enqueueTelegramResumeDocument,
@@ -69,21 +63,6 @@ const telegramUpdateSchema = z.object({
   channel_post: telegramMessageSchema.optional(),
   callback_query: telegramCallbackQuerySchema.optional(),
 });
-
-const CONNECT_RESPONSE: Record<TelegramResumeConnectOutcome, string> = {
-  connected:
-    "✅ Группа подключена. Новые PDF-резюме будут автоматически добавляться в склад кандидатов вашей компании.",
-  invalid_code:
-    "Код подключения недействителен или истёк. Создайте новый код в настройках компании.",
-  group_in_use: "Эта группа уже подключена к другой компании.",
-  not_group: "Подключить можно только группу или супергруппу Telegram.",
-  bot_not_member: "Добавьте бота в группу и повторите подключение.",
-  bot_cannot_read:
-    "Бот не может читать обычные сообщения. Назначьте его администратором группы и повторите подключение.",
-  protected_content:
-    "В группе включена защита контента. Отключите её и повторите подключение.",
-  not_found: "Не удалось проверить Telegram-группу. Попробуйте ещё раз.",
-};
 
 function secretsMatch(received: string | null, expected: string) {
   if (!received) {
@@ -160,40 +139,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to handle Telegram channel-admin update", error);
     return NextResponse.json({ error: "admin_update_failed" }, { status: 500 });
-  }
-
-  // A one-time command generated in company settings is how a company admin
-  // proves control of a group without having to discover its numeric chat id.
-  const connectionMessage = update.message;
-  if (
-    connectionMessage &&
-    (connectionMessage.chat.type === "group" ||
-      connectionMessage.chat.type === "supergroup") &&
-    parseTelegramResumeConnectCommand(connectionMessage.text)
-  ) {
-    try {
-      const result = await connectTelegramResumeGroupFromCommand({
-        db,
-        chatId: String(connectionMessage.chat.id),
-        text: connectionMessage.text,
-      });
-      await sendTelegramPlainMessage(
-        String(connectionMessage.chat.id),
-        CONNECT_RESPONSE[result.outcome],
-      ).catch((error) => {
-        console.error(
-          "Failed to send Telegram group connection response",
-          error,
-        );
-      });
-      return NextResponse.json({ ok: true, outcome: result.outcome });
-    } catch (error) {
-      console.error("Failed to connect Telegram resume group", error);
-      return NextResponse.json(
-        { error: "resume_group_connection_failed" },
-        { status: 500 },
-      );
-    }
   }
 
   // Resume documents are routed to a company by the chat they were posted

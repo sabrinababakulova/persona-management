@@ -1,34 +1,37 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseTelegramResumeConnectCommand } from "./connection";
+import { normalizeTelegramResumeGroupReference } from "./connection";
 
-const CODE = "a1b2c3d4e5f60718293a4b5c";
-
-describe("Telegram resume group connection commands", () => {
-  test("accepts direct and bot-addressed commands", () => {
-    expect(parseTelegramResumeConnectCommand(`/connect ${CODE}`)).toBe(CODE);
+describe("Telegram resume group references", () => {
+  test("accepts public handles and links", () => {
+    expect(normalizeTelegramResumeGroupReference("@recruiting_team")).toBe(
+      "@recruiting_team",
+    );
+    expect(normalizeTelegramResumeGroupReference("recruiting_team")).toBe(
+      "@recruiting_team",
+    );
     expect(
-      parseTelegramResumeConnectCommand(
-        `/connect@recruiting_people_bot ${CODE.toUpperCase()}`,
-      ),
-    ).toBe(CODE);
+      normalizeTelegramResumeGroupReference("https://t.me/recruiting_team/"),
+    ).toBe("@recruiting_team");
+    expect(
+      normalizeTelegramResumeGroupReference("telegram.me/recruiting_team"),
+    ).toBe("@recruiting_team");
   });
 
-  test("allows surrounding whitespace but no extra arguments", () => {
-    expect(parseTelegramResumeConnectCommand(`  /connect ${CODE}\n`)).toBe(
-      CODE,
-    );
-    expect(parseTelegramResumeConnectCommand(`/connect ${CODE} extra`)).toBe(
-      null,
+  test("accepts private numeric group ids", () => {
+    expect(normalizeTelegramResumeGroupReference(" -1001234567890 ")).toBe(
+      "-1001234567890",
     );
   });
 
-  test("rejects missing, short, and non-hex codes", () => {
-    expect(parseTelegramResumeConnectCommand(undefined)).toBe(null);
-    expect(parseTelegramResumeConnectCommand("/connect")).toBe(null);
-    expect(parseTelegramResumeConnectCommand("/connect abc123")).toBe(null);
+  test("rejects invite links, message links, and malformed values", () => {
     expect(
-      parseTelegramResumeConnectCommand("/connect zzzzzzzzzzzzzzzzzzzzzzzz"),
+      normalizeTelegramResumeGroupReference("https://t.me/+invite-code"),
     ).toBe(null);
+    expect(
+      normalizeTelegramResumeGroupReference("https://t.me/c/123456/78"),
+    ).toBe(null);
+    expect(normalizeTelegramResumeGroupReference("@abc")).toBe(null);
+    expect(normalizeTelegramResumeGroupReference("123456789")).toBe(null);
   });
 });

@@ -39,6 +39,13 @@ class PermanentTelegramResumeError extends Error {
   }
 }
 
+class IgnoredTelegramResumeDocumentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IgnoredTelegramResumeDocumentError";
+  }
+}
+
 type ClaimedTelegramResumeJob = {
   id: string;
   companyId: string;
@@ -157,15 +164,15 @@ function toCandidateValues(input: {
 
 function validateResumePdf(buffer: Buffer) {
   if (buffer.length === 0) {
-    throw new PermanentTelegramResumeError("Resume PDF is empty");
+    throw new IgnoredTelegramResumeDocumentError("Resume PDF is empty");
   }
   if (buffer.length > MAX_RESUME_FILE_SIZE_BYTES) {
-    throw new PermanentTelegramResumeError(
+    throw new IgnoredTelegramResumeDocumentError(
       `Resume exceeds the ${MAX_RESUME_FILE_SIZE_BYTES}-byte limit`,
     );
   }
   if (!hasPdfMagicHeader(buffer) || !hasPdfEofMarker(buffer)) {
-    throw new PermanentTelegramResumeError(
+    throw new IgnoredTelegramResumeDocumentError(
       "Telegram document is not a valid PDF",
     );
   }
@@ -517,6 +524,9 @@ async function processTelegramResumeJob(
       error: message,
     });
 
+    if (error instanceof IgnoredTelegramResumeDocumentError) {
+      return ignoreJob(db, job, message);
+    }
     if (error instanceof PermanentTelegramResumeError) {
       await finishJob(db, job, "failed", message);
       return "failed";

@@ -9,10 +9,7 @@ import {
 } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { takeRateLimitSlot } from "~/server/auth/rate-limit";
-import {
-  ensureCompanyTelegramResumeWarehouse,
-  getCompanyTelegramResumeWarehouse,
-} from "~/server/company/telegram-resume-warehouse";
+import { getCompanyTelegramResumeWarehouse } from "~/server/company/telegram-resume-warehouse";
 import {
   companyTelegramResumeConfigs,
   telegramChannelAdmins,
@@ -33,7 +30,10 @@ import {
   TelegramResumeGroupVerificationError,
   verifyTelegramResumeGroup,
 } from "~/server/services/telegram";
-import { createTelegramResumeConnectCode } from "~/server/services/telegram-resume/connection";
+import {
+  connectTelegramResumeGroup,
+  TelegramResumeGroupInUseError,
+} from "~/server/services/telegram-resume/connection";
 
 const channelAdminInputSchema = z.object({
   /** Raw user input — `@name`, `name` or a t.me link; normalized server-side. */
@@ -56,6 +56,37 @@ function olxTicketError(error: unknown): TRPCError {
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: "Не удалось подключить olx.uz.",
+  });
+}
+
+function telegramResumeGroupConnectionError(error: unknown): TRPCError {
+  if (error instanceof TelegramResumeGroupInUseError) {
+    return new TRPCError({
+      code: "CONFLICT",
+      message: "Эта Telegram-группа уже подключена к другой компании.",
+    });
+  }
+  if (error instanceof TelegramResumeGroupVerificationError) {
+    const messages = {
+      not_found:
+        "Группа не найдена. Для публичной группы укажите @логин, для приватной — числовой ID.",
+      not_group: "Подключить можно только группу или супергруппу Telegram.",
+      bot_not_member: "Сначала добавьте Telegram-бота в эту группу.",
+      bot_cannot_read:
+        "Бот не видит обычные сообщения. Назначьте его администратором группы.",
+      protected_content:
+        "В группе включена защита контента. Отключите её, чтобы бот мог скачивать резюме.",
+    } satisfies Record<TelegramResumeGroupVerificationError["code"], string>;
+    return new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: messages[error.code],
+    });
+  }
+
+  console.error("Could not connect Telegram resume group", error);
+  return new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: "Не удалось подключить Telegram-группу.",
   });
 }
 
@@ -264,8 +295,13 @@ export const integrationsRouter = createTRPCRouter({
     }
   }),
 
-  createTelegramResumeConnectCode: protectedProcedure.mutation(
-    async ({ ctx }) => {
+  connectTelegramResumeGroup: protectedProcedure
+    .input(
+      z.object({
+        groupReference: z.string().trim().min(1).max(255),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
       const { companyId } = await getCompanyMembership(
         ctx.db,
         ctx.session.user.id,
@@ -290,10 +326,25 @@ export const integrationsRouter = createTRPCRouter({
         });
       }
 
-      await ensureCompanyTelegramResumeWarehouse(ctx.db, companyId);
-      return createTelegramResumeConnectCode(ctx.db, companyId);
-    },
-  ),
+      try {
+        const group = await connectTelegramResumeGroup({
+          db: ctx.db,
+          companyId,
+          groupReference: input.groupReference,
+        });
+        if (!group) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Укажите @логин публичной группы, ссылку t.me или числовой ID приватной группы.",
+          });
+        }
+        return group;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw telegramResumeGroupConnectionError(error);
+      }
+    }),
 
   disconnectTelegramResumeGroup: protectedProcedure.mutation(
     async ({ ctx }) => {

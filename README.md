@@ -162,7 +162,7 @@ Telegram выполняет **две разные задачи**:
 
 У каждой компании есть скрытая системная вакансия **Склад кандидатов из Telegram** для резюме без конкретной вакансии.
 
-Администратор компании открывает **Настройки компании → Telegram-группа резюме**, создаёт одноразовую команду `/connect` на 15 минут, добавляет бота администратором нужной группы и отправляет команду в группе. Сервер проверяет, что это группа, бот активен и видит обычные сообщения, а защита содержимого отключена. Одна группа привязывается ровно к одной компании. Отключение останавливает новые документы, но не удаляет старых кандидатов.
+Пользователь открывает **Настройки компании → Telegram-группа резюме**, добавляет бота администратором нужной группы и указывает публичный `@логин` или числовой ID приватной группы. Сервер сразу проверяет, что это группа, бот активен и видит обычные сообщения, а защита содержимого отключена. Команды в Telegram не нужны: после подключения бот автоматически проверяет каждый новый файл, обрабатывает резюме и игнорирует остальные документы. Одна группа привязывается ровно к одной компании. Отключение останавливает новые документы, но не удаляет старых кандидатов.
 
 #### PDF лично боту
 
@@ -374,7 +374,7 @@ Telegram deactivation deletes remote messages and requires `can_delete_messages`
 
 ### 4.2 Résumé ingestion
 
-Every company has a hidden Telegram candidate warehouse. An admin creates a 15-minute `/connect` command, adds the bot as group admin, and sends it in the group. The server verifies group type, membership/message visibility, and disabled content protection, then binds the chat to exactly one company. Disconnect stops new imports but retains candidates.
+Every company has a hidden Telegram candidate warehouse. A user adds the bot as a group admin, then enters the public `@handle` or private group numeric ID in company settings. The server immediately verifies the group type, membership/message visibility, and disabled content protection, then binds the chat to exactly one company. No Telegram command is needed: the bot automatically classifies each new file, processes resumes, and ignores unrelated documents. Disconnect stops new imports but retains candidates.
 
 An activated channel admin can also DM a PDF. Without a keyword it goes to the warehouse when the sender belongs to exactly one company; with the valid eight-character publication keyword it goes to that vacancy; multi-company admins must use a keyword. Tenant-bound recomputation rejects guessed foreign keywords.
 
