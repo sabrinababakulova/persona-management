@@ -6,7 +6,7 @@
  *  - update/localize→ PUT    /vacancies/{id}
  *  - delete         → DELETE /vacancies/{id}
  *
- * See PERSON_HUNTER_DOC.md for the full contract. All mutating calls require the owner's
+ * See README.md (PersonHunters) for the full contract. All mutating calls require the owner's
  * Bearer access token; reads accept an optional token (needed only for hidden vacancies).
  */
 
