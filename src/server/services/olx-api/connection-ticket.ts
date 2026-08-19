@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, like, or, sql } from "drizzle-orm";
+import { and, eq, gt, like, or } from "drizzle-orm";
 import type { db as database } from "~/server/db";
 import { verificationTokens } from "~/server/db/schema";
 
@@ -57,30 +57,48 @@ export async function claimOlxConnectionTicket(
   const claimId = randomBytes(16).toString("base64url");
   const pendingPrefix = `${IDENTIFIER_PREFIX}:pending:${extensionId}:`;
   const claimPrefix = `${IDENTIFIER_PREFIX}:verifying:${claimId}:${extensionId}:`;
-  const rows = await db
-    .update(verificationTokens)
-    .set({
-      identifier: sql`${claimPrefix} || substring(${verificationTokens.identifier} from ${pendingPrefix.length + 1})`,
-    })
-    .where(
-      and(
-        eq(verificationTokens.token, tokenDigest),
-        like(verificationTokens.identifier, `${pendingPrefix}%`),
-        gt(verificationTokens.expires, new Date()),
-      ),
-    )
-    .returning({ identifier: verificationTokens.identifier });
 
-  const claimIdentifier = rows[0]?.identifier;
-  if (!claimIdentifier?.startsWith(claimPrefix)) return null;
-  const userId = claimIdentifier.slice(claimPrefix.length);
-  if (!userId) return null;
-  return {
-    claimIdentifier,
-    pendingIdentifier: `${pendingPrefix}${userId}`,
-    tokenDigest,
-    userId,
-  };
+  return db.transaction(async (transaction) => {
+    const pendingRows = await transaction
+      .select({ identifier: verificationTokens.identifier })
+      .from(verificationTokens)
+      .where(
+        and(
+          eq(verificationTokens.token, tokenDigest),
+          like(verificationTokens.identifier, `${pendingPrefix}%`),
+          gt(verificationTokens.expires, new Date()),
+        ),
+      )
+      .limit(1)
+      .for("update");
+
+    const pendingIdentifier = pendingRows[0]?.identifier;
+    if (!pendingIdentifier?.startsWith(pendingPrefix)) return null;
+
+    const userId = pendingIdentifier.slice(pendingPrefix.length);
+    if (!userId) return null;
+
+    const claimIdentifier = `${claimPrefix}${userId}`;
+    const claimedRows = await transaction
+      .update(verificationTokens)
+      .set({ identifier: claimIdentifier })
+      .where(
+        and(
+          eq(verificationTokens.identifier, pendingIdentifier),
+          eq(verificationTokens.token, tokenDigest),
+          gt(verificationTokens.expires, new Date()),
+        ),
+      )
+      .returning({ identifier: verificationTokens.identifier });
+
+    if (claimedRows[0]?.identifier !== claimIdentifier) return null;
+    return {
+      claimIdentifier,
+      pendingIdentifier,
+      tokenDigest,
+      userId,
+    };
+  });
 }
 
 export async function releaseOlxConnectionTicket(
