@@ -65,6 +65,9 @@ OUTPUT
 - Return 2–6 concise matched vacancy requirements and 1–6 concise missing or
   unconfirmed requirements in all three languages. If there is no confirmed
   item, use an empty array; never fill an array with generic candidate traits.
+- Every matched or missing requirement must be a compact label of no more than
+  four words. Never return a sentence, explanation, list of technologies, or a
+  leading checkmark/bullet inside these arrays; keep detail in the analysis.
 - Keep technology and company names unchanged where natural. All translations
   must express the same evaluation and the same uncertainty.
 - Return only the requested structured output, with no preface or extra fields.

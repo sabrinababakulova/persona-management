@@ -68,6 +68,7 @@ export function CompanySetupSteps({
         descriptionTooLong: companyText("validation.descriptionTooLong"),
         websiteInvalid: companyText("validation.websiteInvalid"),
         phoneTooLong: companyText("validation.phoneTooLong"),
+        phoneInvalid: companyText("validation.phoneInvalid"),
       }),
     [companyText],
   );

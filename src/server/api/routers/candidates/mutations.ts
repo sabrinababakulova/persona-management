@@ -135,6 +135,7 @@ export const uploadResumeProcedure = protectedProcedure
     );
 
     let resumeFileId: string;
+    let candidateHasTags = false;
     try {
       // Validate the storage key before uploading to Directus.
       getCandidateResumeStorageKey(input.candidateId);
@@ -143,6 +144,7 @@ export const uploadResumeProcedure = protectedProcedure
           id: candidates.id,
           companyId: candidates.companyId,
           resumeFileId: candidates.resumeFileId,
+          tags: candidates.tags,
         })
         .from(candidates)
         .where(eq(candidates.id, input.candidateId))
@@ -154,6 +156,9 @@ export const uploadResumeProcedure = protectedProcedure
           message: "Кандидат не найден",
         });
       }
+      candidateHasTags = Boolean(
+        candidate?.tags?.some((tag) => tag.trim().length > 0),
+      );
 
       // Replace the previous stored file when one is known.
       const uploadResult = await uploadCandidateResumeToStorage(
@@ -303,6 +308,11 @@ export const uploadResumeProcedure = protectedProcedure
           aiAnalysisResult.status === "success"
             ? aiAnalysisResult.translations
             : null,
+        ...(!candidateHasTags &&
+        aiAnalysisResult.status === "success" &&
+        aiAnalysisResult.tags?.[0]
+          ? { tags: aiAnalysisResult.tags }
+          : {}),
       })
       .where(eq(candidates.id, input.candidateId));
 
@@ -323,6 +333,7 @@ export const uploadResumeProcedure = protectedProcedure
             )
           : "",
       aiAnalysisTranslations: aiAnalysisResult.translations,
+      tags: aiAnalysisResult.tags ?? [],
       aiAnalysisStatus: aiAnalysisResult.status,
       aiAnalysisErrorMessage: aiAnalysisResult.errorMessage,
     };
@@ -363,6 +374,7 @@ export const createCandidateProcedure = protectedProcedure
             input.aiAnalysis?.trim() ||
             null,
           aiAnalysisTranslations: input.aiAnalysisTranslations ?? null,
+          tags: input.tags,
           resumeFileId: input.resumeFileId ?? null,
           resumeFileName: input.resumeFileName ?? null,
           resumeFileSize: input.resumeFileSize ?? null,

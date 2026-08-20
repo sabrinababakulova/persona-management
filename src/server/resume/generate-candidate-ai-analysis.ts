@@ -4,6 +4,7 @@ import {
   candidateResumeSummarySchema,
 } from "~/schemas/candidate-resume-summary";
 import { recordAiUsage } from "~/server/ai/usage-logging";
+import { normalizeAiTags } from "~/shared/ai-tags";
 import type { LocalizedText } from "~/shared/localized-ai";
 
 export type CandidateAiAnalysisStatus = "success" | "failed";
@@ -21,6 +22,7 @@ type AiUsageContext = {
 export type CandidateAiAnalysisResult = {
   text: string;
   translations?: LocalizedText;
+  tags?: string[];
   status: CandidateAiAnalysisStatus;
   errorMessage?: string;
 };
@@ -90,7 +92,9 @@ export async function generateCandidateAiAnalysis(
     const resumeSummaryAgent = mastra.getAgent("candidateResumeSummary");
     const prompt = `Create the recruiter resume brief described in your
 instructions. Produce equivalent Russian, English, and Uzbek versions, each no
-longer than ${MAX_ANALYSIS_WORDS} words. Use only the supplied resume.`;
+longer than ${MAX_ANALYSIS_WORDS} words, plus 1–3 factual search tags. Every tag
+must be a short label of no more than four words, never a sentence. Use only the
+supplied resume.`;
     const resumeText =
       "resumeText" in input ? input.resumeText?.trim() || "" : "";
 
@@ -144,8 +148,9 @@ ${resumeText}`,
         }
       : undefined;
     const normalizedText = translations?.ru ?? "";
+    const tags = normalizeAiTags(parsed?.tags);
 
-    if (!normalizedText || !translations?.en || !translations.uz) {
+    if (!normalizedText || !translations?.en || !translations.uz || !tags[0]) {
       if (usageContext) {
         await recordAiUsage({
           ...usageContext,
@@ -154,14 +159,14 @@ ${resumeText}`,
           operation: usageContext.operation ?? "candidate_resume_ai_analysis",
           status: "failed",
           usage: result.totalUsage ?? result.usage,
-          errorMessage: "AI вернул пустой текст для резюме-анализа",
+          errorMessage: "AI вернул неполный резюме-анализ или пустые теги",
         });
       }
 
       return {
         text: "",
         status: "failed",
-        errorMessage: "AI вернул пустой текст для резюме-анализа",
+        errorMessage: "AI вернул неполный резюме-анализ или пустые теги",
       };
     }
 
@@ -179,6 +184,7 @@ ${resumeText}`,
     return {
       text: normalizedText,
       translations,
+      tags,
       status: "success",
     };
   } catch (error) {

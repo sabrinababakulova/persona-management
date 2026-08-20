@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AI_TAG_MAX_WORDS, countAiTagWords } from "~/shared/ai-tags";
 import { localizedTextSchema } from "~/shared/localized-ai";
 
 export type CandidateValidationMessages = {
@@ -81,6 +82,17 @@ export function createCandidateFormSchema(
     status: z.string().default("new"),
     aiAnalysis: z.string().max(5000).optional(),
     aiAnalysisTranslations: localizedTextSchema.optional(),
+    tags: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1)
+          .max(64)
+          .refine((tag) => countAiTagWords(tag) <= AI_TAG_MAX_WORDS),
+      )
+      .max(3)
+      .default([]),
     resumeFileId: z.string().optional(),
     resumeFileName: z.string().optional(),
     resumeFileSize: z.string().optional(),

@@ -64,7 +64,11 @@ install -d -m 0750 -o root -g "$CRON_USER" "$CONFIG_DIR"
 install -d -m 0750 -o "$CRON_USER" -g "$CRON_USER" "$LOG_DIR"
 install -d -m 0750 -o "$CRON_USER" -g "$CRON_USER" "$LOCK_DIR"
 
-for lock_name in hh-enrich.lock hh-discover.lock hh-status.lock; do
+for lock_name in \
+  hh-enrich.lock \
+  hh-discover.lock \
+  hh-status.lock \
+  candidate-ai-backfill.lock; do
   lock_path="$LOCK_DIR/$lock_name"
   if [ ! -e "$lock_path" ]; then
     install -m 0640 -o "$CRON_USER" -g "$CRON_USER" /dev/null "$lock_path"
@@ -79,6 +83,7 @@ install -m 0755 -o root -g root \
   "$SOURCE_ROOT/scripts/hh-enrich-cron.sh" \
   "$SOURCE_ROOT/scripts/hh-discover-cron.sh" \
   "$SOURCE_ROOT/scripts/hh-status-cron.sh" \
+  "$SOURCE_ROOT/scripts/candidate-ai-backfill-cron.sh" \
   "$SOURCE_ROOT/scripts/backup-database.sh" \
   "$SOURCE_ROOT/scripts/verify-database-backup.sh" \
   "$INSTALL_DIR/"
@@ -96,6 +101,7 @@ for log_name in \
   hh-enrich.log \
   hh-discover.log \
   hh-status.log \
+  candidate-ai-backfill.log \
   database-backup.log \
   database-restore-test.log; do
   log_path="$LOG_DIR/$log_name"
@@ -150,6 +156,7 @@ echo "Operational schedules installed:"
 echo "  hh enrichment: every minute as $CRON_USER"
 echo "  hh discovery: every 20 minutes as $CRON_USER"
 echo "  hh status sync: every 5 minutes as $CRON_USER"
+echo "  candidate AI metadata backfill: every minute as $CRON_USER"
 echo "  database backup: nightly at 02:17 UTC as root"
 echo "  database restore test: Sundays at 03:43 UTC as root"
 echo "  database retention: 14 daily, 8 weekly, 12 monthly snapshots"

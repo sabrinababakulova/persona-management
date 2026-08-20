@@ -20,6 +20,7 @@ bash -n \
   scripts/test-remote-deploy.sh \
   scripts/backup-database.sh \
   scripts/verify-database-backup.sh \
+  scripts/candidate-ai-backfill-cron.sh \
   scripts/run-hh-cron.sh
 
 sed \

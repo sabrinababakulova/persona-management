@@ -5,6 +5,7 @@ import {
 } from "~/schemas/candidate-vacancy-match";
 import { recordAiUsage } from "~/server/ai/usage-logging";
 import { stripHtml } from "~/server/services/hh/shared";
+import { normalizeAiTags } from "~/shared/ai-tags";
 import type { LocalizedStringList, LocalizedText } from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 
@@ -231,8 +232,16 @@ missing or unconfirmed requirements defined in your instructions.`;
       en: parsed.analysis.en.trim().slice(0, 5000),
       uz: parsed.analysis.uz.trim().slice(0, 5000),
     };
-    const matchedRequirements = parsed.matchedRequirements;
-    const missingRequirements = parsed.missingRequirements;
+    const matchedRequirements = {
+      ru: normalizeAiTags(parsed.matchedRequirements.ru, { maxTags: 6 }),
+      en: normalizeAiTags(parsed.matchedRequirements.en, { maxTags: 6 }),
+      uz: normalizeAiTags(parsed.matchedRequirements.uz, { maxTags: 6 }),
+    };
+    const missingRequirements = {
+      ru: normalizeAiTags(parsed.missingRequirements.ru, { maxTags: 6 }),
+      en: normalizeAiTags(parsed.missingRequirements.en, { maxTags: 6 }),
+      uz: normalizeAiTags(parsed.missingRequirements.uz, { maxTags: 6 }),
+    };
 
     if (usageContext) {
       await recordAiUsage({

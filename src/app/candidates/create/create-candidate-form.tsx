@@ -124,6 +124,7 @@ export function CreateCandidateForm() {
     status: "",
     aiAnalysis: "",
     aiAnalysisTranslations: undefined,
+    tags: [],
     resumeFileId: "",
     resumeFileName: "",
     resumeFileSize: "",
@@ -500,6 +501,7 @@ export function CreateCandidateForm() {
       resumeFileSize: uploadedResume.resumeFileSize,
       aiAnalysis: uploadedResume.aiAnalysis,
       aiAnalysisTranslations: uploadedResume.aiAnalysisTranslations,
+      tags: uploadedResume.tags,
       fullName: prefillData.fullName || prev.fullName,
       city: prefillData.city || prev.city,
       contacts:

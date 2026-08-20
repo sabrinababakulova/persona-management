@@ -472,7 +472,8 @@
       "countryTooLong": "The country must not exceed 255 characters",
       "descriptionTooLong": "The description must not exceed 2000 characters",
       "websiteInvalid": "Enter a valid link, for example https://example.com",
-      "phoneTooLong": "The phone must not exceed 50 characters"
+      "phoneTooLong": "The phone must not exceed 50 characters",
+      "phoneInvalid": "Enter an Uzbekistan phone number in the format +998 90 123 45 67"
     },
     "roleAdmin": "Admin",
     "roleMember": "Member",

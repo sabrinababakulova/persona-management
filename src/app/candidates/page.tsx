@@ -332,6 +332,7 @@ export default function CandidatesPage() {
       source: payload.source || prefill?.source || undefined,
       aiAnalysis: payload.aiAnalysis || undefined,
       aiAnalysisTranslations: payload.aiAnalysisTranslations,
+      tags: payload.tags ?? [],
       salaryExpectation: prefill?.salaryExpectation,
       salaryCurrency: prefill?.salaryCurrency ?? "UZS",
       currentPosition: prefill?.currentPosition || undefined,

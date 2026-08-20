@@ -33,4 +33,17 @@ describe("localized AI output", () => {
       ),
     ).toEqual(["React experience"]);
   });
+
+  test("shortens legacy sentence-like requirement labels", () => {
+    expect(
+      getLocalizedStringList(
+        {
+          ru: ["Проектирование сложной системной архитектуры платформы"],
+          en: [],
+          uz: [],
+        },
+        "ru",
+      ),
+    ).toEqual(["Проектирование сложной системной архитектуры"]);
+  });
 });

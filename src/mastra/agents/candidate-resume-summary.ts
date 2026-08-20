@@ -46,6 +46,17 @@ STYLE
   hobbies, and low-value biography.
 - Preserve company, product, and technology names as written when appropriate.
 - All three versions must communicate the same facts and level of caution.
+
+TAGS
+- Return 1–3 short, language-neutral search tags in addition to the summaries.
+- Each tag must contain no more than four words. Use a compact label, never a
+  sentence, explanation, responsibility, or achievement statement.
+- Prefer the candidate's role, stated seniority, and strongest specialization or
+  technology (examples: "Backend", "Senior", "PostgreSQL").
+- Use only facts explicitly supported by the source.
+- Never tag age, gender, ethnicity, nationality, religion, disability, family
+  status, or any other sensitive personal characteristic.
+- Do not use generic praise such as "Strong candidate" or "Good fit".
 `,
   model: "google/gemini-2.5-flash",
 });

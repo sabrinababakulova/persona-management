@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeOlxUzPhone } from "~/shared/olx-phone";
 
 export type CompanyValidationMessages = {
   nameRequired: string;
@@ -8,6 +9,7 @@ export type CompanyValidationMessages = {
   descriptionTooLong: string;
   websiteInvalid: string;
   phoneTooLong: string;
+  phoneInvalid: string;
 };
 
 const russianMessages: CompanyValidationMessages = {
@@ -18,6 +20,7 @@ const russianMessages: CompanyValidationMessages = {
   descriptionTooLong: "Описание не должно превышать 2000 символов",
   websiteInvalid: "Укажите корректную ссылку, например https://example.com",
   phoneTooLong: "Телефон не должен превышать 50 символов",
+  phoneInvalid: "Введите номер Узбекистана в формате +998 90 123 45 67",
 };
 
 function isHttpUrl(value: string) {
@@ -48,7 +51,17 @@ export function createUpdateCompanySchema(
       .refine((value) => value === "" || isHttpUrl(value), {
         message: messages.websiteInvalid,
       }),
-    phone: z.string().trim().max(50, messages.phoneTooLong),
+    phone: z
+      .string()
+      .trim()
+      .max(50, messages.phoneTooLong)
+      .refine(
+        (value) => value === "" || normalizeOlxUzPhone(value) !== null,
+        messages.phoneInvalid,
+      )
+      .transform((value) =>
+        value === "" ? "" : (normalizeOlxUzPhone(value) ?? value),
+      ),
   });
 }
 

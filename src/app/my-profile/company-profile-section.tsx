@@ -56,6 +56,7 @@ export function CompanyProfileSection({
         descriptionTooLong: t("validation.descriptionTooLong"),
         websiteInvalid: t("validation.websiteInvalid"),
         phoneTooLong: t("validation.phoneTooLong"),
+        phoneInvalid: t("validation.phoneInvalid"),
       }),
     [t],
   );
