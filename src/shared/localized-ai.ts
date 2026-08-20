@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { AppLocale } from "~/i18n/config";
+import { normalizeAiTags } from "./ai-tags";
 
 export const localizedTextSchema = z.object({
   ru: z.string().trim().min(1).max(5000),
@@ -31,5 +32,5 @@ export function getLocalizedStringList(
   fallback: string[] = [],
 ): string[] {
   const localized = translations?.[locale] ?? translations?.ru;
-  return localized?.map((item) => item.trim()).filter(Boolean) ?? fallback;
+  return normalizeAiTags(localized ?? fallback, { maxTags: 8 });
 }

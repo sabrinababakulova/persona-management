@@ -26,6 +26,7 @@ import {
   isPersonHunterConfigured,
 } from "~/server/services/person-hunter";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import { normalizeAiTags } from "~/shared/ai-tags";
 import {
   getLocalizedStringList,
   getLocalizedText,
@@ -749,7 +750,7 @@ export const getVacancyFunnelProcedure = protectedProcedure
         skills: (candidate.skills ?? []) as string[],
         salaryExpectation: candidate.salaryExpectation ?? 0,
         salaryCurrency: candidate.salaryCurrency ?? "UZS",
-        tags: (candidate.tags ?? []) as string[],
+        tags: normalizeAiTags(candidate.tags),
         matchedSkills: getLocalizedStringList(
           candidate.matchedSkillsTranslations,
           locale,

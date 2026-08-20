@@ -15,6 +15,9 @@ PERSONA_CRON_LOCK_DIR=/run/lock/persona-management
 */20 * * * * persona-cron /usr/local/lib/persona-management/hh-discover-cron.sh >> /var/log/persona-management/hh-discover.log 2>&1
 */5 * * * * persona-cron /usr/local/lib/persona-management/hh-status-cron.sh >> /var/log/persona-management/hh-status.log 2>&1
 
+# Backfill candidate AI analyses, translations, and tags.
+* * * * * persona-cron /usr/local/lib/persona-management/candidate-ai-backfill-cron.sh >> /var/log/persona-management/candidate-ai-backfill.log 2>&1
+
 # Nightly PostgreSQL snapshot. Root is limited to this job because container
 # access is equivalent to root access on the host.
 17 2 * * * root /usr/local/lib/persona-management/backup-database.sh >> /var/log/persona-management/database-backup.log 2>&1

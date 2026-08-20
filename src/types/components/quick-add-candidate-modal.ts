@@ -12,6 +12,7 @@ export type QuickAddCandidatePayload = {
   source: string;
   aiAnalysis?: string;
   aiAnalysisTranslations?: LocalizedText;
+  tags?: string[];
   resumeFileId?: string;
   resumeFileName?: string;
   resumeFileSize?: string;

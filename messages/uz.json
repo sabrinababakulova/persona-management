@@ -472,7 +472,8 @@
       "countryTooLong": "Mamlakat 255 belgidan oshmasligi kerak",
       "descriptionTooLong": "Tavsif 2000 belgidan oshmasligi kerak",
       "websiteInvalid": "To'g'ri havola kiriting, masalan https://example.com",
-      "phoneTooLong": "Telefon 50 belgidan oshmasligi kerak"
+      "phoneTooLong": "Telefon 50 belgidan oshmasligi kerak",
+      "phoneInvalid": "O'zbekiston telefon raqamini +998 90 123 45 67 formatida kiriting"
     },
     "roleAdmin": "Administrator",
     "roleMember": "Xodim",

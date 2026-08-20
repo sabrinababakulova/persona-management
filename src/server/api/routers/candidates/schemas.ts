@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { periodSchema } from "~/server/api/router-utils/period";
+import { AI_TAG_MAX_WORDS, countAiTagWords } from "~/shared/ai-tags";
 import { localizedTextSchema } from "~/shared/localized-ai";
 
 /** Optional filters and pagination accepted by candidate list endpoints. */
@@ -152,6 +153,17 @@ export const candidateCreateInputSchema = z.object({
   status: z.string().max(50).default("new"),
   aiAnalysis: z.string().max(5000).optional(),
   aiAnalysisTranslations: localizedTextSchema.optional(),
+  tags: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(64)
+        .refine((tag) => countAiTagWords(tag) <= AI_TAG_MAX_WORDS),
+    )
+    .max(3)
+    .default([]),
   resumeFileId: z.string().max(255).optional(),
   resumeFileName: z.string().max(255).optional(),
   resumeFileSize: z.string().max(50).optional(),

@@ -72,9 +72,10 @@ export const getCandidateProcedure = protectedProcedure
         let aiAnalysis = storedCandidate?.aiAnalysis?.trim() ?? "";
         let aiAnalysisTranslations =
           storedCandidate?.aiAnalysisTranslations ?? null;
+        let aiTags = storedCandidate?.tags ?? [];
 
         // Generate AI analysis once and reuse the stored text on later reads.
-        if (!aiAnalysis) {
+        if (!aiAnalysis || !aiAnalysisTranslations || aiTags.length === 0) {
           const aiAnalysisResult = await generateCandidateAiAnalysis(
             {
               resumeText: formatHhCandidateForAiAnalysis(hhCandidate),
@@ -92,6 +93,7 @@ export const getCandidateProcedure = protectedProcedure
           if (aiAnalysisResult.status === "success") {
             aiAnalysis = aiAnalysisResult.text;
             aiAnalysisTranslations = aiAnalysisResult.translations ?? null;
+            aiTags = aiAnalysisResult.tags ?? [];
           }
         }
 
@@ -117,7 +119,7 @@ export const getCandidateProcedure = protectedProcedure
           contacts: toStoredCandidateContacts(hhCandidate),
           skills: hhCandidate.skills,
           languages: hhCandidate.languages,
-          tags: storedCandidate?.tags ?? [],
+          tags: aiTags,
           workExperience: hhCandidate.workExperience,
           education: hhCandidate.education,
           notes: storedCandidate?.notes ?? [],

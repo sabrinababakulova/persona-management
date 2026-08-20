@@ -19,6 +19,7 @@ export type ResumeUploadMeta = {
   prefillErrorMessage?: string;
   aiAnalysis: string;
   aiAnalysisTranslations?: LocalizedText;
+  tags: string[];
   aiAnalysisStatus: "success" | "failed";
   aiAnalysisErrorMessage?: string;
 };

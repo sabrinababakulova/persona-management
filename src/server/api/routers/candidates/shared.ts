@@ -10,6 +10,7 @@ import {
 } from "~/server/db/schema";
 import type { HhResumeCandidate } from "~/server/services/hh";
 import { buildCandidateResumeUrl } from "~/server/storage/resume-storage";
+import { normalizeAiTags } from "~/shared/ai-tags";
 import { getLocalizedText } from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
 import { isUserVisibleVacancy } from "../vacancies/shared";
@@ -254,7 +255,7 @@ export async function buildCandidateDetailResponse({
     salaryCurrency: candidate.salaryCurrency ?? "UZS",
     status: candidate.status ?? "new",
     source: candidate.source ?? "",
-    tags: (candidate.tags ?? []) as string[],
+    tags: normalizeAiTags(candidate.tags),
     currentPosition: candidate.currentPosition ?? "",
     languages: (candidate.languages ?? []) as {
       name: string;

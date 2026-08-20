@@ -108,6 +108,7 @@ async function processJob(
         profileLocked: candidates.profileLocked,
         aiAnalysis: candidates.aiAnalysis,
         aiAnalysisTranslations: candidates.aiAnalysisTranslations,
+        tags: candidates.tags,
       })
       .from(candidates)
       .where(eq(candidates.id, job.candidateId))
@@ -177,8 +178,9 @@ async function processJob(
 
     let aiAnalysis = candidate.aiAnalysis?.trim() ?? "";
     let aiAnalysisTranslations = candidate.aiAnalysisTranslations ?? null;
+    let aiTags = candidate.tags ?? [];
     let aiErrorMessage: string | null = null;
-    if (!aiAnalysis || !aiAnalysisTranslations) {
+    if (!aiAnalysis || !aiAnalysisTranslations || aiTags.length === 0) {
       const analysis = await generateCandidateAiAnalysis(
         {
           resumeText: formatHhCandidateForAiAnalysis(resume),
@@ -195,6 +197,7 @@ async function processJob(
       if (analysis.status === "success") {
         aiAnalysis = analysis.text;
         aiAnalysisTranslations = analysis.translations ?? null;
+        aiTags = analysis.tags ?? [];
       } else {
         aiErrorMessage =
           analysis.errorMessage || "Failed to generate candidate AI analysis";
@@ -210,6 +213,9 @@ async function processJob(
         hhSyncedAt: new Date(),
         ...(aiAnalysis ? { aiAnalysis } : {}),
         ...(aiAnalysisTranslations ? { aiAnalysisTranslations } : {}),
+        ...((candidate.tags?.length ?? 0) === 0 && aiTags.length > 0
+          ? { tags: aiTags }
+          : {}),
       })
       .where(eq(candidates.id, candidate.id));
 

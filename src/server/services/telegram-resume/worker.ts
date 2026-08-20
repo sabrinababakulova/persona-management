@@ -107,6 +107,7 @@ function toCandidateValues(input: {
   fileSize: number;
   aiAnalysis: string;
   aiAnalysisTranslations: LocalizedText;
+  tags: string[];
 }) {
   const { job, prefill } = input;
   const salaryExpectation =
@@ -155,6 +156,7 @@ function toCandidateValues(input: {
     status: "new",
     aiAnalysis: truncate(input.aiAnalysis, 5000),
     aiAnalysisTranslations: input.aiAnalysisTranslations,
+    tags: input.tags,
     resumeFileId: input.resumeFileId,
     resumeFileName: job.fileName,
     resumeFileSize: formatFileSize(input.fileSize),
@@ -397,6 +399,7 @@ async function processTelegramResumeJob(
     let prefillData = job.prefillData;
     let aiAnalysis = job.aiAnalysis?.trim() || "";
     let aiAnalysisTranslations = job.aiAnalysisTranslations;
+    let aiTags: string[] = [];
     if (!prefillData || !aiAnalysis || !aiAnalysisTranslations) {
       const lookupSets = await loadCandidateLookupSets(db);
       const lookupOptions = {
@@ -445,6 +448,7 @@ async function processTelegramResumeJob(
       if (analysis?.status === "success") {
         aiAnalysis = analysis.text;
         aiAnalysisTranslations = analysis.translations ?? null;
+        aiTags = analysis.tags ?? [];
       }
 
       await db
@@ -480,6 +484,7 @@ async function processTelegramResumeJob(
       fileSize: buffer.length,
       aiAnalysis,
       aiAnalysisTranslations,
+      tags: aiTags,
     });
 
     await db.transaction(async (tx) => {

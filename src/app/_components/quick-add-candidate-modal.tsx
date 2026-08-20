@@ -49,6 +49,7 @@ export function QuickAddCandidateModal({
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiAnalysisTranslations, setAiAnalysisTranslations] =
     useState<ResumeUploadMeta["aiAnalysisTranslations"]>();
+  const [tags, setTags] = useState<string[]>([]);
   const [resumePrefillData, setResumePrefillData] =
     useState<ResumeUploadMeta["prefillData"]>();
   const [isResumeUploading, setIsResumeUploading] = useState(false);
@@ -80,6 +81,7 @@ export function QuickAddCandidateModal({
       setResumeFileSize("");
       setAiAnalysis("");
       setAiAnalysisTranslations(undefined);
+      setTags([]);
       setResumePrefillData(undefined);
       setIsResumeUploading(false);
       setLocalError(null);
@@ -112,6 +114,7 @@ export function QuickAddCandidateModal({
     setResumeFileSize(uploadedResume.resumeFileSize);
     setAiAnalysis(uploadedResume.aiAnalysis);
     setAiAnalysisTranslations(uploadedResume.aiAnalysisTranslations);
+    setTags(uploadedResume.tags);
     setResumePrefillData(uploadedResume.prefillData);
 
     const { prefillData } = uploadedResume;
@@ -187,6 +190,7 @@ export function QuickAddCandidateModal({
       source,
       aiAnalysis: aiAnalysis || undefined,
       aiAnalysisTranslations,
+      tags,
       resumeFileId: resumeFileId || undefined,
       resumeFileName: resumeFileName || undefined,
       resumeFileSize: resumeFileSize || undefined,
