@@ -16,8 +16,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { DownloadIcon } from "~/app/_components/icons";
+import { useId, useState } from "react";
+import {
+  AIGenerationIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  DownloadIcon,
+  FileOutlineIcon,
+} from "~/app/_components/icons";
 import { Modal } from "~/app/_components/modal";
 import {
   FeedbackPresence,
@@ -26,15 +32,14 @@ import {
 import { api } from "~/trpc/react";
 
 type ExportFormat = "pdf" | "docx";
-/** "hh", "custom", or a branded design key granted by a feature flag. */
 type DownloadKey = string;
 
-/** Display names for branded design keys; unknown keys fall back to the key. */
 const DESIGN_LABELS: Record<string, string> = {
   "person-hunters": "Person Hunters",
 };
 
-/** Section keys must match the server's PROFILE_SECTIONS; order here is the default. */
+const PERSON_HUNTERS_DESIGN = "person-hunters";
+
 const DEFAULT_ORDER = [
   "experience",
   "dateOfBirth",
@@ -46,6 +51,27 @@ const DEFAULT_ORDER = [
 ] as const;
 
 type SectionKey = (typeof DEFAULT_ORDER)[number];
+
+const ASSESSMENT_FIELDS = [
+  "willSucceed",
+  "motivators",
+  "strengths",
+  "willNotSucceed",
+  "demotivators",
+  "developmentAreas",
+] as const;
+
+type AssessmentField = (typeof ASSESSMENT_FIELDS)[number];
+type AssessmentValues = Record<AssessmentField, string>;
+
+const EMPTY_ASSESSMENT: AssessmentValues = {
+  willSucceed: "",
+  motivators: "",
+  strengths: "",
+  willNotSucceed: "",
+  demotivators: "",
+  developmentAreas: "",
+};
 
 async function downloadFromUrl(
   url: string,
@@ -62,10 +88,11 @@ async function downloadFromUrl(
         message = data.error;
       }
     } catch {
-      // Non-JSON body (e.g. an HTML error page) — keep the status message.
+      // Keep the HTTP status when the server did not return JSON.
     }
     throw new Error(message);
   }
+
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -117,18 +144,17 @@ function SortableSectionRow({
     transition,
     isDragging,
   } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
 
   return (
     <li
-      className={`flex items-center gap-2 rounded-lg border border-border-input bg-bg-light px-2 py-2 ${
+      className={`flex items-center gap-2 rounded-lg border border-border-input bg-bg-light px-2.5 py-2.5 ${
         isDragging ? "opacity-70 shadow-md" : ""
       }`}
       ref={setNodeRef}
-      style={style}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
     >
       <button
         aria-label={dragLabel}
@@ -139,7 +165,7 @@ function SortableSectionRow({
       >
         <GripIcon />
       </button>
-      <label className="flex flex-1 cursor-pointer items-center gap-2 text-text-heading text-xs">
+      <label className="flex flex-1 cursor-pointer items-center gap-2.5 text-sm text-text-heading">
         <input
           checked={checked}
           className="h-4 w-4 accent-primary-blue"
@@ -162,13 +188,14 @@ function FormatToggle({
   disabled: boolean;
 }) {
   return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-border-input">
+    <div className="inline-flex rounded-xl border border-border-input bg-bg-input p-1">
       {(["pdf", "docx"] as const).map((format) => (
         <button
-          className={`px-3 py-1.5 font-medium text-xs transition-colors ${
+          aria-pressed={value === format}
+          className={`min-w-14 rounded-lg px-3 py-1.5 font-semibold text-xs transition-colors ${
             value === format
-              ? "bg-primary-blue text-bg-light"
-              : "bg-bg-input text-text-secondary hover:text-text-heading"
+              ? "bg-bg-light text-text-heading shadow-sm"
+              : "text-text-secondary hover:text-text-heading"
           }`}
           disabled={disabled}
           key={format}
@@ -182,18 +209,81 @@ function FormatToggle({
   );
 }
 
-/**
- * Single "Скачать резюме" button that opens a modal offering three resume
- * exports: the original hh.uz file, the branded Person Hunters template, and a
- * configurable custom export where the user reorders (drag-and-drop) and picks
- * sections plus format. The exported file follows the chosen section order.
- */
+function FieldTextarea({
+  id,
+  label,
+  value,
+  placeholder,
+  onChange,
+  maxLength,
+  minHeightClassName = "min-h-24",
+}: {
+  id: string;
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  maxLength: number;
+  minHeightClassName?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5" htmlFor={id}>
+      <span className="font-semibold text-sm text-text-label">{label}</span>
+      <textarea
+        className={`${minHeightClassName} w-full resize-y rounded-xl border border-border-input bg-bg-light px-3.5 py-3 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none`}
+        id={id}
+        maxLength={maxLength}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        value={value}
+      />
+    </label>
+  );
+}
+
+function ExportSectionHeader({
+  icon,
+  title,
+  description,
+  badge,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  badge?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-input text-text-secondary">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-semibold text-base text-text-heading">{title}</h3>
+          {badge ? (
+            <span className="rounded-full bg-bg-input px-2 py-0.5 font-semibold text-[11px] text-text-secondary uppercase tracking-wide">
+              {badge}
+            </span>
+          ) : null}
+        </div>
+        {description ? (
+          <p className="mt-0.5 text-sm text-text-secondary leading-5">
+            {description}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function ResumeDownloadButton({
   candidateId,
   hasHhResume,
+  hasAiAnalysis,
 }: {
   candidateId: string;
   hasHhResume: boolean;
+  hasAiAnalysis: boolean;
 }) {
   const t = useTranslations("ResumeExport");
   const { data: companyFeatures } = api.company.getFeatures.useQuery();
@@ -205,18 +295,22 @@ export function ResumeDownloadButton({
     new Set(DEFAULT_ORDER),
   );
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [includeAiAnalysis, setIncludeAiAnalysis] = useState(false);
+  const [assessment, setAssessment] =
+    useState<AssessmentValues>(EMPTY_ASSESSMENT);
   const [downloading, setDownloading] = useState<DownloadKey | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hhUnavailableTooltipId = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
-
   const isBusy = downloading !== null;
 
   const toggleSection = (value: SectionKey) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
+    setSelected((previous) => {
+      const next = new Set(previous);
       if (next.has(value)) {
         next.delete(value);
       } else {
@@ -229,11 +323,11 @@ export function ResumeDownloadButton({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      setOrder((prev) =>
+      setOrder((previous) =>
         arrayMove(
-          prev,
-          prev.indexOf(active.id as SectionKey),
-          prev.indexOf(over.id as SectionKey),
+          previous,
+          previous.indexOf(active.id as SectionKey),
+          previous.indexOf(over.id as SectionKey),
         ),
       );
     }
@@ -275,8 +369,27 @@ export function ResumeDownloadButton({
   };
 
   const ext = format === "pdf" ? "pdf" : "docx";
-  // Preserve drag order, keep only checked sections.
   const orderedSelected = order.filter((value) => selected.has(value));
+
+  const downloadPersonHunters = (designKey: string) => {
+    const formData = new FormData();
+    formData.append("template", designKey);
+    formData.append("format", format);
+    formData.append("coverLetter", coverLetter);
+    formData.append(
+      "includeAiAnalysis",
+      String(includeAiAnalysis && hasAiAnalysis),
+    );
+    for (const field of ASSESSMENT_FIELDS) {
+      formData.append(`assessment.${field}`, assessment[field]);
+    }
+    run(
+      designKey,
+      `/api/candidates/${candidateId}/profile-export`,
+      `${designKey}-${candidateId}.${ext}`,
+      { method: "POST", body: formData },
+    );
+  };
 
   return (
     <>
@@ -311,63 +424,269 @@ export function ResumeDownloadButton({
       </button>
 
       <Modal
+        description={t("modalDescription")}
         isOpen={isOpen}
-        maxWidthClassName="max-w-[520px]"
+        maxWidthClassName="max-w-[860px]"
         onClose={() => setIsOpen(false)}
+        panelClassName="sm:p-7"
         title={t("title")}
       >
         <div className="flex flex-col gap-4">
-          {/* hh.uz — original file, always PDF */}
-          <section className="rounded-xl border border-border-input p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold text-sm text-text-heading">hh.uz</p>
-                <p className="text-text-secondary text-xs">
-                  {t("hhDescription")}
-                </p>
-              </div>
-              <button
-                className="ui-button ui-button-primary px-3"
-                disabled={isBusy || !hasHhResume}
-                onClick={() =>
-                  run(
-                    "hh",
-                    `/api/candidates/${candidateId}/resume`,
-                    `resume-${candidateId}.pdf`,
-                  )
+          <section className="rounded-2xl border border-border-light bg-bg-input/45 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <ExportSectionHeader
+                badge="PDF"
+                description={t("hhDescription")}
+                icon={<FileOutlineIcon className="h-5 w-5" />}
+                title="hh.uz"
+              />
+              <div
+                aria-describedby={
+                  hasHhResume ? undefined : hhUnavailableTooltipId
                 }
-                type="button"
+                className="group/hh-tooltip relative w-full shrink-0 sm:w-auto"
+                tabIndex={hasHhResume ? undefined : 0}
               >
-                <LoadingButtonContent
-                  isLoading={downloading === "hh"}
-                  label={t("download")}
-                  loadingLabel={t("downloading")}
-                />
-              </button>
+                <button
+                  className="ui-button ui-button-secondary w-full"
+                  disabled={isBusy || !hasHhResume}
+                  onClick={() =>
+                    run(
+                      "hh",
+                      `/api/candidates/${candidateId}/resume`,
+                      `resume-${candidateId}.pdf`,
+                    )
+                  }
+                  type="button"
+                >
+                  <LoadingButtonContent
+                    isLoading={downloading === "hh"}
+                    label={t("downloadOriginal")}
+                    loadingLabel={t("downloading")}
+                  />
+                </button>
+                {!hasHhResume ? (
+                  <span
+                    className="pointer-events-none absolute right-0 bottom-full z-20 mb-2 w-max max-w-64 rounded-lg border border-border-control bg-text-heading px-3 py-2 text-left text-white text-xs leading-4 opacity-0 shadow-lg transition-opacity group-hover/hh-tooltip:opacity-100 group-focus/hh-tooltip:opacity-100"
+                    id={hhUnavailableTooltipId}
+                    role="tooltip"
+                  >
+                    {t("hhUnavailable")}
+                  </span>
+                ) : null}
+              </div>
             </div>
-            {!hasHhResume && (
-              <p className="mt-2 text-text-placeholder text-xs">
-                {t("hhUnavailable")}
-              </p>
-            )}
           </section>
 
-          {/* Branded design templates — one section per flag-granted key */}
-          {resumeDesigns.map((designKey) => (
-            <section
-              className="rounded-xl border border-border-input p-4"
-              key={designKey}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-sm text-text-heading">
-                    {DESIGN_LABELS[designKey] ?? designKey}
-                  </p>
-                  <p className="text-text-secondary text-xs">
-                    {t("brandedTemplate")}
-                  </p>
+          {resumeDesigns.map((designKey) =>
+            designKey === PERSON_HUNTERS_DESIGN ? (
+              <section
+                className="rounded-2xl border border-border-light bg-bg-light p-4 shadow-[0_1px_2px_rgba(24,34,52,0.03)] sm:p-5"
+                key={designKey}
+              >
+                <div className="flex flex-col gap-4 border-border-light border-b pb-5 sm:flex-row sm:items-start sm:justify-between">
+                  <ExportSectionHeader
+                    icon={<FileOutlineIcon className="h-5 w-5" />}
+                    title={DESIGN_LABELS[designKey] ?? designKey}
+                  />
+                  <FormatToggle
+                    disabled={isBusy}
+                    onChange={setFormat}
+                    value={format}
+                  />
                 </div>
-                <div className="flex items-center gap-3">
+
+                <div className="mt-5 grid gap-5">
+                  <FieldTextarea
+                    id="resume-cover-letter"
+                    label={t("coverLetter")}
+                    maxLength={8000}
+                    onChange={setCoverLetter}
+                    placeholder={t("coverLetterPlaceholder")}
+                    value={coverLetter}
+                  />
+
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border border-border-input p-3.5 ${
+                      hasAiAnalysis
+                        ? "cursor-pointer bg-bg-input/60 hover:border-border-control"
+                        : "cursor-not-allowed bg-bg-input/35 opacity-65"
+                    }`}
+                  >
+                    <input
+                      checked={includeAiAnalysis && hasAiAnalysis}
+                      className="sr-only"
+                      disabled={!hasAiAnalysis || isBusy}
+                      onChange={(event) =>
+                        setIncludeAiAnalysis(event.target.checked)
+                      }
+                      type="checkbox"
+                    />
+                    <span
+                      className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                        includeAiAnalysis && hasAiAnalysis
+                          ? "border-primary-blue bg-primary-blue text-white"
+                          : "border-border-control bg-bg-light text-transparent"
+                      }`}
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <AIGenerationIcon className="mt-0.5 h-5 w-5 shrink-0 text-ai-violet" />
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-sm text-text-heading">
+                        {t("includeAiAnalysis")}
+                      </span>
+                      {!hasAiAnalysis ? (
+                        <span className="mt-0.5 block text-text-secondary text-xs leading-5">
+                          {t("aiUnavailable")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+
+                  <div>
+                    <h4 className="mb-3 font-semibold text-sm text-text-heading">
+                      {t("assessmentTitle")}
+                    </h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ASSESSMENT_FIELDS.map((field) => (
+                        <FieldTextarea
+                          id={`resume-assessment-${field}`}
+                          key={field}
+                          label={t(`assessmentFields.${field}`)}
+                          maxLength={3000}
+                          minHeightClassName="min-h-20"
+                          onChange={(value) =>
+                            setAssessment((previous) => ({
+                              ...previous,
+                              [field]: value,
+                            }))
+                          }
+                          placeholder={t("assessmentPlaceholder")}
+                          value={assessment[field]}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end border-border-light border-t pt-5">
+                    <button
+                      className="ui-button ui-button-primary w-full shrink-0 px-4 sm:w-auto"
+                      disabled={isBusy}
+                      onClick={() => downloadPersonHunters(designKey)}
+                      type="button"
+                    >
+                      <DownloadIcon className="h-4 w-4" />
+                      <LoadingButtonContent
+                        isLoading={downloading === designKey}
+                        label={t("downloadPrepared")}
+                        loadingLabel={t("downloading")}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <section
+                className="rounded-2xl border border-border-light p-4 sm:p-5"
+                key={designKey}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <ExportSectionHeader
+                    description={t("brandedTemplate")}
+                    icon={<FileOutlineIcon className="h-5 w-5" />}
+                    title={DESIGN_LABELS[designKey] ?? designKey}
+                  />
+                  <div className="flex items-center gap-3">
+                    <FormatToggle
+                      disabled={isBusy}
+                      onChange={setFormat}
+                      value={format}
+                    />
+                    <button
+                      className="ui-button ui-button-primary px-3"
+                      disabled={isBusy}
+                      onClick={() =>
+                        run(
+                          designKey,
+                          `/api/candidates/${candidateId}/profile-export?template=${encodeURIComponent(designKey)}&format=${format}`,
+                          `${designKey}-${candidateId}.${ext}`,
+                        )
+                      }
+                      type="button"
+                    >
+                      <LoadingButtonContent
+                        isLoading={downloading === designKey}
+                        label={t("download")}
+                        loadingLabel={t("downloading")}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ),
+          )}
+
+          <details className="group rounded-2xl border border-border-light bg-bg-light">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
+              <ExportSectionHeader
+                description={t("customDescription")}
+                icon={<FileOutlineIcon className="h-5 w-5" />}
+                title={t("customFormat")}
+              />
+              <ChevronDownIcon className="h-5 w-5 shrink-0 text-text-placeholder transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-border-light border-t p-4 sm:p-5">
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                sensors={sensors}
+              >
+                <SortableContext
+                  items={order}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {order.map((value) => (
+                      <SortableSectionRow
+                        checked={selected.has(value)}
+                        dragLabel={t("dragSection")}
+                        id={value}
+                        key={value}
+                        label={t(`sections.${value}`)}
+                        onToggle={() => toggleSection(value)}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </DndContext>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
+                  <label className="ui-button ui-button-secondary cursor-pointer text-xs">
+                    {t("uploadLogo")}
+                    <input
+                      accept="image/png,image/jpeg"
+                      className="hidden"
+                      onChange={onLogoChange}
+                      type="file"
+                    />
+                  </label>
+                  {logoFile ? (
+                    <span className="flex min-w-0 items-center gap-2 text-text-secondary text-xs">
+                      <span className="max-w-40 truncate">{logoFile.name}</span>
+                      <button
+                        className="shrink-0 text-text-placeholder hover:text-danger-red"
+                        onClick={() => setLogoFile(null)}
+                        type="button"
+                      >
+                        {t("remove")}
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
                   <FormatToggle
                     disabled={isBusy}
                     onChange={setFormat}
@@ -375,127 +694,44 @@ export function ResumeDownloadButton({
                   />
                   <button
                     className="ui-button ui-button-primary px-3"
-                    disabled={isBusy}
-                    onClick={() =>
+                    disabled={isBusy || orderedSelected.length === 0}
+                    onClick={() => {
+                      const formData = new FormData();
+                      formData.append("template", "custom");
+                      formData.append("format", format);
+                      formData.append("sections", orderedSelected.join(","));
+                      if (logoFile) {
+                        formData.append("logo", logoFile);
+                      }
                       run(
-                        designKey,
-                        `/api/candidates/${candidateId}/profile-export?template=${encodeURIComponent(designKey)}&format=${format}`,
-                        `${designKey}-${candidateId}.${ext}`,
-                      )
-                    }
+                        "custom",
+                        `/api/candidates/${candidateId}/profile-export`,
+                        `resume-${candidateId}.${ext}`,
+                        { method: "POST", body: formData },
+                      );
+                    }}
                     type="button"
                   >
                     <LoadingButtonContent
-                      isLoading={downloading === designKey}
+                      isLoading={downloading === "custom"}
                       label={t("download")}
                       loadingLabel={t("downloading")}
                     />
                   </button>
                 </div>
               </div>
-            </section>
-          ))}
-
-          {/* Custom — drag to reorder, check to include, pick format */}
-          <section className="rounded-xl border border-border-input p-4">
-            <p className="font-semibold text-sm text-text-heading">
-              {t("customFormat")}
-            </p>
-            <p className="text-text-secondary text-xs">
-              {t("customDescription")}
-            </p>
-            <DndContext
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-              sensors={sensors}
-            >
-              <SortableContext
-                items={order}
-                strategy={verticalListSortingStrategy}
-              >
-                <ul className="mt-3 flex flex-col gap-2">
-                  {order.map((value) => (
-                    <SortableSectionRow
-                      checked={selected.has(value)}
-                      dragLabel={t("dragSection")}
-                      id={value}
-                      key={value}
-                      label={t(`sections.${value}`)}
-                      onToggle={() => toggleSection(value)}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
-
-            {/* Optional logo placed at the top of the custom resume */}
-            <div className="mt-3 flex items-center gap-2">
-              <label className="cursor-pointer rounded-lg border border-border-input bg-bg-input px-3 py-1.5 font-medium text-text-secondary text-xs transition-colors hover:text-text-heading">
-                {t("uploadLogo")}
-                <input
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={onLogoChange}
-                  type="file"
-                />
-              </label>
-              {logoFile && (
-                <span className="flex items-center gap-2 text-text-secondary text-xs">
-                  <span className="max-w-[160px] truncate">
-                    {logoFile.name}
-                  </span>
-                  <button
-                    className="text-text-placeholder hover:text-danger-red"
-                    onClick={() => setLogoFile(null)}
-                    type="button"
-                  >
-                    {t("remove")}
-                  </button>
-                </span>
-              )}
+              {orderedSelected.length === 0 ? (
+                <p className="mt-2 text-text-placeholder text-xs">
+                  {t("selectSection")}
+                </p>
+              ) : null}
             </div>
-
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <FormatToggle
-                disabled={isBusy}
-                onChange={setFormat}
-                value={format}
-              />
-              <button
-                className="ui-button ui-button-primary px-3"
-                disabled={isBusy || orderedSelected.length === 0}
-                onClick={() => {
-                  const formData = new FormData();
-                  formData.append("format", format);
-                  formData.append("sections", orderedSelected.join(","));
-                  if (logoFile) {
-                    formData.append("logo", logoFile);
-                  }
-                  run(
-                    "custom",
-                    `/api/candidates/${candidateId}/profile-export`,
-                    `resume-${candidateId}.${ext}`,
-                    { method: "POST", body: formData },
-                  );
-                }}
-                type="button"
-              >
-                <LoadingButtonContent
-                  isLoading={downloading === "custom"}
-                  label={t("download")}
-                  loadingLabel={t("downloading")}
-                />
-              </button>
-            </div>
-            {orderedSelected.length === 0 && (
-              <p className="mt-2 text-text-placeholder text-xs">
-                {t("selectSection")}
-              </p>
-            )}
-          </section>
+          </details>
 
           <FeedbackPresence show={Boolean(error)}>
-            <p className="text-danger-red text-xs leading-[1.4]">{error}</p>
+            <p className="rounded-xl bg-status-danger-soft px-3.5 py-3 text-danger-red text-sm leading-5">
+              {error}
+            </p>
           </FeedbackPresence>
         </div>
       </Modal>

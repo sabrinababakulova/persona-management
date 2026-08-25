@@ -165,6 +165,7 @@ export default function CandidateDetailPage() {
 
               <ResumeDownloadButton
                 candidateId={candidateId}
+                hasAiAnalysis={Boolean(candidate.aiAnalysis?.trim())}
                 hasHhResume={Boolean(candidate.resumeFile?.url)}
               />
 

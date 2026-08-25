@@ -7,6 +7,7 @@ import {
   RESUME_DESIGN_TEMPLATES,
   type ResumeLogo,
 } from "~/server/pdf/candidate-profile-data";
+import { parsePersonHuntersCustomization } from "~/server/pdf/candidate-profile-input";
 import { generateCandidateDocx } from "~/server/pdf/generate-candidate-docx";
 import { generateCandidatePdf } from "~/server/pdf/generate-candidate-pdf";
 import { fitWithin, getImageSize } from "~/server/pdf/image-size";
@@ -186,8 +187,9 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 /**
- * Custom export carrying an optional uploaded logo (multipart form). Fields:
- * `format`, `sections` (csv, ordered), and `logo` (PNG/JPEG file).
+ * Multipart export. The custom template accepts `sections` and `logo`; the
+ * Person Hunters template accepts the request-scoped cover letter, recruiter
+ * assessment, and AI-analysis opt-in.
  */
 export async function POST(request: Request, context: RouteContext) {
   const companyId = await resolveCompany();
@@ -200,22 +202,52 @@ export async function POST(request: Request, context: RouteContext) {
     return buildErrorResponse("Некорректный multipart-запрос", 400);
   }
 
-  const sections = parseSections(formData.get("sections")?.toString() ?? "");
+  const templateKey = formData.get("template")?.toString() || "custom";
+  let options: ProfileRenderOptions;
 
-  let logo: ResumeLogo | undefined;
-  const logoFile = formData.get("logo");
-  if (logoFile instanceof File && logoFile.size > 0) {
-    const result = await readLogo(logoFile);
-    if (result instanceof Response) {
-      return result;
+  if (templateKey === "custom") {
+    const sections = parseSections(formData.get("sections")?.toString() ?? "");
+
+    let logo: ResumeLogo | undefined;
+    const logoFile = formData.get("logo");
+    if (logoFile instanceof File && logoFile.size > 0) {
+      const result = await readLogo(logoFile);
+      if (result instanceof Response) {
+        return result;
+      }
+      logo = result;
     }
-    logo = result;
+
+    options = { showBranding: false, sections, logo };
+  } else {
+    const template = RESUME_DESIGN_TEMPLATES[templateKey];
+    if (!template) {
+      return buildErrorResponse("Шаблон резюме не найден", 404);
+    }
+
+    const features = await getCompanyFeatures(db, companyId);
+    if (!features.resumeDesigns.includes(templateKey)) {
+      return buildErrorResponse(
+        "Этот шаблон резюме недоступен для вашей компании",
+        403,
+      );
+    }
+
+    if (templateKey === RESUME_DESIGN_PERSON_HUNTERS) {
+      const customization = parsePersonHuntersCustomization(formData);
+      if (!customization.ok) {
+        return buildErrorResponse(customization.error, 400);
+      }
+      options = { ...template, ...customization.value };
+    } else {
+      options = template;
+    }
   }
 
   const { candidateId } = await context.params;
   return produce({
     format: toExportFormat(formData.get("format")?.toString() ?? null),
-    options: { showBranding: false, sections, logo },
+    options,
     candidateId,
     companyId,
   });

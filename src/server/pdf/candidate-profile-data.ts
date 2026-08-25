@@ -5,7 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "~/server/db";
 import { candidates } from "~/server/db/schema";
 import { RESUME_DESIGN_PERSON_HUNTERS } from "~/shared/feature-flags";
+import { getLocalizedText } from "~/shared/localized-ai";
 import { formatExperienceMonths } from "~/utils/russian-plural";
+import type { RecruiterAssessment } from "./candidate-profile-input";
 
 /**
  * Plain, already-formatted candidate data consumed by both the PDF and DOCX
@@ -14,11 +16,15 @@ import { formatExperienceMonths } from "~/utils/russian-plural";
  */
 export type CandidateProfileData = {
   fullName: string;
+  city: string | null;
+  currentPosition: string | null;
   /** e.g. "more than 15 years" — rendered after the "Experience:" label. */
   experience: string | null;
   /** e.g. "41 years, born on 5 May 1985"; omitted when unknown. */
   dateOfBirth: string | null;
   languages: { name: string; level: string }[];
+  contacts: { type: string; value: string }[];
+  skills: string[];
   /** Data URL or absolute file path for the candidate photo; omitted if null. */
   photoSrc: string | null;
   education: { period: string; institution: string; gpa: string }[];
@@ -28,8 +34,8 @@ export type CandidateProfileData = {
     position: string;
     description: string[];
   }[];
-  /** Free-text summary shown in the "Additional information" row. */
-  additionalInfo: string | null;
+  /** Recruiter-facing AI summary, included only when explicitly requested. */
+  aiAnalysis: string | null;
   /** Pre-formatted salary line, e.g. "from 3500$ NET + KPI". */
   salaryExpectation: string | null;
 };
@@ -69,12 +75,19 @@ export type ProfileRenderOptions = {
   sections: ProfileSection[];
   /** Optional custom logo rendered at the top of the unbranded export. */
   logo?: ResumeLogo;
+  /** Request-scoped cover letter entered by the recruiter. */
+  coverLetter?: string;
+  /** Explicit opt-in for the stored AI analysis. */
+  includeAiAnalysis?: boolean;
+  /** Request-scoped recruiter interview assessment. */
+  recruiterAssessment?: RecruiterAssessment;
 };
 
 /** The fixed Person Hunters export: branded, every section included. */
 export const PERSON_HUNTERS_OPTIONS: ProfileRenderOptions = {
   showBranding: true,
   sections: [...PROFILE_SECTIONS],
+  includeAiAnalysis: false,
 };
 
 /**
@@ -159,11 +172,15 @@ export async function loadCandidateProfileData(input: {
 
   return {
     fullName: candidate.fullName,
+    city: candidate.city?.trim() || null,
+    currentPosition: candidate.currentPosition?.trim() || null,
     experience: formatExperienceMonths(candidate.experience) || null,
     // DOB and candidate photo aren't stored on the candidate row yet; the
     // exporters omit whatever is null.
     dateOfBirth: null,
     photoSrc: null,
+    contacts: candidate.contacts ?? [],
+    skills: candidate.skills ?? [],
     languages: candidate.languages ?? [],
     education: (candidate.education ?? []).map((item) => ({
       period: item.period,
@@ -176,7 +193,12 @@ export async function loadCandidateProfileData(input: {
       position: job.position,
       description: job.description ?? [],
     })),
-    additionalInfo: candidate.aiAnalysis,
+    aiAnalysis:
+      getLocalizedText(
+        candidate.aiAnalysisTranslations,
+        "ru",
+        candidate.aiAnalysis ?? "",
+      ).trim() || null,
     salaryExpectation: formatSalary(
       candidate.salaryExpectation,
       candidate.salaryCurrency,

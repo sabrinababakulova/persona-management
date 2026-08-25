@@ -15,11 +15,12 @@ import type {
   ProfileSection,
   ResumeLogo,
 } from "./candidate-profile-data";
+import {
+  hasRecruiterAssessment,
+  type RecruiterAssessmentField,
+} from "./candidate-profile-input";
 import { PersonHuntersLogo } from "./person-hunters-logo";
 
-// react-pdf's built-in Helvetica uses WinAnsi encoding and cannot render
-// Cyrillic. Register a Unicode TTF (full Latin + Cyrillic) so the Russian UI
-// data renders correctly. Resolved from disk at module load — no network.
 const FONT_DIR = path.join(process.cwd(), "src/server/pdf/fonts");
 
 Font.register({
@@ -30,297 +31,388 @@ Font.register({
   ],
 });
 
-// Long URLs/emails without spaces would otherwise overflow the page.
 Font.registerHyphenationCallback((word) => [word]);
 
 const COLORS = {
-  text: "#000000",
-  border: "#000000",
+  text: "#111111",
+  muted: "#808080",
   footer: "#8C8C8C",
+  border: "#4F4F4F",
+  positive: "#548235",
+  negative: "#E00000",
 };
 
-const LEFT_COL_WIDTH = 96;
+const ASSESSMENT_ROWS: {
+  key: RecruiterAssessmentField;
+  label: string;
+  tone: "positive" | "negative";
+}[] = [
+  { key: "willSucceed", label: "Справится", tone: "positive" },
+  { key: "motivators", label: "Мотивирует", tone: "positive" },
+  { key: "strengths", label: "Сильные стороны", tone: "positive" },
+  { key: "willNotSucceed", label: "Не справится", tone: "negative" },
+  { key: "demotivators", label: "Демотивирует", tone: "negative" },
+  { key: "developmentAreas", label: "Зоны развития", tone: "negative" },
+];
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 40,
+    paddingTop: 48,
     paddingBottom: 56,
-    paddingHorizontal: 54,
-    fontSize: 11,
+    paddingLeft: 85,
+    paddingRight: 43,
+    fontSize: 9.4,
     fontFamily: "DejaVuSans",
     color: COLORS.text,
-    lineHeight: 1.3,
+    lineHeight: 1.22,
   },
-  logo: { position: "absolute", top: 28, right: 54 },
+  logo: { alignItems: "flex-end", marginBottom: 26 },
   footer: {
     position: "absolute",
-    bottom: 28,
-    left: 54,
-    right: 54,
+    bottom: 24,
+    left: 85,
+    right: 43,
     textAlign: "right",
-    fontSize: 9,
+    fontSize: 8.5,
     color: COLORS.footer,
+    lineHeight: 1.45,
   },
   footerLink: { color: COLORS.footer, textDecoration: "none" },
   name: {
     textAlign: "center",
     fontSize: 13,
-    marginBottom: 14,
-    marginTop: 0,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textTransform: "uppercase",
   },
-  // Clears the fixed Person Hunters logo so it never overlaps the name.
-  brandedHeaderSpacer: { height: 44 },
-  customLogoWrap: { alignItems: "flex-end", marginBottom: 14 },
-  topRow: { flexDirection: "row", justifyContent: "space-between" },
-  infoCol: { flexGrow: 1, paddingRight: 12 },
-  infoLine: { marginBottom: 2 },
-  infoGap: { height: 16 },
-  photo: { width: 86, height: 110, objectFit: "cover" },
+  topRow: { flexDirection: "row", alignItems: "flex-start" },
+  summary: { flexGrow: 1, paddingRight: 20 },
+  summaryLine: { marginBottom: 4 },
+  summaryLabel: { fontWeight: "bold" },
+  contactBlock: { marginTop: 7 },
+  contactValue: { color: "#1565C0", textDecoration: "underline" },
+  photo: { width: 102, height: 140, objectFit: "cover" },
+  photoPlaceholder: {
+    width: 102,
+    height: 140,
+    borderWidth: 0.75,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoPlaceholderText: {
+    color: COLORS.muted,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  coverLetter: { marginTop: 9 },
+  coverLetterText: { marginTop: 2 },
+  salary: { marginTop: 10 },
   sectionHeading: {
     textAlign: "center",
     fontSize: 11,
-    marginTop: 18,
+    fontWeight: "bold",
+    marginTop: 16,
     marginBottom: 8,
+    textTransform: "uppercase",
   },
-  // Grid borders: container draws top+left, every cell draws right+bottom.
-  table: {
+  timelineRow: { flexDirection: "row", marginBottom: 8 },
+  period: { width: 118, paddingRight: 12, fontWeight: "bold" },
+  timelineContent: { flex: 1 },
+  company: { fontWeight: "bold", marginBottom: 1 },
+  position: { fontWeight: "bold", marginBottom: 2 },
+  bullet: { flexDirection: "row", marginTop: 1 },
+  bulletDot: { width: 12 },
+  bulletText: { flex: 1 },
+  educationRow: { flexDirection: "row", marginBottom: 5 },
+  educationPeriod: { width: 118, paddingRight: 12 },
+  educationContent: { flex: 1 },
+  analysis: { marginHorizontal: 14, marginBottom: 9 },
+  detailsRow: { flexDirection: "row", marginTop: 5 },
+  detailsLabel: { width: 128, paddingRight: 12, fontWeight: "bold" },
+  detailsValue: { flex: 1 },
+  assessmentSubtitle: {
+    textAlign: "center",
+    color: COLORS.muted,
+    fontWeight: "bold",
+    marginTop: -8,
+    marginBottom: 7,
+  },
+  assessmentTable: {
     borderTopWidth: 0.75,
     borderLeftWidth: 0.75,
     borderColor: COLORS.border,
   },
-  row: { flexDirection: "row" },
-  cellLeft: {
-    width: LEFT_COL_WIDTH,
+  assessmentRow: { flexDirection: "row" },
+  assessmentLabel: {
+    width: 150,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRightWidth: 0.75,
+    borderBottomWidth: 0.75,
+    borderColor: COLORS.border,
+    fontWeight: "bold",
+  },
+  assessmentValue: {
+    flex: 1,
+    paddingVertical: 3,
+    paddingHorizontal: 9,
+    borderRightWidth: 0.75,
+    borderBottomWidth: 0.75,
+    borderColor: COLORS.border,
+  },
+  customLogoWrap: { alignItems: "flex-end", marginBottom: 14 },
+  customName: { textAlign: "center", fontSize: 13, marginBottom: 14 },
+  customTable: {
+    borderTopWidth: 0.75,
+    borderLeftWidth: 0.75,
+    borderColor: COLORS.border,
+  },
+  customRow: { flexDirection: "row" },
+  customLeft: {
+    width: 96,
     borderRightWidth: 0.75,
     borderBottomWidth: 0.75,
     borderColor: COLORS.border,
     padding: 5,
   },
-  cellRight: {
+  customRight: {
     flex: 1,
     borderRightWidth: 0.75,
     borderBottomWidth: 0.75,
     borderColor: COLORS.border,
     padding: 5,
   },
-  cellText: { fontSize: 10.5 },
-  company: { fontSize: 10.5, fontWeight: "bold" },
-  bullet: { flexDirection: "row", marginTop: 2 },
-  bulletDot: { width: 9, fontSize: 10.5 },
-  bulletText: { flex: 1, fontSize: 10.5 },
-  orderedBlock: { marginBottom: 6 },
-  infoRowTable: { marginTop: 8 },
+  customBlock: { marginBottom: 6 },
 });
 
-function Cell({
-  variant,
-  children,
-}: {
-  variant: "left" | "right";
-  children: React.ReactNode;
-}) {
+function SummaryLine({ label, value }: { label: string; value: string }) {
   return (
-    <View style={variant === "left" ? styles.cellLeft : styles.cellRight}>
-      {children}
+    <Text style={styles.summaryLine}>
+      <Text style={styles.summaryLabel}>{label}: </Text>
+      {value}
+    </Text>
+  );
+}
+
+function CandidatePhoto({ data }: { data: CandidateProfileData }) {
+  return data.photoSrc ? (
+    <Image src={data.photoSrc} style={styles.photo} />
+  ) : (
+    <View style={styles.photoPlaceholder}>
+      <Text style={styles.photoPlaceholderText}>ФОТО</Text>
     </View>
   );
 }
 
-function LanguagesLines({ data }: { data: CandidateProfileData }) {
+function ContactLines({ data }: { data: CandidateProfileData }) {
+  if (data.contacts.length === 0) {
+    return null;
+  }
+  return (
+    <View style={styles.contactBlock}>
+      <Text style={styles.summaryLabel}>Контакты:</Text>
+      {data.contacts.map((contact) => (
+        <Text
+          key={`${contact.type}-${contact.value}`}
+          style={styles.contactValue}
+        >
+          {contact.value}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+function WorkExperienceSection({ data }: { data: CandidateProfileData }) {
+  if (data.workExperience.length === 0) {
+    return null;
+  }
   return (
     <>
-      {data.languages.map((language) => (
-        <Text key={language.name} style={styles.infoLine}>
-          {language.name} — {language.level}
-        </Text>
+      <Text minPresenceAhead={40} style={styles.sectionHeading}>
+        ОПЫТ РАБОТЫ
+      </Text>
+      {data.workExperience.map((job) => (
+        <View
+          key={`${job.period}-${job.company}`}
+          minPresenceAhead={72}
+          style={styles.timelineRow}
+        >
+          <Text style={styles.period}>{job.period}</Text>
+          <View style={styles.timelineContent}>
+            <Text style={styles.company}>{job.company}</Text>
+            {job.position ? (
+              <Text style={styles.position}>{job.position}</Text>
+            ) : null}
+            {job.description.map((line) => (
+              <View
+                key={`${job.period}-${job.company}-${line}`}
+                style={styles.bullet}
+              >
+                <Text style={styles.bulletDot}>•</Text>
+                <Text style={styles.bulletText}>{line}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       ))}
     </>
   );
 }
 
 function EducationSection({ data }: { data: CandidateProfileData }) {
+  if (data.education.length === 0) {
+    return null;
+  }
   return (
     <>
-      <Text style={styles.sectionHeading}>Education</Text>
-      <View style={styles.table}>
-        {data.education.map((item) => (
-          <View
-            key={`${item.period}-${item.institution}`}
-            style={styles.row}
-            wrap={false}
-          >
-            <Cell variant="left">
-              <Text style={styles.cellText}>{item.period}</Text>
-            </Cell>
-            <Cell variant="right">
-              <Text style={styles.cellText}>{item.institution}</Text>
-              {item.gpa ? (
-                <Text style={styles.cellText}>GPA: {item.gpa}</Text>
-              ) : null}
-            </Cell>
+      <Text minPresenceAhead={32} style={styles.sectionHeading}>
+        ОБРАЗОВАНИЕ
+      </Text>
+      {data.education.map((item) => (
+        <View
+          key={`${item.period}-${item.institution}`}
+          style={styles.educationRow}
+          wrap={false}
+        >
+          <Text style={styles.educationPeriod}>{item.period}</Text>
+          <View style={styles.educationContent}>
+            <Text>{item.institution}</Text>
+            {item.gpa ? <Text>{item.gpa}</Text> : null}
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
     </>
   );
 }
 
-function WorkExperienceSection({ data }: { data: CandidateProfileData }) {
+function AdditionalInfoSection({
+  data,
+  includeAiAnalysis,
+}: {
+  data: CandidateProfileData;
+  includeAiAnalysis: boolean;
+}) {
+  const showAi = includeAiAnalysis && Boolean(data.aiAnalysis);
+  if (!showAi && data.skills.length === 0 && data.languages.length === 0) {
+    return null;
+  }
   return (
     <>
-      <Text style={styles.sectionHeading}>Experience:</Text>
-      <View style={styles.table}>
-        {data.workExperience.map((job) => (
-          <View
-            key={`${job.period}-${job.company}`}
-            style={styles.row}
-            wrap={false}
-          >
-            <Cell variant="left">
-              <Text style={styles.cellText}>{job.period}</Text>
-            </Cell>
-            <Cell variant="right">
-              <Text style={styles.company}>{job.company}</Text>
-              {job.position ? (
-                <Text style={styles.cellText}>{job.position}</Text>
-              ) : null}
-              {job.description.map((line) => (
-                <View key={`${job.company}-${line}`} style={styles.bullet}>
-                  <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>{line}</Text>
-                </View>
-              ))}
-            </Cell>
-          </View>
-        ))}
-      </View>
+      <Text minPresenceAhead={36} style={styles.sectionHeading}>
+        ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ
+      </Text>
+      {showAi ? <Text style={styles.analysis}>{data.aiAnalysis}</Text> : null}
+      {data.skills.length > 0 ? (
+        <View style={styles.detailsRow} wrap={false}>
+          <Text style={styles.detailsLabel}>Навыки:</Text>
+          <Text style={styles.detailsValue}>{data.skills.join("\n")}</Text>
+        </View>
+      ) : null}
+      {data.languages.length > 0 ? (
+        <View style={styles.detailsRow} wrap={false}>
+          <Text style={styles.detailsLabel}>Знание языков:</Text>
+          <Text style={styles.detailsValue}>
+            {data.languages
+              .map((item) => `${item.name} - ${item.level}`)
+              .join("\n")}
+          </Text>
+        </View>
+      ) : null}
     </>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function RecruiterAssessment({ options }: { options: ProfileRenderOptions }) {
+  if (!hasRecruiterAssessment(options.recruiterAssessment)) {
+    return null;
+  }
+
   return (
-    <View style={[styles.table, styles.infoRowTable]}>
-      <View style={styles.row} wrap={false}>
-        <Cell variant="left">
-          <Text style={styles.cellText}>{label}</Text>
-        </Cell>
-        <Cell variant="right">
-          <Text style={styles.cellText}>{value}</Text>
-        </Cell>
+    <View wrap={false}>
+      <Text style={styles.sectionHeading}>ОЦЕНКА РЕКРУТЕРА</Text>
+      <Text style={styles.assessmentSubtitle}>
+        (заполняется рекрутером по итогам интервью или оценочных мероприятий)
+      </Text>
+      <View style={styles.assessmentTable}>
+        {ASSESSMENT_ROWS.map((row) => (
+          <View key={row.key} style={styles.assessmentRow} wrap={false}>
+            <Text
+              style={[
+                styles.assessmentLabel,
+                {
+                  color:
+                    row.tone === "positive" ? COLORS.positive : COLORS.negative,
+                },
+              ]}
+            >
+              {row.label}
+            </Text>
+            <Text style={styles.assessmentValue}>
+              {options.recruiterAssessment?.[row.key] || "-"}
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   );
 }
 
-/**
- * One self-contained block per section, used by the custom (ordered) layout.
- * Returns null when the section has no data so the order list can skip it.
- */
-function renderSectionBlock(
-  section: ProfileSection,
-  data: CandidateProfileData,
-) {
-  switch (section) {
-    case "experience":
-      return data.experience ? (
-        <Text style={styles.infoLine}>Experience: {data.experience}</Text>
-      ) : null;
-    case "dateOfBirth":
-      return data.dateOfBirth ? (
-        <Text style={styles.infoLine}>Date of birth: {data.dateOfBirth}</Text>
-      ) : null;
-    case "languages":
-      return data.languages.length > 0 ? <LanguagesLines data={data} /> : null;
-    case "education":
-      return data.education.length > 0 ? (
-        <EducationSection data={data} />
-      ) : null;
-    case "workExperience":
-      return data.workExperience.length > 0 ? (
-        <WorkExperienceSection data={data} />
-      ) : null;
-    case "additionalInfo":
-      return data.additionalInfo ? (
-        <InfoRow label="Additional information:" value={data.additionalInfo} />
-      ) : null;
-    case "salary":
-      return data.salaryExpectation ? (
-        <InfoRow label="Salary expectations:" value={data.salaryExpectation} />
-      ) : null;
-    default:
-      return null;
-  }
-}
-
-/** Fixed Person Hunters layout: grouped info block + photo, then sections. */
-function BrandedBody({ data }: { data: CandidateProfileData }) {
-  const showExperience = Boolean(data.experience);
-  const showDateOfBirth = Boolean(data.dateOfBirth);
-  const showLanguages = data.languages.length > 0;
-
-  const bottomRows: { label: string; value: string }[] = [];
-  if (data.additionalInfo) {
-    bottomRows.push({
-      label: "Additional information:",
-      value: data.additionalInfo,
-    });
-  }
-  if (data.salaryExpectation) {
-    bottomRows.push({
-      label: "Salary expectations:",
-      value: data.salaryExpectation,
-    });
-  }
+function BrandedBody({
+  data,
+  options,
+}: {
+  data: CandidateProfileData;
+  options: ProfileRenderOptions;
+}) {
+  const coverLetter = options.coverLetter?.trim();
 
   return (
     <>
-      <View style={styles.topRow}>
-        <View style={styles.infoCol}>
-          {showExperience ? (
-            <Text style={styles.infoLine}>Experience: {data.experience}</Text>
+      <View style={styles.topRow} wrap={false}>
+        <View style={styles.summary}>
+          {data.city ? (
+            <SummaryLine label="Место проживания" value={data.city} />
           ) : null}
-          {showDateOfBirth ? (
-            <Text style={styles.infoLine}>
-              Date of birth: {data.dateOfBirth}
-            </Text>
+          {data.experience ? (
+            <SummaryLine label="Опыт работы" value={data.experience} />
           ) : null}
-          {showLanguages ? (
-            <>
-              <View style={styles.infoGap} />
-              <LanguagesLines data={data} />
-            </>
+          {data.currentPosition ? (
+            <SummaryLine label="Специализация" value={data.currentPosition} />
           ) : null}
+          <ContactLines data={data} />
         </View>
-        {data.photoSrc ? (
-          <Image src={data.photoSrc} style={styles.photo} />
-        ) : null}
+        <CandidatePhoto data={data} />
       </View>
 
-      {data.education.length > 0 ? <EducationSection data={data} /> : null}
-      {data.workExperience.length > 0 ? (
-        <WorkExperienceSection data={data} />
-      ) : null}
-
-      {bottomRows.length > 0 ? (
-        <View style={[styles.table, { marginTop: 18 }]}>
-          {bottomRows.map((entry) => (
-            <View key={entry.label} style={styles.row} wrap={false}>
-              <Cell variant="left">
-                <Text style={styles.cellText}>{entry.label}</Text>
-              </Cell>
-              <Cell variant="right">
-                <Text style={styles.cellText}>{entry.value}</Text>
-              </Cell>
-            </View>
-          ))}
+      {coverLetter ? (
+        <View style={styles.coverLetter}>
+          <Text style={styles.summaryLabel}>Сопроводительное письмо:</Text>
+          <Text style={styles.coverLetterText}>{coverLetter}</Text>
         </View>
       ) : null}
+
+      {data.salaryExpectation ? (
+        <Text style={styles.salary}>
+          <Text style={styles.summaryLabel}>
+            Рассматриваем уровень заработной платы:{" "}
+          </Text>
+          {data.salaryExpectation}
+        </Text>
+      ) : null}
+
+      <WorkExperienceSection data={data} />
+      <EducationSection data={data} />
+      <AdditionalInfoSection
+        data={data}
+        includeAiAnalysis={options.includeAiAnalysis === true}
+      />
+      <RecruiterAssessment options={options} />
     </>
   );
 }
 
-/** User-uploaded logo at the top of the custom export, centered. */
 function CustomLogo({ logo }: { logo: ResumeLogo }) {
   const src = `data:image/${logo.type};base64,${logo.data.toString("base64")}`;
   return (
@@ -330,7 +422,66 @@ function CustomLogo({ logo }: { logo: ResumeLogo }) {
   );
 }
 
-/** Custom layout: each selected section rendered in the user-chosen order. */
+function CustomTableRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.customRow} wrap={false}>
+      <View style={styles.customLeft}>
+        <Text>{label}</Text>
+      </View>
+      <View style={styles.customRight}>
+        <Text>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+function renderCustomSection(
+  section: ProfileSection,
+  data: CandidateProfileData,
+) {
+  switch (section) {
+    case "experience":
+      return data.experience ? <Text>Стаж: {data.experience}</Text> : null;
+    case "dateOfBirth":
+      return data.dateOfBirth ? (
+        <Text>Дата рождения: {data.dateOfBirth}</Text>
+      ) : null;
+    case "languages":
+      return data.languages.length > 0 ? (
+        <Text>
+          {data.languages
+            .map((item) => `${item.name} - ${item.level}`)
+            .join("\n")}
+        </Text>
+      ) : null;
+    case "education":
+      return data.education.length > 0 ? (
+        <EducationSection data={data} />
+      ) : null;
+    case "workExperience":
+      return data.workExperience.length > 0 ? (
+        <WorkExperienceSection data={data} />
+      ) : null;
+    case "additionalInfo":
+      return data.aiAnalysis ? (
+        <View style={styles.customTable}>
+          <CustomTableRow label="Доп. информация" value={data.aiAnalysis} />
+        </View>
+      ) : null;
+    case "salary":
+      return data.salaryExpectation ? (
+        <View style={styles.customTable}>
+          <CustomTableRow
+            label="Зарплатные ожидания"
+            value={data.salaryExpectation}
+          />
+        </View>
+      ) : null;
+    default:
+      return null;
+  }
+}
+
 function OrderedBody({
   data,
   sections,
@@ -341,9 +492,9 @@ function OrderedBody({
   return (
     <>
       {sections.map((section) => {
-        const block = renderSectionBlock(section, data);
+        const block = renderCustomSection(section, data);
         return block ? (
-          <View key={section} style={styles.orderedBlock}>
+          <View key={section} style={styles.customBlock}>
             {block}
           </View>
         ) : null;
@@ -362,13 +513,13 @@ export function CandidateProfileDocument({
   return (
     <Document
       author="Person Hunters"
-      title={`${data.fullName} — Person Hunters`}
+      language="ru"
+      title={`${data.fullName} - Person Hunters`}
     >
       <Page size="LETTER" style={styles.page}>
-        {/* Logo and footer repeat on every page when branding is enabled. */}
         {options.showBranding ? (
           <>
-            <View fixed style={styles.logo}>
+            <View style={styles.logo}>
               <PersonHuntersLogo />
             </View>
             <View fixed style={styles.footer}>
@@ -392,17 +543,16 @@ export function CandidateProfileDocument({
           </>
         ) : null}
 
-        {/* Push content clear of the fixed branded logo. */}
-        {options.showBranding ? (
-          <View style={styles.brandedHeaderSpacer} />
-        ) : options.logo ? (
+        {!options.showBranding && options.logo ? (
           <CustomLogo logo={options.logo} />
         ) : null}
 
-        <Text style={styles.name}>{data.fullName}</Text>
+        <Text style={options.showBranding ? styles.name : styles.customName}>
+          {data.fullName}
+        </Text>
 
         {options.showBranding ? (
-          <BrandedBody data={data} />
+          <BrandedBody data={data} options={options} />
         ) : (
           <OrderedBody data={data} sections={options.sections} />
         )}
