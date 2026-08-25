@@ -19,9 +19,27 @@ import {
   hasRecruiterAssessment,
   type RecruiterAssessmentField,
 } from "./candidate-profile-input";
-import { PersonHuntersLogo } from "./person-hunters-logo";
+import { PERSON_HUNTERS_LAYOUT } from "./person-hunters-layout";
 
 const FONT_DIR = path.join(process.cwd(), "src/server/pdf/fonts");
+const LOGO_PATH = path.join(
+  process.cwd(),
+  "src/server/pdf/assets/person-hunters-logo.png",
+);
+
+Font.register({
+  family: "LiberationSerif",
+  fonts: [
+    {
+      src: path.join(FONT_DIR, "LiberationSerif-Regular.ttf"),
+      fontWeight: "normal",
+    },
+    {
+      src: path.join(FONT_DIR, "LiberationSerif-Bold.ttf"),
+      fontWeight: "bold",
+    },
+  ],
+});
 
 Font.register({
   family: "DejaVuSans",
@@ -36,7 +54,7 @@ Font.registerHyphenationCallback((word) => [word]);
 const COLORS = {
   text: "#111111",
   muted: "#808080",
-  footer: "#8C8C8C",
+  footer: "#8A918F",
   border: "#4F4F4F",
   positive: "#548235",
   negative: "#E00000",
@@ -56,7 +74,17 @@ const ASSESSMENT_ROWS: {
 ];
 
 const styles = StyleSheet.create({
-  page: {
+  brandedPage: {
+    paddingTop: 96,
+    paddingBottom: 72,
+    paddingLeft: PERSON_HUNTERS_LAYOUT.margins.leftPoints,
+    paddingRight: PERSON_HUNTERS_LAYOUT.margins.rightPoints,
+    fontSize: PERSON_HUNTERS_LAYOUT.typography.bodyPoints,
+    fontFamily: "LiberationSerif",
+    color: COLORS.text,
+    lineHeight: 1.12,
+  },
+  customPage: {
     paddingTop: 48,
     paddingBottom: 56,
     paddingLeft: 85,
@@ -66,35 +94,52 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     lineHeight: 1.22,
   },
-  logo: { alignItems: "flex-end", marginBottom: 26 },
+  logo: {
+    position: "absolute",
+    top: PERSON_HUNTERS_LAYOUT.margins.headerTwips / 20,
+    right: PERSON_HUNTERS_LAYOUT.margins.rightPoints,
+    width: PERSON_HUNTERS_LAYOUT.logo.widthPoints,
+    height: PERSON_HUNTERS_LAYOUT.logo.heightPoints,
+  },
+  logoImage: {
+    width: PERSON_HUNTERS_LAYOUT.logo.widthPoints,
+    height: PERSON_HUNTERS_LAYOUT.logo.heightPoints,
+    objectFit: "contain",
+  },
   footer: {
     position: "absolute",
-    bottom: 24,
-    left: 85,
-    right: 43,
+    bottom: PERSON_HUNTERS_LAYOUT.margins.footerTwips / 20,
+    left: PERSON_HUNTERS_LAYOUT.margins.leftPoints,
+    right: PERSON_HUNTERS_LAYOUT.margins.rightPoints,
     textAlign: "right",
-    fontSize: 8.5,
+    fontSize: PERSON_HUNTERS_LAYOUT.typography.bodyPoints,
+    fontFamily: "LiberationSerif",
     color: COLORS.footer,
-    lineHeight: 1.45,
+    lineHeight: 1.1,
   },
   footerLink: { color: COLORS.footer, textDecoration: "none" },
+  footerPrimaryLink: { color: COLORS.footer, textDecoration: "underline" },
   name: {
     textAlign: "center",
-    fontSize: 13,
+    fontSize: PERSON_HUNTERS_LAYOUT.typography.namePoints,
     fontWeight: "bold",
-    marginBottom: 16,
+    marginBottom: 26,
     textTransform: "uppercase",
   },
   topRow: { flexDirection: "row", alignItems: "flex-start" },
-  summary: { flexGrow: 1, paddingRight: 20 },
-  summaryLine: { marginBottom: 4 },
+  summary: { flex: 1, paddingRight: 14 },
+  summaryLine: { marginBottom: 1.5 },
   summaryLabel: { fontWeight: "bold" },
-  contactBlock: { marginTop: 7 },
+  contactBlock: { marginTop: 6 },
   contactValue: { color: "#1565C0", textDecoration: "underline" },
-  photo: { width: 102, height: 140, objectFit: "cover" },
+  photo: {
+    width: PERSON_HUNTERS_LAYOUT.photo.widthPoints,
+    height: PERSON_HUNTERS_LAYOUT.photo.heightPoints,
+    objectFit: "cover",
+  },
   photoPlaceholder: {
-    width: 102,
-    height: 140,
+    width: PERSON_HUNTERS_LAYOUT.photo.widthPoints,
+    height: PERSON_HUNTERS_LAYOUT.photo.heightPoints,
     borderWidth: 0.75,
     borderColor: COLORS.border,
     alignItems: "center",
@@ -105,48 +150,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  coverLetter: { marginTop: 9 },
-  coverLetterText: { marginTop: 2 },
-  salary: { marginTop: 10 },
+  coverLetter: { marginTop: 12 },
+  coverLetterText: { marginTop: 2.5 },
+  salary: { marginTop: 16 },
   sectionHeading: {
     textAlign: "center",
-    fontSize: 11,
+    fontSize: PERSON_HUNTERS_LAYOUT.typography.headingPoints,
     fontWeight: "bold",
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 24,
+    marginBottom: 10,
     textTransform: "uppercase",
   },
-  timelineRow: { flexDirection: "row", marginBottom: 8 },
-  period: { width: 118, paddingRight: 12, fontWeight: "bold" },
+  timelineRow: { flexDirection: "row", marginBottom: 12 },
+  period: {
+    width: PERSON_HUNTERS_LAYOUT.work.periodWidthPoints,
+    paddingRight: 10,
+    fontWeight: "bold",
+  },
   timelineContent: { flex: 1 },
-  company: { fontWeight: "bold", marginBottom: 1 },
-  position: { fontWeight: "bold", marginBottom: 2 },
-  bullet: { flexDirection: "row", marginTop: 1 },
-  bulletDot: { width: 12 },
+  company: { fontWeight: "bold", marginBottom: 2 },
+  position: { fontWeight: "bold", marginBottom: 3 },
+  bullet: { flexDirection: "row", marginTop: 2 },
+  bulletDot: { width: 18 },
   bulletText: { flex: 1 },
-  educationRow: { flexDirection: "row", marginBottom: 5 },
-  educationPeriod: { width: 118, paddingRight: 12 },
+  educationRow: { flexDirection: "row", marginBottom: 8 },
+  educationPeriod: {
+    width: PERSON_HUNTERS_LAYOUT.details.labelWidthPoints,
+    paddingRight: 12,
+  },
   educationContent: { flex: 1 },
-  analysis: { marginHorizontal: 14, marginBottom: 9 },
-  detailsRow: { flexDirection: "row", marginTop: 5 },
-  detailsLabel: { width: 128, paddingRight: 12, fontWeight: "bold" },
+  detailsRow: { flexDirection: "row", marginTop: 8 },
+  detailsLabel: {
+    width: PERSON_HUNTERS_LAYOUT.details.labelWidthPoints,
+    paddingRight: 12,
+    fontWeight: "bold",
+  },
+  detailsSpacer: { width: PERSON_HUNTERS_LAYOUT.details.labelWidthPoints },
   detailsValue: { flex: 1 },
+  assessmentBlock: { width: PERSON_HUNTERS_LAYOUT.assessment.tableWidthPoints },
+  assessmentHeading: { marginBottom: 2 },
   assessmentSubtitle: {
     textAlign: "center",
     color: COLORS.muted,
     fontWeight: "bold",
-    marginTop: -8,
     marginBottom: 7,
   },
   assessmentTable: {
+    width: PERSON_HUNTERS_LAYOUT.assessment.tableWidthPoints,
     borderTopWidth: 0.75,
     borderLeftWidth: 0.75,
     borderColor: COLORS.border,
   },
   assessmentRow: { flexDirection: "row" },
   assessmentLabel: {
-    width: 150,
-    paddingVertical: 3,
+    width: PERSON_HUNTERS_LAYOUT.assessment.labelWidthPoints,
+    paddingVertical: 3.5,
     paddingHorizontal: 7,
     borderRightWidth: 0.75,
     borderBottomWidth: 0.75,
@@ -155,7 +213,7 @@ const styles = StyleSheet.create({
   },
   assessmentValue: {
     flex: 1,
-    paddingVertical: 3,
+    paddingVertical: 3.5,
     paddingHorizontal: 9,
     borderRightWidth: 0.75,
     borderBottomWidth: 0.75,
@@ -303,7 +361,12 @@ function AdditionalInfoSection({
       <Text minPresenceAhead={36} style={styles.sectionHeading}>
         ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ
       </Text>
-      {showAi ? <Text style={styles.analysis}>{data.aiAnalysis}</Text> : null}
+      {showAi ? (
+        <View style={styles.detailsRow}>
+          <Text style={styles.detailsSpacer} />
+          <Text style={styles.detailsValue}>{data.aiAnalysis}</Text>
+        </View>
+      ) : null}
       {data.skills.length > 0 ? (
         <View style={styles.detailsRow} wrap={false}>
           <Text style={styles.detailsLabel}>Навыки:</Text>
@@ -330,8 +393,13 @@ function RecruiterAssessment({ options }: { options: ProfileRenderOptions }) {
   }
 
   return (
-    <View wrap={false}>
-      <Text style={styles.sectionHeading}>ОЦЕНКА РЕКРУТЕРА</Text>
+    <View style={styles.assessmentBlock}>
+      <Text
+        minPresenceAhead={120}
+        style={[styles.sectionHeading, styles.assessmentHeading]}
+      >
+        ОЦЕНКА РЕКРУТЕРА
+      </Text>
       <Text style={styles.assessmentSubtitle}>
         (заполняется рекрутером по итогам интервью или оценочных мероприятий)
       </Text>
@@ -516,17 +584,20 @@ export function CandidateProfileDocument({
       language="ru"
       title={`${data.fullName} - Person Hunters`}
     >
-      <Page size="LETTER" style={styles.page}>
+      <Page
+        size="LETTER"
+        style={options.showBranding ? styles.brandedPage : styles.customPage}
+      >
         {options.showBranding ? (
           <>
-            <View style={styles.logo}>
-              <PersonHuntersLogo />
+            <View fixed style={styles.logo}>
+              <Image src={LOGO_PATH} style={styles.logoImage} />
             </View>
             <View fixed style={styles.footer}>
               <Text>
                 <Link
                   src="http://www.personhunters.com"
-                  style={styles.footerLink}
+                  style={styles.footerPrimaryLink}
                 >
                   http://www.personhunters.com
                 </Link>

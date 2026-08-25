@@ -31,17 +31,25 @@ import {
   hasRecruiterAssessment,
   type RecruiterAssessmentField,
 } from "./candidate-profile-input";
+import { PERSON_HUNTERS_LAYOUT } from "./person-hunters-layout";
 
 const FONT = "Times New Roman";
-const BODY_SIZE = 22;
-const FOOTER_GRAY = "8C8C8C";
+const BODY_SIZE = PERSON_HUNTERS_LAYOUT.typography.bodyHalfPoints;
+const FOOTER_GRAY = "8A918F";
 const POSITIVE_GREEN = "548235";
 const NEGATIVE_RED = "E00000";
-const USABLE_WIDTH = 9690;
-const PERIOD_WIDTH = 1850;
-const CONTENT_WIDTH = USABLE_WIDTH - PERIOD_WIDTH;
-const ASSESSMENT_LABEL_WIDTH = 2600;
-const ASSESSMENT_VALUE_WIDTH = USABLE_WIDTH - ASSESSMENT_LABEL_WIDTH;
+const USABLE_WIDTH = PERSON_HUNTERS_LAYOUT.content.widthTwips;
+const PHOTO_COLUMN_WIDTH = PERSON_HUNTERS_LAYOUT.photo.widthTwips;
+const SUMMARY_COLUMN_WIDTH = USABLE_WIDTH - PHOTO_COLUMN_WIDTH;
+const WORK_PERIOD_WIDTH = PERSON_HUNTERS_LAYOUT.work.periodWidthTwips;
+const WORK_CONTENT_WIDTH = USABLE_WIDTH - WORK_PERIOD_WIDTH;
+const DETAILS_LABEL_WIDTH = PERSON_HUNTERS_LAYOUT.details.labelWidthTwips;
+const DETAILS_CONTENT_WIDTH = USABLE_WIDTH - DETAILS_LABEL_WIDTH;
+const ASSESSMENT_TABLE_WIDTH = PERSON_HUNTERS_LAYOUT.assessment.tableWidthTwips;
+const ASSESSMENT_LABEL_WIDTH = PERSON_HUNTERS_LAYOUT.assessment.labelWidthTwips;
+const ASSESSMENT_VALUE_WIDTH = ASSESSMENT_TABLE_WIDTH - ASSESSMENT_LABEL_WIDTH;
+const CUSTOM_LABEL_WIDTH = 1850;
+const CUSTOM_CONTENT_WIDTH = USABLE_WIDTH - CUSTOM_LABEL_WIDTH;
 const BORDER = { style: BorderStyle.SINGLE, size: 4, color: "4F4F4F" };
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
 const NO_BORDERS = {
@@ -58,8 +66,8 @@ const CELL_BORDERS = {
   left: BORDER,
   right: BORDER,
 };
-const LOGO_WIDTH = 150;
-const LOGO_HEIGHT = 46;
+const LOGO_WIDTH = PERSON_HUNTERS_LAYOUT.logo.widthPixels;
+const LOGO_HEIGHT = PERSON_HUNTERS_LAYOUT.logo.heightPixels;
 
 const LOGO_PATH = path.join(
   process.cwd(),
@@ -107,7 +115,7 @@ function paragraph(
     spacing: {
       before: options?.before ?? 0,
       after: options?.after ?? 40,
-      line: 276,
+      line: 240,
     },
     children,
   });
@@ -129,15 +137,15 @@ function sectionHeading(text: string): Paragraph {
   return paragraph([run(text, { bold: true, size: 24 })], {
     alignment: AlignmentType.CENTER,
     before: 360,
-    after: 180,
+    after: 120,
     keepNext: true,
   });
 }
 
 function bulletParagraph(text: string): Paragraph {
   return new Paragraph({
-    spacing: { after: 30, line: 276 },
-    indent: { left: 260, hanging: 180 },
+    spacing: { after: 40, line: 240 },
+    indent: { left: 360, hanging: 260 },
     bullet: { level: 0 },
     children: [run(text)],
   });
@@ -145,7 +153,7 @@ function bulletParagraph(text: string): Paragraph {
 
 function summaryParagraph(label: string, value: string) {
   return paragraph([run(`${label}: `, { bold: true }), run(value)], {
-    after: 50,
+    after: 20,
   });
 }
 
@@ -164,7 +172,7 @@ function contactParagraph(type: string, value: string) {
     return paragraph([run(value)], { after: 30 });
   }
   return new Paragraph({
-    spacing: { after: 30, line: 276 },
+    spacing: { after: 20, line: 240 },
     children: [
       new ExternalHyperlink({
         link: hyperlink,
@@ -217,20 +225,20 @@ function buildSummaryTable(data: CandidateProfileData): Table {
 
   return new Table({
     width: { size: USABLE_WIDTH, type: WidthType.DXA },
-    columnWidths: [USABLE_WIDTH - 2300, 2300],
+    columnWidths: [SUMMARY_COLUMN_WIDTH, PHOTO_COLUMN_WIDTH],
     layout: TableLayoutType.FIXED,
     borders: NO_BORDERS,
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            width: { size: USABLE_WIDTH - 2300, type: WidthType.DXA },
+            width: { size: SUMMARY_COLUMN_WIDTH, type: WidthType.DXA },
             borders: NO_BORDERS,
-            margins: { top: 40, bottom: 60, left: 0, right: 240 },
+            margins: { top: 40, bottom: 60, left: 0, right: 160 },
             children: summaryChildren,
           }),
           new TableCell({
-            width: { size: 2300, type: WidthType.DXA },
+            width: { size: PHOTO_COLUMN_WIDTH, type: WidthType.DXA },
             borders: CELL_BORDERS,
             verticalAlign: VerticalAlign.CENTER,
             margins: { top: 80, bottom: 80, left: 80, right: 80 },
@@ -245,7 +253,7 @@ function buildSummaryTable(data: CandidateProfileData): Table {
 function buildWorkExperienceTable(data: CandidateProfileData): Table {
   return new Table({
     width: { size: USABLE_WIDTH, type: WidthType.DXA },
-    columnWidths: [PERIOD_WIDTH, CONTENT_WIDTH],
+    columnWidths: [WORK_PERIOD_WIDTH, WORK_CONTENT_WIDTH],
     layout: TableLayoutType.FIXED,
     borders: NO_BORDERS,
     rows: data.workExperience.map(
@@ -253,16 +261,16 @@ function buildWorkExperienceTable(data: CandidateProfileData): Table {
         new TableRow({
           children: [
             new TableCell({
-              width: { size: PERIOD_WIDTH, type: WidthType.DXA },
+              width: { size: WORK_PERIOD_WIDTH, type: WidthType.DXA },
               borders: NO_BORDERS,
-              margins: { top: 40, bottom: 120, left: 0, right: 160 },
+              margins: { top: 20, bottom: 160, left: 0, right: 120 },
               verticalAlign: VerticalAlign.TOP,
               children: [paragraph([run(job.period, { bold: true })])],
             }),
             new TableCell({
-              width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+              width: { size: WORK_CONTENT_WIDTH, type: WidthType.DXA },
               borders: NO_BORDERS,
-              margins: { top: 40, bottom: 120, left: 0, right: 0 },
+              margins: { top: 20, bottom: 160, left: 0, right: 0 },
               verticalAlign: VerticalAlign.TOP,
               children: [
                 paragraph([run(job.company, { bold: true })], { after: 40 }),
@@ -285,7 +293,7 @@ function buildWorkExperienceTable(data: CandidateProfileData): Table {
 function buildEducationTable(data: CandidateProfileData): Table {
   return new Table({
     width: { size: USABLE_WIDTH, type: WidthType.DXA },
-    columnWidths: [PERIOD_WIDTH, CONTENT_WIDTH],
+    columnWidths: [DETAILS_LABEL_WIDTH, DETAILS_CONTENT_WIDTH],
     layout: TableLayoutType.FIXED,
     borders: NO_BORDERS,
     rows: data.education.map(
@@ -293,13 +301,13 @@ function buildEducationTable(data: CandidateProfileData): Table {
         new TableRow({
           children: [
             new TableCell({
-              width: { size: PERIOD_WIDTH, type: WidthType.DXA },
+              width: { size: DETAILS_LABEL_WIDTH, type: WidthType.DXA },
               borders: NO_BORDERS,
               margins: { top: 30, bottom: 70, left: 0, right: 160 },
               children: [paragraph([run(item.period)])],
             }),
             new TableCell({
-              width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+              width: { size: DETAILS_CONTENT_WIDTH, type: WidthType.DXA },
               borders: NO_BORDERS,
               margins: { top: 30, bottom: 70, left: 0, right: 0 },
               children: [
@@ -317,13 +325,13 @@ function detailRow(label: string, values: string[]): TableRow {
   return new TableRow({
     children: [
       new TableCell({
-        width: { size: PERIOD_WIDTH, type: WidthType.DXA },
+        width: { size: DETAILS_LABEL_WIDTH, type: WidthType.DXA },
         borders: NO_BORDERS,
         margins: { top: 80, bottom: 80, left: 0, right: 160 },
         children: [paragraph([run(label, { bold: true })])],
       }),
       new TableCell({
-        width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+        width: { size: DETAILS_CONTENT_WIDTH, type: WidthType.DXA },
         borders: NO_BORDERS,
         margins: { top: 80, bottom: 80, left: 0, right: 0 },
         children: values.map((value) => paragraph([run(value)], { after: 20 })),
@@ -337,10 +345,10 @@ function buildAdditionalInfo(
   options: ProfileRenderOptions,
 ): (Paragraph | Table)[] {
   const content: (Paragraph | Table)[] = [];
-  if (options.includeAiAnalysis && data.aiAnalysis) {
-    content.push(...textParagraphs(data.aiAnalysis, { after: 120 }));
-  }
   const rows: TableRow[] = [];
+  if (options.includeAiAnalysis && data.aiAnalysis) {
+    rows.push(detailRow("", data.aiAnalysis.split(/\r?\n/)));
+  }
   if (data.skills.length > 0) {
     rows.push(detailRow("Навыки:", data.skills));
   }
@@ -358,7 +366,7 @@ function buildAdditionalInfo(
     content.push(
       new Table({
         width: { size: USABLE_WIDTH, type: WidthType.DXA },
-        columnWidths: [PERIOD_WIDTH, CONTENT_WIDTH],
+        columnWidths: [DETAILS_LABEL_WIDTH, DETAILS_CONTENT_WIDTH],
         layout: TableLayoutType.FIXED,
         borders: NO_BORDERS,
         rows,
@@ -370,7 +378,7 @@ function buildAdditionalInfo(
 
 function buildAssessmentTable(options: ProfileRenderOptions): Table {
   return new Table({
-    width: { size: USABLE_WIDTH, type: WidthType.DXA },
+    width: { size: ASSESSMENT_TABLE_WIDTH, type: WidthType.DXA },
     columnWidths: [ASSESSMENT_LABEL_WIDTH, ASSESSMENT_VALUE_WIDTH],
     layout: TableLayoutType.FIXED,
     rows: ASSESSMENT_ROWS.map(
@@ -467,7 +475,7 @@ function buildBrandedBody(
 
 function borderedLabelCell(text: string): TableCell {
   return new TableCell({
-    width: { size: PERIOD_WIDTH, type: WidthType.DXA },
+    width: { size: CUSTOM_LABEL_WIDTH, type: WidthType.DXA },
     borders: CELL_BORDERS,
     margins: { top: 70, bottom: 70, left: 90, right: 90 },
     children: [paragraph([run(text)], { after: 0 })],
@@ -476,7 +484,7 @@ function borderedLabelCell(text: string): TableCell {
 
 function borderedValueCell(value: string): TableCell {
   return new TableCell({
-    width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+    width: { size: CUSTOM_CONTENT_WIDTH, type: WidthType.DXA },
     borders: CELL_BORDERS,
     margins: { top: 70, bottom: 70, left: 90, right: 90 },
     children: textParagraphs(value, { after: 0 }),
@@ -486,7 +494,7 @@ function borderedValueCell(value: string): TableCell {
 function customInfoTable(label: string, value: string): Table {
   return new Table({
     width: { size: USABLE_WIDTH, type: WidthType.DXA },
-    columnWidths: [PERIOD_WIDTH, CONTENT_WIDTH],
+    columnWidths: [CUSTOM_LABEL_WIDTH, CUSTOM_CONTENT_WIDTH],
     layout: TableLayoutType.FIXED,
     rows: [
       new TableRow({
@@ -532,7 +540,7 @@ function customSectionBlocks(
   }
 }
 
-function footerLink(url: string): Paragraph {
+function footerLink(url: string, underline = false): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.RIGHT,
     spacing: { after: 20 },
@@ -543,8 +551,9 @@ function footerLink(url: string): Paragraph {
           new TextRun({
             text: url,
             font: FONT,
-            size: 18,
+            size: BODY_SIZE,
             color: FOOTER_GRAY,
+            underline: underline ? {} : undefined,
           }),
         ],
       }),
@@ -590,7 +599,7 @@ export async function buildCandidateDocx(
       ],
       {
         alignment: AlignmentType.CENTER,
-        before: options.showBranding ? 320 : 100,
+        before: options.showBranding ? 600 : 100,
         after: options.showBranding ? 360 : 240,
       },
     ),
@@ -616,9 +625,13 @@ export async function buildCandidateDocx(
                   new ImageRun({
                     type: "png",
                     data: logo,
-                    transformation: { width: LOGO_WIDTH, height: LOGO_HEIGHT },
+                    transformation: {
+                      width: LOGO_WIDTH,
+                      height: LOGO_HEIGHT,
+                    },
                   }),
                 ],
+                spacing: { after: 0 },
               }),
             ],
           }),
@@ -628,7 +641,7 @@ export async function buildCandidateDocx(
     ? {
         default: new Footer({
           children: [
-            footerLink("http://www.personhunters.com"),
+            footerLink("http://www.personhunters.com", true),
             footerLink("https://www.facebook.com/PersonHunters"),
           ],
         }),
@@ -640,7 +653,7 @@ export async function buildCandidateDocx(
       default: {
         document: {
           run: { font: FONT, size: BODY_SIZE },
-          paragraph: { spacing: { line: 276 } },
+          paragraph: { spacing: { line: 240 } },
         },
       },
     },
@@ -648,13 +661,29 @@ export async function buildCandidateDocx(
       {
         properties: {
           page: {
+            size: {
+              width: PERSON_HUNTERS_LAYOUT.page.widthTwips,
+              height: PERSON_HUNTERS_LAYOUT.page.heightTwips,
+            },
             margin: {
-              top: options.showBranding ? 1138 : 1100,
-              bottom: options.showBranding ? 1138 : 1200,
-              left: options.showBranding ? 1699 : 1080,
-              right: options.showBranding ? 850 : 1080,
-              header: 400,
-              footer: 360,
+              top: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.topTwips
+                : 1100,
+              bottom: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.bottomTwips
+                : 1200,
+              left: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.leftTwips
+                : 1080,
+              right: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.rightTwips
+                : 1080,
+              header: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.headerTwips
+                : 400,
+              footer: options.showBranding
+                ? PERSON_HUNTERS_LAYOUT.margins.footerTwips
+                : 360,
             },
           },
         },
