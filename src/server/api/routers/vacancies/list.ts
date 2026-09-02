@@ -1,7 +1,7 @@
 import type { SQL } from "drizzle-orm";
 import { and, desc, eq, gte, ilike, inArray, isNotNull, or } from "drizzle-orm";
 
-import { getRequiredCompanyId } from "~/server/api/router-utils/company";
+import { getCompanyMembership } from "~/server/api/router-utils/company";
 import { getPeriodDateCutoff } from "~/server/api/router-utils/period";
 import { escapeLike } from "~/server/api/router-utils/sql";
 import { protectedProcedure } from "~/server/api/trpc";
@@ -12,7 +12,10 @@ import {
   fetchHhVacancyResponseCounts,
   isHhAuthenticationError,
 } from "~/server/services/hh";
-import { resolveUserHhAuth } from "~/server/services/hh-company-account";
+import {
+  resolveCompanyHhAccounts,
+  resolveUserHhAuth,
+} from "~/server/services/hh-company-account";
 
 import { vacancyListInputSchema } from "./schemas";
 import {
@@ -109,10 +112,11 @@ export const listVacanciesProcedure = protectedProcedure
     const limit = input?.limit ?? 50;
     const offset = input?.offset ?? 0;
 
-    const userCompanyId = await getRequiredCompanyId(
+    const membership = await getCompanyMembership(
       ctx.db,
       ctx.session?.user?.id,
     );
+    const userCompanyId = membership.companyId;
 
     // An empty `sources` filter means "any source".
     const wantsLocalSource = sources.length === 0 || sources.includes("local");
@@ -198,8 +202,23 @@ export const listVacanciesProcedure = protectedProcedure
       return localOnlyResult;
     }
 
-    const hhAccount = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
-    if (!hhAccount?.accessToken || !hhAccount.employerId) {
+    // Regular members see the live feed from their own hh.uz connection. Company admins
+    // (including the master account) see every employer account connected by a user in the
+    // company, matching the company-wide visibility already used for persisted vacancies.
+    const hhAccounts = membership.isAdmin
+      ? await resolveCompanyHhAccounts(ctx.db, userCompanyId)
+      : [await resolveUserHhAuth(ctx.db, ctx.session.user.id)].flatMap(
+          (account) =>
+            account?.accessToken && account.employerId
+              ? [
+                  {
+                    accessToken: account.accessToken,
+                    employerId: account.employerId,
+                  },
+                ]
+              : [],
+        );
+    if (hhAccounts.length === 0) {
       return localOnlyResult;
     }
 
@@ -236,9 +255,16 @@ export const listVacanciesProcedure = protectedProcedure
       // filter is active (hh.uz pagination cannot express those) and the caller did not
       // explicitly ask for the hh.uz source on its own.
       const canPaginateOnHhSide =
-        !sources.includes("hh.uz") && !normalizedSearch && !normalizedCity;
+        hhAccounts.length === 1 &&
+        !sources.includes("hh.uz") &&
+        !normalizedSearch &&
+        !normalizedCity;
 
       if (canPaginateOnHhSide) {
+        const hhAccount = hhAccounts[0];
+        if (!hhAccount) {
+          return localOnlyResult;
+        }
         const paginatedLocal = paginate(localVacancies);
         // The paginated hh.uz page rarely contains the hh.uz vacancies linked to the local
         // rows on this page, so their response counters are fetched directly by id.
@@ -284,14 +310,45 @@ export const listVacanciesProcedure = protectedProcedure
       // Slow path: hh.uz cannot filter by search / city, so fetch every active hh.uz
       // vacancy and filter it in memory before merging with the local results. Archived
       // hh.uz vacancies are served exclusively from `localVacancies`.
-      const hhVacancies = await fetchCompanyHhVacancies(
-        hhAccount.employerId,
-        hhAccount.accessToken,
-        {
-          includeArchived: false,
-          throwOnAuthenticationError: true,
-        },
+      const hhResults = await Promise.allSettled(
+        hhAccounts.map(async (account) => ({
+          account,
+          vacancies: await fetchCompanyHhVacancies(
+            account.employerId,
+            account.accessToken,
+            {
+              includeArchived: false,
+              throwOnAuthenticationError: true,
+            },
+          ),
+        })),
       );
+      const failedResults = hhResults.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected",
+      );
+      const hhVacancies = [
+        ...new Map(
+          hhResults
+            .filter(
+              (
+                result,
+              ): result is PromiseFulfilledResult<{
+                account: (typeof hhAccounts)[number];
+                vacancies: Awaited<ReturnType<typeof fetchCompanyHhVacancies>>;
+              }> => result.status === "fulfilled",
+            )
+            .flatMap((result) => result.value.vacancies)
+            .map((vacancy) => [vacancy.id, vacancy] as const),
+        ).values(),
+      ];
+
+      for (const result of failedResults) {
+        console.error("Failed to fetch an hh.uz vacancy feed for company", {
+          companyId: userCompanyId,
+          error: result.reason,
+        });
+      }
       const hhItems = hhVacancies
         .filter((vacancy) => {
           if (linkedHhVacancyIds.has(vacancy.id)) {
@@ -326,13 +383,19 @@ export const listVacanciesProcedure = protectedProcedure
       return {
         items: paginate(items),
         total: items.length,
-        hhUnavailable: false,
-        hhUnavailableReason: null as HhUnavailableReason | null,
+        hhUnavailable: failedResults.length > 0,
+        hhUnavailableReason: failedResults.some((result) =>
+          isHhAuthenticationError(result.reason),
+        )
+          ? ("authenticationExpired" as const)
+          : failedResults.length > 0
+            ? ("unavailable" as const)
+            : null,
       };
     } catch (error) {
       console.error("Failed to fetch hh.uz vacancies for company", {
         companyId: userCompanyId,
-        employerId: hhAccount.employerId,
+        employerIds: hhAccounts.map((account) => account.employerId),
         error,
       });
       // Degraded, not empty: local rows are still returned so the page works,
