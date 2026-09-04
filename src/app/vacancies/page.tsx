@@ -19,17 +19,23 @@ import {
   NoVacancies,
   SearchIcon,
 } from "../_components/icons";
-import { MotionToast } from "../_components/motion-system";
+import { Modal } from "../_components/modal";
+import {
+  LoadingButtonContent,
+  MotionToast,
+} from "../_components/motion-system";
 import {
   PeriodFilter,
   type PeriodFilterValue,
 } from "../_components/period-filter";
 import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
+import { useErrorToast } from "../_components/use-error-toast";
 import { VacancyTable } from "../_components/vacancy-table";
 
 type Vacancy = RouterOutputs["vacancies"]["list"]["items"][number];
 type VacancyStatus = Vacancy["status"];
+type VacancyDeleteTarget = Pick<Vacancy, "id" | "title">;
 
 function isVacancyStatus(
   value: string,
@@ -48,14 +54,18 @@ function toVacancyFunnelPath(vacancy: Pick<Vacancy, "id">): string {
 
 export default function VacanciesPage() {
   const t = useTranslations("Vacancies");
+  const common = useTranslations("Common");
   const localizeLookups = useLookupLocalizer();
   const utils = api.useUtils();
+  const showError = useErrorToast();
   const [selectedPeriod, setSelectedPeriod] =
     useState<PeriodFilterValue>("year");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [vacancyToDelete, setVacancyToDelete] =
+    useState<VacancyDeleteTarget | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
@@ -174,6 +184,24 @@ export default function VacanciesPage() {
     },
   });
 
+  const deleteVacancy = api.vacancies.delete.useMutation({
+    onSuccess: async () => {
+      setVacancyToDelete(null);
+      setToastMessage(t("deleted"));
+      await Promise.all([
+        utils.vacancies.list.invalidate(),
+        utils.dashboard.getDashboardData.invalidate(),
+        utils.sidebar.counts.invalidate(),
+      ]);
+    },
+    onError: (error) => {
+      showError(error, {
+        dedupeKey: "vacancy-delete",
+        fallbackMessage: t("deleteError"),
+      });
+    },
+  });
+
   const handleStatusChange = (vacancyId: string, nextStatus: string) => {
     if (!isVacancyStatus(nextStatus, vacancyStatusOptions)) {
       setToastMessage(t("unknownStatus"));
@@ -224,6 +252,53 @@ export default function VacanciesPage() {
         sourceOptions={vacancySourceOptions}
         statusOptions={vacancyStatusOptions}
       />
+
+      <Modal
+        ariaLabel={t("deleteConfirmTitle")}
+        closeOnBackdropClick={!deleteVacancy.isPending}
+        closeOnEscape={!deleteVacancy.isPending}
+        isOpen={Boolean(vacancyToDelete)}
+        onClose={() => {
+          if (!deleteVacancy.isPending) {
+            setVacancyToDelete(null);
+          }
+        }}
+        title={t("deleteConfirmTitle")}
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-text-secondary leading-[1.5]">
+            {t("deleteConfirmDescription", {
+              title: vacancyToDelete?.title ?? "",
+            })}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              className="ui-button ui-button-secondary w-full"
+              disabled={deleteVacancy.isPending}
+              onClick={() => setVacancyToDelete(null)}
+              type="button"
+            >
+              {common("cancel")}
+            </button>
+            <button
+              className="ui-button w-full bg-accent-red text-white hover:opacity-90"
+              disabled={deleteVacancy.isPending}
+              onClick={() => {
+                if (vacancyToDelete) {
+                  deleteVacancy.mutate({ id: vacancyToDelete.id });
+                }
+              }}
+              type="button"
+            >
+              <LoadingButtonContent
+                isLoading={deleteVacancy.isPending}
+                label={common("delete")}
+                loadingLabel={t("deleting")}
+              />
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <main className="flex flex-1 overflow-visible sm:h-full sm:overflow-auto">
         <div className="app-page flex min-h-full flex-col">
@@ -283,6 +358,10 @@ export default function VacanciesPage() {
               <VacancyTable
                 getDetailPath={toVacancyDetailPath}
                 getFunnelPath={toVacancyFunnelPath}
+                isDeletePending={(vacancy) =>
+                  deleteVacancy.isPending &&
+                  deleteVacancy.variables?.id === vacancy.id
+                }
                 isLoading={isLoading}
                 isStatusPending={(vacancy) =>
                   vacancy.source !== "hh.uz" &&
@@ -291,6 +370,7 @@ export default function VacanciesPage() {
                 }
                 items={vacanciesData?.items ?? []}
                 loadingLabel={t("loading")}
+                onDelete={setVacancyToDelete}
                 onStatusChange={handleStatusChange}
                 onToggleSelection={() => {}}
                 pagination={

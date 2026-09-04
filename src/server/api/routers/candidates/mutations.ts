@@ -18,7 +18,11 @@ import {
 } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
-import { DirectusStorageError } from "~/server/storage/directus-storage";
+import {
+  DirectusStorageError,
+  deleteDirectusFileById,
+  isDirectusNotFoundError,
+} from "~/server/storage/directus-storage";
 import {
   formatFileSize,
   getCandidateResumeStorageKey,
@@ -34,6 +38,7 @@ import { getLocalizedText } from "~/shared/localized-ai";
 
 import {
   candidateCreateInputSchema,
+  candidateIdInputSchema,
   candidateUpdateInputSchema,
   candidateUploadResumeInputSchema,
 } from "./schemas";
@@ -528,4 +533,58 @@ export const updateCandidateProcedure = protectedProcedure
     });
 
     return updated;
+  });
+
+/** Deletes a candidate and its dependent company-scoped records. */
+export const deleteCandidateProcedure = protectedProcedure
+  .input(candidateIdInputSchema)
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const [deleted] = await ctx.db
+      .delete(candidates)
+      .where(
+        and(eq(candidates.id, input.id), eq(candidates.companyId, companyId)),
+      )
+      .returning({
+        id: candidates.id,
+        fullName: candidates.fullName,
+        resumeFileId: candidates.resumeFileId,
+      });
+
+    if (!deleted) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Кандидат не найден",
+      });
+    }
+
+    const actorName =
+      ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+
+    await writeRecentActivityLog(ctx.db, {
+      entityType: "candidate",
+      entityId: deleted.id,
+      companyId,
+      actorUserId: ctx.session?.user?.id ?? null,
+      actorName,
+      action: "Удалил(а) кандидата",
+      targetName: deleted.fullName,
+      targetStatus: "Удалён",
+    });
+
+    if (deleted.resumeFileId) {
+      try {
+        await deleteDirectusFileById(deleted.resumeFileId);
+      } catch (error) {
+        if (!isDirectusNotFoundError(error)) {
+          console.error("Failed to delete candidate resume file", {
+            candidateId: deleted.id,
+            error,
+          });
+        }
+      }
+    }
+
+    return { id: deleted.id };
   });

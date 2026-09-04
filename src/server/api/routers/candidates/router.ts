@@ -10,6 +10,7 @@ import {
 } from "./meetings";
 import {
   createCandidateProcedure,
+  deleteCandidateProcedure,
   updateCandidateProcedure,
   uploadResumeProcedure,
 } from "./mutations";
@@ -31,6 +32,7 @@ export const candidatesRouter = createTRPCRouter({
   searchMeetingCandidates: searchMeetingCandidatesProcedure,
   createMeeting: createCandidateMeetingProcedure,
   create: createCandidateProcedure,
+  delete: deleteCandidateProcedure,
   update: updateCandidateProcedure,
   uploadResume: uploadResumeProcedure,
   syncHh: syncHhCandidatesProcedure,

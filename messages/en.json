@@ -654,7 +654,12 @@
     "created": "Created:",
     "city": "City:",
     "source": "Source:",
-    "quickAdd": "Quick add candidate"
+    "quickAdd": "Quick add candidate",
+    "deleteConfirmTitle": "Delete candidate?",
+    "deleteConfirmDescription": "Candidate {name}, their meetings, and vacancy links will be deleted. This action cannot be undone.",
+    "deleting": "Deleting...",
+    "deleted": "Candidate deleted",
+    "deleteError": "Could not delete candidate"
   },
   "CandidateForm": {
     "addCandidate": "Add candidate",
@@ -738,7 +743,12 @@
     "localConnection": "Talanty",
     "funnel": "Funnel",
     "published": "Published:",
-    "statusFor": "Status for {title}"
+    "statusFor": "Status for {title}",
+    "deleteConfirmTitle": "Delete vacancy?",
+    "deleteConfirmDescription": "Vacancy {title}, its applications, and publication drafts will be deleted from Talanty. Published listings on external platforms will remain active. This action cannot be undone.",
+    "deleting": "Deleting...",
+    "deleted": "Vacancy deleted",
+    "deleteError": "Could not delete vacancy"
   },
   "VacancyForm": {
     "addTitle": "Add vacancy",

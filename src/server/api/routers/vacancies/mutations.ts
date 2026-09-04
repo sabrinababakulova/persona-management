@@ -1022,6 +1022,82 @@ export const deleteVacancyPublicationProcedure = protectedProcedure
     return { success: true, id: deleted.id, parentId: deleted.parentId };
   });
 
+/** Deletes a company-owned base vacancy and its local publication records. */
+export const deleteVacancyProcedure = protectedProcedure
+  .input(vacancyIdInputSchema)
+  .mutation(async ({ ctx, input }) => {
+    const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
+
+    const [existing] = await ctx.db
+      .select({ id: vacancies.id, title: vacancies.title })
+      .from(vacancies)
+      .where(
+        and(
+          eq(vacancies.id, input.id),
+          eq(vacancies.companyId, companyId),
+          eq(vacancies.isPublication, false),
+          isUserVisibleVacancy(),
+        ),
+      )
+      .limit(1);
+
+    if (!existing) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    const deleted = await ctx.db.transaction(async (tx) => {
+      await tx
+        .delete(vacancies)
+        .where(
+          and(
+            eq(vacancies.parentId, existing.id),
+            eq(vacancies.companyId, companyId),
+            eq(vacancies.isPublication, true),
+          ),
+        );
+
+      const [deletedVacancy] = await tx
+        .delete(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, existing.id),
+            eq(vacancies.companyId, companyId),
+            eq(vacancies.isPublication, false),
+            isUserVisibleVacancy(),
+          ),
+        )
+        .returning({ id: vacancies.id });
+
+      return deletedVacancy;
+    });
+
+    if (!deleted) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Вакансия не найдена",
+      });
+    }
+
+    const actorName =
+      ctx.session?.user?.name ?? ctx.session?.user?.email ?? "Система";
+
+    await writeRecentActivityLog(ctx.db, {
+      entityType: "vacancy",
+      entityId: deleted.id,
+      companyId,
+      actorUserId: ctx.session?.user?.id ?? null,
+      actorName,
+      action: "Удалил(а) вакансию",
+      targetName: existing.title,
+      targetStatus: "Удалена",
+    });
+
+    return { id: deleted.id };
+  });
+
 export const getTelegramConfigProcedure = protectedProcedure.query(
   async ({ ctx }) => {
     if (!isTelegramConfigured()) {

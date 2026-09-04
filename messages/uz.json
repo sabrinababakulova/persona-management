@@ -654,7 +654,12 @@
     "created": "Yaratilgan:",
     "city": "Shahar:",
     "source": "Manba:",
-    "quickAdd": "Nomzodni tez qo‘shish"
+    "quickAdd": "Nomzodni tez qo‘shish",
+    "deleteConfirmTitle": "Nomzod o‘chirilsinmi?",
+    "deleteConfirmDescription": "{name} nomzodi, uning uchrashuvlari va vakansiyalar bilan bog‘lanishlari o‘chiriladi. Bu amalni bekor qilib bo‘lmaydi.",
+    "deleting": "O‘chirilmoqda...",
+    "deleted": "Nomzod o‘chirildi",
+    "deleteError": "Nomzodni o‘chirib bo‘lmadi"
   },
   "CandidateForm": {
     "addCandidate": "Nomzod qo‘shish",
@@ -738,7 +743,12 @@
     "localConnection": "Talanty",
     "funnel": "Voronka",
     "published": "E’lon qilingan:",
-    "statusFor": "{title} vakansiyasining holati"
+    "statusFor": "{title} vakansiyasining holati",
+    "deleteConfirmTitle": "Vakansiya o‘chirilsinmi?",
+    "deleteConfirmDescription": "{title} vakansiyasi, uning arizalari va e’lon qoralamalari Talanty’dan o‘chiriladi. Tashqi platformalarda e’lon qilingan vakansiyalar faol qoladi. Bu amalni bekor qilib bo‘lmaydi.",
+    "deleting": "O‘chirilmoqda...",
+    "deleted": "Vakansiya o‘chirildi",
+    "deleteError": "Vakansiyani o‘chirib bo‘lmadi"
   },
   "VacancyForm": {
     "addTitle": "Vakansiya qo‘shish",

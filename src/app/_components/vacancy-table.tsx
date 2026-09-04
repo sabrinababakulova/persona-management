@@ -16,7 +16,8 @@ type DashboardVacancy =
 type VacancyTableItem = Vacancy | DashboardVacancy;
 
 import { Checkbox } from "./checkbox";
-import { ChevronDownIcon, MoreIcon, SortIcon } from "./icons";
+import { DeleteRowActionMenu } from "./delete-row-action-menu";
+import { ChevronDownIcon, SortIcon } from "./icons";
 import { motion } from "./motion-system";
 import { TableRowsSkeleton } from "./page-skeleton";
 
@@ -103,6 +104,8 @@ interface VacancyTableProps {
   onToggleSelection?: (id: string) => void;
   onStatusChange?: (vacancyId: string, nextStatus: string) => void;
   isStatusPending?: (vacancy: VacancyTableItem) => boolean;
+  isDeletePending?: (vacancy: VacancyTableItem) => boolean;
+  onDelete?: (vacancy: VacancyTableItem) => void;
   getDetailPath?: (vacancy: VacancyTableItem) => string;
   getFunnelPath?: (vacancy: VacancyTableItem) => string;
   stripedRows?: boolean;
@@ -196,6 +199,8 @@ export function VacancyTable({
   onToggleSelection,
   onStatusChange,
   isStatusPending,
+  isDeletePending,
+  onDelete,
   getDetailPath = toVacancyDetailPath,
   getFunnelPath = toVacancyFunnelPath,
   stripedRows = false,
@@ -423,13 +428,12 @@ export function VacancyTable({
                       >
                         {t("responses")}
                       </Link>
-                      <button
-                        aria-label={common("details")}
-                        className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-secondary xl:h-auto xl:w-auto xl:rounded-none xl:p-1"
-                        type="button"
-                      >
-                        <MoreIcon className="h-4 w-4" />
-                      </button>
+                      {onDelete && (
+                        <DeleteRowActionMenu
+                          disabled={isDeletePending?.(item) ?? false}
+                          onDelete={() => onDelete(item)}
+                        />
+                      )}
                     </div>
 
                     <dl className="vacancy-card-meta col-span-12 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs xl:hidden">

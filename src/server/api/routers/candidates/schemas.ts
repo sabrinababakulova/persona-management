@@ -27,7 +27,9 @@ export const candidateUploadResumeInputSchema = z.object({
 });
 
 /** Generic candidate identifier input for detail reads. */
-export const candidateIdInputSchema = z.object({ id: z.string() });
+export const candidateIdInputSchema = z.object({
+  id: z.string().min(1).max(255),
+});
 
 /** Input for appending a note to an existing candidate. */
 export const candidateNoteInputSchema = z.object({

@@ -12,6 +12,7 @@ import type { RouterOutputs } from "~/types/trpc/router-outputs";
 type Candidate = RouterOutputs["candidates"]["list"]["items"][number];
 
 import { Checkbox } from "../_components/checkbox";
+import { DeleteRowActionMenu } from "../_components/delete-row-action-menu";
 import {
   countActiveFilters,
   EMPTY_FILTER_MODAL_FILTERS,
@@ -22,13 +23,14 @@ import {
   FilterIcon,
   FloatingAddIcon,
   ImageUploadPlaceholderIcon,
-  MoreIcon,
   NoCandidates,
   SearchIcon,
   SortIcon,
 } from "../_components/icons";
+import { Modal } from "../_components/modal";
 import {
   FeedbackPresence,
+  LoadingButtonContent,
   MotionToast,
   motion,
 } from "../_components/motion-system";
@@ -39,6 +41,7 @@ import {
 import { QuickAddCandidateModal } from "../_components/quick-add-candidate-modal";
 import { TablePagination } from "../_components/table-pagination";
 import { useDebouncedValue } from "../_components/use-debounced-value";
+import { useErrorToast } from "../_components/use-error-toast";
 import { CandidatesTableSkeleton } from "./candidates-page-skeleton";
 import { CandidateStatusSelect } from "./components/candidate-status-select";
 import { QuickOverview } from "./components/quickOverview";
@@ -91,6 +94,7 @@ export default function CandidatesPage() {
   const common = useTranslations("Common");
   const localizeLookups = useLookupLocalizer();
   const utils = api.useUtils();
+  const showError = useErrorToast();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilterValue>(
     DEFAULT_CANDIDATE_PERIOD,
   );
@@ -104,6 +108,9 @@ export default function CandidatesPage() {
     null,
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [candidateToDelete, setCandidateToDelete] = useState<Candidate | null>(
+    null,
+  );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterModalFilters>(
     EMPTY_FILTER_MODAL_FILTERS,
@@ -266,6 +273,25 @@ export default function CandidatesPage() {
     },
   });
 
+  const deleteCandidate = api.candidates.delete.useMutation({
+    onSuccess: async () => {
+      setCandidateToDelete(null);
+      setToastMessage(t("deleted"));
+      await Promise.all([
+        utils.candidates.list.invalidate(),
+        utils.candidates.listHh.invalidate(),
+        utils.dashboard.getDashboardData.invalidate(),
+        utils.sidebar.counts.invalidate(),
+      ]);
+    },
+    onError: (error) => {
+      showError(error, {
+        dedupeKey: "candidate-delete",
+        fallbackMessage: t("deleteError"),
+      });
+    },
+  });
+
   const handleApplyFilters = (filters: FilterModalFilters) => {
     setAppliedFilters(filters);
     setCurrentPage(1);
@@ -402,6 +428,53 @@ export default function CandidatesPage() {
         sourceOptions={sourceOptions}
         statusOptions={statusOptions}
       />
+
+      <Modal
+        ariaLabel={t("deleteConfirmTitle")}
+        closeOnBackdropClick={!deleteCandidate.isPending}
+        closeOnEscape={!deleteCandidate.isPending}
+        isOpen={Boolean(candidateToDelete)}
+        onClose={() => {
+          if (!deleteCandidate.isPending) {
+            setCandidateToDelete(null);
+          }
+        }}
+        title={t("deleteConfirmTitle")}
+      >
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-text-secondary leading-[1.5]">
+            {t("deleteConfirmDescription", {
+              name: candidateToDelete?.name ?? "",
+            })}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              className="ui-button ui-button-secondary w-full"
+              disabled={deleteCandidate.isPending}
+              onClick={() => setCandidateToDelete(null)}
+              type="button"
+            >
+              {common("cancel")}
+            </button>
+            <button
+              className="ui-button w-full bg-accent-red text-white hover:opacity-90"
+              disabled={deleteCandidate.isPending}
+              onClick={() => {
+                if (candidateToDelete) {
+                  deleteCandidate.mutate({ id: candidateToDelete.id });
+                }
+              }}
+              type="button"
+            >
+              <LoadingButtonContent
+                isLoading={deleteCandidate.isPending}
+                label={common("delete")}
+                loadingLabel={t("deleting")}
+              />
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <MotionToast message={toastMessage} />
 
@@ -587,13 +660,10 @@ export default function CandidatesPage() {
                                   {common("details")}
                                 </span>
                               </Link>
-                              <button
-                                aria-label={common("details")}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl text-text-placeholder transition-colors hover:bg-bg-hover hover:text-text-secondary lg:h-auto lg:w-auto lg:rounded-none lg:p-1"
-                                type="button"
-                              >
-                                <MoreIcon className="h-4 w-4" />
-                              </button>
+                              <DeleteRowActionMenu
+                                disabled={deleteCandidate.isPending}
+                                onDelete={() => setCandidateToDelete(candidate)}
+                              />
                             </div>
 
                             <dl className="candidate-card-meta col-span-12 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs lg:hidden">

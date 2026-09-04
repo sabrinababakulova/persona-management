@@ -15,6 +15,7 @@ import {
 import { listVacanciesProcedure } from "./list";
 import {
   createVacancyProcedure,
+  deleteVacancyProcedure,
   deleteVacancyPublicationProcedure,
   getHhConfigProcedure,
   getHhPublishLookupsProcedure,
@@ -42,6 +43,7 @@ export const vacanciesRouter = createTRPCRouter({
   searchCandidates: searchVacancyCandidatesProcedure,
   assignCandidate: assignCandidateProcedure,
   create: createVacancyProcedure,
+  delete: deleteVacancyProcedure,
   update: updateVacancyProcedure,
   deletePublication: deleteVacancyPublicationProcedure,
   getTelegramConfig: getTelegramConfigProcedure,
