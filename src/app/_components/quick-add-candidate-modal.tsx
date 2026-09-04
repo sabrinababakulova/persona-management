@@ -206,7 +206,7 @@ export function QuickAddCandidateModal({
       onClose={onClose}
     >
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-3">
           <h2
             className="font-semibold text-text-heading text-xl leading-[1.1]"
             id="quick-add-candidate-modal-title"
@@ -214,6 +214,7 @@ export function QuickAddCandidateModal({
             {t("quickAdd")}
           </h2>
           <Dropdown
+            className="mt-5 shrink-0"
             fieldClassName="h-8 px-2 py-2 pr-6 text-sm leading-none"
             hideLabel
             iconClassName="right-2 text-text-placeholder"
@@ -327,16 +328,16 @@ export function QuickAddCandidateModal({
           </p>
         </FeedbackPresence>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Link
-            className="ui-button ui-button-soft sm:min-w-56"
+            className="ui-button ui-button-soft order-2 w-full sm:order-1"
             href="/candidates/create"
             onClick={onAddMoreData}
           >
             {t("addMoreData")}
           </Link>
           <button
-            className="ui-button ui-button-primary"
+            className="ui-button ui-button-primary order-1 w-full sm:order-2"
             disabled={isSaving || isResumeUploading}
             onClick={handleSave}
             type="button"
