@@ -11,6 +11,7 @@ import {
   candidateStatusOptions,
   vacancyLevels,
 } from "~/server/db/schema";
+import { resolveCandidateLanguageLabel } from "./language-values";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
@@ -119,11 +120,11 @@ export async function validateCandidateInput(
   const sourceSet = new Set(lookups.sources.map((row) => row.value));
   const positionSet = new Set(lookups.positions.map((row) => row.value));
   const skillSet = new Set(lookups.skills.map((row) => row.value));
-  const languageLabelSet = new Set(lookups.languages.map((row) => row.label));
   const languageLevelSet = new Set(
     lookups.languageLevels.map((row) => row.value),
   );
   const statusSet = new Set(lookups.statusOptions.map((row) => row.value));
+  const normalizedLanguages: { name: string; level: string }[] = [];
 
   for (const contact of input.contacts) {
     if (!contactTypeSet.has(contact.type)) {
@@ -158,7 +159,11 @@ export async function validateCandidateInput(
   }
 
   for (const language of input.languages) {
-    if (!languageLabelSet.has(language.name)) {
+    const normalizedName = resolveCandidateLanguageLabel(
+      language.name,
+      lookups.languages,
+    );
+    if (!normalizedName) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: `Unknown language: ${language.name}`,
@@ -170,6 +175,7 @@ export async function validateCandidateInput(
         message: `Unknown language level: ${language.level}`,
       });
     }
+    normalizedLanguages.push({ ...language, name: normalizedName });
   }
 
   if (!statusSet.has(input.status)) {
@@ -179,5 +185,5 @@ export async function validateCandidateInput(
     });
   }
 
-  return lookups;
+  return { ...lookups, normalizedLanguages };
 }
