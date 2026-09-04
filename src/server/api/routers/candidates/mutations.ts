@@ -348,7 +348,7 @@ export const uploadResumeProcedure = protectedProcedure
 export const createCandidateProcedure = protectedProcedure
   .input(candidateCreateInputSchema)
   .mutation(async ({ ctx, input }) => {
-    await validateCandidateInput(ctx.db, input);
+    const { normalizedLanguages } = await validateCandidateInput(ctx.db, input);
 
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
 
@@ -365,7 +365,7 @@ export const createCandidateProcedure = protectedProcedure
           salaryCurrency: input.salaryCurrency,
           currentPosition: input.currentPosition ?? null,
           skills: input.skills,
-          languages: input.languages,
+          languages: normalizedLanguages,
           workExperience: input.workExperience,
           education: input.education,
           status: input.status,
