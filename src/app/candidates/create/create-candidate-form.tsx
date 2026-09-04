@@ -64,7 +64,6 @@ export function CreateCandidateForm() {
         experienceDescription: validation("candidateExperienceDescription"),
         institution: validation("candidateInstitution"),
         gpaTooLong: validation("candidateGpaTooLong"),
-        educationPeriod: validation("candidateEducationPeriod"),
         fullName: validation("candidateFullName"),
         city: validation("candidateCity"),
       }),
@@ -514,6 +513,11 @@ export function CreateCandidateForm() {
 
   const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
     const { prefillData } = uploadedResume;
+    const localResumeSource = candidateLookups.sources.some(
+      (source) => source.value === "local",
+    )
+      ? "local"
+      : "";
     const sanitizedPrefillContacts = prefillData.contacts.map((contact) => ({
       ...contact,
       value: isPhoneContactType(contact.type)
@@ -534,7 +538,9 @@ export function CreateCandidateForm() {
         sanitizedPrefillContacts.length > 0
           ? sanitizedPrefillContacts
           : prev.contacts,
-      source: "local", // Source is always "local" for resume uploads
+      // Older databases may not have the local source lookup yet. Never put a
+      // value into the form that the server's active lookups will reject.
+      source: localResumeSource || prev.source,
       salaryExpectation:
         prefillData.salaryExpectation ?? prev.salaryExpectation,
       salaryCurrency: prefillData.salaryCurrency || prev.salaryCurrency,

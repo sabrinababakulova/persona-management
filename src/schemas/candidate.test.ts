@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { candidateCreateInputSchema } from "~/server/api/routers/candidates/schemas";
 import { candidateFormSchema } from "./candidate";
 
 describe("candidate form validation", () => {
@@ -17,6 +18,32 @@ describe("candidate form validation", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  test("allows an education entry without a study period", () => {
+    const result = candidateFormSchema.safeParse({
+      fullName: "Test Candidate",
+      city: "Tashkent",
+      education: [{ institution: "University", gpa: "4.5" }],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.education[0]?.period).toBe("");
+    }
+  });
+
+  test("allows the server create payload to omit a study period", () => {
+    const result = candidateCreateInputSchema.safeParse({
+      fullName: "Test Candidate",
+      city: "Tashkent",
+      education: [{ institution: "University", gpa: "4.5" }],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.education[0]?.period).toBe("");
+    }
   });
 
   test("reports an overlong GPA as a readable field error", () => {

@@ -45,6 +45,7 @@ import { useErrorToast } from "../_components/use-error-toast";
 import { CandidatesTableSkeleton } from "./candidates-page-skeleton";
 import { CandidateStatusSelect } from "./components/candidate-status-select";
 import { QuickOverview } from "./components/quickOverview";
+import { buildQuickCandidateCreateInput } from "./quick-candidate-create-input";
 
 const CREATE_CANDIDATE_SUCCESS_KEY = "candidate-create-success";
 const DEFAULT_CANDIDATE_PERIOD = "year" as const;
@@ -319,56 +320,13 @@ export default function CandidatesPage() {
     hasCandidates || isTableLoading || hasActiveSearchOrFilters;
 
   const handleQuickSaveCandidate = (payload: QuickAddCandidatePayload) => {
-    const prefill = payload.resumePrefillData;
-    const directContacts: { type: string; value: string }[] = [];
-
-    if (payload.email.trim()) {
-      directContacts.push({ type: "email", value: payload.email.trim() });
-    }
-    if (payload.contactValue.trim()) {
-      directContacts.push({
-        type: payload.contactType,
-        value: payload.contactValue.trim(),
-      });
-    }
-
-    const parsedContacts = (prefill?.contacts ?? []).filter(
-      (contact) => contact.type.trim().toLowerCase() !== "email",
+    createQuickCandidate.mutate(
+      buildQuickCandidateCreateInput({
+        defaultStatus,
+        fallbackCity: common("notSpecified"),
+        payload,
+      }),
     );
-    const mergedContacts: { type: string; value: string }[] = [];
-
-    for (const parsedContact of [...directContacts, ...parsedContacts]) {
-      const isDuplicate = mergedContacts.some(
-        (contact) =>
-          contact.type.trim().toLowerCase() ===
-            parsedContact.type.trim().toLowerCase() &&
-          contact.value.trim().toLowerCase() ===
-            parsedContact.value.trim().toLowerCase(),
-      );
-      if (!isDuplicate) {
-        mergedContacts.push(parsedContact);
-      }
-    }
-
-    createQuickCandidate.mutate({
-      id: payload.candidateId,
-      fullName: payload.fullName,
-      city: prefill?.city || common("notSpecified"),
-      contacts: mergedContacts,
-      source: payload.source || prefill?.source || undefined,
-      aiAnalysis: payload.aiAnalysis || undefined,
-      aiAnalysisTranslations: payload.aiAnalysisTranslations,
-      tags: payload.tags ?? [],
-      salaryExpectation: prefill?.salaryExpectation,
-      salaryCurrency: prefill?.salaryCurrency ?? "UZS",
-      currentPosition: prefill?.currentPosition || undefined,
-      skills: prefill?.skills ?? [],
-      languages: prefill?.languages ?? [],
-      status: payload.status || prefill?.status || defaultStatus,
-      resumeFileId: payload.resumeFileId || undefined,
-      resumeFileName: payload.resumeFileName || undefined,
-      resumeFileSize: payload.resumeFileSize || undefined,
-    });
   };
 
   const openQuickOverview = (candidateId: string) => {

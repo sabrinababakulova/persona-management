@@ -77,7 +77,7 @@ function toLanguages(value: unknown) {
       const language = item as Record<string, unknown>;
       const name = toStringValue(language.name);
       const level = toStringValue(language.level);
-      if (!name || !level) {
+      if (!name) {
         return null;
       }
 
@@ -136,7 +136,7 @@ function toEducation(value: unknown) {
 
       const education = item as Record<string, unknown>;
       const institution = toStringValue(education.institution);
-      const gpa = toStringValue(education.gpa);
+      const gpa = normalizeAcademicGrade(education.gpa);
       const period = toStringValue(education.period);
 
       if (!institution && !gpa && !period) {
@@ -175,7 +175,102 @@ function normalizeToken(value: string) {
   return value
     .trim()
     .toLowerCase()
-    .replace(/[\s._-]+/g, "");
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+const LANGUAGE_ALIASES: Record<string, string[]> = {
+  russian: ["russian", "русский", "русский язык", "rus tili"],
+  uzbek: [
+    "uzbek",
+    "uzbek language",
+    "узбекский",
+    "узбекский язык",
+    "o‘zbek",
+    "o'zbek",
+    "o‘zbek tili",
+    "o'zbek tili",
+  ],
+  english: ["english", "английский", "английский язык", "ingliz tili"],
+  german: ["german", "немецкий", "немецкий язык", "nemis tili"],
+  french: ["french", "французский", "французский язык", "fransuz tili"],
+  spanish: ["spanish", "испанский", "испанский язык", "ispan tili"],
+  korean: ["korean", "корейский", "корейский язык", "koreys tili"],
+  chinese: ["chinese", "китайский", "китайский язык", "xitoy tili"],
+};
+
+const LANGUAGE_LEVEL_ALIASES: Array<{
+  aliases: string[];
+  value: string;
+}> = [
+  {
+    value: "C2",
+    aliases: [
+      "native",
+      "mother tongue",
+      "native speaker",
+      "fluent",
+      "proficient",
+      "родной",
+      "свободно",
+      "в совершенстве",
+      "ona tili",
+      "mukammal",
+    ],
+  },
+  {
+    value: "C1",
+    aliases: ["advanced", "продвинутый", "ilg‘or", "ilgor"],
+  },
+  {
+    value: "B2",
+    aliases: [
+      "upper intermediate",
+      "upper-intermediate",
+      "выше среднего",
+      "o‘rtadan yuqori",
+      "ortadan yuqori",
+    ],
+  },
+  {
+    value: "B1",
+    aliases: ["intermediate", "средний", "o‘rta", "orta"],
+  },
+  {
+    value: "A2",
+    aliases: ["elementary", "элементарный", "elementar"],
+  },
+  {
+    value: "A1",
+    aliases: [
+      "beginner",
+      "basic",
+      "начальный",
+      "базовый",
+      "boshlang‘ich",
+      "boshlangich",
+    ],
+  },
+];
+
+function normalizeAcademicGrade(value: unknown) {
+  const grade = toStringValue(value);
+  if (!grade) {
+    return "";
+  }
+
+  const explicitGradeLabel =
+    /\b(?:gpa|grade|grades|average score|academic score|honou?rs?|distinction)\b|(?:средн(?:ий|яя|ее)\s+балл|оценк\p{L}*|балл\p{L}*|диплом\s+с\s+отличием|отлично|хорошо)|(?:o‘rtacha\s+ball|o'rtacha\s+ball|baho|imtiyozli\s+diplom)/iu;
+  const standaloneNumericGrade =
+    /^\d{1,3}(?:[.,]\d{1,2})?\s*(?:(?:\/|из|of)\s*\d{1,3}(?:[.,]\d{1,2})?|%)?$/iu;
+  const standaloneLetterGrade = /^[A-F][+-]?$/iu;
+
+  return explicitGradeLabel.test(grade) ||
+    standaloneNumericGrade.test(grade) ||
+    standaloneLetterGrade.test(grade)
+    ? grade
+    : "";
 }
 
 function findLookupOption(
@@ -206,12 +301,61 @@ function findLookupOption(
   );
 }
 
-function toLookupValue(value: unknown, options: LookupOption[]) {
-  return findLookupOption(value, options)?.value ?? "";
+function findLanguageOption(value: unknown, options: LookupOption[]) {
+  const directMatch = findLookupOption(value, options);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const token = normalizeToken(toStringValue(value));
+  if (!token) {
+    return undefined;
+  }
+
+  const aliasedValue = Object.entries(LANGUAGE_ALIASES).find(([, aliases]) =>
+    aliases.some((alias) => token.includes(normalizeToken(alias))),
+  )?.[0];
+
+  return aliasedValue
+    ? options.find(
+        (option) =>
+          normalizeToken(option.value) === normalizeToken(aliasedValue),
+      )
+    : undefined;
 }
 
-function toLookupLabel(value: unknown, options: LookupOption[]) {
-  return findLookupOption(value, options)?.label ?? "";
+function toLanguageLevelValue(value: unknown, options: LookupOption[]) {
+  const directMatch = findLookupOption(value, options);
+  if (directMatch) {
+    return directMatch.value;
+  }
+
+  const raw = toStringValue(value);
+  const cefrMatch = raw
+    .toUpperCase()
+    .match(/(?:^|[^A-Z])([ABC][12])(?:$|[^A-Z0-9])/);
+  if (cefrMatch?.[1]) {
+    const option = options.find(
+      (candidate) => candidate.value.toUpperCase() === cefrMatch[1],
+    );
+    if (option) {
+      return option.value;
+    }
+  }
+
+  const token = normalizeToken(raw);
+  const aliasMatch = LANGUAGE_LEVEL_ALIASES.find(({ aliases }) =>
+    aliases.some((alias) => token.includes(normalizeToken(alias))),
+  );
+
+  return aliasMatch
+    ? (options.find((option) => option.value.toUpperCase() === aliasMatch.value)
+        ?.value ?? "")
+    : "";
+}
+
+function toLookupValue(value: unknown, options: LookupOption[]) {
+  return findLookupOption(value, options)?.value ?? "";
 }
 
 function toLookupValueArray(value: unknown, options: LookupOption[]) {
@@ -247,8 +391,12 @@ function toNormalizedLanguages(
   const result: { name: string; level: string }[] = [];
 
   for (const language of toLanguages(value)) {
-    const name = toLookupLabel(language.name, languageOptions);
-    const level = toLookupValue(language.level, levelOptions);
+    const name =
+      findLanguageOption(language.name, languageOptions)?.value ?? "";
+    const level = toLanguageLevelValue(
+      `${language.level} ${language.name}`,
+      levelOptions,
+    );
     if (!name || !level) {
       continue;
     }
