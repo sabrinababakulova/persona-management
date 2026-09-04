@@ -15,8 +15,8 @@ import {
 } from "../_components/filter-modal";
 import {
   FilterIcon,
+  FloatingAddIcon,
   NoVacancies,
-  OutlineBriefcaseIcon,
   SearchIcon,
 } from "../_components/icons";
 import { MotionToast } from "../_components/motion-system";
@@ -277,14 +277,6 @@ export default function VacanciesPage() {
                       </span>
                     )}
                   </button>
-                  <Link
-                    aria-label={t("add")}
-                    className="ui-button ui-button-primary h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11"
-                    href="/vacancies/create"
-                    title={t("add")}
-                  >
-                    <OutlineBriefcaseIcon className="h-5 w-5" />
-                  </Link>
                 </div>
               </div>
 
@@ -320,19 +312,22 @@ export default function VacanciesPage() {
             </>
           ) : (
             <div className="flex min-h-[60vh] items-center justify-center">
-              <div className="flex w-full max-w-59 flex-col items-center gap-10">
+              <div className="flex w-full max-w-59 flex-col items-center">
                 <NoVacancies className="h-47.5 w-59" />
-                <Link
-                  className="ui-button ui-button-primary"
-                  href="/vacancies/create"
-                >
-                  {t("add")}
-                </Link>
               </div>
             </div>
           )}
         </div>
       </main>
+
+      <Link
+        aria-label={t("add")}
+        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
+        href="/vacancies/create"
+        title={t("add")}
+      >
+        <FloatingAddIcon className="h-10 w-10" />
+      </Link>
     </>
   );
 }

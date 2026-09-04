@@ -20,12 +20,12 @@ import {
 } from "../_components/filter-modal";
 import {
   FilterIcon,
+  FloatingAddIcon,
   ImageUploadPlaceholderIcon,
   MoreIcon,
   NoCandidates,
   SearchIcon,
   SortIcon,
-  UsersIcon,
 } from "../_components/icons";
 import {
   FeedbackPresence,
@@ -459,15 +459,6 @@ export default function CandidatesPage() {
                       </span>
                     )}
                   </button>
-                  <button
-                    aria-label={t("add")}
-                    className="ui-button ui-button-primary h-12 w-12 shrink-0 p-0 sm:h-11 sm:w-11"
-                    onClick={() => setIsQuickAddModalOpen(true)}
-                    title={t("add")}
-                    type="button"
-                  >
-                    <UsersIcon className="h-5 w-5" />
-                  </button>
                 </div>
                 {telegramWarehouse && (
                   <Link
@@ -661,20 +652,22 @@ export default function CandidatesPage() {
             </>
           ) : (
             <div className="flex min-h-[60vh] items-center justify-center">
-              <div className="flex w-full max-w-[240px] flex-col items-center gap-10">
+              <div className="flex w-full max-w-[240px] flex-col items-center">
                 <NoCandidates className="h-[190px] w-[240px] opacity-70" />
-                <button
-                  className="ui-button ui-button-primary"
-                  onClick={() => setIsQuickAddModalOpen(true)}
-                  type="button"
-                >
-                  {t("add")}
-                </button>
               </div>
             </div>
           )}
         </div>
       </main>
+
+      <button
+        aria-label={t("quickAdd")}
+        className="fixed right-5 bottom-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary-blue text-white shadow-toast transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-primary-blue-hover sm:right-6 sm:bottom-6"
+        onClick={() => setIsQuickAddModalOpen(true)}
+        type="button"
+      >
+        <FloatingAddIcon className="h-10 w-10" />
+      </button>
     </>
   );
 }
