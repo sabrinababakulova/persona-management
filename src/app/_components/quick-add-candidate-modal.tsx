@@ -7,6 +7,7 @@ import type {
   QuickAddCandidateModalProps,
   QuickAddCandidatePayload,
 } from "~/types/components/quick-add-candidate-modal";
+import { isPhoneContactType, sanitizePhoneInput } from "~/utils/phone-input";
 import { Dropdown } from "./dropdown";
 import { AIGenerationIcon } from "./icons";
 import { Modal } from "./modal";
@@ -66,6 +67,12 @@ export function QuickAddCandidateModal({
   useEffect(() => {
     setStatus(statusOptions[0]?.value ?? "");
   }, [statusOptions]);
+
+  useEffect(() => {
+    if (isPhoneContactType(contactType)) {
+      setContactValue((value) => sanitizePhoneInput(value));
+    }
+  }, [contactType]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -274,10 +281,19 @@ export function QuickAddCandidateModal({
           </div>
           <div className="flex items-end gap-4">
             <input
+              autoComplete={isPhoneContactType(contactType) ? "tel" : undefined}
               className="h-11 w-full max-w-72 rounded-xl border border-border-input bg-bg-input px-3.5 text-sm text-text-heading leading-5 placeholder:text-text-placeholder hover:border-border-control focus:border-primary-blue focus:outline-none"
-              onChange={(event) => setContactValue(event.target.value)}
+              inputMode={isPhoneContactType(contactType) ? "tel" : undefined}
+              maxLength={isPhoneContactType(contactType) ? 50 : undefined}
+              onChange={(event) =>
+                setContactValue(
+                  isPhoneContactType(contactType)
+                    ? sanitizePhoneInput(event.target.value)
+                    : event.target.value,
+                )
+              }
               placeholder={t("contactPlaceholder")}
-              type="text"
+              type={isPhoneContactType(contactType) ? "tel" : "text"}
               value={contactValue}
             />
             <Dropdown

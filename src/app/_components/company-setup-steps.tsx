@@ -11,6 +11,7 @@ import {
 import { Textarea } from "~/app/_components/textarea";
 import type { UpdateCompanyInput } from "~/schemas/company";
 import { createUpdateCompanySchema } from "~/schemas/company";
+import { sanitizePhoneInput } from "~/utils/phone-input";
 
 const EMPTY_COMPANY: UpdateCompanyInput = {
   name: "",
@@ -191,8 +192,13 @@ export function CompanySetupSteps({
             value={company.website}
           />
           <Input
+            autoComplete="tel"
+            inputMode="tel"
             label={companyText("phone")}
-            onChange={(event) => setField("phone", event.target.value)}
+            maxLength={50}
+            onChange={(event) =>
+              setField("phone", sanitizePhoneInput(event.target.value))
+            }
             placeholder={companyText("phonePlaceholder")}
             type="tel"
             value={company.phone}

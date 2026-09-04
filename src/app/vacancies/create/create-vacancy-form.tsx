@@ -18,6 +18,7 @@ import {
   formatNumberWithSpaces,
   parseFormattedNumber,
 } from "~/utils/format-salaries";
+import { sanitizePhoneInput } from "~/utils/phone-input";
 
 const CURRENCY_OPTIONS = [
   { value: "UZS", label: "UZS" },
@@ -353,12 +354,19 @@ export function CreateVacancyForm({
               </div>
 
               <Input
+                autoComplete="tel"
                 disabled={readOnly}
+                inputMode="tel"
                 label={t("contactPhone")}
+                maxLength={50}
                 onChange={(event) =>
-                  handleFieldChange("contactPhone", event.target.value)
+                  handleFieldChange(
+                    "contactPhone",
+                    sanitizePhoneInput(event.target.value),
+                  )
                 }
                 placeholder="99 999 99 99"
+                type="tel"
                 value={formData.contactPhone}
               />
             </ClosableSection>

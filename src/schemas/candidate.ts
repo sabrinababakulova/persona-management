@@ -14,7 +14,7 @@ export type CandidateValidationMessages = {
   description: string;
   experienceDescription: string;
   institution: string;
-  gpa: string;
+  gpaTooLong: string;
   educationPeriod: string;
   fullName: string;
   city: string;
@@ -31,7 +31,7 @@ const russianMessages: CandidateValidationMessages = {
   description: "Добавьте описание",
   experienceDescription: "Добавьте хотя бы один пункт опыта",
   institution: "Укажите учебное заведение",
-  gpa: "Укажите GPA или оценку",
+  gpaTooLong: "GPA или оценка не должны превышать 200 символов",
   educationPeriod: "Укажите период обучения",
   fullName: "Ф.И.О обязательно",
   city: "Город обязателен",
@@ -62,7 +62,7 @@ export function createCandidateFormSchema(
 
   const educationSchema = z.object({
     institution: z.string().min(1, messages.institution),
-    gpa: z.string().min(1, messages.gpa),
+    gpa: z.string().max(200, messages.gpaTooLong),
     period: z.string().min(1, messages.educationPeriod),
     isCurrent: z.boolean().optional(),
   });

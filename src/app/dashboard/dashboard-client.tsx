@@ -56,11 +56,11 @@ export default function DashboardClient({ userName }: { userName: string }) {
     month: "long",
     year: "numeric",
   });
-  const statKeys = [
-    "newApplications",
-    "activeVacancies",
-    "activeCandidates",
-    "hired",
+  const statCardConfigs = [
+    { titleKey: "newApplications", href: "/candidates" },
+    { titleKey: "activeVacancies", href: "/vacancies" },
+    { titleKey: "activeCandidates", href: "/candidates" },
+    { titleKey: "hired", href: "/candidates" },
   ] as const;
 
   if (isLoading) {
@@ -89,14 +89,19 @@ export default function DashboardClient({ userName }: { userName: string }) {
 
           {/* Stats Cards */}
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            {dashboardData?.statsCards.map((stat, index) => (
-              <StatsCard
-                key={stat.title}
-                period={t("lastSevenDays")}
-                title={statKeys[index] ? t(statKeys[index]) : stat.title}
-                value={stat.value}
-              />
-            ))}
+            {dashboardData?.statsCards.map((stat, index) => {
+              const config = statCardConfigs[index];
+
+              return (
+                <StatsCard
+                  href={config?.href ?? "/dashboard"}
+                  key={stat.title}
+                  period={t("lastSevenDays")}
+                  title={config ? t(config.titleKey) : stat.title}
+                  value={stat.value}
+                />
+              );
+            })}
           </div>
 
           {/* Recent Vacancies */}

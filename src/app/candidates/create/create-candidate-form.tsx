@@ -26,6 +26,7 @@ import type {
   WorkExperienceFormItem,
 } from "~/types/candidates/components";
 import { calculateCandidateFormProgress } from "~/utils/candidate-form-progress";
+import { isPhoneContactType, sanitizePhoneInput } from "~/utils/phone-input";
 import { BackgroundDetailsSection } from "../components/BackgroundDetailsSection";
 import { BasicInfoSection } from "../components/BasicInfoSection";
 import { ConditionsSection } from "../components/ConditionsSection";
@@ -62,7 +63,7 @@ export function CreateCandidateForm() {
         description: validation("candidateDescription"),
         experienceDescription: validation("candidateExperienceDescription"),
         institution: validation("candidateInstitution"),
-        gpa: validation("candidateGpa"),
+        gpaTooLong: validation("candidateGpaTooLong"),
         educationPeriod: validation("candidateEducationPeriod"),
         fullName: validation("candidateFullName"),
         city: validation("candidateCity"),
@@ -249,9 +250,28 @@ export function CreateCandidateForm() {
   ) => {
     const contactIndex = contacts.findIndex((contact) => contact.id === id);
     setContacts((prev) =>
-      prev.map((contact) =>
-        contact.id === id ? { ...contact, [field]: value } : contact,
-      ),
+      prev.map((contact) => {
+        if (contact.id !== id) {
+          return contact;
+        }
+
+        if (field === "value") {
+          return {
+            ...contact,
+            value: isPhoneContactType(contact.type)
+              ? sanitizePhoneInput(value)
+              : value,
+          };
+        }
+
+        return {
+          ...contact,
+          type: value,
+          value: isPhoneContactType(value)
+            ? sanitizePhoneInput(contact.value)
+            : contact.value,
+        };
+      }),
     );
     if (contactIndex >= 0) {
       clearError(`contacts.${contactIndex}.${field}`);
@@ -494,6 +514,12 @@ export function CreateCandidateForm() {
 
   const handleResumeUploaded = (uploadedResume: ResumeUploadMeta) => {
     const { prefillData } = uploadedResume;
+    const sanitizedPrefillContacts = prefillData.contacts.map((contact) => ({
+      ...contact,
+      value: isPhoneContactType(contact.type)
+        ? sanitizePhoneInput(contact.value)
+        : contact.value,
+    }));
     setFormData((prev) => ({
       ...prev,
       resumeFileId: uploadedResume.resumeFileId,
@@ -505,7 +531,9 @@ export function CreateCandidateForm() {
       fullName: prefillData.fullName || prev.fullName,
       city: prefillData.city || prev.city,
       contacts:
-        prefillData.contacts.length > 0 ? prefillData.contacts : prev.contacts,
+        sanitizedPrefillContacts.length > 0
+          ? sanitizedPrefillContacts
+          : prev.contacts,
       source: "local", // Source is always "local" for resume uploads
       salaryExpectation:
         prefillData.salaryExpectation ?? prev.salaryExpectation,
@@ -527,9 +555,9 @@ export function CreateCandidateForm() {
       status: prefillData.status || prev.status,
     }));
 
-    if (prefillData.contacts.length > 0) {
+    if (sanitizedPrefillContacts.length > 0) {
       setContacts(
-        prefillData.contacts.map((contact) => ({
+        sanitizedPrefillContacts.map((contact) => ({
           id: generateId(),
           type: contact.type,
           value: contact.value,

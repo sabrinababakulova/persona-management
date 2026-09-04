@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { StatsCardProps } from "~/types/components/stats-card-props";
 import { TrendDownIcon, TrendUpIcon } from "./icons";
@@ -8,6 +9,7 @@ import { motion } from "./motion-system";
 export function StatsCard({
   title,
   value,
+  href,
   change,
   changeType,
   period,
@@ -35,12 +37,12 @@ export function StatsCard({
         <span className="font-medium text-text-secondary text-xs sm:text-sm">
           {title}
         </span>
-        <button
+        <Link
           className="hidden font-semibold text-primary-blue text-sm hover:text-primary-blue-hover sm:block"
-          type="button"
+          href={href}
         >
           {t("details")}
-        </button>
+        </Link>
       </div>
       <div className="flex items-end gap-3">
         <span className="font-bold text-3xl text-text-heading tracking-tight sm:text-4xl">

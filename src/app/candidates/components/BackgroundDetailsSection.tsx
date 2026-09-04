@@ -301,6 +301,7 @@ export function BackgroundDetailsSection({
                             : undefined
                         }
                         label={t("gpa")}
+                        maxLength={200}
                         onChange={(event) =>
                           onEducationChange(item.id, "gpa", event.target.value)
                         }

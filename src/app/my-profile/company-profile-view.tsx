@@ -9,6 +9,7 @@ import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { Textarea } from "~/app/_components/textarea";
 import type { UpdateCompanyInput } from "~/schemas/company";
 import type { RouterOutputs } from "~/types/trpc/router-outputs";
+import { sanitizePhoneInput } from "~/utils/phone-input";
 
 type Company = RouterOutputs["company"]["get"];
 
@@ -94,12 +95,22 @@ function EditorInputField({
         {label}
       </p>
       <Input
+        autoComplete={type === "tel" ? "tel" : undefined}
         className="mt-2"
         disabled={disabled}
         hideLabel
         id={`company-${field}`}
+        inputMode={type === "tel" ? "tel" : undefined}
         label={label}
-        onChange={(event) => onFieldChange(field, event.target.value)}
+        maxLength={type === "tel" ? 50 : undefined}
+        onChange={(event) =>
+          onFieldChange(
+            field,
+            type === "tel"
+              ? sanitizePhoneInput(event.target.value)
+              : event.target.value,
+          )
+        }
         placeholder={placeholder}
         type={type}
         value={value}

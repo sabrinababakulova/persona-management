@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ChevronUpIcon, CloseIcon, PlusIcon } from "~/app/_components/icons";
 import type { BasicInfoSectionProps } from "~/types/candidates/basic-info-section";
+import { isPhoneContactType, sanitizePhoneInput } from "~/utils/phone-input";
 import { Dropdown } from "../../_components/dropdown";
 import { Input } from "../../_components/input";
 
@@ -105,13 +106,28 @@ export function BasicInfoSection({
               >
                 <div className="min-w-0 flex-1">
                   <Input
+                    autoComplete={
+                      isPhoneContactType(contact.type) ? "tel" : undefined
+                    }
                     hideLabel
+                    inputMode={
+                      isPhoneContactType(contact.type) ? "tel" : undefined
+                    }
                     label={t("contact")}
+                    maxLength={
+                      isPhoneContactType(contact.type) ? 50 : undefined
+                    }
                     onChange={(e) =>
-                      onContactChange(contact.id, "value", e.target.value)
+                      onContactChange(
+                        contact.id,
+                        "value",
+                        isPhoneContactType(contact.type)
+                          ? sanitizePhoneInput(e.target.value)
+                          : e.target.value,
+                      )
                     }
                     placeholder={t("contactPlaceholder")}
-                    type="text"
+                    type={isPhoneContactType(contact.type) ? "tel" : "text"}
                     value={contact.value}
                   />
                 </div>

@@ -12,8 +12,10 @@ import type { Session } from "next-auth";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { getRequestLocale } from "~/i18n/server-locale";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
+import { getPublicErrorMessage } from "./public-error-message";
 
 /**
  * 1. CONTEXT
@@ -51,13 +53,24 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  */
 const t = initTRPC.context<typeof createTRPCContext>().create({
   transformer: superjson,
-  errorFormatter({ shape, error }) {
+  errorFormatter({ shape, error, ctx }) {
+    const isValidationError = error.cause instanceof ZodError;
+    const publicMessage = getPublicErrorMessage({
+      code: shape.data.code,
+      isValidationError,
+      locale: getRequestLocale(ctx?.headers ?? new Headers()),
+      message: shape.message,
+    });
+
     return {
       ...shape,
+      message: publicMessage,
       data: {
         ...shape.data,
         zodError:
-          error.cause instanceof ZodError ? error.cause.flatten() : null,
+          error.cause instanceof ZodError
+            ? error.cause.flatten(() => publicMessage)
+            : null,
       },
     };
   },

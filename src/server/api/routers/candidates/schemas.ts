@@ -143,7 +143,7 @@ export const candidateCreateInputSchema = z.object({
     .array(
       z.object({
         institution: z.string().min(1).max(255),
-        gpa: z.string().min(1).max(50),
+        gpa: z.string().max(200).optional().default(""),
         period: z.string().min(1).max(255),
         isCurrent: z.boolean().optional(),
       }),

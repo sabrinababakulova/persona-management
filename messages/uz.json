@@ -66,7 +66,7 @@
     "candidateDescription": "Tavsif qo‘shing",
     "candidateExperienceDescription": "Kamida bitta tajriba bandini qo‘shing",
     "candidateInstitution": "Ta’lim muassasasini kiriting",
-    "candidateGpa": "GPA yoki bahoni kiriting",
+    "candidateGpaTooLong": "GPA yoki baho 200 belgidan oshmasligi kerak",
     "candidateEducationPeriod": "O‘qish davrini kiriting",
     "candidateFullName": "F.I.Sh. kiritilishi shart",
     "candidateCity": "Shahar kiritilishi shart"
