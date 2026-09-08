@@ -169,62 +169,15 @@ export default function CandidatesPage() {
     placeholderData: (previousData) => previousData,
   });
   const localTotal = candidatesData?.total ?? 0;
-  const offset = (currentPage - 1) * itemsPerPage;
   const localItems = candidatesData?.items ?? [];
-  const hhOffset = Math.max(0, offset - localTotal);
-  const hhLimit = Math.max(0, itemsPerPage - localItems.length);
-  const shouldIncludeHhCandidates =
-    !appliedFilters.city.trim() &&
-    (appliedFilters.sources.length === 0 ||
-      appliedFilters.sources.includes("hh.uz")) &&
-    (appliedFilters.statuses.length === 0 ||
-      appliedFilters.statuses.includes("new"));
-  const hhQueryInput = useMemo(
-    () => ({
-      search: debouncedSearchQuery || undefined,
-      statuses: appliedFilters.statuses,
-      city: appliedFilters.city.trim() || undefined,
-      sources: appliedFilters.sources,
-      limit: hhLimit,
-      offset: hhOffset,
-    }),
-    [
-      appliedFilters.city,
-      appliedFilters.sources,
-      appliedFilters.statuses,
-      debouncedSearchQuery,
-      hhLimit,
-      hhOffset,
-    ],
-  );
-  const {
-    data: hhCandidatesData,
-    isFetching: isFetchingHhCandidates,
-    isLoading: isLoadingHhCandidates,
-  } = api.candidates.listHh.useQuery(hhQueryInput, {
-    enabled:
-      Boolean(candidatesData) && shouldIncludeHhCandidates && hhLimit > 0,
-    placeholderData: (previousData) => previousData,
-    staleTime: 5 * 60 * 1000,
-  });
 
-  const hhTotal = shouldIncludeHhCandidates
-    ? (hhCandidatesData?.total ?? 0)
-    : 0;
-  const totalItems = localTotal + hhTotal;
+  // hh.uz applicants are persisted by the candidate sync and come back through
+  // `candidates.list` like any other candidate. `candidates.listHh` was kept as an
+  // always-empty stub for older clients; querying it here only added a round trip that the
+  // table's loading state then waited on, plus a permanently-zero term in the page maths.
+  const totalItems = localTotal;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
-  const isWaitingForHhPagination =
-    Boolean(candidatesData) &&
-    shouldIncludeHhCandidates &&
-    hhLimit > 0 &&
-    isFetchingHhCandidates;
-
-  // Candidates shown in the table: local candidates first, then hh.uz
-  // candidates filling the remaining slots for the current page.
-  const visibleCandidates: Candidate[] = [
-    ...localItems,
-    ...(hhCandidatesData?.items ?? []),
-  ];
+  const visibleCandidates: Candidate[] = localItems;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -248,12 +201,12 @@ export default function CandidatesPage() {
   }, [toastMessage]);
 
   useEffect(() => {
-    if (!candidatesData || isWaitingForHhPagination) {
+    if (!candidatesData) {
       return;
     }
 
     setCurrentPage((prev) => Math.min(prev, totalPages));
-  }, [candidatesData, isWaitingForHhPagination, totalPages]);
+  }, [candidatesData, totalPages]);
 
   const createQuickCandidate = api.candidates.create.useMutation({
     onSuccess: (createdCandidate) => {
@@ -264,7 +217,6 @@ export default function CandidatesPage() {
       }
 
       void utils.candidates.list.invalidate();
-      void utils.candidates.listHh.invalidate();
 
       setToastMessage(t("added"));
       setIsQuickAddModalOpen(false);
@@ -280,7 +232,6 @@ export default function CandidatesPage() {
       setToastMessage(t("deleted"));
       await Promise.all([
         utils.candidates.list.invalidate(),
-        utils.candidates.listHh.invalidate(),
         utils.dashboard.getDashboardData.invalidate(),
         utils.sidebar.counts.invalidate(),
       ]);
@@ -301,14 +252,8 @@ export default function CandidatesPage() {
 
   const activeFilterCount = countActiveFilters(appliedFilters);
 
-  const hasCandidates = localTotal > 0 || hhTotal > 0;
-  const isTableLoading =
-    isLoading ||
-    isFetchingCandidates ||
-    (Boolean(candidatesData) &&
-      shouldIncludeHhCandidates &&
-      hhLimit > 0 &&
-      (isLoadingHhCandidates || isFetchingHhCandidates));
+  const hasCandidates = localTotal > 0;
+  const isTableLoading = isLoading || isFetchingCandidates;
   // A search or filter is "active" when the user has narrowed the result set in any way —
   // typed search, modal filters, or a non-default period. Keep the table mounted in those
   // cases so an empty result shows "Кандидаты не найдены" rather than the onboarding CTA.

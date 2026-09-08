@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import { getRequestLocale } from "~/i18n/server-locale";
 import {
@@ -21,6 +21,7 @@ import {
   buildCandidateDetailResponse,
   formatHhCandidateForAiAnalysis,
   getStoredCandidateRecord,
+  getStoredHhCandidateRecord,
   toStoredCandidateContacts,
 } from "./shared";
 
@@ -43,14 +44,17 @@ export const getCandidateProcedure = protectedProcedure
       return null;
     }
 
-    const storedCandidate = await getStoredCandidateRecord(
-      ctx.db,
-      userCompanyId,
-      input.id,
-    );
+    const isHhRouteId = input.id.startsWith("hh_");
+    const hhResumeId = isHhRouteId ? input.id.slice(3) : "";
 
-    if (input.id.startsWith("hh_")) {
-      const resumeId = input.id.slice(3);
+    // hh.uz resume ids are global, so an `hh_` URL must still be resolved inside the caller's
+    // company — never by primary key alone.
+    const storedCandidate = isHhRouteId
+      ? await getStoredHhCandidateRecord(ctx.db, userCompanyId, hhResumeId)
+      : await getStoredCandidateRecord(ctx.db, userCompanyId, input.id);
+
+    if (isHhRouteId) {
+      const resumeId = hhResumeId;
 
       const hhAuth = await resolveUserHhAuth(ctx.db, ctx.session.user.id);
       const accessToken = hhAuth?.accessToken;
@@ -98,7 +102,8 @@ export const getCandidateProcedure = protectedProcedure
         }
 
         const importedCandidate = {
-          id: input.id,
+          id: storedCandidate?.id ?? crypto.randomUUID(),
+          hhResumeId: resumeId,
           fullName: hhCandidate.fullName,
           city: hhCandidate.city || null,
           salaryExpectation:
@@ -125,20 +130,32 @@ export const getCandidateProcedure = protectedProcedure
           notes: storedCandidate?.notes ?? [],
           companyId: userCompanyId,
         };
-        const { id, ...set } = importedCandidate;
+        // `companyId` and `id` stay out of the update set, and the conflict target is the
+        // per-company partial unique index rather than the primary key.
+        //
+        // Conflicting on `candidates.id` moved the row between tenants: legacy hh.uz rows key
+        // on the globally shared `hh_<resumeId>`, so one company opening another company's
+        // candidate rewrote its `companyId` and blanked the notes, status and match score that
+        // the scoped read had returned empty for.
+        const {
+          id: _importedId,
+          companyId: _importedCompanyId,
+          ...set
+        } = importedCandidate;
 
         await ctx.db
           .insert(candidates)
           .values(importedCandidate)
           .onConflictDoUpdate({
-            target: candidates.id,
+            target: [candidates.companyId, candidates.hhResumeId],
+            targetWhere: isNotNull(candidates.hhResumeId),
             set,
           });
 
-        const persistedCandidate = await getStoredCandidateRecord(
+        const persistedCandidate = await getStoredHhCandidateRecord(
           ctx.db,
           userCompanyId,
-          input.id,
+          resumeId,
         );
 
         if (!persistedCandidate) {

@@ -81,6 +81,7 @@ export function formatVacancy(
 export async function getVacancyPublicationChannels(
   db: DatabaseClient,
   vacancyIds: string[],
+  companyId: string,
 ): Promise<Map<string, string[]>> {
   if (vacancyIds.length === 0) {
     return new Map();
@@ -96,6 +97,9 @@ export async function getVacancyPublicationChannels(
       and(
         inArray(vacancies.parentId, vacancyIds),
         eq(vacancies.isPublication, true),
+        // Scoped by owner as well as by parent: `parentId` is caller-supplied at creation
+        // time, so a row from another company must never join this rollup.
+        eq(vacancies.companyId, companyId),
       ),
     );
 
@@ -215,6 +219,10 @@ export async function getVacanciesRelatedCandidates(
     .select({
       id: candidates.id,
       fullName: candidates.fullName,
+      // The funnel column is the per-application stage, not the candidate-level status:
+      // the same person can legitimately sit at "интервью" on one vacancy and "отказ" on
+      // another. Bucketing on `candidates.status` made every board share one position.
+      stage: candidateVacancies.stage,
       status: candidates.status,
       city: candidates.city,
       experience: candidates.experience,
@@ -262,6 +270,7 @@ export async function getVacanciesRelatedCandidates(
 export async function getVacancyResponseCounts(
   db: DatabaseClient,
   baseVacancyIds: string[],
+  companyId: string,
 ) {
   if (baseVacancyIds.length === 0) {
     return new Map<string, number>();
@@ -270,7 +279,13 @@ export async function getVacancyResponseCounts(
   const vacancyRows = await db
     .select({ id: vacancies.id, parentId: vacancies.parentId })
     .from(vacancies)
-    .where(inArray(vacancies.parentId, baseVacancyIds));
+    .where(
+      and(
+        inArray(vacancies.parentId, baseVacancyIds),
+        // See `getVacancyPublicationChannels` — `parentId` alone is not an ownership claim.
+        eq(vacancies.companyId, companyId),
+      ),
+    );
 
   const baseIdByVacancyId = new Map<string, string>();
   for (const row of vacancyRows) {

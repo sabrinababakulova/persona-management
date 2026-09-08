@@ -401,9 +401,9 @@
     "showAll": "Barchasini ko‘rish",
     "newApplications": "Yangi arizalar",
     "activeVacancies": "Faol vakansiyalar",
-    "activeCandidates": "Faol nomzodlar",
     "hired": "Ishga qabul qilingan",
-    "lastSevenDays": "so‘nggi 7 kun ichida"
+    "lastSevenDays": "so‘nggi 7 kun ichida",
+    "allTime": "jami"
   },
   "Profile": {
     "myProfile": "Mening profilim",

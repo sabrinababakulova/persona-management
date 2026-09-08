@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import type { AppLocale } from "~/i18n/config";
 import { formatActivityTime } from "~/server/activity/recent-activity";
 import {
@@ -126,6 +126,36 @@ export async function getStoredCandidateRecord(
     .from(candidates)
     .where(
       and(eq(candidates.id, candidateId), eq(candidates.companyId, companyId)),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+/**
+ * Resolves an `hh_<resumeId>` route id to this company's copy of that candidate.
+ *
+ * Two row shapes answer to the same URL. Rows created before the sync engine existed use the
+ * prefixed resume id as their primary key; everything since is a UUID carrying `hhResumeId`.
+ * Both are matched here, and both are constrained to `companyId` — the resume id itself is
+ * global to hh.uz, so it identifies a person, never an owner.
+ */
+export async function getStoredHhCandidateRecord(
+  db: DatabaseClient,
+  companyId: string,
+  resumeId: string,
+) {
+  const rows = await db
+    .select()
+    .from(candidates)
+    .where(
+      and(
+        eq(candidates.companyId, companyId),
+        or(
+          eq(candidates.hhResumeId, resumeId),
+          eq(candidates.id, `hh_${resumeId}`),
+        ),
+      ),
     )
     .limit(1);
 

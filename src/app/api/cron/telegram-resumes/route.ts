@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { env } from "~/env";
 import { db } from "~/server/db";
+import { isAuthorizedCronRequest } from "~/server/http/cron-auth";
 import { drainTelegramResumeImports } from "~/server/services/telegram-resume";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * predictable while a once-per-minute cron steadily drains large backfills.
  */
 export async function GET(request: Request) {
-  if (request.headers.get("authorization") !== `Bearer ${env.AUTH_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -8,6 +8,12 @@ export const env = createEnv({
    */
   server: {
     AUTH_SECRET: z.string().min(32),
+    /**
+     * Bearer credential for the `/api/cron/*` routes. Optional: falls back to `AUTH_SECRET`
+     * so existing deployments keep working, but setting it keeps the session signing key out
+     * of crontab files and shell scripts.
+     */
+    CRON_SECRET: z.string().min(32).optional(),
     DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -80,6 +86,7 @@ export const env = createEnv({
    */
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     MAIL_LOGIN: process.env.MAIL_LOGIN,

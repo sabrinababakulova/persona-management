@@ -136,7 +136,9 @@ export const vacancyCreateInputSchema = z.object({
   status: z
     .enum(["active", "draft", "paused", "closed", "archive"])
     .default("active"),
-  responses: z.number().int().min(0).default(0),
+  // `responses` is intentionally absent: it is derived from `vacancy_candidate` (or copied
+  // from the live hh.uz counter) everywhere it is displayed, so accepting it as input only
+  // ever let a caller write a number the UI would then contradict.
   areaId: z.string().max(20).optional(),
   employmentId: z.string().max(50).optional(),
   scheduleId: z.string().max(50).optional(),
@@ -161,7 +163,6 @@ export const vacancyUpdateInputSchema = z.object({
   id: z.string().min(1).max(255),
   title: z.string().min(1).max(255).optional(),
   status: z.enum(["active", "draft", "paused", "closed", "archive"]).optional(),
-  responses: z.number().int().min(0).optional(),
   areaId: z.string().max(20).nullable().optional(),
   employmentId: z.string().max(50).nullable().optional(),
   scheduleId: z.string().max(50).nullable().optional(),

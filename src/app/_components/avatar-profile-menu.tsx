@@ -1,6 +1,5 @@
 "use client";
 
-import Cookies from "js-cookie";
 import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -13,27 +12,6 @@ import {
 } from "~/app/_components/icons";
 import { api } from "~/trpc/react";
 import { AnimatePresence, motion } from "./motion-system";
-
-const AUTH_COOKIE_NAMES = [
-  "authjs.session-token",
-  "__Secure-authjs.session-token",
-  "authjs.callback-url",
-  "__Secure-authjs.callback-url",
-  "authjs.csrf-token",
-  "__Host-authjs.csrf-token",
-];
-
-const clearAuthCookies = () => {
-  for (const name of AUTH_COOKIE_NAMES) {
-    Cookies.remove(name);
-    Cookies.remove(name, { path: "/" });
-  }
-};
-
-const clearClientStorage = () => {
-  localStorage.clear();
-  sessionStorage.clear();
-};
 
 export function AvatarProfileMenu() {
   const t = useTranslations("Components");
@@ -88,9 +66,11 @@ export function AvatarProfileMenu() {
     setIsLoggingOut(true);
 
     try {
+      // `signOut` is what actually ends the session: the auth cookies are httpOnly, so the
+      // js-cookie removals that used to follow were no-ops, and the `localStorage.clear()` /
+      // `sessionStorage.clear()` beside them wiped unrelated first-party state — the locale
+      // preference, the "candidate created" toast handoff — for the whole origin.
       await signOut({ redirect: false, redirectTo: "/login" });
-      clearAuthCookies();
-      clearClientStorage();
       window.location.replace("/login");
     } catch (error) {
       console.error("Failed to log out", error);

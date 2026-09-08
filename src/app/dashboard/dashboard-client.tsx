@@ -59,7 +59,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
   const statCardConfigs = [
     { titleKey: "newApplications", href: "/candidates" },
     { titleKey: "activeVacancies", href: "/vacancies" },
-    { titleKey: "activeCandidates", href: "/candidates" },
+    { titleKey: "totalCandidates", href: "/candidates" },
     { titleKey: "hired", href: "/candidates" },
   ] as const;
 
@@ -96,7 +96,9 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 <StatsCard
                   href={config?.href ?? "/dashboard"}
                   key={stat.title}
-                  period={t("lastSevenDays")}
+                  period={t(
+                    stat.window === "total" ? "allTime" : "lastSevenDays",
+                  )}
                   title={config ? t(config.titleKey) : stat.title}
                   value={stat.value}
                 />

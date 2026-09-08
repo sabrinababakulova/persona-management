@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { UsersIcon } from "~/app/_components/icons";
-import { ImageUploader } from "~/app/_components/image-uploader";
+import {
+  ImageUploader,
+  type UploadedImage,
+} from "~/app/_components/image-uploader";
 import { Input } from "~/app/_components/input";
 import { LoadingButtonContent } from "~/app/_components/motion-system";
 import { Textarea } from "~/app/_components/textarea";
@@ -24,7 +27,7 @@ type CompanyProfileEditorProps = {
   isSaving: boolean;
   message: string | null;
   onFieldChange: (field: keyof UpdateCompanyInput, value: string) => void;
-  onLogoUploaded: (logoFileId: string) => Promise<void>;
+  onLogoUploaded: (upload: UploadedImage) => Promise<void>;
   onSave: () => void;
   values: UpdateCompanyInput;
 };

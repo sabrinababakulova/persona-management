@@ -358,10 +358,16 @@ async function reconcileNegotiation(input: {
     return { applicationUpdated: false, statusApplied: false };
   }
 
+  // The hh.uz state lands on `vacancy_candidate.stage` above and stops there.
+  //
+  // This used to also overwrite `candidates.status`, which the funnel read — so a
+  // five-minute cron silently reverted every manual move, and because that column is
+  // candidate-level it pushed one vacancy's hh.uz state onto every other board the candidate
+  // appeared on. `hhSyncedAt` is still stamped so the row records that sync touched it.
   if (applyStatus) {
     await db
       .update(candidates)
-      .set({ status: applyStatus, hhSyncedAt: new Date() })
+      .set({ hhSyncedAt: new Date() })
       .where(
         and(
           eq(candidates.id, application.candidateId),

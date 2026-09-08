@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import {
   formatHhCandidateForAiAnalysis,
   toStoredCandidateContacts,
@@ -23,6 +23,14 @@ type DatabaseClient = typeof import("~/server/db").db;
 
 /** A job is abandoned to `failed` after this many tries. */
 const MAX_ATTEMPTS = 5;
+/**
+ * Upper bound on model calls spent scoring one candidate in a single job.
+ *
+ * The loop is sequential and the enrich cron fires every minute, so a candidate who applied
+ * to fifty vacancies could otherwise hold a worker for fifty round trips. Remaining pairs are
+ * picked up the next time the candidate is enriched.
+ */
+const MAX_MATCH_PAIRS_PER_JOB = 10;
 /** `processing` rows older than this are assumed crashed and re-queued. */
 const STALE_LOCK_MS = 5 * 60 * 1000;
 const DEFAULT_BATCH_SIZE = 5;
@@ -296,6 +304,7 @@ async function computeMatchScores(input: {
   const pairs = await db
     .select({
       applicationId: candidateVacancies.id,
+      existingScore: candidateVacancies.matchScore,
       vacancyId: vacancies.id,
       title: vacancies.title,
       descriptionHtml: vacancies.descriptionHtml,
@@ -320,7 +329,14 @@ async function computeMatchScores(input: {
       ),
     );
 
-  if (pairs.length === 0) {
+  // A retry re-enters this function — the enrichment job is retried whenever the AI summary
+  // fails, and it used to re-score every pair from scratch each time. Pairs that already have
+  // a score are done.
+  const pendingPairs = pairs
+    .filter((pair) => pair.existingScore === null)
+    .slice(0, MAX_MATCH_PAIRS_PER_JOB);
+
+  if (pendingPairs.length === 0) {
     return;
   }
 
@@ -340,7 +356,7 @@ async function computeMatchScores(input: {
 
   let bestScore: number | null = null;
 
-  for (const pair of pairs) {
+  for (const pair of pendingPairs) {
     const matchResult = await generateCandidateVacancyMatch(
       {
         vacancy: {
@@ -393,11 +409,21 @@ async function computeMatchScores(input: {
     }
   }
 
+  // The candidate-level score is the best across their applications, so a partial run must
+  // not lower it — only raise it.
   if (bestScore !== null) {
     await db
       .update(candidates)
       .set({ matchScore: bestScore })
-      .where(eq(candidates.id, candidateId));
+      .where(
+        and(
+          eq(candidates.id, candidateId),
+          or(
+            isNull(candidates.matchScore),
+            lt(candidates.matchScore, bestScore),
+          ),
+        ),
+      );
   }
 }
 

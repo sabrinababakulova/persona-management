@@ -31,6 +31,7 @@ import {
   getDirectusAssetUrl,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
+import { verifyUploadToken } from "~/server/storage/upload-token";
 import {
   COMPANY_ROLE_ADMIN,
   COMPANY_ROLE_MEMBER,
@@ -208,12 +209,31 @@ export const companyRouter = createTRPCRouter({
 
   /** Persists an already-uploaded logo (see `storage.uploadImage`) on the company. */
   updateLogo: protectedProcedure
-    .input(z.object({ logoFileId: z.string().min(1).max(255) }))
+    .input(
+      z.object({
+        logoFileId: z.string().min(1).max(255),
+        /** Signed handle from `storage.uploadImage`, proving this user uploaded the file. */
+        uploadToken: z.string().min(1).max(255),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const { companyId } = await requireCompanyAdmin(
         ctx.db,
         ctx.session.user.id,
       );
+
+      if (
+        !verifyUploadToken(
+          ctx.session.user.id,
+          input.logoFileId,
+          input.uploadToken,
+        )
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Некорректная ссылка на загруженный файл",
+        });
+      }
 
       const [company] = await ctx.db
         .select({ logoFileId: companies.logoFileId })

@@ -1,5 +1,8 @@
-INSERT INTO "company" ("id", "name")
-VALUES ('00000000-0000-0000-0000-000000000001', 'Default Company')
+-- `company.createdAt` is NOT NULL with an application-level default only, so the
+-- column has no DB default to fall back on: it must be supplied explicitly here or
+-- this statement fails on a database that is built from the migrations alone.
+INSERT INTO "company" ("id", "name", "createdAt")
+VALUES ('00000000-0000-0000-0000-000000000001', 'Default Company', now())
 ON CONFLICT ("id") DO NOTHING;
 --> statement-breakpoint
 UPDATE "user"

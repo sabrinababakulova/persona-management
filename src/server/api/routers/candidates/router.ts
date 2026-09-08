@@ -1,7 +1,7 @@
 import { createTRPCRouter } from "~/server/api/trpc";
 
 import { addCandidateNoteProcedure, getCandidateProcedure } from "./detail";
-import { listCandidatesProcedure, listHhCandidatesProcedure } from "./list";
+import { listCandidatesProcedure } from "./list";
 import {
   createCandidateMeetingProcedure,
   listCandidateMeetingsProcedure,
@@ -24,7 +24,6 @@ import { hhSyncStatusProcedure, syncHhCandidatesProcedure } from "./sync";
  */
 export const candidatesRouter = createTRPCRouter({
   list: listCandidatesProcedure,
-  listHh: listHhCandidatesProcedure,
   get: getCandidateProcedure,
   addNote: addCandidateNoteProcedure,
   listMeetings: listCandidateMeetingsProcedure,

@@ -36,7 +36,7 @@ Path alias: `~/` → `./src/`. ESM project (`"type": "module"`).
 - **DB schema** is a single file: `src/server/db/schema.ts`. UUID PKs, JSON columns for nested data (contacts/skills/experience), unprefixed table names, lookup tables for dropdown options.
 - **AI/resume pipeline**: Mastra agents (`src/mastra/agents/`) on Google Gemini 2.5 Flash — resume analyzer, summary, candidate↔vacancy match (0–100), HR chatbot. Resume processing lives in `src/server/resume/`; files stored in Directus (`src/server/storage/`).
 - **hh.uz candidate sync** (`src/server/services/hh/`): a 3-layer engine — discovery → enrichment queue → status reconciliation. hh.uz applicants are **persisted** into `candidates`/`vacancy_candidate`, deduped by partial unique indexes. Driven by bearer-authorized `/api/cron/hh-*` routes. See AGENTS.md for the full design before touching it.
-- **Client draft state**: only the multi-step vacancy publication flow uses Zustand (`src/stores/vacancy-publication-store.ts`, persisted to localStorage). Everything else is server state via TanStack Query. Transient UI state stays in `useState`.
+- **Client draft state**: only the multi-step vacancy publication flow uses Zustand (`src/stores/vacancy-publication-store.ts`). The store is **in-memory only** — drafts reset on reload, nothing is persisted to localStorage. Everything else is server state via TanStack Query. Transient UI state stays in `useState`.
 - **Telegram**: vacancies can be posted to a channel (`src/server/services/telegram.ts`); button hidden unless `TELEGRAM_*` env vars are set.
 
 ## Conventions
@@ -44,7 +44,7 @@ Path alias: `~/` → `./src/`. ESM project (`"type": "module"`).
 - **All user-facing text is Russian** (labels, placeholders, validation messages). Code and comments are English.
 - File naming: components `kebab-case.tsx`; icons `PascalCaseIcon.tsx` (re-exported from `src/app/_components/icons/index.tsx`, props `{ className?: string }`); types `kebab-case.ts` grouped by domain in `src/types/`.
 - Validation: Zod. Reusable schemas in `src/schemas/`; tRPC inputs validated inline per procedure.
-- Env vars are validated in `src/env.js` (`@t3-oss/env-nextjs`). **No `NEXT_PUBLIC_*` vars exist — all env is server-only.**
+- Env vars are validated in `src/env.js` (`@t3-oss/env-nextjs`). Nearly all of it is server-only; the single client-exposed var is `NEXT_PUBLIC_OLX_CONNECTOR_URL`, so add new vars to the `server` block unless the browser genuinely needs them.
 - Linting/formatting is **Biome** (`biome.jsonc`), not ESLint/Prettier.
 
 ## Schema changes

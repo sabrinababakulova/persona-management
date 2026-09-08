@@ -153,8 +153,8 @@ export function CompanyProfileSection({
           isSaving={updateCompany.isPending}
           message={message}
           onFieldChange={setField}
-          onLogoUploaded={async (logoFileId) => {
-            await updateLogo.mutateAsync({ logoFileId });
+          onLogoUploaded={async ({ fileId, uploadToken }) => {
+            await updateLogo.mutateAsync({ logoFileId: fileId, uploadToken });
           }}
           onSave={handleSave}
           values={values}

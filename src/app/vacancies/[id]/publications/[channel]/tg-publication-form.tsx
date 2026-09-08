@@ -324,7 +324,7 @@ export function TgPublicationForm({
                 ? `/api/directus/assets/${vacancyQuery.data.telegramFileId}`
                 : null
             }
-            onUploaded={setTelegramFileId}
+            onUploaded={({ fileId }) => setTelegramFileId(fileId)}
             variant="banner"
           />
         </div>

@@ -401,9 +401,9 @@
     "showAll": "View all",
     "newApplications": "New applications",
     "activeVacancies": "Active vacancies",
-    "activeCandidates": "Active candidates",
     "hired": "Hired",
-    "lastSevenDays": "in the last 7 days"
+    "lastSevenDays": "in the last 7 days",
+    "allTime": "all time"
   },
   "Profile": {
     "myProfile": "My profile",

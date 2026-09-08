@@ -30,8 +30,8 @@ export function AvatarUploader({ avatarSrc }: AvatarUploaderProps) {
   return (
     <ImageUploader
       initialImageUrl={avatarSrc}
-      onUploaded={async (fileId) => {
-        await updateAvatar.mutateAsync({ avatarFileId: fileId });
+      onUploaded={async ({ fileId, uploadToken }) => {
+        await updateAvatar.mutateAsync({ avatarFileId: fileId, uploadToken });
       }}
       variant="avatar"
     />

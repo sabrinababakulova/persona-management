@@ -215,24 +215,29 @@ export const assignCandidateProcedure = protectedProcedure
       });
     }
 
-    if (!existingRows[0]) {
-      await ctx.db.insert(candidateVacancies).values({
+    // `stage` is per-application, so moving a card here changes this vacancy's board and
+    // nothing else. Writing `candidates.status` instead — as this used to — dragged the
+    // candidate to the same column on every other vacancy they had applied to.
+    //
+    // The upsert leans on the `(vacancyId, candidateId)` unique index rather than acting on
+    // the `existingRows` read above, which two concurrent clicks could both pass.
+    await ctx.db
+      .insert(candidateVacancies)
+      .values({
         candidateId: input.candidateId,
         vacancyId: input.vacancyId,
-      });
-    }
-
-    if (candidate.status !== input.status) {
-      await ctx.db
-        .update(candidates)
-        .set({
-          status: input.status,
+        stage: input.status,
+      })
+      .onConflictDoUpdate({
+        target: [candidateVacancies.vacancyId, candidateVacancies.candidateId],
+        set: {
+          stage: input.status,
           updatedAt: new Date(),
-        })
-        .where(eq(candidates.id, input.candidateId));
-    }
+        },
+      });
 
     return {
       success: true,
+      created: !existingRows[0],
     };
   });

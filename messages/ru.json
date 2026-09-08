@@ -401,9 +401,9 @@
     "showAll": "Смотреть все",
     "newApplications": "Новые отклики",
     "activeVacancies": "Активные вакансии",
-    "activeCandidates": "Активные кандидаты",
     "hired": "Нанято",
-    "lastSevenDays": "за последние 7 дней"
+    "lastSevenDays": "за последние 7 дней",
+    "allTime": "всего"
   },
   "Profile": {
     "myProfile": "Мой профиль",

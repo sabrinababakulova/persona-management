@@ -92,16 +92,3 @@ export const listCandidatesProcedure = protectedProcedure
       total: totalRows[0]?.total ?? 0,
     };
   });
-
-/**
- * Deprecated: hh.uz applicants are now persisted by the candidate sync and are
- * returned by {@link listCandidatesProcedure} like any other candidate.
- *
- * The procedure is kept as an empty page so existing clients that still merge a
- * separate hh.uz list keep working without showing duplicates.
- */
-export const listHhCandidatesProcedure = protectedProcedure
-  .input(candidateListInputSchema)
-  .query(async () => {
-    return { items: [], total: 0 };
-  });

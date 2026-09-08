@@ -6,6 +6,7 @@ import { env } from "~/env";
 import {
   getCompanyMembership,
   getRequiredCompanyId,
+  requireCompanyAdmin,
 } from "~/server/api/router-utils/company";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { takeRateLimitSlot } from "~/server/auth/rate-limit";
@@ -302,7 +303,10 @@ export const integrationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { companyId } = await getCompanyMembership(
+      // Company-wide integration state, so it follows the same rule as the company profile
+      // and invite links: admins only. A member could otherwise redirect where the company's
+      // résumés are ingested from.
+      const { companyId } = await requireCompanyAdmin(
         ctx.db,
         ctx.session.user.id,
       );
@@ -348,7 +352,7 @@ export const integrationsRouter = createTRPCRouter({
 
   disconnectTelegramResumeGroup: protectedProcedure.mutation(
     async ({ ctx }) => {
-      const { companyId } = await getCompanyMembership(
+      const { companyId } = await requireCompanyAdmin(
         ctx.db,
         ctx.session.user.id,
       );
@@ -442,7 +446,12 @@ export const integrationsRouter = createTRPCRouter({
   addTelegramChannel: protectedProcedure
     .input(channelInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      // Publication channels are company-wide: adding, retargeting or removing one changes
+      // where every colleague's vacancies get posted.
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
       const admins = parseAdmins(input.admins);
 
       if (input.deliveryMode === "admins" && admins.length === 0) {
@@ -494,7 +503,10 @@ export const integrationsRouter = createTRPCRouter({
   updateTelegramChannel: protectedProcedure
     .input(channelInputSchema.extend({ id: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
       await requireCompanyChannel(ctx.db, input.id, companyId);
       const admins = parseAdmins(input.admins);
 
@@ -559,7 +571,10 @@ export const integrationsRouter = createTRPCRouter({
   removeTelegramChannel: protectedProcedure
     .input(z.object({ id: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const companyId = await getRequiredCompanyId(ctx.db, ctx.session.user.id);
+      const { companyId } = await requireCompanyAdmin(
+        ctx.db,
+        ctx.session.user.id,
+      );
 
       const deleted = await ctx.db
         .delete(userTelegramChannels)

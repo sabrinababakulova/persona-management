@@ -1,6 +1,4 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import * as argon2 from "argon2";
-import bcrypt from "bcryptjs";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "next-auth";
@@ -13,6 +11,7 @@ import { registerSchema } from "~/schemas/register";
 import {
   createEmailVerificationFlowIdentifier,
   createEmailVerificationIdentifier,
+  createEmailVerificationInviteIdentifier,
   createRateLimitIdentifier,
   EMAIL_VERIFICATION_CODE_TTL_MS,
   EMAIL_VERIFICATION_FLOW_TTL_MS,
@@ -21,21 +20,24 @@ import {
   hashEmailVerificationCode,
   isEmailVerificationCodeValid,
   isEmailVerificationFlowIdValid,
+  LOGIN_IP_RATE_LIMIT_MAX_ATTEMPTS,
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
   LOGIN_RATE_LIMIT_WINDOW_MS,
   normalizeEmail,
+  REGISTER_IP_RATE_LIMIT_MAX_ATTEMPTS,
   REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
   REGISTER_RATE_LIMIT_WINDOW_MS,
   REGISTER_RESEND_COOLDOWN_MS,
+  VERIFY_IP_RATE_LIMIT_MAX_ATTEMPTS,
   VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
   VERIFY_RATE_LIMIT_WINDOW_MS,
 } from "~/server/auth/email-verification";
+import { hashPassword, verifyPassword } from "~/server/auth/password";
 import {
   clearIdentifier,
   hasActiveRecord,
-  isRateLimited,
-  recordAttempt,
   setMarker,
+  takeRateLimitSlot,
 } from "~/server/auth/rate-limit";
 import { toCompanyColumns } from "~/server/company/company-input";
 import {
@@ -53,12 +55,14 @@ import {
 } from "~/server/db/schema";
 import { sendRegistrationCode } from "~/server/mail/send-registration-code";
 import { getDirectusAssetUrl } from "~/server/storage/directus-storage";
+import { getClientIp } from "~/server/utils/client-ip";
 import {
   COMPANY_ROLE_ADMIN,
   COMPANY_ROLE_MEMBER,
   isCompanyAdmin,
 } from "~/shared/company-roles";
 import { DEFAULT_COMPANY_ID } from "~/shared/default-company";
+import { shouldUseSecureCookies } from "~/shared/secure-cookies";
 
 class AuthFlowError extends CredentialsSignin {
   constructor(code: string) {
@@ -84,28 +88,20 @@ if (SKIP_EMAIL_VERIFICATION) {
   );
 }
 
-function getClientIp(request: Request) {
-  // Prefer x-real-ip set by the reverse proxy (most reliable)
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  if (realIp) {
-    return realIp;
-  }
-
-  // Fall back to the rightmost IP in x-forwarded-for
-  // (the last proxy in the chain appends the real client IP)
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const ips = forwardedFor
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter(Boolean);
-    const rightmost = ips[ips.length - 1];
-    if (rightmost) {
-      return rightmost;
-    }
-  }
-
-  return "unknown";
+/**
+ * Records one rate-limit attempt and reports whether the caller is now over the limit.
+ *
+ * `takeRateLimitSlot` counts and inserts inside a single advisory-locked transaction, so
+ * concurrent requests cannot all read the same count before any of them writes. It returns
+ * `false` once the window is full — this wrapper flips that into the "is limited" sense the
+ * call sites read, so a burst of parallel attempts consumes a slot each.
+ */
+async function isRateLimitExceeded(
+  identifier: string,
+  maxAttempts: number,
+  windowMs: number,
+) {
+  return !(await takeRateLimitSlot(identifier, maxAttempts, windowMs));
 }
 
 /**
@@ -232,7 +228,7 @@ const providers: NextAuthConfig["providers"] = [
     },
     async authorize(credentials, request) {
       const mode = credentials?.mode?.toString().trim().toLowerCase();
-      const clientIp = getClientIp(request);
+      const clientIp = getClientIp(request.headers);
 
       if (mode === "register") {
         const parsed = registerSchema.safeParse({
@@ -262,14 +258,19 @@ const providers: NextAuthConfig["providers"] = [
           email,
         );
 
+        // The slot is taken up front rather than recorded afterwards: checking a count and
+        // then writing it in a second round trip let a burst of parallel requests all read
+        // the same pre-write count and sail through together.
         if (
-          (await isRateLimited(
+          (await isRateLimitExceeded(
             registerRateIdentifier,
             REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
           )) ||
-          (await isRateLimited(
+          (await isRateLimitExceeded(
             registerRateByIpIdentifier,
-            REGISTER_RATE_LIMIT_MAX_ATTEMPTS,
+            REGISTER_IP_RATE_LIMIT_MAX_ATTEMPTS,
+            REGISTER_RATE_LIMIT_WINDOW_MS,
           )) ||
           (await hasActiveRecord(registerCooldownIdentifier))
         ) {
@@ -278,7 +279,7 @@ const providers: NextAuthConfig["providers"] = [
 
         // Always hash the password BEFORE checking user existence
         // to prevent timing-based user enumeration
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await hashPassword(password);
 
         const [existingUser] = await db
           .select({ id: users.id, emailVerified: users.emailVerified })
@@ -287,15 +288,6 @@ const providers: NextAuthConfig["providers"] = [
           .limit(1);
 
         if (existingUser?.emailVerified) {
-          // Record rate limit attempts (same timing as the normal flow)
-          await recordAttempt(
-            registerRateIdentifier,
-            REGISTER_RATE_LIMIT_WINDOW_MS,
-          );
-          await recordAttempt(
-            registerRateByIpIdentifier,
-            REGISTER_RATE_LIMIT_WINDOW_MS,
-          );
           throw new AuthFlowError("registration_failed");
         }
 
@@ -316,15 +308,36 @@ const providers: NextAuthConfig["providers"] = [
         let createdCompanyId: string | null = null;
         let verificationIdentifier: string | null = null;
         let verificationFlowIdentifier: string | null = null;
+        let verificationInviteIdentifier: string | null = null;
 
         try {
           let verificationUserId: string | undefined;
 
           if (existingUser?.id) {
-            // Unverified user exists: delete old verification tokens
-            // but do NOT overwrite their password (prevents race condition
-            // where an attacker could set a password for someone else's email)
+            // An unverified row exists for this address. Its password belongs to whoever
+            // submitted the *last* registration, and this submission is now the last one.
+            //
+            // Keeping the earlier password instead is what enables account pre-hijacking:
+            // an attacker registers the victim's address, the victim later registers and
+            // completes the emailed code, and the account ends up verified under the
+            // attacker's password. Nothing is lost by overwriting — the row is unverified,
+            // so nobody has ever proved they own the address, and the code that grants
+            // ownership is only ever sent to the address itself.
             verificationUserId = existingUser.id;
+            await db
+              .update(users)
+              .set({
+                password: hashedPassword,
+                name: `${firstName} ${lastName}`.trim(),
+                passwordChangedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(users.id, verificationUserId),
+                  isNull(users.emailVerified),
+                ),
+              );
+
             const oldVerificationId =
               createEmailVerificationIdentifier(verificationUserId);
             await db
@@ -460,24 +473,27 @@ const providers: NextAuthConfig["providers"] = [
             expires: new Date(Date.now() + EMAIL_VERIFICATION_FLOW_TTL_MS),
           });
 
+          if (invitation) {
+            verificationInviteIdentifier =
+              createEmailVerificationInviteIdentifier(flowId);
+            await db.insert(verificationTokens).values({
+              identifier: verificationInviteIdentifier,
+              token: invitation.id,
+              expires: new Date(Date.now() + EMAIL_VERIFICATION_FLOW_TTL_MS),
+            });
+          }
+
           await sendRegistrationCode(email, verificationCode);
 
-          await recordAttempt(
-            registerRateIdentifier,
-            REGISTER_RATE_LIMIT_WINDOW_MS,
-          );
-          await recordAttempt(
-            registerRateByIpIdentifier,
-            REGISTER_RATE_LIMIT_WINDOW_MS,
-          );
           await setMarker(
             registerCooldownIdentifier,
             REGISTER_RESEND_COOLDOWN_MS,
           );
 
-          if (invitation) {
-            await markInvitationUsed(invitation.id);
-          }
+          // The invitation is deliberately NOT consumed here. At this point the code has only
+          // been mailed — a typo'd address, an abandoned sign-up or a bounced mail would burn
+          // a link that granted nobody anything. `verify-code` marks it used once the invitee
+          // proves they own the address.
 
           throw new AuthFlowError(
             `${VERIFICATION_REQUIRED_CODE_PREFIX}${flowId}`,
@@ -527,6 +543,15 @@ const providers: NextAuthConfig["providers"] = [
               .catch(() => undefined);
           }
 
+          if (verificationInviteIdentifier) {
+            await db
+              .delete(verificationTokens)
+              .where(
+                eq(verificationTokens.identifier, verificationInviteIdentifier),
+              )
+              .catch(() => undefined);
+          }
+
           if (error instanceof AuthFlowError) {
             throw error;
           }
@@ -558,18 +583,20 @@ const providers: NextAuthConfig["providers"] = [
         );
 
         if (
-          await isRateLimited(
+          await isRateLimitExceeded(
             verifyRateIdentifier,
             VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
+            VERIFY_RATE_LIMIT_WINDOW_MS,
           )
         ) {
           throw new AuthFlowError("rate_limited");
         }
 
         if (
-          await isRateLimited(
+          await isRateLimitExceeded(
             verifyRateByIpIdentifier,
-            VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
+            VERIFY_IP_RATE_LIMIT_MAX_ATTEMPTS,
+            VERIFY_RATE_LIMIT_WINDOW_MS,
           )
         ) {
           throw new AuthFlowError("rate_limited");
@@ -628,15 +655,9 @@ const providers: NextAuthConfig["providers"] = [
           )
           .limit(1);
 
+        // The attempt was already charged against both windows above, so a wrong code simply
+        // returns — the slot it consumed is what stops the next thousand guesses.
         if (!verificationToken) {
-          await recordAttempt(
-            verifyRateIdentifier,
-            VERIFY_RATE_LIMIT_WINDOW_MS,
-          );
-          await recordAttempt(
-            verifyRateByIpIdentifier,
-            VERIFY_RATE_LIMIT_WINDOW_MS,
-          );
           return null;
         }
 
@@ -645,13 +666,31 @@ const providers: NextAuthConfig["providers"] = [
           .set({ emailVerified: new Date() })
           .where(eq(users.id, user.id));
 
-        await markEmailVerified(user.id);
+        // The address is now proven, so the invite link this sign-up arrived on can finally be
+        // counted as used. Registration parked it against the flow precisely so an abandoned
+        // or mistyped sign-up would not consume it.
+        const verificationInviteIdentifier =
+          createEmailVerificationInviteIdentifier(flowId);
+        const [inviteRecord] = await db
+          .select({ invitationId: verificationTokens.token })
+          .from(verificationTokens)
+          .where(
+            and(
+              eq(verificationTokens.identifier, verificationInviteIdentifier),
+              gt(verificationTokens.expires, new Date()),
+            ),
+          )
+          .limit(1);
+
+        if (inviteRecord?.invitationId) {
+          await markInvitationUsed(inviteRecord.invitationId);
+        }
 
         await Promise.all([
           clearIdentifier(verificationIdentifier),
           clearIdentifier(verificationFlowIdentifier),
+          clearIdentifier(verificationInviteIdentifier),
           clearIdentifier(verifyRateIdentifier),
-          clearIdentifier(verifyRateByIpIdentifier),
         ]);
 
         return {
@@ -681,15 +720,23 @@ const providers: NextAuthConfig["providers"] = [
         clientIp,
       );
 
+      // Both slots are taken before the password is looked at, so a burst of parallel guesses
+      // consumes one each instead of all reading the same pre-write count. The per-account
+      // slot is released again on a successful sign-in, so only failures accumulate there.
       if (
-        await isRateLimited(loginRateIdentifier, LOGIN_RATE_LIMIT_MAX_ATTEMPTS)
+        await isRateLimitExceeded(
+          loginRateIdentifier,
+          LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
+        )
       ) {
         throw new AuthFlowError("rate_limited");
       }
       if (
-        await isRateLimited(
+        await isRateLimitExceeded(
           loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+          LOGIN_IP_RATE_LIMIT_MAX_ATTEMPTS,
+          LOGIN_RATE_LIMIT_WINDOW_MS,
         )
       ) {
         throw new AuthFlowError("rate_limited");
@@ -712,33 +759,18 @@ const providers: NextAuthConfig["providers"] = [
 
       if (!user) {
         // Hash a dummy password to prevent timing-based user enumeration
-        await bcrypt.hash(password, 12);
-        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-        await recordAttempt(
-          loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_WINDOW_MS,
-        );
+        await hashPassword(password);
         throw new AuthFlowError("user_not_found");
       }
 
       if (!user.password) {
-        await bcrypt.hash(password, 12);
-        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-        await recordAttempt(
-          loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_WINDOW_MS,
-        );
+        await hashPassword(password);
         throw new AuthFlowError("password_sign_in_unavailable");
       }
 
       if (!user.emailVerified) {
         if (!SKIP_EMAIL_VERIFICATION) {
-          await bcrypt.hash(password, 12);
-          await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-          await recordAttempt(
-            loginRateByIpIdentifier,
-            LOGIN_RATE_LIMIT_WINDOW_MS,
-          );
+          await hashPassword(password);
           throw new AuthFlowError("email_not_verified");
         }
 
@@ -751,25 +783,12 @@ const providers: NextAuthConfig["providers"] = [
 
       // Removed from their company by the master account: the row survives, the access does not.
       if (user.deactivatedAt) {
-        await bcrypt.hash(password, 12);
-        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-        await recordAttempt(
-          loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_WINDOW_MS,
-        );
+        await hashPassword(password);
         throw new AuthFlowError("account_deactivated");
       }
 
-      const isArgon2 = user.password.startsWith("$argon2");
-      const isValid = isArgon2
-        ? await argon2.verify(user.password, password)
-        : await bcrypt.compare(password, user.password);
+      const isValid = await verifyPassword(user.password, password);
       if (!isValid) {
-        await recordAttempt(loginRateIdentifier, LOGIN_RATE_LIMIT_WINDOW_MS);
-        await recordAttempt(
-          loginRateByIpIdentifier,
-          LOGIN_RATE_LIMIT_WINDOW_MS,
-        );
         throw new AuthFlowError("password_incorrect");
       }
 
@@ -797,8 +816,50 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
+      /**
+       * Google hands back the address exactly as the user typed it. Every other path stores
+       * the canonical form, so without this an aliased address (`user+tag@…`) would create a
+       * second row beside the credentials account belonging to the same person.
+       */
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: normalizeEmail(profile.email),
+          image: profile.picture,
+        };
+      },
     }),
   );
+}
+
+/**
+ * Refuses to link a Google sign-in onto an existing password account that was never verified.
+ *
+ * `allowDangerousEmailAccountLinking` matches purely on address. Combined with an unverified
+ * row it completes an account pre-hijack from the other direction: an attacker registers the
+ * victim's address with a password of their choosing, the victim then signs in with Google,
+ * the rows merge, `emailVerified` is set — and the attacker's password now opens the account.
+ *
+ * Registration overwrites the password on re-registration, which closes the credentials-side
+ * path; this closes the Google-side one. A row that is already verified is a real account and
+ * linking to it is the intended behaviour.
+ */
+async function canLinkGoogleAccount(email: string) {
+  const [existing] = await db
+    .select({
+      emailVerified: users.emailVerified,
+      password: users.password,
+    })
+    .from(users)
+    .where(eq(users.email, normalizeEmail(email)))
+    .limit(1);
+
+  if (!existing) {
+    return true;
+  }
+
+  return Boolean(existing.emailVerified) || !existing.password;
 }
 
 /**
@@ -817,7 +878,9 @@ export const authConfig = {
   session: { strategy: "jwt" },
   secret: env.AUTH_SECRET,
   trustHost: true,
-  useSecureCookies: env.AUTH_URL?.startsWith("https://") ?? false,
+  // Resolved through the shared helper so `middleware.ts` reads the cookie under exactly the
+  // name written here — a mismatch logs valid sessions out on every gated route.
+  useSecureCookies: shouldUseSecureCookies(),
   pages: {
     signIn: "/login",
     error: "/auth/error",
@@ -837,6 +900,10 @@ export const authConfig = {
       }
 
       if (await isAccountDeactivated(user.id)) {
+        return false;
+      }
+
+      if (!(await canLinkGoogleAccount(user.email))) {
         return false;
       }
 

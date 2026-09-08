@@ -43,6 +43,12 @@ function readFileAsBase64(file: File, errorMessage: string): Promise<string> {
   });
 }
 
+/** A stored image plus the handle proving the current user uploaded it. */
+export type UploadedImage = {
+  fileId: string;
+  uploadToken: string;
+};
+
 type ImageUploaderProps = {
   /** Visual style: a round avatar button, or a wide banner drop-zone. */
   variant?: "avatar" | "banner";
@@ -52,9 +58,10 @@ type ImageUploaderProps = {
   initialImageUrl?: string | null;
   /**
    * Called with the Directus file id once the image is stored. May return a promise — any
-   * rejection is surfaced as an upload error.
+   * rejection is surfaced as an upload error. Receives the signed handle alongside the id —
+   * the mutations that persist a file require it as proof of who uploaded it.
    */
-  onUploaded: (fileId: string) => void | Promise<void>;
+  onUploaded: (upload: UploadedImage) => void | Promise<void>;
   /** Disables the picker, e.g. while the parent form is saving. */
   disabled?: boolean;
 };
@@ -127,14 +134,14 @@ export function ImageUploader({
     try {
       const dataBase64 = await readFileAsBase64(file, t("fileReadError"));
 
-      const { fileId } = await uploadImage.mutateAsync({
+      const { fileId, uploadToken } = await uploadImage.mutateAsync({
         dataBase64,
         fileName: file.name,
         mimeType: file.type,
       });
 
       showLocalPreview(file);
-      await onUploaded(fileId);
+      await onUploaded({ fileId, uploadToken });
     } catch (uploadError) {
       // `resolveTrpcError` keeps server-authored messages and masks raw
       // exception text, so a driver or SDK error never reaches the user.

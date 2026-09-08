@@ -15,6 +15,7 @@ import {
   vacancyTelegramDispatches,
   vacancyTelegramPosts,
 } from "~/server/db/schema";
+import { sanitizeRichTextHtmlOrNull } from "~/server/html/sanitize-rich-text";
 import {
   getCompanyFeatures,
   requireCompanyFeature,
@@ -126,6 +127,30 @@ export const createVacancyProcedure = protectedProcedure
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
     const vacancyId = input.id ?? crypto.randomUUID();
 
+    // A publication row points back at its base vacancy through `parentId`, and the rollups
+    // that build the response counters and platform chips group by it. Accepting an
+    // unverified parent let a caller hang their row off another company's vacancy and inflate
+    // its numbers, so the parent must be one this company owns.
+    if (input.parentId && input.parentId !== vacancyId) {
+      const [parent] = await ctx.db
+        .select({ id: vacancies.id })
+        .from(vacancies)
+        .where(
+          and(
+            eq(vacancies.id, input.parentId),
+            eq(vacancies.companyId, companyId),
+          ),
+        )
+        .limit(1);
+
+      if (!parent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Родительская вакансия не найдена",
+        });
+      }
+    }
+
     const createdRows = await ctx.db
       .insert(vacancies)
       .values({
@@ -136,7 +161,6 @@ export const createVacancyProcedure = protectedProcedure
         parentId: input.parentId ?? vacancyId,
         title: input.title,
         status: input.status,
-        responses: input.responses,
         areaId: input.areaId ?? null,
         employmentId: input.employmentId ?? null,
         scheduleId: input.scheduleId ?? null,
@@ -147,7 +171,9 @@ export const createVacancyProcedure = protectedProcedure
         salaryFrom: input.salaryFrom ?? null,
         salaryTo: input.salaryTo ?? null,
         salaryCurrency: input.salaryCurrency,
-        descriptionHtml: input.descriptionHtml ?? null,
+        descriptionHtml: sanitizeRichTextHtmlOrNull(
+          input.descriptionHtml ?? null,
+        ),
         contactPhone: input.contactPhone ?? null,
         telegramFileId: input.telegramFileId ?? null,
         personHunterMeta: input.personHunterMeta ?? null,
@@ -711,7 +737,6 @@ export const updateVacancyProcedure = protectedProcedure
     const valuesToUpdate: Partial<{
       title: string;
       status: "active" | "draft" | "paused" | "closed" | "archive";
-      responses: number;
       areaId: string | null;
       employmentId: string | null;
       scheduleId: string | null;
@@ -739,11 +764,6 @@ export const updateVacancyProcedure = protectedProcedure
       valuesToUpdate.title = input.title;
     if (input.status && input.status !== (existing.status ?? "active"))
       valuesToUpdate.status = input.status;
-    if (
-      input.responses !== undefined &&
-      input.responses !== (existing.responses ?? 0)
-    )
-      valuesToUpdate.responses = input.responses;
     if (
       input.areaId !== undefined &&
       (input.areaId ?? "") !== (existing.areaId ?? "")
@@ -795,7 +815,9 @@ export const updateVacancyProcedure = protectedProcedure
       input.descriptionHtml !== undefined &&
       (input.descriptionHtml ?? "") !== (existing.descriptionHtml ?? "")
     )
-      valuesToUpdate.descriptionHtml = input.descriptionHtml || null;
+      valuesToUpdate.descriptionHtml = sanitizeRichTextHtmlOrNull(
+        input.descriptionHtml || null,
+      );
     if (
       input.contactPhone !== undefined &&
       (input.contactPhone ?? "") !== (existing.contactPhone ?? "")

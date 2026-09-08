@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import bcrypt from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { changePasswordSchema } from "~/schemas/change-password";
@@ -22,18 +21,20 @@ import {
   normalizeEmail,
   PASSWORD_RESET_CODE_TTL_MS,
   PASSWORD_RESET_FLOW_TTL_MS,
+  PASSWORD_RESET_REQUEST_IP_MAX_ATTEMPTS,
   PASSWORD_RESET_REQUEST_MAX_ATTEMPTS,
   PASSWORD_RESET_REQUEST_WINDOW_MS,
   PASSWORD_RESET_RESEND_COOLDOWN_MS,
+  PASSWORD_RESET_VERIFY_IP_MAX_ATTEMPTS,
   PASSWORD_RESET_VERIFY_MAX_ATTEMPTS,
   PASSWORD_RESET_VERIFY_WINDOW_MS,
 } from "~/server/auth/email-verification";
+import { hashPassword, verifyPassword } from "~/server/auth/password";
 import {
   clearIdentifier,
   hasActiveRecord,
-  isRateLimited,
-  recordAttempt,
   setMarker,
+  takeRateLimitSlot,
 } from "~/server/auth/rate-limit";
 import { users, verificationTokens } from "~/server/db/schema";
 import { sendPasswordResetCode } from "~/server/mail/send-password-reset-code";
@@ -43,22 +44,25 @@ import {
   getDirectusAssetUrl,
   isDirectusNotFoundError,
 } from "~/server/storage/directus-storage";
+import { verifyUploadToken } from "~/server/storage/upload-token";
+import { getClientIp } from "~/server/utils/client-ip";
 
 const CHANGE_PASSWORD_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
-function getClientIp(headers: Headers) {
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0]?.trim() || "unknown";
-  }
-
-  const realIp = headers.get("x-real-ip")?.trim();
-  if (realIp) {
-    return realIp;
-  }
-
-  return "unknown";
+/**
+ * Charges one slot and reports whether the window is now full.
+ *
+ * `takeRateLimitSlot` counts and inserts under an advisory lock, so parallel requests each
+ * consume a slot instead of all observing the same pre-write count. The per-identity windows
+ * are released on success, so only failures accumulate there.
+ */
+async function isRateLimitExceeded(
+  identifier: string,
+  maxAttempts: number,
+  windowMs: number,
+) {
+  return !(await takeRateLimitSlot(identifier, maxAttempts, windowMs));
 }
 
 export const profileRouter = createTRPCRouter({
@@ -80,27 +84,21 @@ export const profileRouter = createTRPCRouter({
         email,
       );
 
-      if (
-        await isRateLimited(
+      // Both windows are charged atomically before anything is looked up, so a burst of
+      // parallel requests cannot all read the same pre-write count.
+      const overRequestLimit =
+        (await isRateLimitExceeded(
           requestIdentifier,
           PASSWORD_RESET_REQUEST_MAX_ATTEMPTS,
-        )
-      ) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: "Слишком много запросов. Попробуйте позже.",
-          cause: {
-            retryAfter: Math.ceil(PASSWORD_RESET_REQUEST_WINDOW_MS / 1000),
-          },
-        });
-      }
-
-      if (
-        await isRateLimited(
+          PASSWORD_RESET_REQUEST_WINDOW_MS,
+        )) ||
+        (await isRateLimitExceeded(
           requestByIpIdentifier,
-          PASSWORD_RESET_REQUEST_MAX_ATTEMPTS,
-        )
-      ) {
+          PASSWORD_RESET_REQUEST_IP_MAX_ATTEMPTS,
+          PASSWORD_RESET_REQUEST_WINDOW_MS,
+        ));
+
+      if (overRequestLimit) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Слишком много запросов. Попробуйте позже.",
@@ -125,45 +123,28 @@ export const profileRouter = createTRPCRouter({
         .select({
           id: users.id,
           emailVerified: users.emailVerified,
+          deactivatedAt: users.deactivatedAt,
         })
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
 
-      if (!user) {
-        await recordAttempt(
-          requestIdentifier,
-          PASSWORD_RESET_REQUEST_WINDOW_MS,
-        );
-        await recordAttempt(
-          requestByIpIdentifier,
-          PASSWORD_RESET_REQUEST_WINDOW_MS,
-        );
+      // An unknown address, an unverified one, and an account the master removed from its
+      // company all take the same path as a real request: a flow id is minted and returned,
+      // no mail is sent, and any code entered against it fails like an expired one.
+      //
+      // Registration goes to real lengths to avoid leaking which addresses exist — hashing a
+      // dummy password purely to equalise timing. Answering "Пользователь с такой почтой не
+      // найден" here handed that back for free.
+      const isEligible = Boolean(user?.emailVerified && !user.deactivatedAt);
+      const flowId = generateEmailVerificationFlowId();
+      await setMarker(cooldownIdentifier, PASSWORD_RESET_RESEND_COOLDOWN_MS);
 
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Пользователь с такой почтой не найден.",
-        });
-      }
-
-      if (!user.emailVerified) {
-        await recordAttempt(
-          requestIdentifier,
-          PASSWORD_RESET_REQUEST_WINDOW_MS,
-        );
-        await recordAttempt(
-          requestByIpIdentifier,
-          PASSWORD_RESET_REQUEST_WINDOW_MS,
-        );
-
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Сначала подтвердите почту для этого аккаунта.",
-        });
+      if (!user || !isEligible) {
+        return { email, flowId };
       }
 
       const verificationCode = generateEmailVerificationCode();
-      const flowId = generateEmailVerificationFlowId();
       const resetIdentifier = createPasswordResetIdentifier(user.id);
       const resetFlowIdentifier = createPasswordResetFlowIdentifier(flowId);
 
@@ -198,13 +179,6 @@ export const profileRouter = createTRPCRouter({
         });
       }
 
-      await recordAttempt(requestIdentifier, PASSWORD_RESET_REQUEST_WINDOW_MS);
-      await recordAttempt(
-        requestByIpIdentifier,
-        PASSWORD_RESET_REQUEST_WINDOW_MS,
-      );
-      await setMarker(cooldownIdentifier, PASSWORD_RESET_RESEND_COOLDOWN_MS);
-
       return {
         email,
         flowId,
@@ -224,12 +198,19 @@ export const profileRouter = createTRPCRouter({
         clientIp,
       );
 
-      if (
-        await isRateLimited(
+      const overVerifyLimit =
+        (await isRateLimitExceeded(
           verifyIdentifier,
           PASSWORD_RESET_VERIFY_MAX_ATTEMPTS,
-        )
-      ) {
+          PASSWORD_RESET_VERIFY_WINDOW_MS,
+        )) ||
+        (await isRateLimitExceeded(
+          verifyByIpIdentifier,
+          PASSWORD_RESET_VERIFY_IP_MAX_ATTEMPTS,
+          PASSWORD_RESET_VERIFY_WINDOW_MS,
+        ));
+
+      if (overVerifyLimit) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Слишком много попыток. Попробуйте позже.",
@@ -239,20 +220,17 @@ export const profileRouter = createTRPCRouter({
         });
       }
 
-      if (
-        await isRateLimited(
-          verifyByIpIdentifier,
-          PASSWORD_RESET_VERIFY_MAX_ATTEMPTS,
-        )
-      ) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: "Слишком много попыток. Попробуйте позже.",
-          cause: {
-            retryAfter: Math.ceil(PASSWORD_RESET_VERIFY_WINDOW_MS / 1000),
-          },
-        });
-      }
+      /**
+       * One message for every way this can fail.
+       *
+       * A flow id minted for an address with no eligible account is indistinguishable from an
+       * expired one, and both have to read the same as a wrong code — otherwise the reset
+       * screen answers the existence question the request step refuses to.
+       */
+      const invalidCodeError = new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Неверный или истекший код. Запросите новый код.",
+      });
 
       const resetFlowIdentifier = createPasswordResetFlowIdentifier(
         input.flowId,
@@ -270,10 +248,7 @@ export const profileRouter = createTRPCRouter({
 
       const userId = flowRecord?.userId;
       if (!userId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Код истек. Запросите новый код.",
-        });
+        throw invalidCodeError;
       }
 
       const [user] = await ctx.db
@@ -286,10 +261,7 @@ export const profileRouter = createTRPCRouter({
         .limit(1);
 
       if (!user) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Пользователь не найден.",
-        });
+        throw invalidCodeError;
       }
 
       const resetIdentifier = createPasswordResetIdentifier(user.id);
@@ -308,23 +280,15 @@ export const profileRouter = createTRPCRouter({
         )
         .limit(1);
 
+      // The attempt was charged against both windows at the top of the procedure.
       if (!verificationCodeRecord) {
-        await recordAttempt(verifyIdentifier, PASSWORD_RESET_VERIFY_WINDOW_MS);
-        await recordAttempt(
-          verifyByIpIdentifier,
-          PASSWORD_RESET_VERIFY_WINDOW_MS,
-        );
-
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Неверный или истекший код.",
-        });
+        throw invalidCodeError;
       }
 
       if (user.password) {
-        const isSamePassword = await bcrypt.compare(
-          input.newPassword,
+        const isSamePassword = await verifyPassword(
           user.password,
+          input.newPassword,
         );
 
         if (isSamePassword) {
@@ -335,7 +299,7 @@ export const profileRouter = createTRPCRouter({
         }
       }
 
-      const hashedPassword = await bcrypt.hash(input.newPassword, 12);
+      const hashedPassword = await hashPassword(input.newPassword);
 
       await ctx.db
         .update(users)
@@ -349,7 +313,6 @@ export const profileRouter = createTRPCRouter({
         clearIdentifier(resetIdentifier),
         clearIdentifier(resetFlowIdentifier),
         clearIdentifier(verifyIdentifier),
-        clearIdentifier(verifyByIpIdentifier),
       ]);
 
       return {
@@ -380,9 +343,24 @@ export const profileRouter = createTRPCRouter({
     .input(
       z.object({
         avatarFileId: z.string().min(1).max(255),
+        /** Signed handle from `storage.uploadImage`, proving this user uploaded the file. */
+        uploadToken: z.string().min(1).max(255),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        !verifyUploadToken(
+          ctx.session.user.id,
+          input.avatarFileId,
+          input.uploadToken,
+        )
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Некорректная ссылка на загруженный файл",
+        });
+      }
+
       const [currentUser] = await ctx.db
         .select({
           avatarFileId: users.avatarFileId,
@@ -443,9 +421,10 @@ export const profileRouter = createTRPCRouter({
       );
 
       if (
-        await isRateLimited(
+        await isRateLimitExceeded(
           rateLimitIdentifier,
           CHANGE_PASSWORD_RATE_LIMIT_MAX_ATTEMPTS,
+          CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS,
         )
       ) {
         throw new TRPCError({
@@ -480,24 +459,19 @@ export const profileRouter = createTRPCRouter({
         });
       }
 
-      const isCurrentPasswordValid = await bcrypt.compare(
-        input.currentPassword,
+      const isCurrentPasswordValid = await verifyPassword(
         currentUser.password,
+        input.currentPassword,
       );
 
       if (!isCurrentPasswordValid) {
-        await recordAttempt(
-          rateLimitIdentifier,
-          CHANGE_PASSWORD_RATE_LIMIT_WINDOW_MS,
-        );
-
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Старый пароль введен неверно",
         });
       }
 
-      const hashedPassword = await bcrypt.hash(input.newPassword, 12);
+      const hashedPassword = await hashPassword(input.newPassword);
 
       await ctx.db
         .update(users)

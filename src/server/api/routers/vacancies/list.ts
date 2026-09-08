@@ -172,10 +172,12 @@ export const listVacanciesProcedure = protectedProcedure
         getVacancyResponseCounts(
           ctx.db,
           rows.map((row) => row.id),
+          userCompanyId,
         ),
         getVacancyPublicationChannels(
           ctx.db,
           rows.map((row) => row.id),
+          userCompanyId,
         ),
       ]);
       localVacancies = rows.map((row) =>
@@ -226,6 +228,9 @@ export const listVacanciesProcedure = protectedProcedure
     // Archived stubs are tracked separately because they are never returned by the
     // active-only hh.uz fetches below, so they must be excluded from the linked-count math
     // that prevents double-counting active hh.uz vacancies against the local total.
+    // Only rows that actually carry an hh.uz id contribute to either set below; without the
+    // predicate this read every vacancy in the company on every request just to discard most
+    // of them in `.filter(Boolean)`.
     const linkedRows = await ctx.db
       .select({
         hhVacancyId: vacancies.hhVacancyId,
@@ -233,7 +238,11 @@ export const listVacanciesProcedure = protectedProcedure
       })
       .from(vacancies)
       .where(
-        and(eq(vacancies.companyId, userCompanyId), isUserVisibleVacancy()),
+        and(
+          eq(vacancies.companyId, userCompanyId),
+          isUserVisibleVacancy(),
+          isNotNull(vacancies.hhVacancyId),
+        ),
       );
     const linkedHhVacancyIds = new Set(
       linkedRows

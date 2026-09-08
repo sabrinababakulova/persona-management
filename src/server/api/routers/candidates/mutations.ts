@@ -1,21 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { getRequestLocale } from "~/i18n/server-locale";
 import { writeRecentActivityLog } from "~/server/activity/recent-activity";
 import { getRequiredCompanyId } from "~/server/api/router-utils/company";
 import { protectedProcedure } from "~/server/api/trpc";
-import {
-  candidateContactTypes,
-  candidateLanguageLevels,
-  candidateLanguages,
-  candidatePositions,
-  candidateSkills,
-  candidateSources,
-  candidateStatusOptions,
-  candidates,
-  vacancyLevels,
-} from "~/server/db/schema";
+import { takeRateLimitSlot } from "~/server/auth/rate-limit";
+import { isUniqueViolation } from "~/server/db/errors";
+import { candidateStatusOptions, candidates } from "~/server/db/schema";
 import { extractCandidateResumePrefillData } from "~/server/resume/extract-candidate-resume-prefill";
 import { generateCandidateAiAnalysis } from "~/server/resume/generate-candidate-ai-analysis";
 import {
@@ -42,7 +34,10 @@ import {
   candidateUpdateInputSchema,
   candidateUploadResumeInputSchema,
 } from "./schemas";
-import { validateCandidateInput } from "./validators";
+import { loadCandidateLookupSets, validateCandidateInput } from "./validators";
+
+const RESUME_UPLOAD_RATE_LIMIT_MAX_REQUESTS = 30;
+const RESUME_UPLOAD_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 /**
  * Validates, stores, and analyzes a candidate resume PDF.
@@ -139,6 +134,21 @@ export const uploadResumeProcedure = protectedProcedure
       ctx.session?.user?.id,
     );
 
+    // Two model calls and a Directus write per invocation, and the candidate row need not
+    // exist yet (the prefill flow pre-allocates its id), so nothing else bounds this.
+    const allowed = await takeRateLimitSlot(
+      `resume-upload:${ctx.session.user.id}`,
+      RESUME_UPLOAD_RATE_LIMIT_MAX_REQUESTS,
+      RESUME_UPLOAD_RATE_LIMIT_WINDOW_MS,
+    );
+    if (!allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "Слишком много загрузок резюме. Попробуйте через несколько минут.",
+      });
+    }
+
     let resumeFileId: string;
     let candidateHasTags = false;
     try {
@@ -192,93 +202,18 @@ export const uploadResumeProcedure = protectedProcedure
     const resumeFileSize = formatFileSize(fileBuffer.length);
 
     // Reuse active lookup values so AI prefill output is normalized to form options.
-    const lookupOptions = {
-      contactTypes: await ctx.db
-        .select({
-          value: candidateContactTypes.value,
-          label: candidateContactTypes.label,
-        })
-        .from(candidateContactTypes)
-        .where(eq(candidateContactTypes.isActive, true))
-        .orderBy(
-          asc(candidateContactTypes.sortOrder),
-          asc(candidateContactTypes.label),
-        ),
-      sources: await ctx.db
-        .select({
-          value: candidateSources.value,
-          label: candidateSources.label,
-        })
-        .from(candidateSources)
-        .where(eq(candidateSources.isActive, true))
-        .orderBy(asc(candidateSources.sortOrder), asc(candidateSources.label)),
-      positions: await ctx.db
-        .select({
-          value: candidatePositions.value,
-          label: candidatePositions.label,
-        })
-        .from(candidatePositions)
-        .where(eq(candidatePositions.isActive, true))
-        .orderBy(
-          asc(candidatePositions.sortOrder),
-          asc(candidatePositions.label),
-        ),
-      skills: await ctx.db
-        .select({
-          value: candidateSkills.value,
-          label: candidateSkills.label,
-        })
-        .from(candidateSkills)
-        .where(eq(candidateSkills.isActive, true))
-        .orderBy(asc(candidateSkills.sortOrder), asc(candidateSkills.label)),
-      languages: await ctx.db
-        .select({
-          value: candidateLanguages.value,
-          label: candidateLanguages.label,
-        })
-        .from(candidateLanguages)
-        .where(eq(candidateLanguages.isActive, true))
-        .orderBy(
-          asc(candidateLanguages.sortOrder),
-          asc(candidateLanguages.label),
-        ),
-      languageLevels: await ctx.db
-        .select({
-          value: candidateLanguageLevels.value,
-          label: candidateLanguageLevels.label,
-        })
-        .from(candidateLanguageLevels)
-        .where(eq(candidateLanguageLevels.isActive, true))
-        .orderBy(
-          asc(candidateLanguageLevels.sortOrder),
-          asc(candidateLanguageLevels.label),
-        ),
-      statusOptions: await ctx.db
-        .select({
-          value: candidateStatusOptions.value,
-          label: candidateStatusOptions.label,
-        })
-        .from(candidateStatusOptions)
-        .where(eq(candidateStatusOptions.isActive, true))
-        .orderBy(
-          asc(candidateStatusOptions.sortOrder),
-          asc(candidateStatusOptions.label),
-        ),
-      vacancyLevels: await ctx.db
-        .select({
-          value: vacancyLevels.value,
-          label: vacancyLevels.label,
-        })
-        .from(vacancyLevels)
-        .where(eq(vacancyLevels.isActive, true))
-        .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
-    };
+    // `loadCandidateLookupSets` issues the same eight queries as one `Promise.all`; the copy
+    // that used to live here awaited them one after another before any AI work started.
+    const lookupOptions = await loadCandidateLookupSets(ctx.db);
 
     const [prefillExtraction, aiAnalysisResult] = await Promise.all([
       extractCandidateResumePrefillData({
         fileBuffer,
         fileName: resumeFileName,
-        lookupOptions,
+        lookupOptions: {
+          ...lookupOptions,
+          vacancyLevels: lookupOptions.vacancyLevelOptions,
+        },
         usageContext: {
           db: ctx.db,
           userId: ctx.session?.user?.id,
@@ -301,25 +236,34 @@ export const uploadResumeProcedure = protectedProcedure
       ),
     ]);
 
+    // A failed model call leaves the previous assessment alone. Writing `null` on failure
+    // meant a transient Gemini timeout silently erased a good analysis while the mutation
+    // still reported success. The enrichment worker has always spread these conditionally.
+    const aiFields =
+      aiAnalysisResult.status === "success"
+        ? {
+            aiAnalysis: aiAnalysisResult.text,
+            aiAnalysisTranslations: aiAnalysisResult.translations,
+            ...(!candidateHasTags && aiAnalysisResult.tags?.[0]
+              ? { tags: aiAnalysisResult.tags }
+              : {}),
+          }
+        : {};
+
     await ctx.db
       .update(candidates)
       .set({
         resumeFileId,
         resumeFileName,
         resumeFileSize,
-        aiAnalysis:
-          aiAnalysisResult.status === "success" ? aiAnalysisResult.text : null,
-        aiAnalysisTranslations:
-          aiAnalysisResult.status === "success"
-            ? aiAnalysisResult.translations
-            : null,
-        ...(!candidateHasTags &&
-        aiAnalysisResult.status === "success" &&
-        aiAnalysisResult.tags?.[0]
-          ? { tags: aiAnalysisResult.tags }
-          : {}),
+        ...aiFields,
       })
-      .where(eq(candidates.id, input.candidateId));
+      .where(
+        and(
+          eq(candidates.id, input.candidateId),
+          eq(candidates.companyId, userCompanyId),
+        ),
+      );
 
     return {
       candidateId: input.candidateId,
@@ -357,38 +301,60 @@ export const createCandidateProcedure = protectedProcedure
 
     const companyId = await getRequiredCompanyId(ctx.db, ctx.session?.user?.id);
 
-    const created = await ctx.db.transaction(async (tx) => {
-      const newCandidate = await tx
-        .insert(candidates)
-        .values({
-          ...(input.id ? { id: input.id } : {}),
-          fullName: input.fullName,
-          city: input.city,
-          contacts: input.contacts,
-          source: input.source ?? null,
-          salaryExpectation: input.salaryExpectation ?? null,
-          salaryCurrency: input.salaryCurrency,
-          currentPosition: input.currentPosition ?? null,
-          skills: input.skills,
-          languages: normalizedLanguages,
-          workExperience: input.workExperience,
-          education: input.education,
-          status: input.status,
-          aiAnalysis:
-            input.aiAnalysisTranslations?.ru?.trim() ||
-            input.aiAnalysis?.trim() ||
-            null,
-          aiAnalysisTranslations: input.aiAnalysisTranslations ?? null,
-          tags: input.tags,
-          resumeFileId: input.resumeFileId ?? null,
-          resumeFileName: input.resumeFileName ?? null,
-          resumeFileSize: input.resumeFileSize ?? null,
-          companyId,
-        })
-        .returning();
+    const created = await createCandidateRow();
 
-      return newCandidate[0] ?? null;
-    });
+    async function createCandidateRow() {
+      try {
+        return await insertCandidate();
+      } catch (error) {
+        // `id` is optional so the résumé-prefill flow can pre-allocate one, which means a
+        // caller can send an id that already exists — including another company's. The
+        // primary-key violation used to escape as an untyped 500 that doubled as an
+        // existence oracle.
+        if (isUniqueViolation(error)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Кандидат с таким идентификатором уже существует",
+          });
+        }
+        throw error;
+      }
+    }
+
+    async function insertCandidate() {
+      return ctx.db.transaction(async (tx) => {
+        const newCandidate = await tx
+          .insert(candidates)
+          .values({
+            ...(input.id ? { id: input.id } : {}),
+            fullName: input.fullName,
+            city: input.city,
+            contacts: input.contacts,
+            source: input.source ?? null,
+            salaryExpectation: input.salaryExpectation ?? null,
+            salaryCurrency: input.salaryCurrency,
+            currentPosition: input.currentPosition ?? null,
+            skills: input.skills,
+            languages: normalizedLanguages,
+            workExperience: input.workExperience,
+            education: input.education,
+            status: input.status,
+            aiAnalysis:
+              input.aiAnalysisTranslations?.ru?.trim() ||
+              input.aiAnalysis?.trim() ||
+              null,
+            aiAnalysisTranslations: input.aiAnalysisTranslations ?? null,
+            tags: input.tags,
+            resumeFileId: input.resumeFileId ?? null,
+            resumeFileName: input.resumeFileName ?? null,
+            resumeFileSize: input.resumeFileSize ?? null,
+            companyId,
+          })
+          .returning();
+
+        return newCandidate[0] ?? null;
+      });
+    }
 
     if (!created) {
       return null;

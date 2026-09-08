@@ -11,6 +11,7 @@ import {
   vacancies,
   vacancyTelegramPosts,
 } from "~/server/db/schema";
+import { sanitizeRichTextHtmlOrNull } from "~/server/html/sanitize-rich-text";
 import {
   fetchHhVacancyApplicants,
   fetchHhVacancyById,
@@ -248,6 +249,9 @@ export const getVacancyProcedure = protectedProcedure
     }
     return {
       ...vacancy,
+      // Sanitized on the way out as well as on the way in, so rows written before the
+      // write-side allowlist existed cannot reach `dangerouslySetInnerHTML` unfiltered.
+      descriptionHtml: sanitizeRichTextHtmlOrNull(vacancy.descriptionHtml),
       source: "local" as const,
     };
   });
@@ -386,7 +390,9 @@ function mapHhDetailToVacancyShape(detail: HhVacancyDetail | null): {
     salaryFrom: detail.salary?.from ?? undefined,
     salaryTo: detail.salary?.to ?? undefined,
     salaryCurrency: detail.salary?.currency === "USD" ? "USD" : "UZS",
-    descriptionHtml: detail.descriptionHtml ?? "",
+    // The vacancy page and funnel render this through `dangerouslySetInnerHTML`, and this is
+    // third-party HTML — `getHhVacancyDetailProcedure` already sanitizes its own copy.
+    descriptionHtml: sanitizeHhDescriptionHtml(detail.descriptionHtml ?? ""),
     contactPhone: phoneParts,
   };
 }
@@ -511,7 +517,11 @@ export const listVacancyPublicationsProcedure = protectedProcedure
       .where(and(...conditions))
       .orderBy(desc(vacancies.createdAt));
 
-    return rows;
+    // The publication preview renders this with `dangerouslySetInnerHTML`.
+    return rows.map((row) => ({
+      ...row,
+      descriptionHtml: sanitizeRichTextHtmlOrNull(row.descriptionHtml),
+    }));
   });
 
 export const getPublicationTelegramPostsProcedure = protectedProcedure
@@ -721,7 +731,9 @@ export const getVacancyFunnelProcedure = protectedProcedure
       return {
         id: candidate.id,
         fullName: candidate.fullName,
-        status: candidate.status ?? "new",
+        // `status` carries the funnel position for this vacancy. The candidate-level status
+        // stays on the profile page and is edited there.
+        status: candidate.stage ?? candidate.status ?? "new",
         city: candidate.city ?? "",
         experience: formatExperienceMonths(candidate.experience),
         matchScore: candidate.matchScore ?? candidate.candidateMatchScore ?? 0,

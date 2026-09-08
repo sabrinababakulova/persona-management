@@ -665,6 +665,15 @@ export const candidateVacancies = createTable(
     uniqueIndex("vacancy_candidate_hh_negotiation_idx")
       .on(t.vacancyId, t.hhNegotiationId)
       .where(sql`${t.hhNegotiationId} is not null`),
+    // One application row per (vacancy, candidate), whatever created it. Manual
+    // links had no uniqueness at all, so the check-then-insert in
+    // `assignCandidateProcedure` could race into duplicates — invisible in the
+    // funnel, which dedupes by candidate id, but permanently inflating the
+    // "отклики" counter, which counts rows.
+    uniqueIndex("vacancy_candidate_vacancy_candidate_idx").on(
+      t.vacancyId,
+      t.candidateId,
+    ),
   ],
 );
 

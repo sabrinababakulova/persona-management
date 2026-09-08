@@ -1,13 +1,17 @@
-import { and, count, desc, eq, inArray, ne, notExists, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, ne, notExists, or } from "drizzle-orm";
+import {
+  getPeriodDateCutoff,
+  type Period,
+} from "~/server/api/router-utils/period";
 import {
   getVacancyPublicationChannels,
+  getVacancyResponseCounts,
   isUserVisibleVacancy,
   toVacancyStatus,
 } from "~/server/api/routers/vacancies/shared";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   candidates,
-  candidateVacancies,
   recentActivityLogs,
   users,
   vacancies,
@@ -15,6 +19,24 @@ import {
 import { getUserCompanyId } from "~/server/utils/get-user-company-id";
 
 const RECENT_ACTIVITIES_LIMIT = 4;
+
+/**
+ * Window the "new since" cards actually measure.
+ *
+ * Every card was labelled «за последние 7 дней» while its query had no date predicate at all,
+ * so the figures were all-time counts that could only ever grow. The two cards that describe
+ * a flow now really are windowed; the two that describe a standing total say so instead.
+ */
+const DASHBOARD_PERIOD: Period = "week";
+
+/**
+ * Which window a stat card measures.
+ *
+ * The client localizes this — the server used to send a Russian prose label that
+ * `dashboard-client.tsx` discarded in favour of a hardcoded "last 7 days" for every card,
+ * which is how all four ended up claiming a window that none of the queries applied.
+ */
+type StatWindow = "week" | "total";
 
 const CANDIDATE_FUNNEL_STATUSES = [
   "new",
@@ -83,22 +105,22 @@ function buildEmptyDashboardData() {
       {
         title: "Новые отклики",
         value: "0",
-        period: "за последние 7 дней",
+        window: "week" as StatWindow,
       },
       {
         title: "Активные вакансии",
         value: "0",
-        period: "за последние 7 дней",
+        window: "total" as StatWindow,
       },
       {
-        title: "Активные кандидаты",
+        title: "Всего кандидатов",
         value: "0",
-        period: "за последние 7 дней",
+        window: "total" as StatWindow,
       },
       {
         title: "Нанято",
         value: "0",
-        period: "за последние 7 дней",
+        window: "week" as StatWindow,
       },
     ],
     recentVacancies: [],
@@ -137,6 +159,8 @@ export const dashboardRouter = createTRPCRouter({
       return buildEmptyDashboardData();
     }
 
+    const periodCutoff = getPeriodDateCutoff(DASHBOARD_PERIOD);
+
     // Fetch real counts from the database
     const [
       totalCandidates,
@@ -159,6 +183,7 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(candidates.companyId, userCompanyId),
             eq(candidates.status, "hired"),
+            gte(candidates.updatedAt, periodCutoff),
           ),
         ),
       ctx.db
@@ -179,6 +204,7 @@ export const dashboardRouter = createTRPCRouter({
           and(
             eq(candidates.companyId, userCompanyId),
             eq(candidates.status, "new"),
+            gte(candidates.createdAt, periodCutoff),
           ),
         ),
       // Current candidate funnel, grouped once in the database.
@@ -272,28 +298,30 @@ export const dashboardRouter = createTRPCRouter({
       {
         title: "Новые отклики",
         value: String(newCand),
-        period: "за последние 7 дней",
+        window: "week" as StatWindow,
       },
       {
         title: "Активные вакансии",
         value: String(activeVac),
-        period: "за последние 7 дней",
+        window: "total" as StatWindow,
       },
       {
-        title: "Активные кандидаты",
+        // Renamed: this has always been every candidate in the company, not the "active" ones.
+        title: "Всего кандидатов",
         value: String(total),
-        period: "за последние 7 дней",
+        window: "total" as StatWindow,
       },
       {
         title: "Нанято",
         value: String(hired),
-        period: "за последние 7 дней",
+        window: "week" as StatWindow,
       },
     ];
 
     const recentVacancyChannels = await getVacancyPublicationChannels(
       ctx.db,
       recentVacancyRows.map((vacancy) => vacancy.id),
+      userCompanyId,
     );
 
     const recentVacancies = recentVacancyRows.map((v) => ({
@@ -313,22 +341,13 @@ export const dashboardRouter = createTRPCRouter({
     }));
 
     if (recentVacancyRows.length > 0) {
-      const responseRows = await ctx.db
-        .select({
-          vacancyId: candidateVacancies.vacancyId,
-          total: count(candidateVacancies.id),
-        })
-        .from(candidateVacancies)
-        .where(
-          inArray(
-            candidateVacancies.vacancyId,
-            recentVacancyRows.map((vacancy) => vacancy.id),
-          ),
-        )
-        .groupBy(candidateVacancies.vacancyId);
-
-      const responseCounts = new Map(
-        responseRows.map((row) => [row.vacancyId, row.total]),
+      // The same helper the vacancy list uses, so the two screens cannot disagree. Counting
+      // only the base vacancy's own links here made a vacancy published to Telegram or hh.uz
+      // read one number on /vacancies and a smaller one on /dashboard.
+      const responseCounts = await getVacancyResponseCounts(
+        ctx.db,
+        recentVacancyRows.map((vacancy) => vacancy.id),
+        userCompanyId,
       );
 
       for (const vacancy of recentVacancies) {

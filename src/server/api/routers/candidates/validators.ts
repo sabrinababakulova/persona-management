@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import {
   candidateContactTypes,
@@ -15,7 +15,12 @@ import { resolveCandidateLanguageLabel } from "./language-values";
 
 type DatabaseClient = typeof import("~/server/db").db;
 
-/** Loads active lookup values used to validate candidate form submissions. */
+/**
+ * Loads active lookup values used to validate candidate form submissions.
+ *
+ * Ordered by `sortOrder` then `label` because the résumé-prefill agent is handed these lists
+ * verbatim as the allowed option set, and a stable order keeps its output reproducible.
+ */
 export async function loadCandidateLookupSets(db: DatabaseClient) {
   const [
     contactTypes,
@@ -33,56 +38,79 @@ export async function loadCandidateLookupSets(db: DatabaseClient) {
         label: candidateContactTypes.label,
       })
       .from(candidateContactTypes)
-      .where(eq(candidateContactTypes.isActive, true)),
+      .where(eq(candidateContactTypes.isActive, true))
+      .orderBy(
+        asc(candidateContactTypes.sortOrder),
+        asc(candidateContactTypes.label),
+      ),
     db
       .select({
         value: candidateSources.value,
         label: candidateSources.label,
       })
       .from(candidateSources)
-      .where(eq(candidateSources.isActive, true)),
+      .where(eq(candidateSources.isActive, true))
+      .orderBy(asc(candidateSources.sortOrder), asc(candidateSources.label)),
     db
       .select({
         value: candidatePositions.value,
         label: candidatePositions.label,
       })
       .from(candidatePositions)
-      .where(eq(candidatePositions.isActive, true)),
+      .where(eq(candidatePositions.isActive, true))
+      .orderBy(
+        asc(candidatePositions.sortOrder),
+        asc(candidatePositions.label),
+      ),
     db
       .select({
         value: candidateSkills.value,
         label: candidateSkills.label,
       })
       .from(candidateSkills)
-      .where(eq(candidateSkills.isActive, true)),
+      .where(eq(candidateSkills.isActive, true))
+      .orderBy(asc(candidateSkills.sortOrder), asc(candidateSkills.label)),
     db
       .select({
         value: candidateLanguages.value,
         label: candidateLanguages.label,
       })
       .from(candidateLanguages)
-      .where(eq(candidateLanguages.isActive, true)),
+      .where(eq(candidateLanguages.isActive, true))
+      .orderBy(
+        asc(candidateLanguages.sortOrder),
+        asc(candidateLanguages.label),
+      ),
     db
       .select({
         value: candidateLanguageLevels.value,
         label: candidateLanguageLevels.label,
       })
       .from(candidateLanguageLevels)
-      .where(eq(candidateLanguageLevels.isActive, true)),
+      .where(eq(candidateLanguageLevels.isActive, true))
+      .orderBy(
+        asc(candidateLanguageLevels.sortOrder),
+        asc(candidateLanguageLevels.label),
+      ),
     db
       .select({
         value: candidateStatusOptions.value,
         label: candidateStatusOptions.label,
       })
       .from(candidateStatusOptions)
-      .where(eq(candidateStatusOptions.isActive, true)),
+      .where(eq(candidateStatusOptions.isActive, true))
+      .orderBy(
+        asc(candidateStatusOptions.sortOrder),
+        asc(candidateStatusOptions.label),
+      ),
     db
       .select({
         value: vacancyLevels.value,
         label: vacancyLevels.label,
       })
       .from(vacancyLevels)
-      .where(eq(vacancyLevels.isActive, true)),
+      .where(eq(vacancyLevels.isActive, true))
+      .orderBy(asc(vacancyLevels.sortOrder), asc(vacancyLevels.label)),
   ]);
 
   return {

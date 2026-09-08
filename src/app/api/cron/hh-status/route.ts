@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { env } from "~/env";
 import { db } from "~/server/db";
+import { isAuthorizedCronRequest } from "~/server/http/cron-auth";
 import { syncHhCandidateStatuses } from "~/server/services/hh";
 import {
   listHhConnectedCompanyIds,
@@ -18,8 +18,7 @@ import {
  * `AUTH_SECRET` as a bearer token.
  */
 export async function GET(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (authorization !== `Bearer ${env.AUTH_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

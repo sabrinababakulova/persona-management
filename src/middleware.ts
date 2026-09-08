@@ -1,23 +1,17 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { shouldUseSecureCookies } from "~/shared/secure-cookies";
 
 const ONBOARDING_PATH = "/onboarding/company";
 
 export async function middleware(request: NextRequest) {
-  const forwardedProto = request.headers
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim();
-  const isSecureRequest =
-    forwardedProto === "https" || request.nextUrl.protocol === "https:";
-  const useSecureCookie =
-    process.env.AUTH_URL?.startsWith("https://") ?? isSecureRequest;
-
+  // Must match `authConfig.useSecureCookies` exactly: this decides which cookie name
+  // `getToken` looks for, and that decides whether a signed-in user is recognised at all.
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
-    secureCookie: useSecureCookie,
+    secureCookie: shouldUseSecureCookies(),
   });
   const isAuthenticated = Boolean(token?.id);
 

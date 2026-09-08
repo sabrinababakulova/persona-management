@@ -284,7 +284,7 @@ export function PublicationsTable() {
       parentId: publication.parentId,
       title: `${publication.title} (${t("table.copySuffix")})`,
       status: normalizeVacancyStatus(publication.status),
-      responses: publication.responses ?? 0,
+      // A duplicate starts with no applicants of its own; the counter is derived, not copied.
       areaId: publication.areaId ?? undefined,
       employmentId: publication.employmentId ?? undefined,
       scheduleId: publication.scheduleId ?? undefined,

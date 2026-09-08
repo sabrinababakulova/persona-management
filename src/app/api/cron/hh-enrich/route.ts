@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { env } from "~/env";
 import { db } from "~/server/db";
+import { isAuthorizedCronRequest } from "~/server/http/cron-auth";
 import {
   type DrainHhEnrichmentResult,
   drainHhEnrichmentJobs,
@@ -17,8 +17,7 @@ const MAX_BATCHES = 5;
  * as a bearer token so it cannot be triggered by anonymous traffic.
  */
 export async function GET(request: Request) {
-  const authorization = request.headers.get("authorization");
-  if (authorization !== `Bearer ${env.AUTH_SECRET}`) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
