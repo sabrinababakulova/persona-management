@@ -1,5 +1,9 @@
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
 import type { RouterInputs } from "~/types/trpc/router-inputs";
+import {
+  RESUME_NOT_SPECIFIED_PLACEHOLDER,
+  toCandidateSaveSafeResumePrefillData,
+} from "~/utils/resume-prefill-helpers";
 
 type CandidateCreateInput = RouterInputs["candidates"]["create"];
 
@@ -18,16 +22,21 @@ export function buildQuickCandidateCreateInput({
   fallbackCity,
   payload,
 }: BuildQuickCandidateCreateInputOptions): CandidateCreateInput {
-  const prefill = payload.resumePrefillData;
+  const prefill = payload.resumePrefillData
+    ? toCandidateSaveSafeResumePrefillData(payload.resumePrefillData)
+    : undefined;
   const directContacts: { type: string; value: string }[] = [];
 
   if (payload.email.trim()) {
-    directContacts.push({ type: "email", value: payload.email.trim() });
+    directContacts.push({
+      type: "email",
+      value: payload.email.trim().slice(0, 255),
+    });
   }
   if (payload.contactValue.trim()) {
     directContacts.push({
-      type: payload.contactType,
-      value: payload.contactValue.trim(),
+      type: payload.contactType.trim().slice(0, 50),
+      value: payload.contactValue.trim().slice(0, 255),
     });
   }
 
@@ -59,9 +68,12 @@ export function buildQuickCandidateCreateInput({
 
   return {
     id: payload.candidateId,
-    fullName: payload.fullName,
-    city: prefill?.city || fallbackCity,
-    contacts,
+    fullName:
+      payload.fullName.trim().slice(0, 255) || RESUME_NOT_SPECIFIED_PLACEHOLDER,
+    city: (prefill?.city || fallbackCity || RESUME_NOT_SPECIFIED_PLACEHOLDER)
+      .trim()
+      .slice(0, 255),
+    contacts: contacts.slice(0, 20),
     source: payload.source || prefill?.source || undefined,
     salaryExpectation: prefill?.salaryExpectation,
     salaryCurrency: prefill?.salaryCurrency ?? "UZS",

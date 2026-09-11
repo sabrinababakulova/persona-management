@@ -2,6 +2,8 @@ import type { CandidateResumePrefillData } from "~/schemas/resume-analysis";
 
 type LookupOption = { value: string; label: string };
 
+export const RESUME_NOT_SPECIFIED_PLACEHOLDER = "Не указано";
+
 export type ResumeLookupOptions = {
   contactTypes: LookupOption[];
   sources: LookupOption[];
@@ -28,7 +30,18 @@ function toStringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function toBoundedString(value: unknown, maxLength: number) {
+  return toStringValue(value).slice(0, maxLength);
+}
+
 function toStringArray(value: unknown) {
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|\s*[•▪◦]\s*/u)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
   if (!Array.isArray(value)) {
     return [];
   }
@@ -153,13 +166,13 @@ function toEducation(value: unknown) {
 
 function parseSalaryExpectation(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-    return Math.round(value);
+    return Math.min(Math.round(value), 1_000_000_000);
   }
 
   if (typeof value === "string") {
     const numeric = Number(value.replace(/[^\d.]/g, "").trim());
     if (Number.isFinite(numeric) && numeric > 0) {
-      return Math.round(numeric);
+      return Math.min(Math.round(numeric), 1_000_000_000);
     }
   }
 
@@ -261,7 +274,7 @@ function normalizeAcademicGrade(value: unknown) {
   }
 
   const explicitGradeLabel =
-    /\b(?:gpa|grade|grades|average score|academic score|honou?rs?|distinction)\b|(?:средн(?:ий|яя|ее)\s+балл|оценк\p{L}*|балл\p{L}*|диплом\s+с\s+отличием|отлично|хорошо)|(?:o‘rtacha\s+ball|o'rtacha\s+ball|baho|imtiyozli\s+diplom)/iu;
+    /\b(?:gpa|grade|grades|average score|academic score|honou?rs?|distinction|first class|second class)\b|(?:средн(?:ий|яя|ее)\s+балл|оценк\p{L}*|балл\p{L}*|диплом\s+с\s+отличием|отлично|хорошо)|(?:o‘rtacha\s+ball|o'rtacha\s+ball|baho|imtiyozli\s+diplom)/iu;
   const standaloneNumericGrade =
     /^\d{1,3}(?:[.,]\d{1,2})?\s*(?:(?:\/|из|of)\s*\d{1,3}(?:[.,]\d{1,2})?|%)?$/iu;
   const standaloneLetterGrade = /^[A-F][+-]?$/iu;
@@ -411,6 +424,88 @@ function toNormalizedLanguages(
   return result;
 }
 
+/**
+ * Makes resume-derived data safe for both candidate creation paths.
+ *
+ * AI output may contain partial nested records or strings longer than the ATS
+ * accepts. Required human-readable fields get an explicit placeholder; invalid
+ * optional lookup fields are handled separately by lookup normalization.
+ */
+export function toCandidateSaveSafeResumePrefillData(
+  rawData: unknown,
+): CandidateResumePrefillData {
+  const data =
+    rawData && typeof rawData === "object"
+      ? (rawData as Record<string, unknown>)
+      : {};
+
+  const workExperience = toWorkExperience(data.workExperience)
+    .slice(0, 20)
+    .map((item) => {
+      const description = item.description
+        .map((entry) => toBoundedString(entry, 1000))
+        .filter(Boolean)
+        .slice(0, 20);
+
+      return {
+        company:
+          toBoundedString(item.company, 255) ||
+          RESUME_NOT_SPECIFIED_PLACEHOLDER,
+        position:
+          toBoundedString(item.position, 255) ||
+          RESUME_NOT_SPECIFIED_PLACEHOLDER,
+        period:
+          toBoundedString(item.period, 255) || RESUME_NOT_SPECIFIED_PLACEHOLDER,
+        description:
+          description.length > 0
+            ? description
+            : [RESUME_NOT_SPECIFIED_PLACEHOLDER],
+      };
+    });
+
+  const education = toEducation(data.education)
+    .slice(0, 20)
+    .map((item) => ({
+      institution:
+        toBoundedString(item.institution, 255) ||
+        RESUME_NOT_SPECIFIED_PLACEHOLDER,
+      gpa: toBoundedString(item.gpa, 200),
+      period: toBoundedString(item.period, 255),
+    }));
+
+  return {
+    fullName:
+      toBoundedString(data.fullName, 255) || RESUME_NOT_SPECIFIED_PLACEHOLDER,
+    city: toBoundedString(data.city, 255) || RESUME_NOT_SPECIFIED_PLACEHOLDER,
+    contacts: toContacts(data.contacts)
+      .map((contact) => ({
+        type: toBoundedString(contact.type, 50),
+        value: toBoundedString(contact.value, 255),
+      }))
+      .filter((contact) => Boolean(contact.type && contact.value))
+      .slice(0, 20),
+    source: toBoundedString(data.source, 255),
+    salaryExpectation: parseSalaryExpectation(data.salaryExpectation),
+    salaryCurrency: parseSalaryCurrency(data.salaryCurrency),
+    vacancyLevel: toBoundedString(data.vacancyLevel, 255),
+    currentPosition: toBoundedString(data.currentPosition, 255),
+    skills: toStringArray(data.skills)
+      .map((skill) => skill.slice(0, 255))
+      .filter(Boolean)
+      .slice(0, 50),
+    languages: toLanguages(data.languages)
+      .map((language) => ({
+        name: toBoundedString(language.name, 255),
+        level: toBoundedString(language.level, 10),
+      }))
+      .filter((language) => Boolean(language.name && language.level))
+      .slice(0, 20),
+    workExperience,
+    education,
+    status: toBoundedString(data.status, 50),
+  };
+}
+
 export function toLookupOptionsHints(options: LookupOption[]) {
   if (options.length === 0) {
     return "нет доступных вариантов";
@@ -430,7 +525,7 @@ export function toResumePrefillData(
       ? (rawPayload as Record<string, unknown>)
       : {};
 
-  return {
+  return toCandidateSaveSafeResumePrefillData({
     fullName: toStringValue(payload.fullName),
     city: toStringValue(payload.city),
     contacts: toNormalizedContacts(
@@ -460,13 +555,16 @@ export function toResumePrefillData(
     workExperience: toWorkExperience(payload.workExperience).slice(0, 20),
     education: toEducation(payload.education).slice(0, 20),
     status: toLookupValue(payload.status, lookupOptions.statusOptions),
-  };
+  });
 }
 
 export function hasAnyPrefillData(prefillData: CandidateResumePrefillData) {
+  const hasValue = (value: string) =>
+    Boolean(value && value !== RESUME_NOT_SPECIFIED_PLACEHOLDER);
+
   return Boolean(
-    prefillData.fullName ||
-      prefillData.city ||
+    hasValue(prefillData.fullName) ||
+      hasValue(prefillData.city) ||
       prefillData.contacts.length > 0 ||
       prefillData.source ||
       prefillData.salaryExpectation !== undefined ||

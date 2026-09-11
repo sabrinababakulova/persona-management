@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
+import { candidateCreateInputSchema } from "~/server/api/routers/candidates/schemas";
 import type { QuickAddCandidatePayload } from "~/types/components/quick-add-candidate-modal";
+import { RESUME_NOT_SPECIFIED_PLACEHOLDER } from "~/utils/resume-prefill-helpers";
 import { buildQuickCandidateCreateInput } from "./quick-candidate-create-input";
 
 describe("quick candidate create input", () => {
@@ -100,5 +102,54 @@ describe("quick candidate create input", () => {
       resumeFileName: "ada.pdf",
       resumeFileSize: "128 KB",
     });
+  });
+
+  test("repairs incomplete nested resume fields before quick save", () => {
+    const result = buildQuickCandidateCreateInput({
+      defaultStatus: "new",
+      fallbackCity: "Not specified",
+      payload: {
+        candidateId: "84f64b53-723e-47b2-bbc5-4d9980ad5b7e",
+        fullName: "Parsed Candidate",
+        email: "",
+        contactType: "phone",
+        contactValue: "",
+        source: "local",
+        resumePrefillData: {
+          fullName: "Parsed Candidate",
+          city: "",
+          contacts: [],
+          source: "",
+          salaryExpectation: undefined,
+          salaryCurrency: "UZS",
+          vacancyLevel: "",
+          currentPosition: "",
+          skills: [],
+          languages: [],
+          workExperience: [
+            {
+              company: "",
+              position: "Recruiter",
+              period: "",
+              description: [],
+            },
+          ],
+          education: [{ institution: "", gpa: "", period: "2024" }],
+          status: "",
+        },
+      },
+    });
+
+    expect(result.city).toBe(RESUME_NOT_SPECIFIED_PLACEHOLDER);
+    expect(result.workExperience?.[0]).toEqual({
+      company: RESUME_NOT_SPECIFIED_PLACEHOLDER,
+      position: "Recruiter",
+      period: RESUME_NOT_SPECIFIED_PLACEHOLDER,
+      description: [RESUME_NOT_SPECIFIED_PLACEHOLDER],
+    });
+    expect(result.education?.[0]?.institution).toBe(
+      RESUME_NOT_SPECIFIED_PLACEHOLDER,
+    );
+    expect(candidateCreateInputSchema.safeParse(result).success).toBe(true);
   });
 });

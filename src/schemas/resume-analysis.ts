@@ -1,42 +1,50 @@
 import { z } from "zod";
 
+const nullableExtractedStringSchema = z.string().nullable().optional();
+
 export const resumeExtractedContactSchema = z.object({
-  type: z.string(),
-  value: z.string(),
+  type: nullableExtractedStringSchema,
+  value: nullableExtractedStringSchema,
 });
 
 export const resumeExtractedLanguageSchema = z.object({
-  name: z.string(),
-  level: z.string(),
+  name: nullableExtractedStringSchema,
+  level: nullableExtractedStringSchema,
 });
 
 export const resumeExtractedWorkExperienceSchema = z.object({
-  company: z.string(),
-  position: z.string(),
-  period: z.string(),
-  description: z.array(z.string()),
+  company: nullableExtractedStringSchema,
+  position: nullableExtractedStringSchema,
+  period: nullableExtractedStringSchema,
+  description: z
+    .union([z.array(z.string().nullable()), z.string()])
+    .nullable()
+    .optional(),
 });
 
 export const resumeExtractedEducationSchema = z.object({
-  institution: z.string(),
-  gpa: z.string(),
-  period: z.string(),
+  institution: nullableExtractedStringSchema,
+  gpa: nullableExtractedStringSchema,
+  period: nullableExtractedStringSchema,
 });
 
 export const candidateResumePrefillSchema = z.object({
-  fullName: z.string(),
-  city: z.string(),
-  contacts: z.array(resumeExtractedContactSchema),
-  source: z.string(),
-  salaryExpectation: z.number().nullable().optional(),
-  salaryCurrency: z.enum(["UZS", "USD"]).optional(),
-  vacancyLevel: z.string().optional(),
-  currentPosition: z.string(),
-  skills: z.array(z.string()),
-  languages: z.array(resumeExtractedLanguageSchema),
-  workExperience: z.array(resumeExtractedWorkExperienceSchema),
-  education: z.array(resumeExtractedEducationSchema),
-  status: z.string().optional(),
+  fullName: nullableExtractedStringSchema,
+  city: nullableExtractedStringSchema,
+  contacts: z.array(resumeExtractedContactSchema).nullable().optional(),
+  source: nullableExtractedStringSchema,
+  salaryExpectation: z.union([z.number(), z.string()]).nullable().optional(),
+  salaryCurrency: nullableExtractedStringSchema,
+  vacancyLevel: nullableExtractedStringSchema,
+  currentPosition: nullableExtractedStringSchema,
+  skills: z.array(z.string().nullable()).nullable().optional(),
+  languages: z.array(resumeExtractedLanguageSchema).nullable().optional(),
+  workExperience: z
+    .array(resumeExtractedWorkExperienceSchema)
+    .nullable()
+    .optional(),
+  education: z.array(resumeExtractedEducationSchema).nullable().optional(),
+  status: nullableExtractedStringSchema,
 });
 
 export type CandidateResumePrefill = z.infer<

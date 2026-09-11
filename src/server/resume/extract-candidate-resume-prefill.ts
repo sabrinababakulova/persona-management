@@ -7,6 +7,7 @@ import { recordAiUsage } from "~/server/ai/usage-logging";
 import {
   EMPTY_LOOKUP_OPTIONS,
   hasAnyPrefillData,
+  RESUME_NOT_SPECIFIED_PLACEHOLDER,
   type ResumeLookupOptions,
   toLookupOptionsHints,
   toResumePrefillData,
@@ -30,8 +31,8 @@ export type ResumePrefillExtractionResult = {
 };
 
 const EMPTY_RESUME_PREFILL: CandidateResumePrefillData = {
-  fullName: "",
-  city: "",
+  fullName: RESUME_NOT_SPECIFIED_PLACEHOLDER,
+  city: RESUME_NOT_SPECIFIED_PLACEHOLDER,
   contacts: [],
   source: "",
   salaryExpectation: undefined,
@@ -101,6 +102,7 @@ export async function extractCandidateResumePrefillData({
 - fullName: string
 - city: string
 - contacts: [{ type: string, value: string }]
+- source: string
 - salaryExpectation: number | null
 - salaryCurrency: "UZS" | "USD"
 - vacancyLevel: string
@@ -112,7 +114,11 @@ export async function extractCandidateResumePrefillData({
 - status: string
 
 Если поле отсутствует в резюме:
-- string -> ""
+- fullName, city -> "${RESUME_NOT_SPECIFIED_PLACEHOLDER}"
+- company, position или period внутри существующей записи workExperience -> "${RESUME_NOT_SPECIFIED_PLACEHOLDER}"
+- description внутри существующей записи workExperience -> ["${RESUME_NOT_SPECIFIED_PLACEHOLDER}"]
+- institution внутри существующей записи education -> "${RESUME_NOT_SPECIFIED_PLACEHOLDER}"
+- остальные string -> ""
 - array -> []
 - workExperience -> []
 - education -> []
